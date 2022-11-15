@@ -19,11 +19,7 @@
           </div>
         </div>
 
-        <OverlayScrollbars class="rounded p-3 h-64 bg-brave-98 w-full font-mono overflow-auto flex flex-col-reverse text-sm"
-          :options="{
-            scrollbars: { theme: 'os-theme-light' }
-          }"
-        >
+        <OverlayScrollbars class="rounded p-3 h-64 bg-brave-98 w-full font-mono overflow-auto flex flex-col-reverse text-sm">
           <div v-for="log in applyLog" :key="log.trackName" :class="{ 'text-green-800': log.status === 'Success', 'text-red-800': log.status === 'Failure' }">
             <strong>{{ log.trackName }} - {{ log.artistName }}</strong>:
             <span>{{ log.message }}</span>

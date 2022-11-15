@@ -27,7 +27,7 @@ struct MusicItem {
   duration: f64
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 struct LrcLibGetResponse {
   plain_lyrics: Option<String>,
@@ -43,7 +43,7 @@ struct LrcLibGetResponse {
   duration: Option<f64>
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
 struct LrcLibResponseError {
   status_code: Option<u16>,
@@ -66,7 +66,8 @@ struct ApplyLyricsProgressPayload {
   total_items_count: u32,
   current_track: MusicItem,
   current_status: LrcLibStatus,
-  current_message: Option<String>
+  current_message: Option<String>,
+  lrclib_response: Option<LrcLibGetResponse>
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -206,7 +207,7 @@ async fn get_lyrics_from_lrclib(
       Ok(res.json::<LrcLibGetResponse>().await?)
     },
 
-    reqwest::StatusCode::NOT_FOUND | reqwest::StatusCode::BAD_REQUEST | reqwest::StatusCode::BAD_REQUEST | reqwest::StatusCode::SERVICE_UNAVAILABLE | reqwest::StatusCode::INTERNAL_SERVER_ERROR => {
+    reqwest::StatusCode::NOT_FOUND | reqwest::StatusCode::BAD_REQUEST | reqwest::StatusCode::SERVICE_UNAVAILABLE | reqwest::StatusCode::INTERNAL_SERVER_ERROR => {
       Err(res.json::<LrcLibResponseError>().await?.into())
     },
 
@@ -265,14 +266,26 @@ async fn apply_lyrics(
         if !synced_lyrics.is_empty() {
           let lrc_file_path = lrc_file_path((&music_item.file_path).to_owned());
           std::fs::write(lrc_file_path, synced_lyrics).expect("Unable to write file");
-        }
-        successed_items_count = successed_items_count + 1;
-        status = LrcLibStatus::Success;
-        if *&data.instrumental {
+          successed_items_count = successed_items_count + 1;
+          status = LrcLibStatus::Success;
+          message = Some("Retrieved lyrics successfully".to_string());
+        } else if *&data.instrumental {
+          failed_items_count = failed_items_count + 1;
+          status = LrcLibStatus::Failure;
           message = Some("Track is instrumental".to_string());
         } else {
-          message = Some("Retrieved lyrics successfully".to_string());
+          failed_items_count = failed_items_count + 1;
+          status = LrcLibStatus::Failure;
+          message = Some("Track has no synced lyrics submitted".to_string());
         }
+
+        processed_items_count = processed_items_count + 1;
+
+        report_progress(
+          &music_items, music_item, &app_handle, successed_items_count,
+          failed_items_count, processed_items_count, status, message,
+          &Some(data)
+        )
       },
 
       Err(dyn_err) => {
@@ -284,20 +297,42 @@ async fn apply_lyrics(
           Some(error) => {
             status = LrcLibStatus::Failure;
             message = Some((&error.message).to_owned());
+
+            processed_items_count = processed_items_count + 1;
+
+            report_progress(
+              &music_items, music_item, &app_handle, successed_items_count,
+              failed_items_count, processed_items_count, status, message,
+              &None
+            )
           },
           None => {
             status = LrcLibStatus::Failure;
             message = Some("Unknown Error".to_string());
+
+            processed_items_count = processed_items_count + 1;
+
+            report_progress(
+              &music_items, music_item, &app_handle, successed_items_count,
+              failed_items_count, processed_items_count, status, message,
+              &None
+            )
           }
         }
       }
     }
+  }
+}
 
-    processed_items_count = processed_items_count + 1;
-
+fn report_progress(
+  music_items: &Vec<MusicItem>, music_item: &MusicItem, app_handle: &tauri::AppHandle, successed_items_count: u32,
+  failed_items_count: u32, processed_items_count: u32, current_status: LrcLibStatus, current_message: Option<String>,
+  lrclib_response: &Option<LrcLibGetResponse>) {
     let music_items = music_items.clone();
     let music_item = music_item.clone();
     let app_handle = app_handle.clone();
+    let lrclib_response = lrclib_response.clone();
+
     std::thread::spawn(move || {
       let total_items_count = music_items.len();
       app_handle
@@ -310,13 +345,13 @@ async fn apply_lyrics(
             processed_items_count,
             total_items_count: total_items_count.try_into().unwrap(),
             current_track: music_item,
-            current_status: status,
-            current_message: message
+            current_status,
+            current_message,
+            lrclib_response
           },
         )
         .unwrap();
     });
-  }
 }
 
 #[tauri::command]
