@@ -27,7 +27,7 @@ OS Support:
 
 ## Development
 
-This LRCGET is made with [Tauri](https://tauri.app).
+LRCGET is made with [Tauri](https://tauri.app).
 
 To start developing the application, you need to do the [prerequisites](https://tauri.app/v1/guides/getting-started/prerequisites) steps according to your operating system.
 
@@ -36,7 +36,7 @@ For example, you need the following components to start the development in Windo
 - Rust 1.64.0 or higher
 - NodeJS v16.18.0 or higher
 
-Start the development window with the follow command:
+Start the development window with the following command:
 
 ``` shell
 npm run tauri dev
