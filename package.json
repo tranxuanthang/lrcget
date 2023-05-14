@@ -9,14 +9,18 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tauri-apps/api": "^1.1.0",
+    "@tailwindcss/line-clamp": "^0.4.4",
+    "@tauri-apps/api": "^1.3.0",
+    "howler": "^2.2.3",
+    "lodash": "^4.17.21",
+    "lrc-kit": "^1.1.1",
     "mdue": "^0.1.4",
     "overlayscrollbars-vue": "^0.3.0",
     "path-browserify": "^1.0.1",
     "vue": "^3.2.37"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1.1.0",
+    "@tauri-apps/cli": "^1.3.0",
     "@vitejs/plugin-vue": "^3.0.1",
     "autoprefixer": "^10.4.12",
     "postcss": "^8.4.18",

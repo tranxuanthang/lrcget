@@ -1,67 +1,49 @@
 <template>
-  <div class="h-screen w-screen flex flex-col select-none rounded-lg">
-    <div data-tauri-drag-region class="flex justify-end items-start h-10 text-sm">
+  <div class="h-screen w-screen flex flex-col select-none border border-brave-90">
+    <div data-tauri-drag-region class="flex justify-end items-start text-sm flex-none z-40">
       <div v-if="!isProd" class="py-2 px-4 text-hoa-1400 hover:bg-hoa-600 active:bg-hoa-800 transition" @click="openDevtools">
         <Bug />
       </div>
-      <div class="py-2 px-4 text-hoa-1400 hover:bg-hoa-600 active:bg-hoa-800 transition" @click="minimizeWindow">
+      <div class="py-2 px-4 text-brave-35 hover:bg-brave-90 active:bg-brave-80 transition" @click="minimizeWindow">
         <WindowMinimize />
       </div>
-      <div class="py-2 px-4 text-hoa-1400 hover:bg-hoa-600 active:bg-hoa-800 transition"  @click="maximizeWindow">
+      <div class="py-2 px-4 text-brave-35 hover:bg-brave-90 active:bg-brave-80 transition"  @click="maximizeWindow">
         <WindowMaximize />
       </div>
-      <div class="py-2 px-4 text-hoa-1400 hover:text-hoa-200 hover:bg-hoa-1400 active:bg-hoa-1500 active:text-hoa-200 transition"  @click="closeWindow">
+      <div class="py-2 px-4 text-brave-35 hover:bg-brave-35 active:bg-brave-30 hover:text-white active:text-white transition"  @click="closeWindow">
         <WindowClose />
       </div>
     </div>
-    <div class="flex-grow overflow-hidden">
-      <ChooseDirectory v-if="step === 1" @progressStep="toStep3" />
-      <SelectStrategy v-else-if="step === 2" @progressStep="toStep3" />
-      <ApplyLyrics :musicItems="musicItems" :isCreateLRC="isCreateLRC" :isEmbed="isEmbed" :skipTracksHaveExistingLyrics="skipTracksHaveExistingLyrics" @startOver="startOver" v-else-if="step === 3" />
+    <div v-if="!loading" class="grow overflow-hidden">
+      <ChooseDirectory v-if="!init" @progressStep="init = true" />
+      <Library v-else @uninitialize-library="uninitializeLibrary" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { Bug } from 'mdue'
-import { WindowMinimize } from 'mdue'
-import { WindowMaximize } from 'mdue'
-import { WindowClose } from 'mdue'
+import { Bug, WindowMinimize, WindowMaximize, WindowClose } from 'mdue'
 import ChooseDirectory from "./components/ChooseDirectory.vue";
-import SelectStrategy from "./components/SelectStrategy.vue";
-import ApplyLyrics from "./components/ApplyLyrics.vue";
-import { ref } from 'vue'
+import Library from "./components/Library.vue";
+import { ref, onMounted } from 'vue'
 import { appWindow } from '@tauri-apps/api/window'
 import { invoke } from '@tauri-apps/api/tauri'
 
-const step = ref(1)
-const musicItems = ref(null)
-const isCreateLRC = ref(true)
-const isEmbed = ref(false)
-const skipTracksHaveExistingLyrics = ref(true)
+const loading = ref(true)
+const init = ref(false)
 const isProd = ref(import.meta.env.PROD)
 
-const toStep2 = (musicItems2) => {
-  console.log(musicItems2)
-  musicItems.value = musicItems2
-  step.value = 2
+const uninitializeLibrary = async () => {
+  loading.value = true
+  await invoke('uninitialize_library')
+  init.value = await invoke('get_init')
+  loading.value = false
 }
 
-const toStep3 = (musicItems2, isCreateLRC2, isEmbed2, skipTracksHaveExistingLyrics2) => {
-  musicItems.value = musicItems2
-  isCreateLRC.value = isCreateLRC2
-  isEmbed.value = isEmbed2
-  skipTracksHaveExistingLyrics.value = skipTracksHaveExistingLyrics2
-  step.value = 3
-}
-
-const startOver = () => {
-  musicItems.value = null
-  isCreateLRC.value = true
-  isEmbed.value = false
-  skipTracksHaveExistingLyrics.value = true
-  step.value = 1
-}
+onMounted(async () => {
+  init.value = await invoke('get_init')
+  loading.value = false
+})
 
 const openDevtools = () => {
   invoke("open_devtools");

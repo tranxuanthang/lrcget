@@ -80,13 +80,11 @@ onMounted(async () => {
     isEmbed: props.isEmbed,
     skipTracksHaveExistingLyrics: props.skipTracksHaveExistingLyrics
   }).then(() => {
-    console.log('done')
     progress.value = 1.0
   })
 
   listen('apply-lyrics-progress', (event) => {
     const payload = event.payload
-    console.log(payload)
     progress.value = payload.progress
     processedItemsCount.value = payload.processed_items_count
     successedItemsCount.value = payload.successed_items_count
