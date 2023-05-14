@@ -27,3 +27,39 @@ body {
 .titlebar-button:hover {
   background: #5bbec3;
 }
+
+.button {
+  @apply transition uppercase font-bold flex gap-1 items-center justify-center;
+}
+
+.button-normal {
+  @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70;
+}
+
+.button-primary {
+  @apply bg-brave-30 hover:bg-brave-35 text-white active:bg-brave-25;
+}
+
+.button-working {
+  @apply bg-white hover:bg-brave-98 text-brave-30 active:bg-brave-25 active:text-white;
+}
+
+.button-done {
+  @apply bg-green-100 hover:bg-green-200 text-green-800 active:bg-green-800 active:text-white;
+}
+
+.link {
+  @apply text-green-800 hover:text-green-900 active:text-green-700 transition text-sm;
+}
+
+.group-label {
+  @apply font-bold text-xs uppercase text-brave-70 block;
+}
+
+.checkbox {
+  @apply w-4 h-4 text-brave-90 bg-brave-35 accent-brave-35 rounded border-brave-35;
+}
+
+.checkbox-label {
+  @apply text-sm text-brave-35;
+}
