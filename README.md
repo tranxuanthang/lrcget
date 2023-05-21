@@ -23,8 +23,8 @@ Visit the [release page](https://github.com/tranxuanthang/lrcget/releases).
 OS Support:
 
 - [x] Windows 10
-- [ ] Linux (coming soon)
-- [ ] macOS (coming soon)
+- [x] Linux (experimental)
+- [x] macOS (experimental)
 
 ## Donation
 
