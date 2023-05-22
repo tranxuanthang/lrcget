@@ -7,14 +7,14 @@
     <div class="grow flex flex-col items-center justify-center gap-8 w-full max-w-screen-sm">
       <div class="flex flex-col gap-2 w-full justify-center items-center">
         <div
-          v-for="directory in directories"
+          v-for="(directory, index) in directories"
           :key="directory"
           class="w-full bg-brave-99 text-brave-5 font-bold p-4 rounded-lg flex items-center"
         >
           <div class="grow">
             {{ directory }}
           </div>
-          <button class="flex-none text-white bg-gray-700 hover:bg-gray-600 active:bg-gray-800 p-1 flex justify-center items-center rounded-full" @click.prevent="removeDirectory(directory)">
+          <button class="flex-none text-white bg-gray-700 hover:bg-gray-600 active:bg-gray-800 p-1 flex justify-center items-center rounded-full" @click.prevent="removeDirectory(index)">
             <Close />
           </button>
         </div>
@@ -78,5 +78,12 @@ const chooseDirectory = async () => {
   if (selected && !directories.value.includes(selected)) {
     directories.value.push(selected)
   }
+}
+
+const removeDirectory = (index) => {
+  if (index < 0) {
+    return
+  }
+  directories.value.splice(index)
 }
 </script>

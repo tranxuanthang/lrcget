@@ -10,6 +10,8 @@ pub fn initialize_library(conn: &Connection) -> Result<()> {
     return Ok(())
   }
 
+  db::clean_library(conn)?;
+
   let directories = db::get_directories(conn)?;
   let tracks = fs_track::load_tracks_from_directories(&directories)?;
   let result = add_tracks(tracks, conn);

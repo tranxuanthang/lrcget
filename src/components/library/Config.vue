@@ -18,14 +18,14 @@
               </div>
             </div>
 
-            <div>
-              <label class="group-label mb-2">Experimental</label>
+            <!-- <div>
+                 <label class="group-label mb-2">Experimental</label>
 
-              <div class="flex items-center">
-                <input id="try-embed-lyrics" type="checkbox" v-model="tryEmbedLyrics" class="checkbox">
-                <label for="try-embed-lyrics" class="checkbox-label ml-2">Try to embed the lyrics to the track files when possible</label>
-              </div>
-            </div>
+                 <div class="flex items-center">
+                 <input id="try-embed-lyrics" type="checkbox" v-model="tryEmbedLyrics" class="checkbox">
+                 <label for="try-embed-lyrics" class="checkbox-label ml-2">Try to embed the lyrics to the track files when possible</label>
+                 </div>
+                 </div> -->
           </div>
           <div class="flex flex-col gap-1">
             <a href="#" class="link" @click="refreshLibrary">Refresh my library for new changes...</a>
