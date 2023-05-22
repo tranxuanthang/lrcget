@@ -7,6 +7,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use rayon::prelude::*;
+use thiserror::Error;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FsTrack {
@@ -17,6 +18,18 @@ pub struct FsTrack {
   artist: String,
   duration: f64,
   lrc_lyrics: Option<String>
+}
+
+#[derive(Error, Debug)]
+pub enum FsTrackError {
+  #[error("No title was found from track")]
+  TitleNotFound,
+  #[error("No album name was found from track")]
+  AlbumNotFound,
+  #[error("No artist name was found from track")]
+  ArtistNotFound,
+  #[error("No primary tag was found from track")]
+  PrimaryTagNotFound
 }
 
 impl FsTrack {
@@ -36,12 +49,12 @@ impl FsTrack {
     let file_path = path.display().to_string();
     let file_name = path.file_name().unwrap().to_str().unwrap().to_owned();
     let tagged_file = read_from_path(&file_path)?;
-    let tag = tagged_file.primary_tag().unwrap();
+    let tag = tagged_file.primary_tag().ok_or(FsTrackError::PrimaryTagNotFound)?;
     let owned_tag = tag.to_owned();
     let properties = tagged_file.properties();
-    let title = owned_tag.title().ok_or("Cannot get title metadata from track.").unwrap().to_string();
-    let album = owned_tag.album().ok_or("Cannot get album metadata from track.").unwrap().to_string();
-    let artist = owned_tag.artist().ok_or("Cannot get album metadata from track.").unwrap().to_string();
+    let title = owned_tag.title().ok_or(FsTrackError::TitleNotFound)?.to_string();
+    let album = owned_tag.album().ok_or(FsTrackError::AlbumNotFound)?.to_string();
+    let artist = owned_tag.artist().ok_or(FsTrackError::ArtistNotFound)?.to_string();
     let duration = properties.duration().as_secs_f64();
 
     let mut track = FsTrack::new(file_path, file_name, title, album, artist, duration, None);
