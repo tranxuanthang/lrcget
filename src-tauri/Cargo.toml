@@ -16,20 +16,12 @@ tauri-build = { version = "1.3", features = [] }
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
-tauri = { version = "1.3", features = ["api-all"] }
+tauri = { version = "1.3", features = ["global-shortcut-all", "path-all", "protocol-all"] }
 globwalk = "0.8.1"
-audiotags = "0.4.1"
-id3 = { git = "https://github.com/tranxuanthang/rust-id3", branch = "slash-fix" }
-metaflac = "0.2.5"
-lrc = "0.1.7"
 reqwest = { version = "0.11.12", features = ["json"] }
-window-shadows = "0.2.0"
-mp3-duration = "0.1.10"
 lofty = "0.13.0"
 anyhow = "1.0.71"
 thiserror = "1.0"
-image = "0.24.6"
-tempfile = "3"
 rusqlite = { version = "0.29.0", features = ["bundled"] }
 rayon = "1.7.0"
 indoc = "2"

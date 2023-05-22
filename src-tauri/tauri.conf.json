@@ -8,15 +8,10 @@
   },
   "package": {
     "productName": "LRCGET",
-    "version": "0.1.0"
+    "version": "0.1.1"
   },
   "tauri": {
     "allowlist": {
-      "all": true,
-      "fs": {
-        "all": true,
-        "scope": ["**"]
-      },
       "globalShortcut": {
         "all": true
       },
