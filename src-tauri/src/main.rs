@@ -15,6 +15,13 @@ use persistent_entities::{PersistentTrack, PersistentAlbum, PersistentArtist, Pe
 use tauri::{State, Manager, AppHandle};
 use rusqlite::Connection;
 use state::{AppState, ServiceAccess};
+use axum::{
+  http::{HeaderValue, Method},
+  routing::get,
+  Router,
+};
+use tower_http::{services::{ServeDir, ServeFile}};
+use tower_http::cors::CorsLayer;
 
 #[tauri::command]
 async fn get_directories(app_state: State<'_, AppState>) -> Result<Vec<String>, String> {
@@ -159,7 +166,13 @@ fn open_devtools(window: tauri::Window) {
   }
 }
 
-fn main() {
+#[tauri::command]
+fn convert_file_src_2(path: String) -> String {
+  format!("http://localhost:16780{}", path)
+}
+
+#[tokio::main]
+async fn main() {
   tauri::Builder::default()
     .manage(AppState { db: Default::default() })
     .setup(|app| {
@@ -168,6 +181,22 @@ fn main() {
       let app_state: State<AppState> = handle.state();
       let db = db::initialize_database(&handle).expect("Database initialize should succeed");
       *app_state.db.lock().unwrap() = Some(db);
+
+      #[cfg(target_os = "linux")]
+      tokio::spawn(async move {
+        let serve_dir = ServeDir::new("/");
+
+        let axum_app = Router::new()
+          .nest_service("/", serve_dir)
+          .layer(
+            CorsLayer::new()
+              .allow_origin("*".parse::<HeaderValue>().unwrap())
+              .allow_methods([Method::GET])
+          );
+
+        axum::Server::bind(&"127.0.0.1:16780".parse().unwrap())
+          .serve(axum_app.into_make_service()).await.unwrap();
+      });
 
       Ok(())
     })
@@ -186,7 +215,8 @@ fn main() {
       get_album_tracks,
       get_artist_tracks,
       download_lyrics,
-      open_devtools
+      open_devtools,
+      convert_file_src_2
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
