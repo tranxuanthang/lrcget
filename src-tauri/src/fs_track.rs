@@ -146,7 +146,7 @@ pub fn load_tracks_from_directories(directories: &Vec<String>) -> Result<Vec<FsT
 pub fn get_files_from_directories(directories: &Vec<String>) -> Result<Vec<String>> {
   let mut files: Vec<String> = vec![];
   for directory in directories.iter() {
-    let files_in_dir = glob(format!("{}/**/*.{{mp3,m4a,flac,ogg}}", directory))?;
+    let files_in_dir = glob(format!("{}/**/*.{{mp3,m4a,flac,ogg,opus}}", directory))?;
     for file in files_in_dir {
       let file = file?;
       let path = file.path();
