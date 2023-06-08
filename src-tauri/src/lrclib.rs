@@ -3,7 +3,7 @@ use anyhow::Result;
 use reqwest;
 use thiserror::Error;
 
-#[derive(Deserialize, Clone)]
+#[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct LrclibResponse {
   plain_lyrics: Option<String>,
@@ -19,7 +19,6 @@ struct LrclibResponse {
   duration: Option<f64>
 }
 
-#[derive(Deserialize, Clone)]
 pub enum LrclibResponseOption {
   SyncedLyrics(String),
   UnsyncedLyrics(String),
@@ -27,7 +26,7 @@ pub enum LrclibResponseOption {
   None
 }
 
-#[derive(Error, Deserialize, Clone, Debug)]
+#[derive(Error, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
 #[error("{error}: {message}")]
 struct LrclibResponseError {

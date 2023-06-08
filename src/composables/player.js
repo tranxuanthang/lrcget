@@ -1,6 +1,12 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { Howl, Howler } from 'howler'
 import { convertFileSrc } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/tauri'
+import { platform } from '@tauri-apps/api/os';
+
+const convertFileSrc2 = async (path) => {
+  return await invoke('convert_file_src_2', { path })
+}
 
 export function usePlayer() {
   const playingTrack = ref(null)
@@ -9,13 +15,22 @@ export function usePlayer() {
   const progress = ref(null)
   const howlerSound = ref(null)
 
-  const playTrack = (track) => {
+  const playTrack = async (track) => {
+    const platformName = await platform()
+
     if (howlerSound.value) {
       Howler.unload()
     }
 
     playingTrack.value = track
-    const assetUrl = convertFileSrc(playingTrack.value.file_path)
+
+    let assetUrl = null
+
+    if (platformName === 'linux') {
+      assetUrl = await convertFileSrc2(playingTrack.value.file_path)
+    } else {
+      assetUrl = convertFileSrc(playingTrack.value.file_path)
+    }
 
     howlerSound.value = new Howl({
       src: [assetUrl]
