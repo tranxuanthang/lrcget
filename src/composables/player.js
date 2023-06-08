@@ -24,9 +24,6 @@ export function usePlayer() {
 
     playingTrack.value = track
 
-    console.log(await convertFileSrc2(playingTrack.value.file_path))
-    console.log(convertFileSrc(playingTrack.value.file_path))
-
     let assetUrl = null
 
     if (platformName === 'linux') {
