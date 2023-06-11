@@ -1,7 +1,7 @@
 <template>
   <div class="h-screen w-screen flex flex-col select-none border border-brave-90">
     <div data-tauri-drag-region class="flex justify-end items-start text-sm flex-none z-40">
-      <div v-if="!isProd" class="py-2 px-4 text-hoa-1400 hover:bg-hoa-600 active:bg-hoa-800 transition" @click="openDevtools">
+      <div class="py-2 px-4 text-hoa-1400 hover:bg-hoa-600 active:bg-hoa-800 transition" @click="openDevtools">
         <Bug />
       </div>
       <div class="py-2 px-4 text-brave-35 hover:bg-brave-90 active:bg-brave-80 transition" @click="minimizeWindow">

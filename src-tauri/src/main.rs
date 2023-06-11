@@ -160,7 +160,6 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<(), Str
 
 #[tauri::command]
 fn open_devtools(window: tauri::Window) {
-  #[cfg(debug_assertions)]
   {
     window.open_devtools();
   }
