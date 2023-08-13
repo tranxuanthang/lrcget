@@ -36,7 +36,7 @@ Toss a coin to your developer?
 
 - [x] Choose multiple directories
 - [x] Support .ogg format
-- [ ] Embedded lyrics option
+- [ ] Embedded lyrics option ([temporary alternative](https://github.com/TheRedSpy15/lrcput))
 
 ## Development
 
