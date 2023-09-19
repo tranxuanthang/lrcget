@@ -6,7 +6,7 @@ use indoc::indoc;
 use crate::persistent_entities::{PersistentTrack, PersistentAlbum, PersistentArtist, PersistentConfig};
 use crate::fs_track;
 
-const CURRENT_DB_VERSION: u32 = 1;
+const CURRENT_DB_VERSION: u32 = 2;
 
 /// Initializes the database connection, creating the .sqlite file if needed, and upgrading the database
 /// if it's out of date.
@@ -31,14 +31,14 @@ pub fn initialize_database(app_handle: &AppHandle) -> Result<Connection, rusqlit
 /// Upgrades the database to the current version.
 pub fn upgrade_database_if_needed(db: &mut Connection, existing_version: u32) -> Result<(), rusqlite::Error> {
   if existing_version < CURRENT_DB_VERSION {
-    db.pragma_update(None, "journal_mode", "WAL")?;
+    if existing_version <= 0 {
+      db.pragma_update(None, "journal_mode", "WAL")?;
 
-    let tx = db.transaction()?;
+      let tx = db.transaction()?;
 
-    tx.pragma_update(None, "user_version", CURRENT_DB_VERSION)?;
+      tx.pragma_update(None, "user_version", 1)?;
 
-    tx.execute_batch(
-      indoc! {"
+      tx.execute_batch(indoc! {"
       CREATE TABLE directories (
         id INTEGER PRIMARY KEY,
         path TEXT
@@ -85,7 +85,24 @@ pub fn upgrade_database_if_needed(db: &mut Connection, existing_version: u32) ->
       INSERT INTO config_data (skip_not_needed_tracks, try_embed_lyrics) VALUES (1, 0);
       "})?;
 
-    tx.commit()?;
+      tx.commit()?;
+    }
+
+    if existing_version <= 1 {
+      db.pragma_update(None, "journal_mode", "WAL")?;
+
+      let tx = db.transaction()?;
+
+      tx.pragma_update(None, "user_version", 2)?;
+
+      tx.execute_batch(indoc! {"
+      ALTER TABLE tracks ADD txt_lyrics TEXT;
+      CREATE INDEX idx_tracks_title ON tracks(title);
+      CREATE INDEX idx_albums_name ON albums(name);
+      CREATE INDEX idx_artists_name ON artists(name);
+      "})?;
+      tx.commit()?;
+    }
   }
 
   Ok(())
@@ -168,7 +185,7 @@ pub fn add_album(name: &str, artist_id: i64, db: &Connection) -> Result<i64> {
 }
 
 pub fn get_track_by_id(id: i64, db: &Connection) -> Result<PersistentTrack> {
-  let mut statement = db.prepare("SELECT tracks.id, file_path, file_name, title, artists.name AS artist_name, tracks.artist_id, albums.name AS album_name, album_id, duration, albums.image_path, lrc_lyrics FROM tracks JOIN albums ON tracks.album_id = albums.id JOIN artists ON tracks.artist_id = artists.id WHERE tracks.id = ? LIMIT 1")?;
+  let mut statement = db.prepare("SELECT tracks.id, file_path, file_name, title, artists.name AS artist_name, tracks.artist_id, albums.name AS album_name, album_id, duration, albums.image_path, txt_lyrics, lrc_lyrics FROM tracks JOIN albums ON tracks.album_id = albums.id JOIN artists ON tracks.artist_id = artists.id WHERE tracks.id = ? LIMIT 1")?;
   let row = statement.query_row(
     [id],
     |row|
@@ -182,6 +199,7 @@ pub fn get_track_by_id(id: i64, db: &Connection) -> Result<PersistentTrack> {
       album_name: row.get("album_name")?,
       album_id: row.get("album_id")?,
       duration: row.get("duration")?,
+      txt_lyrics: row.get("txt_lyrics")?,
       lrc_lyrics: row.get("lrc_lyrics")?,
       image_path: row.get("image_path")?
     })
@@ -194,6 +212,25 @@ pub fn update_track_lrc_lyrics(id: i64, lrc_lyrics: &str, db: &Connection) -> Re
   statement.execute((lrc_lyrics, id))?;
 
   Ok(get_track_by_id(id, db)?)
+}
+
+pub fn update_track_txt_lyrics(id: i64, txt_lyrics: &str, db: &Connection) -> Result<PersistentTrack> {
+  let mut statement = db.prepare("UPDATE tracks SET txt_lyrics = ? WHERE id = ?")?;
+  statement.execute((txt_lyrics, id))?;
+
+  Ok(get_track_by_id(id, db)?)
+}
+
+pub fn add_tracks(tracks: &Vec<fs_track::FsTrack>, db: &mut Connection) -> Result<()> {
+  let tx = db.transaction()?;
+
+  for track in tracks.iter() {
+    add_track(track, &tx);
+  }
+
+  tx.commit();
+
+  Ok(())
 }
 
 pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
@@ -213,14 +250,14 @@ pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
     }
   };
 
-  let mut statement = db.prepare("INSERT INTO tracks (file_path, file_name, title, album_id, artist_id, duration, lrc_lyrics) VALUES (?, ?, ?, ?, ?, ?, ?)")?;
-  statement.execute((track.file_path(), track.file_name(), track.title(), album_id, artist_id, track.duration(), track.lrc_lyrics()))?;
+  let mut statement = db.prepare("INSERT INTO tracks (file_path, file_name, title, album_id, artist_id, duration, txt_lyrics, lrc_lyrics) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")?;
+  statement.execute((track.file_path(), track.file_name(), track.title(), album_id, artist_id, track.duration(), track.txt_lyrics(), track.lrc_lyrics()))?;
 
   Ok(())
 }
 
 pub fn get_tracks(db: &Connection) -> Result<Vec<PersistentTrack>> {
-  let mut statement = db.prepare("SELECT tracks.id, file_path, file_name, title, artists.name AS artist_name, tracks.artist_id, albums.name AS album_name, album_id, duration, albums.image_path, lrc_lyrics FROM tracks JOIN albums ON tracks.album_id = albums.id JOIN artists ON tracks.artist_id = artists.id ORDER BY title ASC")?;
+  let mut statement = db.prepare("SELECT tracks.id, file_path, file_name, title, artists.name AS artist_name, tracks.artist_id, albums.name AS album_name, album_id, duration, albums.image_path, txt_lyrics, lrc_lyrics FROM tracks JOIN albums ON tracks.album_id = albums.id JOIN artists ON tracks.artist_id = artists.id ORDER BY title ASC")?;
   let mut rows = statement.query([])?;
   let mut tracks: Vec<PersistentTrack> = Vec::new();
 
@@ -235,6 +272,7 @@ pub fn get_tracks(db: &Connection) -> Result<Vec<PersistentTrack>> {
       album_name: row.get("album_name")?,
       album_id: row.get("album_id")?,
       duration: row.get("duration")?,
+      txt_lyrics: row.get("txt_lyrics")?,
       lrc_lyrics: row.get("lrc_lyrics")?,
       image_path: row.get("image_path")?,
     };
@@ -286,7 +324,7 @@ pub fn get_artists(db: &Connection) -> Result<Vec<PersistentArtist>> {
 }
 
 pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<PersistentTrack>> {
-  let mut statement = db.prepare("SELECT tracks.id, file_path, file_name, title, artists.name AS artist_name, tracks.artist_id, albums.name AS album_name, album_id, duration, albums.image_path, lrc_lyrics FROM tracks JOIN albums ON tracks.album_id = albums.id JOIN artists ON tracks.artist_id = artists.id WHERE tracks.album_id = ? ORDER BY title ASC")?;
+  let mut statement = db.prepare("SELECT tracks.id, file_path, file_name, title, artists.name AS artist_name, tracks.artist_id, albums.name AS album_name, album_id, duration, albums.image_path, txt_lyrics, lrc_lyrics FROM tracks JOIN albums ON tracks.album_id = albums.id JOIN artists ON tracks.artist_id = artists.id WHERE tracks.album_id = ? ORDER BY title ASC")?;
   let mut rows = statement.query([album_id])?;
   let mut tracks: Vec<PersistentTrack> = Vec::new();
 
@@ -301,6 +339,7 @@ pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<Persistent
       album_name: row.get("album_name")?,
       album_id: row.get("album_id")?,
       duration: row.get("duration")?,
+      txt_lyrics: row.get("txt_lyrics")?,
       lrc_lyrics: row.get("lrc_lyrics")?,
       image_path: row.get("image_path")?,
     };
@@ -312,7 +351,7 @@ pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<Persistent
 }
 
 pub fn get_artist_tracks(artist_id: i64, db: &Connection) -> Result<Vec<PersistentTrack>> {
-  let mut statement = db.prepare("SELECT tracks.id, file_path, file_name, title, artists.name AS artist_name, tracks.artist_id, albums.name AS album_name, album_id, duration, albums.image_path, lrc_lyrics FROM tracks JOIN albums ON tracks.album_id = albums.id JOIN artists ON tracks.artist_id = artists.id WHERE tracks.artist_id = ? ORDER BY title ASC")?;
+  let mut statement = db.prepare("SELECT tracks.id, file_path, file_name, title, artists.name AS artist_name, tracks.artist_id, albums.name AS album_name, album_id, duration, albums.image_path, txt_lyrics, lrc_lyrics FROM tracks JOIN albums ON tracks.album_id = albums.id JOIN artists ON tracks.artist_id = artists.id WHERE tracks.artist_id = ? ORDER BY title ASC")?;
   let mut rows = statement.query([artist_id])?;
   let mut tracks: Vec<PersistentTrack> = Vec::new();
 
@@ -327,6 +366,7 @@ pub fn get_artist_tracks(artist_id: i64, db: &Connection) -> Result<Vec<Persiste
       album_name: row.get("album_name")?,
       album_id: row.get("album_id")?,
       duration: row.get("duration")?,
+      txt_lyrics: row.get("txt_lyrics")?,
       lrc_lyrics: row.get("lrc_lyrics")?,
       image_path: row.get("image_path")?,
     };

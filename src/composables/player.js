@@ -8,13 +8,14 @@ const convertFileSrc2 = async (path) => {
   return await invoke('convert_file_src_2', { path })
 }
 
-export function usePlayer() {
-  const playingTrack = ref(null)
-  const status = ref(null)
-  const duration = ref(null)
-  const progress = ref(null)
-  const howlerSound = ref(null)
+const playingTrack = ref(null)
+const status = ref(null)
+const duration = ref(null)
+const progress = ref(null)
+const howlerSound = ref(null)
 
+
+export function usePlayer() {
   const playTrack = async (track) => {
     const platformName = await platform()
 
@@ -81,11 +82,11 @@ export function usePlayer() {
     howlerSound.value.seek(progress)
   }
 
-  onUnmounted(() => {
+  const stop = () => {
     if (howlerSound.value) {
       howlerSound.value.unload()
     }
-  })
+  }
 
   return {
     playingTrack,
@@ -95,6 +96,7 @@ export function usePlayer() {
     playTrack,
     pause,
     resume,
+    stop,
     seek
   }
 }

@@ -74,16 +74,32 @@
     <NowPlaying class="border-t border-brave-90" :playingTrack="playingTrack" :status="status" :duration="duration" :progress="progress" @pause="pause" @resume="resume" @seek="seek" />
   </div>
 
-  <div v-else class="flex justify-center items-center w-full h-full">
-    <div class="animate-spin text-xl"><Loading /></div>
+  <div v-else class="flex flex-col justify-center items-center w-full h-full">
+    <div class="animate-spin text-xl text-brave-30"><Loading /></div>
+    <div v-if="isInitializing" class="flex flex-col items-center justify-center text-sm text-brave-40">
+      <div>Initializing library...</div>
+      <div v-if="initializeProgress">{{ initializeProgress.filesScanned }}/{{ initializeProgress.filesCount }} files scanned</div>
+    </div>
+
+    <div v-else class="flex flex-col items-center justify-center text-sm text-brave-40">
+      <div>Loading library...</div>
+    </div>
   </div>
 
   <DownloadViewer :is-downloading="isDownloading" :download-queue="downloadQueue" :downloaded-items="downloadedItems" :download-progress="downloadProgress" :success-Count="successCount" :failure-count="failureCount" :total-count="totalCount" :downloaded-count="downloadedCount" :log="log" :is-show="isShowDownloadViewer" @start-over="startOver" @stop-downloading="stopDownloading" @close="closeDownloadViewer" />
   <Config :is-show="isShowConfig" @close="isShowConfig = false" @refreshLibrary="refreshLibrary" @uninitialize-library="$emit('uninitializeLibrary')" />
+
+  <Teleport to="body">
+    <SearchLyrics v-if="searchingTrack" :is-show="!!searchingTrack" />
+  </Teleport>
+
+  <Teleport to="body">
+    <EditLyrics v-if="editingTrack" :is-show="!!editingTrack" />
+  </Teleport>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/tauri'
 import { listen } from '@tauri-apps/api/event'
 import { DownloadMultiple, Loading, Check, Cog } from 'mdue'
@@ -94,17 +110,27 @@ import AlbumList from './library/AlbumList.vue'
 import ArtistList from './library/ArtistList.vue'
 import DownloadViewer from './library/DownloadViewer.vue'
 import Config from './library/Config.vue'
+import SearchLyrics from './library/SearchLyrics.vue'
+import EditLyrics from './library/EditLyrics.vue'
+import { useToast } from 'vue-toastification'
 import { usePlayer } from '../composables/player.js'
 import { useDownloader } from '../composables/downloader.js'
+import { useSearchLyrics } from '../composables/search-lyrics.js'
+import { useEditLyrics } from '../composables/edit-lyrics.js'
 
-const { playingTrack, status, duration, progress, playTrack, pause, resume, seek } = usePlayer()
+const toast = useToast()
+const { playingTrack, status, duration, progress, playTrack, pause, resume, stop, seek } = usePlayer()
 const { isDownloading, downloadQueue, downloadedItems, downloadProgress, successCount, failureCount, totalCount, downloadedCount, addToQueue, startOver, stopDownloading, log } = useDownloader()
+const { searchingTrack } = useSearchLyrics()
+const { editingTrack } = useEditLyrics()
 defineEmits(['uninitializeLibrary'])
 
 const tracks = ref([])
 const albums = ref([])
 const artists = ref([])
 const isLoading = ref(true)
+const isInitializing = ref(false)
+const initializeProgress = ref(null)
 const activeTab = ref('tracks')
 const isShowDownloadViewer = ref(false)
 const isShowConfig = ref(false)
@@ -135,9 +161,22 @@ const closeDownloadViewer = () => {
 
 const refreshLibrary = async () => {
   isLoading.value = true
-  await invoke('refresh_library')
-  await retrieveData()
-  isLoading.value = false
+  isInitializing.value = true
+
+  try {
+    listen('initialize-progress', async (event) => {
+      initializeProgress.value = event.payload
+    })
+    await invoke('refresh_library')
+    isInitializing.value = false
+    await retrieveData()
+  } catch (error) {
+    console.error(error)
+    toast.error('Unknown error happened when initializing the library. Please check the console for detail.')
+  } finally {
+    isLoading.value = false
+    isInitializing.value = false
+  }
 }
 
 const retrieveData = async () => {
@@ -154,14 +193,43 @@ const retrieveData = async () => {
 onMounted(async () => {
   const init = await invoke('get_init')
   if (!init) {
-    await invoke('initialize_library')
+    isLoading.value = true
+    isInitializing.value = true
+
+    try {
+      listen('initialize-progress', async (event) => {
+        initializeProgress.value = event.payload
+      })
+      await invoke('initialize_library')
+      isInitializing.value = false
+      await retrieveData()
+    } catch (error) {
+      console.error(error)
+      toast.error('Unknown error happened when initializing the library. Please check the console for detail.')
+    } finally {
+      isLoading.value = false
+      isInitializing.value = false
+    }
+  } else {
+    isLoading.value = true
+
+    try {
+      await retrieveData()
+    } catch (error) {
+      console.error(error)
+      toast.error('Unknown error happened when loading the library. Please check the console for detail.')
+    } finally {
+      isLoading.value = false
+    }
   }
-  await retrieveData()
-  isLoading.value = false
 
   listen('reload-database', async (event) => {
     retrieveData()
   })
+})
+
+onUnmounted(() => {
+  stop()
 })
 </script>
 

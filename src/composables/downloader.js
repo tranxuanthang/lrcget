@@ -18,8 +18,8 @@ const downloadedCount = computed(() => {
 const downloadLyrics = async (track) => {
   isDownloading.value = true
   try {
-    await invoke('download_lyrics', { trackId: track.id })
-    log.value.unshift({ status: 'success', title: track.title, artistName: track.artist_name, message: 'Lyrics downloaded' })
+    const result = await invoke('download_lyrics', { trackId: track.id })
+    log.value.unshift({ status: 'success', title: track.title, artistName: track.artist_name, message: result })
     successCount.value++
   } catch (error) {
     log.value.unshift({ status: 'failure', title: track.title, artistName: track.artist_name, message: error })

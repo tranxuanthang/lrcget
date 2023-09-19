@@ -1,13 +1,18 @@
-use globwalk::glob;
-use lofty::{read_from_path, AudioFile};
+use globwalk::{glob, DirEntry};
+use lofty::{read_from_path, AudioFile, LoftyError};
 use lofty::TaggedFileExt;
 use lofty::Accessor;
 use anyhow::Result;
+use rusqlite::Connection;
+use tauri::AppHandle;
 use std::path::Path;
 use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use rayon::prelude::*;
 use thiserror::Error;
+use std::time::Instant;
+use crate::db;
+use tauri::Manager;
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FsTrack {
@@ -17,23 +22,34 @@ pub struct FsTrack {
   album: String,
   artist: String,
   duration: f64,
+  txt_lyrics: Option<String>,
   lrc_lyrics: Option<String>
 }
 
 #[derive(Error, Debug)]
 pub enum FsTrackError {
-  #[error("No title was found from track")]
-  TitleNotFound,
-  #[error("No album name was found from track")]
-  AlbumNotFound,
-  #[error("No artist name was found from track")]
-  ArtistNotFound,
-  #[error("No primary tag was found from track")]
-  PrimaryTagNotFound
+  #[error("Cannot parse the tag info from track: `{0}`. Error: `{1}`")]
+  ParseFailed(String, LoftyError),
+  #[error("No title was found from track: `{0}`")]
+  TitleNotFound(String),
+  #[error("No album name was found from track: `{0}`")]
+  AlbumNotFound(String),
+  #[error("No artist name was found from track: `{0}`")]
+  ArtistNotFound(String),
+  #[error("No primary tag was found from track: `{0}`")]
+  PrimaryTagNotFound(String)
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ScanProgress {
+  progress: Option<f64>,
+  files_scanned: usize,
+  files_count: Option<usize>
 }
 
 impl FsTrack {
-  fn new(file_path: String, file_name: String, title: String, album: String, artist: String, duration: f64, lrc_lyrics: Option<String>) -> FsTrack {
+  fn new(file_path: String, file_name: String, title: String, album: String, artist: String, duration: f64, txt_lyrics: Option<String>, lrc_lyrics: Option<String>) -> FsTrack {
     FsTrack {
       file_path,
       file_name,
@@ -41,23 +57,25 @@ impl FsTrack {
       album,
       artist,
       duration,
-      lrc_lyrics,
+      txt_lyrics,
+      lrc_lyrics
     }
   }
 
   fn new_from_path(path: &Path) -> Result<FsTrack> {
     let file_path = path.display().to_string();
     let file_name = path.file_name().unwrap().to_str().unwrap().to_owned();
-    let tagged_file = read_from_path(&file_path)?;
-    let tag = tagged_file.primary_tag().ok_or(FsTrackError::PrimaryTagNotFound)?;
+    let tagged_file = read_from_path(&file_path).or_else(|err| Err(FsTrackError::ParseFailed(file_path.to_owned(), err)))?;
+    let tag = tagged_file.primary_tag().ok_or(FsTrackError::PrimaryTagNotFound(file_path.to_owned()))?;
     let owned_tag = tag.to_owned();
     let properties = tagged_file.properties();
-    let title = owned_tag.title().ok_or(FsTrackError::TitleNotFound)?.to_string();
-    let album = owned_tag.album().ok_or(FsTrackError::AlbumNotFound)?.to_string();
-    let artist = owned_tag.artist().ok_or(FsTrackError::ArtistNotFound)?.to_string();
+    let title = owned_tag.title().ok_or(FsTrackError::TitleNotFound(file_path.to_owned()))?.to_string();
+    let album = owned_tag.album().ok_or(FsTrackError::AlbumNotFound(file_path.to_owned()))?.to_string();
+    let artist = owned_tag.artist().ok_or(FsTrackError::ArtistNotFound(file_path.to_owned()))?.to_string();
     let duration = properties.duration().as_secs_f64();
 
-    let mut track = FsTrack::new(file_path, file_name, title, album, artist, duration, None);
+    let mut track = FsTrack::new(file_path, file_name, title, album, artist, duration, None, None);
+    track.txt_lyrics = track.get_txt_lyrics();
     track.lrc_lyrics = track.get_lrc_lyrics();
 
     Ok(track)
@@ -87,8 +105,40 @@ impl FsTrack {
     self.duration
   }
 
+  pub fn txt_lyrics(&self) -> Option<String> {
+    self.txt_lyrics.to_owned()
+  }
+
   pub fn lrc_lyrics(&self) -> Option<String> {
     self.lrc_lyrics.to_owned()
+  }
+
+  fn get_txt_path(&self) -> String {
+    let path = PathBuf::from(self.file_path.to_owned());
+    let file_name = path.file_name().unwrap().to_str().unwrap().to_owned();
+    let parent_path = path.parent().unwrap();
+    let file_name_without_extension = std::path::Path::new(&file_name)
+      .file_stem()
+      .unwrap()
+      .to_str()
+      .unwrap()
+      .to_owned();
+    let mut txt_file_name = file_name_without_extension.to_owned();
+    txt_file_name.push_str(".txt");
+
+    let txt_file_path = parent_path.join(txt_file_name).display().to_string();
+
+    txt_file_path
+  }
+
+  fn get_txt_lyrics(&self) -> Option<String> {
+    let txt_file_path = self.get_txt_path();
+    let txt_content = std::fs::read_to_string(txt_file_path);
+
+    match txt_content {
+      Ok(txt_content) => Some(txt_content),
+      Err(_) => None
+    }
   }
 
   fn get_lrc_path(&self) -> String {
@@ -120,22 +170,21 @@ impl FsTrack {
   }
 }
 
-pub fn load_tracks_from_directories(directories: &Vec<String>) -> Result<Vec<FsTrack>> {
-  let files = get_files_from_directories(&directories)?;
+fn load_tracks_from_entry_batch(entry_batch: &Vec<DirEntry>) -> Result<Vec<FsTrack>> {
+  let track_results: Vec<Result<FsTrack>> = entry_batch
+    .par_iter()
+    .map(|file| FsTrack::new_from_path(file.path()))
+    .collect();
 
   let mut tracks: Vec<FsTrack> = vec![];
 
-  let tracks_result: Vec<(String, Result<FsTrack>)> = files.par_iter()
-    .map(|file| (file.to_owned(), FsTrack::new_from_path(Path::new(file))))
-    .collect();
-
-  for (file, track) in tracks_result {
-    match track {
+  for track_result in track_results {
+    match track_result {
       Ok(track) => {
-        tracks.push(track)
+        tracks.push(track);
       }
-      Err(err) => {
-        println!("Error while creating new track entry. File path: \"{}\", error: \"{}\"", file, err);
+      Err(error) => {
+        println!("{}", error);
       }
     }
   }
@@ -143,16 +192,42 @@ pub fn load_tracks_from_directories(directories: &Vec<String>) -> Result<Vec<FsT
   Ok(tracks)
 }
 
-pub fn get_files_from_directories(directories: &Vec<String>) -> Result<Vec<String>> {
-  let mut files: Vec<String> = vec![];
+pub fn load_tracks_from_directories(directories: &Vec<String>, conn: &mut Connection, app_handle: AppHandle) -> Result<()> {
+  let now = Instant::now();
+  let files_count = count_files_from_directories(directories)?;
+  println!("Files count: {}", files_count);
+  let mut files_scanned: usize = 0;
   for directory in directories.iter() {
-    let files_in_dir = glob(format!("{}/**/*.{{mp3,m4a,flac,ogg,opus}}", directory))?;
-    for file in files_in_dir {
-      let file = file?;
-      let path = file.path();
-      files.push(path.display().to_string());
+    let mut entry_batch: Vec<DirEntry> = vec![];
+    let globwalker = glob(format!("{}/**/*.{{mp3,m4a,flac,ogg,opus,MP3,M4A,FLAC,OGG,OPUS}}", directory))?;
+    for item in globwalker {
+      let entry = item?;
+      entry_batch.push(entry);
+      if entry_batch.len() == 100 {
+        let tracks = load_tracks_from_entry_batch(&entry_batch)?;
+
+        db::add_tracks(&tracks, conn);
+        files_scanned += entry_batch.len();
+        app_handle.emit_all("initialize-progress", ScanProgress { progress: None, files_scanned, files_count: Some(files_count) }).unwrap();
+        entry_batch.clear();
+      }
     }
+    let tracks = load_tracks_from_entry_batch(&entry_batch)?;
+    db::add_tracks(&tracks, conn);
+    files_scanned += entry_batch.len();
+    app_handle.emit_all("initialize-progress", ScanProgress { progress: None, files_scanned, files_count: Some(files_count) }).unwrap();
+  }
+  println!("==> Scanning tracks take: {}ms", now.elapsed().as_millis());
+
+  Ok(())
+}
+
+pub fn count_files_from_directories(directories: &Vec<String>) -> Result<usize> {
+  let mut files_count = 0;
+  for directory in directories.iter() {
+    let files_in_dir = glob(format!("{}/**/*.{{mp3,m4a,flac,ogg,opus,MP3,M4A,FLAC,OGG,OPUS}}", directory))?;
+    files_count += files_in_dir.into_iter().count();
   }
 
-  Ok(files)
+  Ok(files_count)
 }

@@ -16,30 +16,37 @@
       {{ humanDuration(props.duration) }}
     </td>
 
-    <td @click="$emit('playTrack')">
-      <div v-if="props.lrcLyrics" class="text-green-800 font-bold text-xs">LRC</div>
+    <td @click="$emit('playTrack')" class="text-center">
+      <span v-if="props.lrcLyrics" class="text-green-200 font-bold text-[0.67rem] bg-green-800 rounded px-1 py-0.5">LRC</span>
+      <span v-else-if="props.txtLyrics" class="text-gray-200 font-bold text-[0.67rem] bg-gray-800 rounded px-1 py-0.5">PLAIN</span>
     </td>
 
     <td class="text-right">
       <div class="flex justify-end gap-1">
         <button class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition" @click.prevent="$emit('playTrack')"><Play /></button>
-        <button class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition" @click.prevent="$emit('downloadLyrics')"><Download /></button>
+        <button class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition" @click.prevent="searchLyrics(props.track)"><TextSearch /></button>
+        <button class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition" @click.prevent="editLyrics(props.track)"><PlaylistEdit /></button>
       </div>
     </td>
   </tr>
 </template>
 
 <script setup>
-import { Play, Download } from 'mdue'
+import { Play, TextSearch, PlaylistEdit } from 'mdue'
 import { humanDuration } from '../../../utils/human-duration.js'
+import { useSearchLyrics } from '../../../composables/search-lyrics.js'
+import { useEditLyrics } from '../../../composables/edit-lyrics.js'
+import { onMounted } from 'vue'
 
-const props = defineProps(['title', 'albumName', 'artistName', 'lrcLyrics', 'duration'])
+const { searchLyrics } = useSearchLyrics()
+const { editLyrics } = useEditLyrics()
+const props = defineProps(['track', 'title', 'albumName', 'artistName', 'txtLyrics', 'lrcLyrics', 'duration'])
 defineEmits(['playTrack', 'downloadLyrics'])
 </script>
 
 <style scoped>
 td {
-  @apply px-4 py-1 group-hover:bg-brave-95 group-active:bg-brave-90 cursor-pointer transition;
+  @apply px-4 py-1 group-hover:bg-brave-95 cursor-pointer transition;
 }
 
 td:first-child {

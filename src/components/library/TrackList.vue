@@ -12,9 +12,11 @@
       <TrackItem
         v-for="track in tracks"
         :key="track.file_path"
+        :track="track"
         :title="track.title"
         :album-name="track.album_name"
         :artist-name="track.artist_name"
+        :txt-lyrics="track.txt_lyrics"
         :lrc-lyrics="track.lrc_lyrics"
         :duration="track.duration"
         @play-track="$emit('playTrack', track)"

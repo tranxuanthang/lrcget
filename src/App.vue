@@ -1,6 +1,6 @@
 <template>
   <div class="h-screen w-screen flex flex-col select-none border border-brave-90">
-    <div data-tauri-drag-region class="flex justify-end items-start text-sm flex-none z-40">
+    <div data-tauri-drag-region class="flex justify-end items-start text-sm flex-none z-50">
       <div class="py-2 px-4 text-hoa-1400 hover:bg-hoa-600 active:bg-hoa-800 transition" @click="openDevtools">
         <Bug />
       </div>

@@ -50,9 +50,11 @@
             <TrackItem
               v-for="track in currentArtistTracks"
               :key="track.file_path"
+              :track="track"
               :title="track.title"
               :album-name="track.album_name"
               :artist-name="track.artist_name"
+              :txt-lyrics="track.txt_lyrics"
               :lrc-lyrics="track.lrc_lyrics"
               :duration="track.duration"
               @play-track="$emit('playTrack', track)"
@@ -74,7 +76,9 @@ import { Loading, ArrowLeft, DownloadMultiple } from 'mdue'
 import { ref } from 'vue'
 import TrackItem from './track-list/TrackItem.vue'
 import { invoke } from '@tauri-apps/api/tauri'
+import { useToast } from 'vue-toastification'
 
+const toast = useToast()
 const props = defineProps(['artists'])
 const emit = defineEmits(['playTrack', 'downloadLyrics', 'downloadLyricsMultiple'])
 
@@ -89,6 +93,7 @@ const openArtist = async (artist) => {
     currentArtistTracks.value = await invoke('get_artist_tracks', { artistId: currentArtist.value.id })
   } catch (error) {
     console.error(error)
+    toast.error('Unknown error happened when opening an artist. Please check the console for detail.')
   } finally {
     loading.value = false
   }

@@ -63,3 +63,18 @@ body {
 .checkbox-label {
   @apply text-sm text-brave-35;
 }
+
+.Vue-Toastification__toast.lrcget-toast {
+  padding: 12px 24px !important;
+  min-width: auto !important;
+  min-height: auto !important;
+}
+
+/* Applied to the toast body when using regular strings as content */
+.Vue-Toastification__toast-body.toast-body-1 {
+  font-size: 12px;
+}
+
+/* Applied to a wrapper div when using a custom component as content */
+.Vue-Toastification__toast-component-body.toast-body-2 {
+}

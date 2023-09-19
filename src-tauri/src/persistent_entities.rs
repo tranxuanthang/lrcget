@@ -11,6 +11,7 @@ pub struct PersistentTrack {
   pub artist_name: String,
   pub artist_id: i64,
   pub image_path: Option<String>,
+  pub txt_lyrics: Option<String>,
   pub lrc_lyrics: Option<String>,
   pub duration: f64
 }

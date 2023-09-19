@@ -1,6 +1,7 @@
 <template>
   <div>
-    <LyricsViewer :lyrics="lyrics" :duration="duration" :progress="progress" />
+    <LyricsViewer v-if="lyrics" :lyrics="lyrics" :duration="duration" :progress="progress" />
+    <PlainLyricsViewer v-else-if="plainLyrics" :lyrics="plainLyrics" />
     <div class="bg-brave-95 backdrop-blur px-4 py-3 flex-none flex flex-col justify-center items-center gap-3">
       <div class="w-full flex gap-1 justify-center items-center">
         <div class="flex-none w-12 text-xs text-brave-30">{{ humanDuration(props.progress) }}</div>
@@ -29,10 +30,11 @@
 import { computed } from '@vue/reactivity'
 import Seek from './now-playing/Seek.vue'
 import LyricsViewer from './now-playing/LyricsViewer.vue'
+import PlainLyricsViewer from './now-playing/PlainLyricsViewer.vue'
 import { Play, Pause } from 'mdue'
 
 const props = defineProps(['playingTrack', 'status', 'duration', 'progress'])
-const emit = defineEmits(['seek'])
+const emit = defineEmits(['seek', 'resume', 'pause'])
 
 const lyrics = computed(() => {
   if (!props.playingTrack) {
@@ -40,6 +42,14 @@ const lyrics = computed(() => {
   }
 
   return props.playingTrack.lrc_lyrics
+})
+
+const plainLyrics = computed(() => {
+  if (!props.playingTrack) {
+    return null
+  }
+
+  return props.playingTrack.txt_lyrics
 })
 
 const humanDuration = (seconds) => {

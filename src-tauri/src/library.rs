@@ -1,10 +1,11 @@
 use anyhow::Result;
 use rusqlite::Connection;
+use tauri::AppHandle;
 use crate::persistent_entities::{PersistentTrack, PersistentAlbum, PersistentArtist};
 use crate::fs_track::{self, FsTrack};
 use crate::db;
 
-pub fn initialize_library(conn: &Connection) -> Result<()> {
+pub fn initialize_library(conn: &mut Connection, app_handle: AppHandle) -> Result<()> {
   let init = db::get_init(conn)?;
   if init {
     return Ok(())
@@ -13,8 +14,8 @@ pub fn initialize_library(conn: &Connection) -> Result<()> {
   db::clean_library(conn)?;
 
   let directories = db::get_directories(conn)?;
-  let tracks = fs_track::load_tracks_from_directories(&directories)?;
-  let result = add_tracks(tracks, conn);
+  let result = fs_track::load_tracks_from_directories(&directories, conn, app_handle);
+
   match result {
     Ok(()) => {
       db::set_init(true, conn)?;

@@ -1,6 +1,6 @@
 <template>
   <transition name="slide-fade" mode="out-in">
-    <div v-if="lyrics && duration && progress" class="flex flex-col gap-1 border-b border-brave-90/50 relative">
+    <div v-if="lyrics && duration && progress" class="flex flex-col gap-1 border-b border-brave-90/50 relative z-10">
       <transition name="slide-fade" mode="out-in">
         <div v-if="expanded" class="full-viewer absolute bottom-0 left-0 w-full h-[40vh] bg-brave-95 border-t border-brave-90/50 overflow-hidden">
           <div class="relative h-full">
@@ -76,6 +76,13 @@ const fullViewTransform = computed(() => {
   return `translateY(calc(50% - 2.5em - ${currentLineElementOffset.value}px))`
 })
 
+onMounted(() => {
+  const parsed = Lrc.parse(props.lyrics)
+
+  runner.value = new Runner(parsed)
+  parsedLyrics.value = runner.value.getLyrics()
+})
+
 watch(() => props.lyrics, (newLyrics) => {
   if (!newLyrics) {
     return
@@ -120,11 +127,11 @@ watch(currentIndex, (newCurrentIndex) => {
 
 <style scoped>
 .slide-fade-enter-active {
-  transition: all 0.1s ease-out;
+  transition: all 0.05s ease-out;
 }
 
 .slide-fade-leave-active {
-  transition: all 0.1s cubic-bezier(1, 0.5, 0.8, 1);
+  transition: all 0.05s cubic-bezier(1, 0.5, 0.8, 1);
 }
 
 .slide-fade-leave-to {
