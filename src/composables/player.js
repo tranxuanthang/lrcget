@@ -9,17 +9,20 @@ const convertFileSrc2 = async (path) => {
 }
 
 const playingTrack = ref(null)
-const status = ref(null)
+const status = ref('stopped')
 const duration = ref(null)
 const progress = ref(null)
 const howlerSound = ref(null)
-
+const id = ref(null)
 
 export function usePlayer() {
-  const playTrack = async (track) => {
+  const setTrack = async (track, playOnLoad = true) => {
+    status.value = 'stopped'
     const platformName = await platform()
 
     if (howlerSound.value) {
+      howlerSound.value.unload()
+      howlerSound.value = null
       Howler.unload()
     }
 
@@ -34,13 +37,15 @@ export function usePlayer() {
     }
 
     howlerSound.value = new Howl({
-      src: [assetUrl]
+      src: [assetUrl],
+      preload: true
     })
 
     howlerSound.value.once('load', () => {
-      duration.value = howlerSound.value.duration()
-      howlerSound.value.seek(0.0)
-      howlerSound.value.play()
+      duration.value = howlerSound.value.duration(id.value)
+      if (playOnLoad) {
+        id.value = howlerSound.value.play()
+      }
     })
 
     howlerSound.value.on('play', () => {
@@ -62,30 +67,47 @@ export function usePlayer() {
     })
   }
 
+  const playTrack = async (track) => {
+    await setTrack(track, true)
+  }
+
   const updater = (timestamp) => {
-    progress.value = howlerSound.value.seek()
+    if (howlerSound.value && howlerSound.value.seek(null, id.value)) {
+      progress.value = howlerSound.value.seek(null, id.value)
+    } else {
+      progress.value = 0.0
+    }
+
+    console.log(progress.value)
 
     if (status.value === 'playing') {
       window.requestAnimationFrame(updater)
     }
   }
 
-  const pause = (progress) => {
-    howlerSound.value.pause()
+  const pause = () => {
+    howlerSound.value.pause(id.value)
   }
 
-  const resume = (progress) => {
-    howlerSound.value.play()
+  const resume = () => {
+    howlerSound.value.seek(progress.value, id.value)
+    howlerSound.value.play(id.value)
+    howlerSound.value.seek(progress.value, id.value)
   }
 
   const seek = (progress) => {
-    howlerSound.value.seek(progress)
+    howlerSound.value.seek(progress, id.value)
   }
 
   const stop = () => {
     if (howlerSound.value) {
-      howlerSound.value.unload()
+      howlerSound.value.stop(id.value)
     }
+  }
+
+  const unload = () => {
+    howlerSound.value.unload()
+    status.value = 'stopped'
   }
 
   return {
@@ -93,6 +115,7 @@ export function usePlayer() {
     status,
     duration,
     progress,
+    setTrack,
     playTrack,
     pause,
     resume,

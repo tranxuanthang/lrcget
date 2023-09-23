@@ -20,7 +20,6 @@ app.use(Toast, {
   draggablePercent: 0.4,
   closeOnClick: false
 })
-app.component('RecycleScroller', RecycleScroller)
 app.mount('#app')
 
 document.addEventListener(
