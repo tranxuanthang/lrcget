@@ -10,8 +10,9 @@
         <div class="px-6 grow overflow-hidden flex flex-col gap-4">
           <div class="flex flex-col bg-brave-95 rounded-lg">
             <div class="toolbar px-4 py-2 flex items-stretch gap-1">
-              <button class="button button-primary px-3 py-2 text-xs rounded-full" @mousedown="syncLine"><Equal /> Sync</button>
-              <button class="button button-normal px-3 py-2 text-xs rounded-full" @mousedown="repeatLine"><Repeat /></button>
+              <button class="button button-primary px-3 py-1 text-xl rounded-full" title="Sync line & move next (Alt+Space)" @click="syncLine"><EqualEnter /> <span class="text-xs">Sync Line & Move Next</span></button>
+              <button class="button button-normal px-3 py-1 text-xl rounded-full" title="Sync line (Alt+X)" @click="syncLine(false)"><Equal /></button>
+              <button class="button button-normal px-3 py-1 text-xl rounded-full" title="Replay line (Alt+Z)" @click="repeatLine"><MotionPlay /></button>
             </div>
             <div class="w-full border-b border-brave-90"></div>
             <div class="flex gap-1 items-center px-4 py-2">
@@ -63,10 +64,11 @@
 
 <script setup>
 import { invoke } from '@tauri-apps/api/tauri'
-import { ref, onMounted, shallowRef, watch } from 'vue'
-import { Close, Loading, Equal, Play, Pause, Repeat } from 'mdue'
+import { ref, onMounted, onUnmounted, shallowRef, watch } from 'vue'
+import { Close, Loading, Equal, Play, Pause, MotionPlay } from 'mdue'
+import EqualEnter from '@/components/icons/EqualEnter.vue'
 import { useToast } from 'vue-toastification'
-import { Lrc, Runner, timestampToString } from 'lrc-kit'
+import { Lrc, Runner, timestampToString, parseLine } from 'lrc-kit'
 import { useEditLyrics } from '@/composables/edit-lyrics.js'
 import { Codemirror } from 'vue-codemirror'
 import { usePlayer } from '@/composables/player.js'
@@ -80,7 +82,7 @@ const AsyncCodemirror = defineAsyncComponent(async () => {
   return Codemirror
 })
 
-const { playingTrack, status, duration, progress, setTrack, playTrack, pause, resume, stop, seek } = usePlayer()
+const { playingTrack, status, duration, progress, setTrack, playTrack, pause, resume, stop, seek, unload } = usePlayer()
 const toast = useToast()
 const props = defineProps(['isShow'])
 const { editingTrack } = useEditLyrics()
@@ -89,6 +91,7 @@ const unifiedLyrics = ref('')
 const shouldLoadCodeMirror = ref(false)
 const view = shallowRef()
 const contributeToLrclib = ref(false)
+const keydownEvent = ref(null)
 
 const runner = ref(null)
 const currentIndex = ref(null)
@@ -152,7 +155,7 @@ const lyricsUpdated = (newLyrics) => {
   runner.value = new Runner(parsed)
 }
 
-const syncLine = () => {
+const syncLine = (moveNext = true) => {
   const currentLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
   const currentLineText = currentLine.text
   const stringifiedTime = timestampToString(progress.value)
@@ -168,23 +171,39 @@ const syncLine = () => {
 
   const newLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
 
-  if (newLine.to + 1 < view.value.state.doc.length) {
+  if (moveNext) {
+    if (newLine.to + 1 < view.value.state.doc.length) {
+      view.value.dispatch({
+        selection: {
+          anchor: newLine.to + 1
+        }
+      })
+    }
+
     view.value.dispatch({
-      selection: {
-        anchor: newLine.to + 1
-      }
+      effects: EditorView.scrollIntoView(newLine.from, { y: 'center', behavior: 'smooth' })
     })
   }
 
   view.value.focus()
 
-  view.value.dispatch({
-    effects: EditorView.scrollIntoView(newLine.from, { y: 'center', behavior: 'smooth' })
-  })
-
-  console.log(view.value.state.doc.toString())
   lyricsUpdated(view.value.state.doc.toString())
 }
+
+const repeatLine = () => {
+  const currentLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
+  const currentLineText = currentLine.text
+  const parsed = parseLine(currentLineText)
+  if (parsed.type === 'TIME') {
+    seek(parsed.timestamps[0])
+  }
+}
+
+onUnmounted(async () => {
+  if (keydownEvent.value) {
+    document.removeEventListener(keydownEvent.value)
+  }
+})
 
 onMounted(async () => {
   if (!editingTrack.value) {
@@ -199,7 +218,7 @@ onMounted(async () => {
     unifiedLyrics.value = ''
   }
 
-
+  unload()
   setTrack(editingTrack.value, false)
 
   const parsed = Lrc.parse(unifiedLyrics.value)
@@ -207,10 +226,30 @@ onMounted(async () => {
   runner.value = new Runner(parsed)
 
   setTimeout(() => shouldLoadCodeMirror.value = true, 100)
+
+
+  keydownEvent.value = document.addEventListener('keydown', (event) => {
+    console.log(event)
+
+    if (event.isComposing || event.keyCode === 229) {
+      return
+    }
+
+    if (event.altKey === true && event.key === ' ') {
+      event.preventDefault()
+      syncLine()
+    } else if (event.altKey === true && event.key === 'x') {
+      event.preventDefault()
+      syncLine(false)
+    } else if (event.altKey === true && event.key === 'z') {
+      event.preventDefault()
+      repeatLine()
+    }
+  })
 })
 
 watch(progress, (newProgress) => {
-  if (!editingTrack.value) {
+  if (!editingTrack.value || !view.value) {
     return
   }
 

@@ -1,8 +1,8 @@
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Howl, Howler } from 'howler'
+import { Howl } from 'howler'
 import { convertFileSrc } from '@tauri-apps/api/tauri'
 import { invoke } from '@tauri-apps/api/tauri'
-import { platform } from '@tauri-apps/api/os';
+import { platform } from '@tauri-apps/api/os'
 
 const convertFileSrc2 = async (path) => {
   return await invoke('convert_file_src_2', { path })
@@ -13,17 +13,15 @@ const status = ref('stopped')
 const duration = ref(null)
 const progress = ref(null)
 const howlerSound = ref(null)
-const id = ref(null)
 
 export function usePlayer() {
-  const setTrack = async (track, playOnLoad = true) => {
+  const setTrack = async (track, playOnLoad = true, progress = 0.0) => {
     status.value = 'stopped'
     const platformName = await platform()
 
     if (howlerSound.value) {
       howlerSound.value.unload()
       howlerSound.value = null
-      Howler.unload()
     }
 
     playingTrack.value = track
@@ -37,18 +35,18 @@ export function usePlayer() {
     }
 
     howlerSound.value = new Howl({
-      src: [assetUrl],
-      preload: true
+      src: [assetUrl]
     })
 
     howlerSound.value.once('load', () => {
-      duration.value = howlerSound.value.duration(id.value)
+      duration.value = howlerSound.value.duration()
       if (playOnLoad) {
-        id.value = howlerSound.value.play()
+        howlerSound.value.play()
       }
     })
 
     howlerSound.value.on('play', () => {
+      howlerSound.value.seek(progress)
       status.value = 'playing'
       window.requestAnimationFrame(updater)
     })
@@ -58,7 +56,7 @@ export function usePlayer() {
     })
 
     howlerSound.value.on('stop', () => {
-      status.value = 'stopped'
+      status.value = 'paused'
     })
 
     howlerSound.value.on('end', () => {
@@ -67,47 +65,49 @@ export function usePlayer() {
     })
   }
 
-  const playTrack = async (track) => {
-    await setTrack(track, true)
+  const playTrack = async (track, progress = 0.0) => {
+    await setTrack(track, true, progress)
   }
 
   const updater = (timestamp) => {
-    if (howlerSound.value && howlerSound.value.seek(null, id.value)) {
-      progress.value = howlerSound.value.seek(null, id.value)
-    } else {
-      progress.value = 0.0
+    console.log('update')
+    if (!howlerSound.value || status.value !== 'playing') {
+      return
     }
 
-    console.log(progress.value)
-
-    if (status.value === 'playing') {
-      window.requestAnimationFrame(updater)
+    if (howlerSound.value.seek() > 0.0) {
+      progress.value = howlerSound.value.seek()
     }
+
+    window.requestAnimationFrame(updater)
   }
 
   const pause = () => {
-    howlerSound.value.pause(id.value)
+    // howlerSound.value.pause()
+    howlerSound.value.unload()
   }
 
   const resume = () => {
-    howlerSound.value.seek(progress.value, id.value)
-    howlerSound.value.play(id.value)
-    howlerSound.value.seek(progress.value, id.value)
+    playTrack(playingTrack.value, progress.value)
   }
 
   const seek = (progress) => {
-    howlerSound.value.seek(progress, id.value)
+    howlerSound.value.unload()
+    playTrack(playingTrack.value, progress)
   }
 
   const stop = () => {
     if (howlerSound.value) {
-      howlerSound.value.stop(id.value)
+      howlerSound.value.stop()
     }
   }
 
   const unload = () => {
-    howlerSound.value.unload()
+    progress.value = 0.0
     status.value = 'stopped'
+    if (howlerSound.value) {
+      howlerSound.value.unload()
+    }
   }
 
   return {
@@ -120,6 +120,7 @@ export function usePlayer() {
     pause,
     resume,
     stop,
-    seek
+    seek,
+    unload
   }
 }
