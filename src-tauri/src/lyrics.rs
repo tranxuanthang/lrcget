@@ -1,5 +1,5 @@
 use anyhow::Result;
-use std::fs::write;
+use std::fs::{write,remove_file};
 use std::path::PathBuf;
 use std::path::Path;
 use crate::lrclib::get::request;
@@ -23,6 +23,13 @@ pub async fn download_lyrics_for_track(track: PersistentTrack) -> Result<Respons
   apply_lyrics_for_track(track, lyrics).await
 }
 
+pub async fn apply_string_lyrics_for_track(track: &PersistentTrack, plain_lyrics: &str, synced_lyrics: &str) -> Result<()> {
+  save_plain_lyrics(&track.file_path, plain_lyrics)?;
+  save_synced_lyrics(&track.file_path, synced_lyrics)?;
+
+  Ok(())
+}
+
 pub async fn apply_lyrics_for_track(track: PersistentTrack, lyrics: Response) -> Result<Response> {
   match &lyrics {
     Response::SyncedLyrics(synced_lyrics) => {
@@ -41,13 +48,32 @@ pub async fn apply_lyrics_for_track(track: PersistentTrack, lyrics: Response) ->
 
 fn save_plain_lyrics(track_path: &str, lyrics: &str) -> Result<()> {
   let txt_path = build_txt_path(track_path)?;
-  write(txt_path, lyrics)?;
+  if lyrics.is_empty() {
+    let rm_result = remove_file(txt_path);
+    match rm_result {
+      _ => ()
+    }
+  } else {
+    write(txt_path, lyrics)?;
+  }
   Ok(())
 }
 
 fn save_synced_lyrics(track_path: &str, lyrics: &str) -> Result<()> {
+  let txt_path = build_txt_path(track_path)?;
   let lrc_path = build_lrc_path(track_path)?;
-  write(lrc_path, lyrics)?;
+  if lyrics.is_empty() {
+    let rm_result = remove_file(lrc_path);
+    match rm_result {
+      _ => ()
+    }
+  } else {
+    let rm_result = remove_file(txt_path);
+    match rm_result {
+      _ => ()
+    }
+    write(lrc_path, lyrics)?;
+  }
   Ok(())
 }
 

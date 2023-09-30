@@ -1,23 +1,35 @@
 <template>
   <div>
     <div class="fixed top-0 left-0 h-full w-full flex items-center justify-center z-30" :class="{ 'hidden': !props.isShow }">
-      <div class="w-full h-[95vh] max-w-screen-sm rounded-lg m-4 bg-white flex flex-col gap-2">
+      <div class="w-full h-[80vh] max-w-screen-lg rounded-lg m-4 bg-white flex flex-col gap-2">
         <div class="flex-none flex justify-between items-center px-6 py-2">
-          <div class="text-thin text-xl text-brave-15">Edit Lyrics</div>
+          <div class="flex gap-1">
+            <button v-if="isDirty" class="button button-primary text-sm px-5 py-1.5 h-8 w-24 rounded-full" @click="saveLyrics" title="Save lyrics (Ctrl+S)">Save</button>
+            <button v-else class="button button-disabled text-sm px-5 py-1.5 h-8 w-24 rounded-full" title="Save lyrics (Ctrl+S)" disabled>Saved</button>
+            <button v-if="!isDirty" class="button button-normal text-sm px-5 py-1.5 h-8 w-24 rounded-full" @click="publishLyrics" title="Publish to LRCLIB service">Publish</button>
+            <button v-else class="button button-disabled text-sm px-5 py-1.5 h-8 w-24 rounded-full" title="Publish to LRCLIB service" disabled>Publish</button>
+          </div>
+
+          <div class="text-sm text-brave-30">
+            {{ editingTrack.title }} - {{ editingTrack.artist_name }}
+          </div>
+
           <button class="text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
         </div>
 
-        <div class="px-6 grow overflow-hidden flex flex-col gap-4">
+        <div class="px-6 py-2 grow overflow-hidden flex flex-col gap-4">
           <div class="flex flex-col bg-brave-95 rounded-lg">
             <div class="toolbar px-4 py-2 flex items-stretch gap-1">
-              <button class="button button-primary px-3 py-1 text-xl rounded-full" title="Sync line & move next (Alt+Space)" @click="syncLine"><EqualEnter /> <span class="text-xs">Sync Line & Move Next</span></button>
-              <button class="button button-normal px-3 py-1 text-xl rounded-full" title="Sync line (Alt+X)" @click="syncLine(false)"><Equal /></button>
-              <button class="button button-normal px-3 py-1 text-xl rounded-full" title="Replay line (Alt+Z)" @click="repeatLine"><MotionPlay /></button>
+              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line & move next (Alt+Space)" @click="syncLine"><EqualEnter /> <span class="text-xs">Sync Line & Move Next</span></button>
+              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line (Alt+X)" @click="syncLine(false)"><Equal /></button>
+              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms" @click="rewind100"><Minus /></button>
+              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Forward line 100ms" @click="fastForward100"><Plus /></button>
+              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Replay line (Alt+Z)" @click="repeatLine"><MotionPlay /></button>
             </div>
             <div class="w-full border-b border-brave-90"></div>
             <div class="flex gap-1 items-center px-4 py-2">
-              <button v-if="status !== 'playing'" @click.prevent="resumeOrPlay" class="button button-primary text-white p-2 rounded-full text-xl"><Play /></button>
-              <button v-else @click.prevent="pause" class="button button-primary text-white p-2 rounded-full text-xl"><Pause /></button>
+              <button v-if="status !== 'playing'" @click.prevent="resumeOrPlay" class="button button-normal p-2 rounded-full text-xl"><Play /></button>
+              <button v-else @click.prevent="pause" class="button button-normal p-2 rounded-full text-xl"><Pause /></button>
               <div class="flex-none w-12 text-xs text-brave-30">{{ humanDuration(progress) }}</div>
               <Seek class="grow" :duration="duration" :progress="progress" @seek="seek" />
               <div class="flex-none w-12 text-xs text-brave-30">{{ humanDuration(duration) }}</div>
@@ -44,28 +56,20 @@
             </div>
           </div>
         </div>
-
-        <div class="px-6 py-4 flex-none flex justify-between items-center">
-          <div class="flex items-center">
-            <div class="flex items-center">
-              <input id="skip-not-needed-tracks" type="checkbox" v-model="contributeToLrclib" class="checkbox">
-              <label for="skip-not-needed-tracks" class="checkbox-label ml-2">Also contribute this lyrics to LRCLIB database</label>
-            </div>
-          </div>
-          <button class="button button-primary px-8 py-2 rounded-full">Save</button>
-        </div>
       </div>
     </div>
 
     <div class="fixed top-0 left-0 h-full w-full z-20 bg-black/30" :class="{ 'hidden': !props.isShow }" @click="close">
     </div>
   </div>
+
+  <Publish :is-show="isPublishing" :lint-result="lintResult" :track="editingTrack" :lyrics="unifiedLyrics" @close="isPublishing = false" />
 </template>
 
 <script setup>
 import { invoke } from '@tauri-apps/api/tauri'
 import { ref, onMounted, onUnmounted, shallowRef, watch } from 'vue'
-import { Close, Loading, Equal, Play, Pause, MotionPlay } from 'mdue'
+import { Close, Loading, Equal, Play, Pause, MotionPlay, Minus, Plus } from 'mdue'
 import EqualEnter from '@/components/icons/EqualEnter.vue'
 import { useToast } from 'vue-toastification'
 import { Lrc, Runner, timestampToString, parseLine } from 'lrc-kit'
@@ -73,9 +77,11 @@ import { useEditLyrics } from '@/composables/edit-lyrics.js'
 import { Codemirror } from 'vue-codemirror'
 import { usePlayer } from '@/composables/player.js'
 import Seek from '@/components/now-playing/Seek.vue'
+import Publish from './edit-lyrics/Publish.vue'
 import { Decoration, EditorView } from '@codemirror/view'
 import { StateField, StateEffect } from '@codemirror/state'
 import { defineAsyncComponent } from 'vue'
+import { executeLint } from '@/utils/lrclint.js'
 
 const AsyncCodemirror = defineAsyncComponent(async () => {
   const { Codemirror } = await import('vue-codemirror')
@@ -92,24 +98,27 @@ const shouldLoadCodeMirror = ref(false)
 const view = shallowRef()
 const contributeToLrclib = ref(false)
 const keydownEvent = ref(null)
+const isDirty = ref(false)
+const isPublishing = ref(false)
+const lintResult = ref([])
 
 const runner = ref(null)
 const currentIndex = ref(null)
 
-const addLineHighlight = StateEffect.define();
+const addLineHighlight = StateEffect.define()
 
 const lineHighlightField = StateField.define({
   create() {
     return Decoration.none;
   },
   update(lines, tr) {
-    lines = lines.map(tr.changes);
+    lines = lines.map(tr.changes)
     for (let e of tr.effects) {
       if (e.is(addLineHighlight) && e.value === null) {
-        lines = Decoration.none;
+        lines = Decoration.none
       } else if (e.is(addLineHighlight)) {
-        lines = Decoration.none;
-        lines = lines.update({add: [lineHighlightMark.range(e.value)]});
+        lines = Decoration.none
+        lines = lines.update({add: [lineHighlightMark.range(e.value)]})
       }
     }
     return lines
@@ -143,7 +152,6 @@ const resumeOrPlay = () => {
 
 const handleReady = (payload) => {
   view.value = payload.view
-  // window.gview = view.value
 
   setTimeout(() => {
     view.value.scrollDOM.scrollTop = 0
@@ -153,6 +161,8 @@ const handleReady = (payload) => {
 const lyricsUpdated = (newLyrics) => {
   const parsed = Lrc.parse(newLyrics)
   runner.value = new Runner(parsed)
+  isDirty.value = true
+  lintResult.value = executeLint(newLyrics)
 }
 
 const syncLine = (moveNext = true) => {
@@ -169,9 +179,9 @@ const syncLine = (moveNext = true) => {
     }
   })
 
-  const newLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
-
   if (moveNext) {
+    const newLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
+
     if (newLine.to + 1 < view.value.state.doc.length) {
       view.value.dispatch({
         selection: {
@@ -195,6 +205,58 @@ const repeatLine = () => {
   const currentLineText = currentLine.text
   const parsed = parseLine(currentLineText)
   if (parsed.type === 'TIME') {
+    seek(parsed.timestamps[0])
+  }
+}
+
+const rewind100 = () => {
+  const currentLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
+  const currentLineText = currentLine.text
+  const parsed = parseLine(currentLineText)
+  if (parsed.type === 'TIME') {
+    const timestamp = parsed.timestamps[0]
+    const newTimestamp = timestamp - 0.1
+    const stringifiedTime = timestampToString(newTimestamp)
+    const replacedText = currentLineText.replace(/^(\s*\[(.*)\]\s*)*/g, `[${stringifiedTime}] `)
+
+    view.value.dispatch({
+      changes: {
+        from: currentLine.from,
+        to: currentLine.to,
+        insert: replacedText
+      }
+    })
+
+    view.value.focus()
+
+    lyricsUpdated(view.value.state.doc.toString())
+
+    seek(parsed.timestamps[0])
+  }
+}
+
+const fastForward100 = () => {
+  const currentLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
+  const currentLineText = currentLine.text
+  const parsed = parseLine(currentLineText)
+  if (parsed.type === 'TIME') {
+    const timestamp = parsed.timestamps[0]
+    const newTimestamp = timestamp + 0.1
+    const stringifiedTime = timestampToString(newTimestamp)
+    const replacedText = currentLineText.replace(/^(\s*\[(.*)\]\s*)*/g, `[${stringifiedTime}] `)
+
+    view.value.dispatch({
+      changes: {
+        from: currentLine.from,
+        to: currentLine.to,
+        insert: replacedText
+      }
+    })
+
+    view.value.focus()
+
+    lyricsUpdated(view.value.state.doc.toString())
+
     seek(parsed.timestamps[0])
   }
 }
@@ -227,10 +289,7 @@ onMounted(async () => {
 
   setTimeout(() => shouldLoadCodeMirror.value = true, 100)
 
-
   keydownEvent.value = document.addEventListener('keydown', (event) => {
-    console.log(event)
-
     if (event.isComposing || event.keyCode === 229) {
       return
     }
@@ -244,8 +303,15 @@ onMounted(async () => {
     } else if (event.altKey === true && event.key === 'z') {
       event.preventDefault()
       repeatLine()
+    } else if (event.ctrlKey === true && event.key === 's') {
+      event.preventDefault()
+      if (isDirty.value) {
+        saveLyrics()
+      }
     }
   })
+
+  lintResult.value = executeLint(unifiedLyrics.value)
 })
 
 watch(progress, (newProgress) => {
@@ -277,6 +343,20 @@ watch(progress, (newProgress) => {
 const close = () => {
   runner.value = null
   editingTrack.value = null
+}
+
+const saveLyrics = async () => {
+  try {
+    await invoke('save_lyrics', { trackId: editingTrack.value.id, plainLyrics: unifiedLyrics.value.replace(/^\[(.*)\] */mg, ''), syncedLyrics: unifiedLyrics.value })
+    isDirty.value = false
+  } catch (error) {
+    console.error(error)
+    toast.error(error)
+  }
+}
+
+const publishLyrics = async () => {
+  isPublishing.value = true
 }
 </script>
 

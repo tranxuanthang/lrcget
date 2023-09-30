@@ -36,12 +36,24 @@ body {
   @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70;
 }
 
+.button-normal2 {
+  @apply bg-brave-90/50 hover:bg-brave-80 text-brave-25 active:bg-brave-70;
+}
+
 .button-primary {
   @apply bg-brave-30 hover:bg-brave-35 text-white active:bg-brave-25;
 }
 
 .button-working {
   @apply bg-white hover:bg-brave-98 text-brave-30 active:bg-brave-25 active:text-white;
+}
+
+.button-disabled {
+  @apply box-border border-2 border-brave-90 bg-brave-98 text-brave-70;
+}
+
+.button-blend {
+  @apply hover:bg-brave-90 text-brave-25 active:bg-brave-70;
 }
 
 .button-done {

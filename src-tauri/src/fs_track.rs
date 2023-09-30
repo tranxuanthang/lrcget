@@ -206,14 +206,14 @@ pub fn load_tracks_from_directories(directories: &Vec<String>, conn: &mut Connec
       if entry_batch.len() == 100 {
         let tracks = load_tracks_from_entry_batch(&entry_batch)?;
 
-        db::add_tracks(&tracks, conn);
+        db::add_tracks(&tracks, conn)?;
         files_scanned += entry_batch.len();
         app_handle.emit_all("initialize-progress", ScanProgress { progress: None, files_scanned, files_count: Some(files_count) }).unwrap();
         entry_batch.clear();
       }
     }
     let tracks = load_tracks_from_entry_batch(&entry_batch)?;
-    db::add_tracks(&tracks, conn);
+    db::add_tracks(&tracks, conn)?;
     files_scanned += entry_batch.len();
     app_handle.emit_all("initialize-progress", ScanProgress { progress: None, files_scanned, files_count: Some(files_count) }).unwrap();
   }

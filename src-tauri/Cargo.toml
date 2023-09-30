@@ -28,6 +28,8 @@ indoc = "2"
 axum = "0.6.18"
 tokio = { version = "1.28.1", features = ["full"] }
 tower-http = { version = "0.4.0", features = ["fs", "cors"] }
+ring = "0.16.20"
+data-encoding = "2.4.0"
 
 [features]
 # by default Tauri runs in production mode

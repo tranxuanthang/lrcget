@@ -1,6 +1,6 @@
 <template>
   <div>
-    <div class="fixed top-0 left-0 h-full w-full flex items-center justify-center z-30" :class="{ 'hidden': !props.isShow }">
+    <div class="fixed top-0 left-0 h-full w-full flex items-center justify-center z-30 select-none" :class="{ 'hidden': !props.isShow }">
       <div class="w-full h-[95vh] max-w-screen-sm rounded-lg m-4 bg-white flex flex-col gap-2">
         <div class="flex-none flex justify-between items-center px-6 py-2">
           <div class="text-thin text-xl text-brave-15">Search Lyrics</div>
@@ -12,22 +12,43 @@
             <div class="grid grid-col-2 gap-2">
               <div class="col-span-2">
                 <label for="title" class="group-label mb-1">Title</label>
-                <input type="text" id="title" v-model="title" class="bg-brave-95 border border-brave-95 focus:border-brave-90 text-gray-900 outline-none text-sm rounded transition block w-full p-1.5" placeholder="Title">
+                <input
+                  type="text"
+                  id="title"
+                  v-model="title"
+                  class="bg-brave-95 border border-brave-95 focus:border-brave-90 text-gray-900 outline-none text-sm rounded transition block w-full p-1.5"
+                  placeholder="Title"
+                  :disabled="loading"
+                >
               </div>
 
               <div>
                 <label for="albumName" class="group-label mb-1">Album</label>
-                <input type="text" id="artistName" v-model="albumName" class="bg-brave-95 border border-brave-95 focus:border-brave-90 text-gray-900 outline-none text-sm rounded transition block w-full p-1.5" placeholder="Album">
+                <input
+                  type="text"
+                  id="artistName"
+                  v-model="albumName"
+                  class="bg-brave-95 border border-brave-95 focus:border-brave-90 text-gray-900 outline-none text-sm rounded transition block w-full p-1.5"
+                  placeholder="Album"
+                  :disabled="loading"
+                >
               </div>
 
               <div>
                 <label for="artistName" class="group-label mb-1">Artist</label>
-                <input type="text" id="artistName" v-model="artistName" class="bg-brave-95 border border-brave-95 focus:border-brave-90 text-gray-900 outline-none text-sm rounded transition block w-full p-1.5" placeholder="Artist">
+                <input
+                  type="text"
+                  id="artistName"
+                  v-model="artistName"
+                  class="bg-brave-95 border border-brave-95 focus:border-brave-90 text-gray-900 outline-none text-sm rounded transition block w-full p-1.5"
+                  placeholder="Artist"
+                  :disabled="loading"
+                >
               </div>
             </div>
 
             <div class="col-span-2 flex justify-center">
-              <button class="button button-primary rounded-full text-xs px-6 py-2">Search</button>
+              <button class="button rounded-full text-xs px-6 py-2" :class="{ 'button-disabled': loading,  'button-primary': !loading }" :disabled="loading">Search</button>
             </div>
           </form>
 
@@ -39,7 +60,7 @@
             <div v-else class="flex flex-col h-full gap-2">
               <div v-if="searchResult && searchResult.length" class="flex flex-col gap-1">
                 <div v-for="item in searchResult" :key="item.id" class="rounded bg-brave-98 hover:bg-brave-95 transition px-2 py-1 flex gap-2">
-                  <div class="grow">
+                  <div class="h-full overflow-hidden grow">
                     <div class="text-sm font-bold">
                       <span class="mr-2 text-brave-30">{{ item.name }}</span>
                       <span v-if="item.syncedLyrics" class="text-green-200 font-bold text-[0.65rem] bg-green-800 rounded px-1 py-0.5">Synced</span>
@@ -56,8 +77,8 @@
                   </div>
 
                   <div class="flex gap-2 items-center">
-                    <button class="px-2 py-1 bg-brave-90 hover:bg-brave-80 active:bg-brave-70 text-brave-30 text-sm font-bold rounded transition" @click="preview(item)">Preview</button>
-                    <button class="px-2 py-1 bg-brave-40 hover:bg-brave-35 active:bg-brave-30 text-brave-95 text-sm font-bold rounded transition" @click="apply(item)">Apply</button>
+                    <button class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition" title="Preview this lyrics" @click="preview(item)"><Eye /></button>
+                    <button class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition" title="Apply this lyrics" @click="apply(item)"><ContentSave /></button>
                   </div>
                 </div>
               </div>
@@ -83,7 +104,7 @@
 <script setup>
 import { invoke } from '@tauri-apps/api/tauri'
 import { ref, onMounted } from 'vue'
-import { Close, Loading } from 'mdue'
+import { Close, Loading, Eye, ContentSave } from 'mdue'
 import { useToast } from 'vue-toastification'
 import { useSearchLyrics } from '@/composables/search-lyrics.js'
 import Preview from './search-lyrics/Preview.vue'
@@ -110,6 +131,7 @@ const humanDuration = (seconds) => {
 }
 
 const doSearchLyrics = async () => {
+  loading.value = true
   try {
     searchResult.value = await invoke('search_lyrics', { title: title.value, albumName: albumName.value, artistName: artistName.value })
   } catch (error) {

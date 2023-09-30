@@ -3,7 +3,7 @@
     <div
       v-for="album in albums"
       :key="album.name + album.artist_name"
-      class="rounded-lg group hover:bg-brave-95 active:bg-brave-90 transition px-4 py-1 flex justify-between cursor-pointer"
+      class="rounded-lg group hover:bg-brave-95 transition px-4 py-1 flex justify-between cursor-pointer"
     >
       <div class="flex flex-col grow" @click="openAlbum(album)">
         <div class="font-bold text-sm text-brave-20 group-hover:text-brave-15 transition">{{ album.name }}</div>

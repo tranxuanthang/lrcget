@@ -42,7 +42,7 @@
 import { open } from '@tauri-apps/api/dialog'
 import { audioDir } from '@tauri-apps/api/path'
 import { invoke } from '@tauri-apps/api/tauri'
-import { ref, defineEmits, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Close, Plus } from 'mdue'
 
 const emit = defineEmits(['progressStep'])

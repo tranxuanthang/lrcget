@@ -1,4 +1,4 @@
-use rusqlite::{Connection, named_params};
+use rusqlite::{Connection, named_params, params};
 use tauri::AppHandle;
 use std::fs;
 use anyhow::Result;
@@ -208,15 +208,25 @@ pub fn get_track_by_id(id: i64, db: &Connection) -> Result<PersistentTrack> {
 }
 
 pub fn update_track_lrc_lyrics(id: i64, lrc_lyrics: &str, db: &Connection) -> Result<PersistentTrack> {
-  let mut statement = db.prepare("UPDATE tracks SET lrc_lyrics = ? WHERE id = ?")?;
-  statement.execute((lrc_lyrics, id))?;
+  if lrc_lyrics.is_empty() {
+    let mut statement = db.prepare("UPDATE tracks SET lrc_lyrics = null WHERE id = ?")?;
+    statement.execute(params![id])?;
+  } else {
+    let mut statement = db.prepare("UPDATE tracks SET lrc_lyrics = ? WHERE id = ?")?;
+    statement.execute((lrc_lyrics, id))?;
+  }
 
   Ok(get_track_by_id(id, db)?)
 }
 
 pub fn update_track_txt_lyrics(id: i64, txt_lyrics: &str, db: &Connection) -> Result<PersistentTrack> {
-  let mut statement = db.prepare("UPDATE tracks SET txt_lyrics = ? WHERE id = ?")?;
-  statement.execute((txt_lyrics, id))?;
+  if txt_lyrics.is_empty() {
+    let mut statement = db.prepare("UPDATE tracks SET txt_lyrics = null WHERE id = ?")?;
+    statement.execute(params![id])?;
+  } else {
+    let mut statement = db.prepare("UPDATE tracks SET txt_lyrics = ? WHERE id = ?")?;
+    statement.execute((txt_lyrics, id))?;
+  }
 
   Ok(get_track_by_id(id, db)?)
 }
@@ -225,10 +235,10 @@ pub fn add_tracks(tracks: &Vec<fs_track::FsTrack>, db: &mut Connection) -> Resul
   let tx = db.transaction()?;
 
   for track in tracks.iter() {
-    add_track(track, &tx);
+    add_track(track, &tx)?;
   }
 
-  tx.commit();
+  tx.commit()?;
 
   Ok(())
 }

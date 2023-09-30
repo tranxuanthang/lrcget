@@ -70,7 +70,6 @@ export function usePlayer() {
   }
 
   const updater = (timestamp) => {
-    console.log('update')
     if (!howlerSound.value || status.value !== 'playing') {
       return
     }

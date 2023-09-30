@@ -11,7 +11,7 @@ const app = createApp(App)
 
 app.use(Toast, {
   position: POSITION.BOTTOM_RIGHT,
-  timeout: 50000,
+  timeout: 5000,
   transition: 'Vue-Toastification__fade',
   toastClassName: 'lrcget-toast',
   bodyClassName: ['toast-body-1', 'toast-body-2'],

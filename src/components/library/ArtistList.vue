@@ -3,7 +3,7 @@
     <div
       v-for="artist in artists"
       :key="artist.name"
-      class="rounded-lg group hover:bg-brave-95 active:bg-brave-90 transition px-4 py-1 flex justify-between cursor-pointer"
+      class="rounded-lg group hover:bg-brave-95 transition px-4 py-1 flex justify-between cursor-pointer"
     >
       <div class="flex flex-col grow" @click="openArtist(artist)">
         <div class="font-bold text-sm text-brave-20 group-hover:text-brave-15 transition">{{ artist.name }}</div>

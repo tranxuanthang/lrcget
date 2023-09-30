@@ -17,8 +17,8 @@
     </td>
 
     <td @click="$emit('playTrack')" class="text-center">
-      <span v-if="props.lrcLyrics" class="text-green-200 font-bold text-[0.67rem] bg-green-800 rounded px-1 py-0.5">LRC</span>
-      <span v-else-if="props.txtLyrics" class="text-gray-200 font-bold text-[0.67rem] bg-gray-800 rounded px-1 py-0.5">PLAIN</span>
+      <span v-if="props.lrcLyrics" class="text-green-200 font-bold text-[0.67rem] bg-green-800 rounded px-1 py-0.5">Synced</span>
+      <span v-else-if="props.txtLyrics" class="text-gray-200 font-bold text-[0.67rem] bg-gray-800 rounded px-1 py-0.5">Plain</span>
     </td>
 
     <td class="text-right">
