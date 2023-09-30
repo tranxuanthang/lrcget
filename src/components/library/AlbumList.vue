@@ -75,9 +75,10 @@
 
 <script setup>
 import { Loading, ArrowLeft, DownloadMultiple } from 'mdue'
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import TrackItem from './track-list/TrackItem.vue'
 import { invoke } from '@tauri-apps/api/tauri'
+import { listen } from '@tauri-apps/api/event'
 import { useToast } from 'vue-toastification'
 
 const toast = useToast()
@@ -110,6 +111,14 @@ const downloadLyricsMultiple = async (album) => {
   const tracks = await invoke('get_album_tracks', { albumId: album.id })
   emit('downloadLyricsMultiple', tracks)
 }
+
+onMounted(() => {
+  listen('reload-database', async (event) => {
+    if (currentAlbum.value) {
+      openAlbum(currentAlbum.value)
+    }
+  })
+})
 </script>
 
 <style scoped>
