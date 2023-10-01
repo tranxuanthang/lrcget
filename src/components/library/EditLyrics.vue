@@ -20,10 +20,10 @@
         <div class="px-6 py-2 grow overflow-hidden flex flex-col gap-4">
           <div class="flex flex-col bg-brave-95 rounded-lg">
             <div class="toolbar px-4 py-2 flex items-stretch gap-1">
-              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line & move next (Alt+Space)" @click="syncLine"><EqualEnter /> <span class="text-xs">Sync Line & Move Next</span></button>
+              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line & move next (Alt+Enter)" @click="syncLine"><EqualEnter /> <span class="text-xs">Sync Line & Move Next</span></button>
               <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line (Alt+X)" @click="syncLine(false)"><Equal /></button>
-              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms" @click="rewind100"><Minus /></button>
-              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Forward line 100ms" @click="fastForward100"><Plus /></button>
+              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms (Alt+LeftArrow)" @click="rewind100"><Minus /></button>
+              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Forward line 100ms (Alt+RightArrow)" @click="fastForward100"><Plus /></button>
               <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Replay line (Alt+Z)" @click="repeatLine"><MotionPlay /></button>
             </div>
             <div class="w-full border-b border-brave-90"></div>
@@ -41,7 +41,7 @@
               v-if="shouldLoadCodeMirror"
               v-model="unifiedLyrics"
               placeholder="Lyrics is currently empty"
-              class="codemirror-custom h-full outline-none overflow-scroll"
+              class="codemirror-custom h-full outline-none"
               :autofocus="true"
               :indent-with-tab="true"
               :tab-size="2"
@@ -74,7 +74,6 @@ import EqualEnter from '@/components/icons/EqualEnter.vue'
 import { useToast } from 'vue-toastification'
 import { Lrc, Runner, timestampToString, parseLine } from 'lrc-kit'
 import { useEditLyrics } from '@/composables/edit-lyrics.js'
-import { Codemirror } from 'vue-codemirror'
 import { usePlayer } from '@/composables/player.js'
 import Seek from '@/components/now-playing/Seek.vue'
 import Publish from './edit-lyrics/Publish.vue'
@@ -88,15 +87,13 @@ const AsyncCodemirror = defineAsyncComponent(async () => {
   return Codemirror
 })
 
-const { playingTrack, status, duration, progress, setTrack, playTrack, pause, resume, stop, seek, unload } = usePlayer()
+const { status, duration, progress, setTrack, playTrack, pause, resume, seek, unload } = usePlayer()
 const toast = useToast()
 const props = defineProps(['isShow'])
 const { editingTrack } = useEditLyrics()
-const loading = ref(true)
 const unifiedLyrics = ref('')
 const shouldLoadCodeMirror = ref(false)
 const view = shallowRef()
-const contributeToLrclib = ref(false)
 const keydownEvent = ref(null)
 const isDirty = ref(false)
 const isPublishing = ref(false)
@@ -290,11 +287,7 @@ onMounted(async () => {
   setTimeout(() => shouldLoadCodeMirror.value = true, 100)
 
   keydownEvent.value = document.addEventListener('keydown', (event) => {
-    if (event.isComposing || event.keyCode === 229) {
-      return
-    }
-
-    if (event.altKey === true && event.key === ' ') {
+    if (event.altKey === true && event.key === 'Enter') {
       event.preventDefault()
       syncLine()
     } else if (event.altKey === true && event.key === 'x') {
@@ -308,6 +301,12 @@ onMounted(async () => {
       if (isDirty.value) {
         saveLyrics()
       }
+    } else if (event.altKey === true && event.key === 'ArrowLeft') {
+      event.preventDefault()
+      rewind100()
+    } else if (event.altKey === true && event.key === 'ArrowRight') {
+      event.preventDefault()
+      fastForward100()
     }
   })
 
@@ -362,7 +361,7 @@ const publishLyrics = async () => {
 
 <style>
 .codemirror-custom .cm-editor {
-  @apply outline-none overflow-scroll h-full;
+  @apply outline-none h-full;
 }
 
 .cm-scroller {
