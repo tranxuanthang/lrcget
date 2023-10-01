@@ -96,7 +96,7 @@ const openAlbum = async (album) => {
     currentAlbumTracks.value = await invoke('get_album_tracks', { albumId: currentAlbum.value.id })
   } catch (error) {
     console.error(error)
-    toast.error('Unknown error happened when opening an album. Please check the console for detail.')
+    toast.error(`Unknown error happened when opening an album. Error: ${error}`)
   } finally {
     loading.value = false
   }

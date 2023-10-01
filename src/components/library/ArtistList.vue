@@ -94,7 +94,7 @@ const openArtist = async (artist) => {
     currentArtistTracks.value = await invoke('get_artist_tracks', { artistId: currentArtist.value.id })
   } catch (error) {
     console.error(error)
-    toast.error('Unknown error happened when opening an artist. Please check the console for detail.')
+    toast.error(`Unknown error happened when opening an artist. Error: ${error}`)
   } finally {
     loading.value = false
   }

@@ -172,7 +172,7 @@ const refreshLibrary = async () => {
     await retrieveData()
   } catch (error) {
     console.error(error)
-    toast.error('Unknown error happened when initializing the library. Please check the console for detail.')
+    toast.error(`Unknown error happened when initializing the library. Error: ${error}`)
   } finally {
     isLoading.value = false
     isInitializing.value = false
@@ -205,7 +205,7 @@ onMounted(async () => {
       await retrieveData()
     } catch (error) {
       console.error(error)
-      toast.error('Unknown error happened when initializing the library. Please check the console for detail.')
+      toast.error(`Unknown error happened when initializing the library. Error: ${error}`)
     } finally {
       isLoading.value = false
       isInitializing.value = false
@@ -217,7 +217,7 @@ onMounted(async () => {
       await retrieveData()
     } catch (error) {
       console.error(error)
-      toast.error('Unknown error happened when loading the library. Please check the console for detail.')
+      toast.error(`Unknown error happened when loading the library. Error: ${error}`)
     } finally {
       isLoading.value = false
     }
