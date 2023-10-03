@@ -4,33 +4,45 @@ Utility for mass-downloading LRC synced lyrics for your offline music library.
 
 LRCGET will scan every files in your chosen directory for music files, then and try to download lyrics to a LRC files having the same name and save them to the same directory as your music files.
 
+LRCGET is the official client of [LRCLIB](https://lrclib.net) service.
+
 ## Screenshots
 
-![01.png](screenshots/01.png?1)
+![01.png](screenshots/01.png?2)
 
-![02.png](screenshots/02.png?1)
+![02.png](screenshots/02.png?2)
 
-![03.png](screenshots/03.png?1)
+![03.png](screenshots/03.png?2)
 
-![04.png](screenshots/04.png?1)
+![04.png](screenshots/04.png?2)
+
+![05.png](screenshots/04.png?2)
 
 ## Download
 
-🎉 Newest version: v0.1.0
+🎉 Newest version: v0.2.0
 
 Visit the [release page](https://github.com/tranxuanthang/lrcget/releases).
 
 OS Support:
 
 - [x] Windows 10
-- [x] Linux (experimental)
+- [x] Linux
 - [x] macOS (experimental)
 
 ## Donation
 
 Toss a coin to your developer?
 
+Buy Me a Coffee:
+
 <a href="https://www.buymeacoffee.com/thangtran" target="_blank"><img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174"></a>
+
+Monero (XMR):
+
+```
+43ZN5qDdGQhPGthFnngD8rjCHYLsEFBcyJjDC1GPZzVxWSfT8R48QCLNGyy6Z9LvatF5j8kSgv23DgJpixJg8bnmMnKm3b7
+```
 
 ## TODO
 

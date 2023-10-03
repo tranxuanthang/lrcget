@@ -13,7 +13,7 @@ pub enum GetLyricsError {
   OnlyUnsyncedLyrics,
   #[error("This track is instrumental")]
   IsInstrumental,
-  #[error("This track does not exist in lrclib database")]
+  #[error("This track does not exist in LRCLIB database")]
   NotFound
 }
 
