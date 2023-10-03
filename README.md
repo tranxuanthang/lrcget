@@ -16,7 +16,7 @@ LRCGET is the official client of [LRCLIB](https://lrclib.net) service.
 
 ![04.png](screenshots/04.png?2)
 
-![05.png](screenshots/04.png?2)
+![05.png](screenshots/05.png?2)
 
 ## Download
 
