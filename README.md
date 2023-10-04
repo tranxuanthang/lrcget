@@ -6,9 +6,19 @@ LRCGET will scan every files in your chosen directory for music files, then and 
 
 LRCGET is the official client of [LRCLIB](https://lrclib.net) service.
 
-## Screenshots
+## Download
 
-![01.png](screenshots/01.png?2)
+🎉 Newest version: v0.2.1
+
+Visit the [release page](https://github.com/tranxuanthang/lrcget/releases) to download.
+
+OS Support:
+
+- [x] Windows 10
+- [x] Linux
+- [x] macOS (experimental)
+
+## Screenshots
 
 ![02.png](screenshots/02.png?2)
 
@@ -17,18 +27,6 @@ LRCGET is the official client of [LRCLIB](https://lrclib.net) service.
 ![04.png](screenshots/04.png?2)
 
 ![05.png](screenshots/05.png?2)
-
-## Download
-
-🎉 Newest version: v0.2.0
-
-Visit the [release page](https://github.com/tranxuanthang/lrcget/releases).
-
-OS Support:
-
-- [x] Windows 10
-- [x] Linux
-- [x] macOS (experimental)
 
 ## Donation
 
