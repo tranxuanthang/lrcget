@@ -49,7 +49,12 @@ export function usePlayer() {
       howlerSound.value.seek(setProgress)
       
       status.value = 'playing'
-      window.requestAnimationFrame(updater)
+
+      if (platformName === 'linux') {
+        updater2()
+      } else {
+        window.requestAnimationFrame(updater)
+      }
     })
 
     howlerSound.value.on('pause', () => {
@@ -71,20 +76,39 @@ export function usePlayer() {
   }
 
   const updater = (timestamp) => {
-    if (!howlerSound.value || status.value !== 'playing') {
+    if (status.value !== 'playing') {
       return
     }
 
-    if (howlerSound.value.seek() > 0.0) {
-      progress.value = howlerSound.value.seek()
+    const currentProgress = howlerSound.value.seek()
+
+    if (currentProgress > 0.0) {
+      progress.value = currentProgress
     }
 
     window.requestAnimationFrame(updater)
   }
 
+  const updater2 = () => {
+    if (status.value !== 'playing') {
+      return
+    }
+
+    const currentProgress = howlerSound.value.seek()
+
+    if (currentProgress > 0.0) {
+      progress.value = currentProgress
+    }
+
+    setTimeout(() => {
+      updater2()
+    }, 70)
+  }
+
   const pause = () => {
     howlerSound.value.unload()
     Howler.unload()
+    status.value = 'paused'
   }
 
   const resume = () => {
