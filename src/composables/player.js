@@ -15,14 +15,13 @@ const progress = ref(null)
 const howlerSound = ref(null)
 
 export function usePlayer() {
-  const setTrack = async (track, playOnLoad = true, progress = 0.0) => {
+  const setTrack = async (track, playOnLoad = true, setProgress = 0.0) => {
     status.value = 'stopped'
     const platformName = await platform()
 
     if (howlerSound.value) {
       howlerSound.value.unload()
       Howler.unload()
-      howlerSound.value = null
     }
 
     playingTrack.value = track
@@ -36,8 +35,7 @@ export function usePlayer() {
     }
 
     howlerSound.value = new Howl({
-      src: [assetUrl],
-      html5: true
+      src: [assetUrl]
     })
 
     howlerSound.value.once('load', () => {
@@ -48,7 +46,8 @@ export function usePlayer() {
     })
 
     howlerSound.value.on('play', () => {
-      howlerSound.value.seek(progress)
+      howlerSound.value.seek(setProgress)
+      
       status.value = 'playing'
       window.requestAnimationFrame(updater)
     })
@@ -67,8 +66,8 @@ export function usePlayer() {
     })
   }
 
-  const playTrack = async (track, progress = 0.0) => {
-    await setTrack(track, true, progress)
+  const playTrack = async (track, setProgress = 0.0) => {
+    await setTrack(track, true, setProgress)
   }
 
   const updater = (timestamp) => {
@@ -86,7 +85,6 @@ export function usePlayer() {
   const pause = () => {
     howlerSound.value.unload()
     Howler.unload()
-    howlerSound.value = null
   }
 
   const resume = () => {
@@ -97,7 +95,6 @@ export function usePlayer() {
     if (howlerSound.value) {
       howlerSound.value.unload()
       Howler.unload()
-      howlerSound.value = null
     }
     playTrack(playingTrack.value, progress)
   }
@@ -114,7 +111,6 @@ export function usePlayer() {
     if (howlerSound.value) {
       howlerSound.value.unload()
       Howler.unload()
-      howlerSound.value = null
     }
   }
 
