@@ -295,7 +295,8 @@ async fn main() {
           .layer(
             CorsLayer::new()
               .allow_origin("*".parse::<HeaderValue>().unwrap())
-              .allow_methods([Method::GET])
+              .allow_methods([Method::GET, Method::OPTIONS])
+              .allow_headers(tower_http::cors::Any)
           );
 
         axum::Server::bind(&"127.0.0.1:16780".parse().unwrap())

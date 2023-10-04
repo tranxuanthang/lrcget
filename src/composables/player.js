@@ -1,5 +1,5 @@
 import { ref, onMounted, onUnmounted } from 'vue'
-import { Howl } from 'howler'
+import { Howl, Howler } from 'howler'
 import { convertFileSrc } from '@tauri-apps/api/tauri'
 import { invoke } from '@tauri-apps/api/tauri'
 import { platform } from '@tauri-apps/api/os'
@@ -21,6 +21,7 @@ export function usePlayer() {
 
     if (howlerSound.value) {
       howlerSound.value.unload()
+      Howler.unload()
       howlerSound.value = null
     }
 
@@ -35,7 +36,8 @@ export function usePlayer() {
     }
 
     howlerSound.value = new Howl({
-      src: [assetUrl]
+      src: [assetUrl],
+      html5: true
     })
 
     howlerSound.value.once('load', () => {
@@ -82,8 +84,9 @@ export function usePlayer() {
   }
 
   const pause = () => {
-    // howlerSound.value.pause()
     howlerSound.value.unload()
+    Howler.unload()
+    howlerSound.value = null
   }
 
   const resume = () => {
@@ -91,7 +94,11 @@ export function usePlayer() {
   }
 
   const seek = (progress) => {
-    howlerSound.value.unload()
+    if (howlerSound.value) {
+      howlerSound.value.unload()
+      Howler.unload()
+      howlerSound.value = null
+    }
     playTrack(playingTrack.value, progress)
   }
 
@@ -106,6 +113,8 @@ export function usePlayer() {
     status.value = 'stopped'
     if (howlerSound.value) {
       howlerSound.value.unload()
+      Howler.unload()
+      howlerSound.value = null
     }
   }
 
