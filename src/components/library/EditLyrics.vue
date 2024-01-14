@@ -2,19 +2,30 @@
   <div>
     <div class="fixed top-0 left-0 h-full w-full flex items-center justify-center z-30 select-none" :class="{ 'hidden': !props.isShow }">
       <div class="w-full h-[80vh] max-w-screen-lg rounded-lg m-4 bg-white flex flex-col gap-2">
-        <div class="flex-none flex justify-between items-center px-6 py-2">
-          <div class="flex gap-1">
-            <button v-if="isDirty" class="button button-primary text-sm px-5 py-1.5 h-8 w-24 rounded-full" @click="saveLyrics" title="Save lyrics (Ctrl+S)">Save</button>
-            <button v-else class="button button-disabled text-sm px-5 py-1.5 h-8 w-24 rounded-full" title="Save lyrics (Ctrl+S)" disabled>Saved</button>
-            <button v-if="!isDirty" class="button button-normal text-sm px-5 py-1.5 h-8 w-24 rounded-full" @click="publishLyrics" title="Publish to LRCLIB service">Publish</button>
-            <button v-else class="button button-disabled text-sm px-5 py-1.5 h-8 w-24 rounded-full" title="Publish to LRCLIB service" disabled>Publish</button>
+        <div class="flex flex-col">
+          <div class="flex px-6">
+            <div class="grow"></div>
+            <div class="text-lg grow basis-0 inline-flex justify-center items-center text-brave-30 self">
+              {{ editingTrack.title }} - {{ editingTrack.artist_name }}
+            </div>
+            <div class="grow basis-0 inline-flex justify-center">
+              <button class="ml-auto text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
+            </div>
           </div>
 
-          <div class="text-sm text-brave-30">
-            {{ editingTrack.title }} - {{ editingTrack.artist_name }}
+          <div class="flex px-6 py-2">
+            <div class="inline-flex grow basis-0 justify-center">
+              <button v-if="isDirty" class="button button-primary text-sm mr-auto px-5 py-1.5 h-8 w-24 rounded-full" @click="saveLyrics" title="Save lyrics (Ctrl+S)">Save</button>
+              <button v-else class="button button-disabled text-sm mr-auto px-5 py-1.5 h-8 w-24 rounded-full" title="Save lyrics (Ctrl+S)" disabled>Saved</button>
+            </div>
+            <div class="inline-flex grow basis-0 justify-center gap-1">
+              <button v-if="!isDirty" class="button button-normal text-sm px-5 py-1.5 h-8 w-48 rounded-full" @click="publishLyrics" title="Publish synced lyrics to LRCLIB service">Publish Lyrics</button>
+              <button v-else class="button button-disabled text-sm px-5 py-1.5 h-8 w-48 rounded-full" title="Publish synced lyrics to LRCLIB service" disabled>Publish Lyrics</button>
+              <button v-if="!isDirty" class="button button-normal text-sm px-5 py-1.5 h-8 w-48 rounded-full" @click="publishLyrics" title="Publish unsynced lyrics to LRCLIB service">Publish Plain Text</button>
+              <button v-else class="button button-disabled text-sm px-5 py-1.5 h-8 w-48 rounded-full" title="Publish unsynced lyrics to LRCLIB service" disabled>Publish Plain Text</button>
+            </div>
+            <div class="grow"></div>
           </div>
-
-          <button class="text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
         </div>
 
         <div class="px-6 py-2 grow overflow-hidden flex flex-col gap-4">
@@ -357,6 +368,11 @@ const saveLyrics = async () => {
 const publishLyrics = async () => {
   isPublishing.value = true
 }
+
+const publishPlainText = async () => {
+  isPublishing.value = true
+}
+
 </script>
 
 <style>
