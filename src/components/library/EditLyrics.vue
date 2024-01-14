@@ -21,7 +21,7 @@
             <div class="inline-flex grow basis-0 justify-center gap-1">
               <button v-if="!isDirty" class="button button-normal text-sm px-5 py-1.5 h-8 w-48 rounded-full" @click="publishLyrics" title="Publish synced lyrics to LRCLIB service">Publish Lyrics</button>
               <button v-else class="button button-disabled text-sm px-5 py-1.5 h-8 w-48 rounded-full" title="Publish synced lyrics to LRCLIB service" disabled>Publish Lyrics</button>
-              <button v-if="!isDirty" class="button button-normal text-sm px-5 py-1.5 h-8 w-48 rounded-full" @click="publishLyrics" title="Publish unsynced lyrics to LRCLIB service">Publish Plain Text</button>
+              <button v-if="!isDirty" class="button button-normal text-sm px-5 py-1.5 h-8 w-48 rounded-full" @click="publishPlainText" title="Publish unsynced lyrics to LRCLIB service">Publish Plain Text</button>
               <button v-else class="button button-disabled text-sm px-5 py-1.5 h-8 w-48 rounded-full" title="Publish unsynced lyrics to LRCLIB service" disabled>Publish Plain Text</button>
             </div>
             <div class="grow"></div>
@@ -74,7 +74,8 @@
     </div>
   </div>
 
-  <Publish :is-show="isPublishing" :lint-result="lintResult" :track="editingTrack" :lyrics="unifiedLyrics" @close="isPublishing = false" />
+  <PublishLyrics :is-show="isPublishingLyrics" :lint-result="lyricsLintResult" :track="editingTrack" :lyrics="unifiedLyrics" @close="isPublishingLyrics = false" />
+  <PublishPlainText :is-show="isPublishingPlainText" :lint-result="plainTextLintResult" :track="editingTrack" :lyrics="unifiedLyrics" @close="isPublishingPlainText = false" />
 </template>
 
 <script setup>
@@ -87,11 +88,13 @@ import { Lrc, Runner, timestampToString, parseLine } from 'lrc-kit'
 import { useEditLyrics } from '@/composables/edit-lyrics.js'
 import { usePlayer } from '@/composables/player.js'
 import Seek from '@/components/now-playing/Seek.vue'
-import Publish from './edit-lyrics/Publish.vue'
+import PublishLyrics from './edit-lyrics/PublishLyrics.vue'
+import PublishPlainText from './edit-lyrics/PublishPlainText.vue'
 import { Decoration, EditorView } from '@codemirror/view'
 import { StateField, StateEffect } from '@codemirror/state'
 import { defineAsyncComponent } from 'vue'
-import { executeLint } from '@/utils/lrclint.js'
+import { executeLint as executeLyricsLint } from '@/utils/lyrics-lint.js'
+import { executeLint as executePlainTextLint } from '@/utils/plain-text-lint.js'
 
 const AsyncCodemirror = defineAsyncComponent(async () => {
   const { Codemirror } = await import('vue-codemirror')
@@ -107,8 +110,10 @@ const shouldLoadCodeMirror = ref(false)
 const view = shallowRef()
 const keydownEvent = ref(null)
 const isDirty = ref(false)
-const isPublishing = ref(false)
-const lintResult = ref([])
+const isPublishingLyrics = ref(false)
+const isPublishingPlainText = ref(false)
+const lyricsLintResult = ref([])
+const plainTextLintResult = ref([])
 
 const runner = ref(null)
 const currentIndex = ref(null)
@@ -170,7 +175,8 @@ const lyricsUpdated = (newLyrics) => {
   const parsed = Lrc.parse(newLyrics)
   runner.value = new Runner(parsed)
   isDirty.value = true
-  lintResult.value = executeLint(newLyrics)
+  lyricsLintResult.value = executeLyricsLint(newLyrics)
+  plainTextLintResult.value = executePlainTextLint(newLyrics)
 }
 
 const syncLine = (moveNext = true) => {
@@ -321,7 +327,8 @@ onMounted(async () => {
     }
   })
 
-  lintResult.value = executeLint(unifiedLyrics.value)
+  lyricsLintResult.value = executeLyricsLint(unifiedLyrics.value)
+  plainTextLintResult.value = executePlainTextLint(unifiedLyrics.value)
 })
 
 watch(progress, (newProgress) => {
@@ -366,11 +373,11 @@ const saveLyrics = async () => {
 }
 
 const publishLyrics = async () => {
-  isPublishing.value = true
+  isPublishingLyrics.value = true
 }
 
 const publishPlainText = async () => {
-  isPublishing.value = true
+  isPublishingPlainText.value = true
 }
 
 </script>
