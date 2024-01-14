@@ -3,13 +3,15 @@
     <div class="fixed top-0 left-0 h-full w-full flex items-center justify-center z-30 select-none" :class="{ 'hidden': !props.isShow }">
       <div class="w-full h-[80vh] max-w-screen-lg rounded-lg m-4 bg-white flex flex-col gap-2">
         <div class="flex flex-col">
-          <div class="flex px-6">
-            <div class="grow"></div>
-            <div class="text-lg grow basis-0 inline-flex justify-center items-center text-brave-30 self">
-              {{ editingTrack.title }} - {{ editingTrack.artist_name }}
+          <div class="flex px-6 py-2">
+            <div class="grow basis-0 inline-flex justify-center invisible">
+              <button class="mr-auto self-start p-4"><Close /></button>
             </div>
+            <p class=" leading-[3rem] text-lg font-bold grow basis-full text-center text-ellipsis overflow-hidden whitespace-nowrap text-brave-30 self">
+              {{ editingTrack.title }} - {{ editingTrack.artist_name }}
+            </p>
             <div class="grow basis-0 inline-flex justify-center">
-              <button class="ml-auto text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
+              <button class="ml-auto self-start text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
             </div>
           </div>
 
