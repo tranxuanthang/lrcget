@@ -15,18 +15,31 @@
             </div>
           </div>
 
-          <div class="flex px-6 py-2">
-            <div class="inline-flex grow basis-0 justify-center">
+          <div class="flex px-6 py-2 gap-2">
+            <div class="inline-flex">
               <button v-if="isDirty" class="button button-primary text-sm mr-auto px-5 py-1.5 h-8 w-24 rounded-full" @click="saveLyrics" title="Save lyrics (Ctrl+S)">Save</button>
               <button v-else class="button button-disabled text-sm mr-auto px-5 py-1.5 h-8 w-24 rounded-full" title="Save lyrics (Ctrl+S)" disabled>Saved</button>
             </div>
-            <div class="inline-flex grow basis-0 justify-center gap-1">
-              <button v-if="!isDirty" class="button button-normal text-sm px-5 py-1.5 h-8 w-48 rounded-full" @click="publishLyrics" title="Publish synced lyrics to LRCLIB service">Publish Lyrics</button>
-              <button v-else class="button button-disabled text-sm px-5 py-1.5 h-8 w-48 rounded-full" title="Publish synced lyrics to LRCLIB service" disabled>Publish Lyrics</button>
-              <button v-if="!isDirty" class="button button-normal text-sm px-5 py-1.5 h-8 w-48 rounded-full" @click="publishPlainText" title="Publish unsynced lyrics to LRCLIB service">Publish Plain Text</button>
-              <button v-else class="button button-disabled text-sm px-5 py-1.5 h-8 w-48 rounded-full" title="Publish unsynced lyrics to LRCLIB service" disabled>Publish Plain Text</button>
+            <div class="inline-flex gap-1">
+              <DropdownButton v-if="!isDirty" :mainDisabled="false" :popupDisabled="lyricsLintResult.length === 0" text="Publish" :mainAction="publishLyrics" title="Publish synced lyrics to LRCLIB service">
+                <DropdownItem :disabled="lyricsLintResult.length === 0" :action="publishPlainText" title="Publish unsynced lyrics to LRCLIB service">Publish Unsynced Lyrics</DropdownItem>
+              </DropdownButton>
+              <DropdownButton v-else mainDisabled popupDisabled text="Publish" :mainAction="publishLyrics" title="Publish synced lyrics to LRCLIB service">
+                <DropdownItem disabled :action="publishPlainText" title="Publish unsynced lyrics to LRCLIB service">Publish Unsynced Lyrics</DropdownItem>
+              </DropdownButton>
+              
+              <div class="inline-flex [&>div>svg]:text-2xl items-center justify-center">
+                <div v-if="lyricsLintResult.length === 0" title="No errors detected">
+                  <Check class="text-lime-500" />
+                </div>
+                <div v-else-if="plainTextLintResult.length === 0" :title="`Lyrics not synchronized\nYou can still publish it, but consider synchronizing it to help others`">
+                  <AlertCircleOutline class="text-orange-500" />
+                </div>
+                <div v-else :title="`Lyrics error detected\nPress the publish button for details`">
+                  <AlertCircle class="text-red-500" />
+                </div>
+              </div>
             </div>
-            <div class="grow"></div>
           </div>
         </div>
 
@@ -83,7 +96,9 @@
 <script setup>
 import { invoke } from '@tauri-apps/api/tauri'
 import { ref, onMounted, onUnmounted, shallowRef, watch } from 'vue'
-import { Close, Loading, Equal, Play, Pause, MotionPlay, Minus, Plus } from 'mdue'
+import { Close, Loading, Equal, Play, Pause, MotionPlay, Minus, Plus, Check, AlertCircleOutline, AlertCircle } from 'mdue'
+import DropdownButton from '@/components/ui/DropdownButton.vue'
+import DropdownItem from '@/components/ui/DropdownItem.vue'
 import EqualEnter from '@/components/icons/EqualEnter.vue'
 import { useToast } from 'vue-toastification'
 import { Lrc, Runner, timestampToString, parseLine } from 'lrc-kit'
