@@ -28,12 +28,36 @@ body {
   background: #5bbec3;
 }
 
+.dropdown-arrow-button {
+  @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70 !border-brave-80;
+}
+
+.dropdown-arrow-button-disabled {
+  @apply box-border border-2 !border-brave-90 bg-brave-98 text-brave-70 cursor-not-allowed;
+}
+
+.dropdown-arrow-button-active {
+  @apply bg-brave-70;
+}
+
+.dropdown-popup {
+  @apply absolute rounded-lg left-1/2 top-8 -translate-x-1/2 z-10 py-1 shadow-xl bg-brave-95;
+}
+
+.dropdown-item {
+  @apply text-xs transition uppercase font-bold;
+}
+
 .button {
   @apply transition uppercase font-bold flex gap-1 items-center justify-center;
 }
 
 .button-normal {
   @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70;
+}
+
+.border-normal {
+  @apply border-brave-25;
 }
 
 .button-normal2 {
@@ -49,7 +73,7 @@ body {
 }
 
 .button-disabled {
-  @apply box-border border-2 border-brave-90 bg-brave-98 text-brave-70;
+  @apply box-border border-2 border-brave-90 bg-brave-98 text-brave-70 cursor-not-allowed;
 }
 
 .button-blend {

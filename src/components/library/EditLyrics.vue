@@ -2,19 +2,45 @@
   <div>
     <div class="fixed top-0 left-0 h-full w-full flex items-center justify-center z-30 select-none" :class="{ 'hidden': !props.isShow }">
       <div class="w-full h-[80vh] max-w-screen-lg rounded-lg m-4 bg-white flex flex-col gap-2">
-        <div class="flex-none flex justify-between items-center px-6 py-2">
-          <div class="flex gap-1">
-            <button v-if="isDirty" class="button button-primary text-sm px-5 py-1.5 h-8 w-24 rounded-full" @click="saveLyrics" title="Save lyrics (Ctrl+S)">Save</button>
-            <button v-else class="button button-disabled text-sm px-5 py-1.5 h-8 w-24 rounded-full" title="Save lyrics (Ctrl+S)" disabled>Saved</button>
-            <button v-if="!isDirty" class="button button-normal text-sm px-5 py-1.5 h-8 w-24 rounded-full" @click="publishLyrics" title="Publish to LRCLIB service">Publish</button>
-            <button v-else class="button button-disabled text-sm px-5 py-1.5 h-8 w-24 rounded-full" title="Publish to LRCLIB service" disabled>Publish</button>
+        <div class="flex flex-col">
+          <div class="flex px-6 py-2">
+            <div class="grow basis-0 inline-flex justify-center invisible">
+              <button class="mr-auto self-start p-4"><Close /></button>
+            </div>
+            <p class=" leading-[3rem] text-lg font-bold grow basis-full text-center text-ellipsis overflow-hidden whitespace-nowrap text-brave-30 self">
+              {{ editingTrack.title }} - {{ editingTrack.artist_name }}
+            </p>
+            <div class="grow basis-0 inline-flex justify-center">
+              <button class="ml-auto self-start text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
+            </div>
           </div>
 
-          <div class="text-sm text-brave-30">
-            {{ editingTrack.title }} - {{ editingTrack.artist_name }}
+          <div class="flex px-6 py-2 gap-2">
+            <div class="inline-flex">
+              <button v-if="isDirty" class="button button-primary text-sm mr-auto px-5 py-1.5 h-8 w-24 rounded-full" @click="saveLyrics" title="Save lyrics (Ctrl+S)">Save</button>
+              <button v-else class="button button-disabled text-sm mr-auto px-5 py-1.5 h-8 w-24 rounded-full" title="Save lyrics (Ctrl+S)" disabled>Saved</button>
+            </div>
+            <div class="inline-flex gap-1">
+              <DropdownButton v-if="!isDirty" :mainDisabled="false" :popupDisabled="lyricsLintResult.length === 0" text="Publish" :mainAction="publishLyrics" title="Publish synced lyrics to LRCLIB service">
+                <DropdownItem :disabled="lyricsLintResult.length === 0" :action="publishPlainText" title="Publish unsynced lyrics to LRCLIB service">Publish Unsynced Lyrics</DropdownItem>
+              </DropdownButton>
+              <DropdownButton v-else mainDisabled popupDisabled text="Publish" :mainAction="publishLyrics" title="Publish synced lyrics to LRCLIB service">
+                <DropdownItem disabled :action="publishPlainText" title="Publish unsynced lyrics to LRCLIB service">Publish Unsynced Lyrics</DropdownItem>
+              </DropdownButton>
+              
+              <div class="inline-flex [&>div>svg]:text-2xl items-center justify-center">
+                <div v-if="lyricsLintResult.length === 0" title="No errors detected">
+                  <Check class="text-lime-500" />
+                </div>
+                <div v-else-if="plainTextLintResult.length === 0" :title="`Lyrics not synchronized\nYou can still publish it, but consider synchronizing it to help others`">
+                  <AlertCircleOutline class="text-orange-500" />
+                </div>
+                <div v-else :title="`Lyrics error detected\nPress the publish button for details`">
+                  <AlertCircle class="text-red-500" />
+                </div>
+              </div>
+            </div>
           </div>
-
-          <button class="text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
         </div>
 
         <div class="px-6 py-2 grow overflow-hidden flex flex-col gap-4">
@@ -63,24 +89,29 @@
     </div>
   </div>
 
-  <Publish :is-show="isPublishing" :lint-result="lintResult" :track="editingTrack" :lyrics="unifiedLyrics" @close="isPublishing = false" />
+  <PublishLyrics :is-show="isPublishingLyrics" :lint-result="lyricsLintResult" :track="editingTrack" :lyrics="unifiedLyrics" @close="isPublishingLyrics = false" />
+  <PublishPlainText :is-show="isPublishingPlainText" :lint-result="plainTextLintResult" :track="editingTrack" :lyrics="unifiedLyrics" @close="isPublishingPlainText = false" />
 </template>
 
 <script setup>
 import { invoke } from '@tauri-apps/api/tauri'
 import { ref, onMounted, onUnmounted, shallowRef, watch } from 'vue'
-import { Close, Loading, Equal, Play, Pause, MotionPlay, Minus, Plus } from 'mdue'
+import { Close, Loading, Equal, Play, Pause, MotionPlay, Minus, Plus, Check, AlertCircleOutline, AlertCircle } from 'mdue'
+import DropdownButton from '@/components/ui/DropdownButton.vue'
+import DropdownItem from '@/components/ui/DropdownItem.vue'
 import EqualEnter from '@/components/icons/EqualEnter.vue'
 import { useToast } from 'vue-toastification'
 import { Lrc, Runner, timestampToString, parseLine } from 'lrc-kit'
 import { useEditLyrics } from '@/composables/edit-lyrics.js'
 import { usePlayer } from '@/composables/player.js'
 import Seek from '@/components/now-playing/Seek.vue'
-import Publish from './edit-lyrics/Publish.vue'
+import PublishLyrics from './edit-lyrics/PublishLyrics.vue'
+import PublishPlainText from './edit-lyrics/PublishPlainText.vue'
 import { Decoration, EditorView } from '@codemirror/view'
 import { StateField, StateEffect } from '@codemirror/state'
 import { defineAsyncComponent } from 'vue'
-import { executeLint } from '@/utils/lrclint.js'
+import { executeLint as executeLyricsLint } from '@/utils/lyrics-lint.js'
+import { executeLint as executePlainTextLint } from '@/utils/plain-text-lint.js'
 
 const AsyncCodemirror = defineAsyncComponent(async () => {
   const { Codemirror } = await import('vue-codemirror')
@@ -96,8 +127,10 @@ const shouldLoadCodeMirror = ref(false)
 const view = shallowRef()
 const keydownEvent = ref(null)
 const isDirty = ref(false)
-const isPublishing = ref(false)
-const lintResult = ref([])
+const isPublishingLyrics = ref(false)
+const isPublishingPlainText = ref(false)
+const lyricsLintResult = ref([])
+const plainTextLintResult = ref([])
 
 const runner = ref(null)
 const currentIndex = ref(null)
@@ -159,7 +192,8 @@ const lyricsUpdated = (newLyrics) => {
   const parsed = Lrc.parse(newLyrics)
   runner.value = new Runner(parsed)
   isDirty.value = true
-  lintResult.value = executeLint(newLyrics)
+  lyricsLintResult.value = executeLyricsLint(newLyrics)
+  plainTextLintResult.value = executePlainTextLint(newLyrics)
 }
 
 const syncLine = (moveNext = true) => {
@@ -310,7 +344,8 @@ onMounted(async () => {
     }
   })
 
-  lintResult.value = executeLint(unifiedLyrics.value)
+  lyricsLintResult.value = executeLyricsLint(unifiedLyrics.value)
+  plainTextLintResult.value = executePlainTextLint(unifiedLyrics.value)
 })
 
 watch(progress, (newProgress) => {
@@ -355,8 +390,13 @@ const saveLyrics = async () => {
 }
 
 const publishLyrics = async () => {
-  isPublishing.value = true
+  isPublishingLyrics.value = true
 }
+
+const publishPlainText = async () => {
+  isPublishingPlainText.value = true
+}
+
 </script>
 
 <style>

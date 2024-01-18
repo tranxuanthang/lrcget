@@ -36,7 +36,6 @@ import { Play, TextSearch, PlaylistEdit } from 'mdue'
 import { humanDuration } from '../../../utils/human-duration.js'
 import { useSearchLyrics } from '../../../composables/search-lyrics.js'
 import { useEditLyrics } from '../../../composables/edit-lyrics.js'
-import { onMounted } from 'vue'
 
 const { searchLyrics } = useSearchLyrics()
 const { editLyrics } = useEditLyrics()

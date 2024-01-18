@@ -60,6 +60,7 @@ const maximizeWindow = () => {
 const closeWindow = () => {
   appWindow.close()
 }
+
 </script>
 
 <style>

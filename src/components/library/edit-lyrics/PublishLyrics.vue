@@ -55,7 +55,7 @@
       </div>
 
       <div v-if="!isPublishing" class="flex gap-2 justify-center w-full">
-        <button class="button button-primary px-8 py-2 rounded-full" @click="publish">Publish Now</button>
+        <button class="button button-primary px-8 py-2 rounded-full" @click="publishLyrics">Publish Now</button>
         <button class="button button-normal px-8 py-2 rounded-full" @click="close">Cancel</button>
       </div>
 
@@ -88,7 +88,7 @@ const progress = ref({
   publishLyrics: 'Pending'
 })
 
-const publish = async () => {
+const publishLyrics = async () => {
   isPublishing.value = true
   const plainLyrics = props.lyrics.replace(/^\[(.*)\] */mg, '')
   const syncedLyrics = props.lyrics
