@@ -62,7 +62,7 @@
             </div>
           </div>
 
-          <div class="h-full grow overflow-hidden">
+          <div class="h-full overflow-hidden w-full max-w-full" @keydown="handleKeydown" @wheel="handleWheel">
             <AsyncCodemirror
               v-if="shouldLoadCodeMirror"
               v-model="unifiedLyrics"
@@ -135,6 +135,10 @@ const plainTextLintResult = ref([])
 const runner = ref(null)
 const currentIndex = ref(null)
 
+const codemirrorStyle = ref({
+  fontSize: 1.0
+})
+
 const addLineHighlight = StateEffect.define()
 
 const lineHighlightField = StateField.define({
@@ -178,6 +182,40 @@ const resumeOrPlay = () => {
   } else {
     playTrack(editingTrack.value)
   }
+}
+
+const handleWheel = (payload) => {
+  if (!payload.ctrlKey) return;
+
+  changeCodemirrorFontSizeBy(payload.deltaY > 0 ? -1 : +1)
+}
+
+const handleKeydown = (payload) => {
+  if (!payload.ctrlKey) return;
+
+  switch (payload.key) {
+    case '+':
+    case '=':
+      changeCodemirrorFontSizeBy(+1)
+      break;
+    case '-':
+    case '_':
+      changeCodemirrorFontSizeBy(-1)
+      break;
+    default:
+      break;
+  }
+
+}
+
+const changeCodemirrorFontSizeBy = (offset) => {
+  if (!shouldLoadCodeMirror) return;
+
+
+  let newFontSize = codemirrorStyle.value.fontSize + offset * 0.1;
+  if (newFontSize < 0.4) newFontSize = 0.4;
+
+  codemirrorStyle.value.fontSize = +(newFontSize.toFixed(2));
 }
 
 const handleReady = (payload) => {
@@ -399,7 +437,16 @@ const publishPlainText = async () => {
 
 </script>
 
+
+<style scoped>
+.codemirror-custom {
+  font-size: calc(v-bind('codemirrorStyle.fontSize') * 1em);
+}
+</style>
+
 <style>
+
+
 .codemirror-custom .cm-editor {
   @apply outline-none h-full;
 }
@@ -412,8 +459,15 @@ const publishPlainText = async () => {
   @apply font-bold;
 }
 
+.codemirror-custom .cm-content {
+  /* Some padding to prevent the text from touching the edge, 
+  the gutter calculates its width internally so it's hard to calculate exactly */
+  @apply max-w-[calc(100%-4rem)];
+}
+
 .codemirror-custom .cm-line {
-  @apply text-brave-10;
+  /* Text folding */
+  @apply text-brave-10 break-words whitespace-pre-wrap w-full;
 }
 
 .codemirror-custom .cm-activeLine {
@@ -425,6 +479,6 @@ const publishPlainText = async () => {
 }
 
 .codemirror-custom .cm-gutters {
-  @apply bg-brave-90/20 text-brave-40 border-r border-brave-90;
+  @apply bg-brave-90 text-brave-40 border-r border-brave-90;
 }
 </style>
