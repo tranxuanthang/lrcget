@@ -63,6 +63,7 @@
           </div>
 
           
+          // NOTE: AsyncCodemirror component does not have @wheel event handler, so it has to be handled here (in the container)
           <div class="h-full overflow-hidden w-full max-w-full" @keydown="handleKeydown" @wheel="handleWheel">
             <AsyncCodemirror
               v-if="shouldLoadCodeMirror"
