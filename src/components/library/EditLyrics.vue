@@ -43,7 +43,7 @@
           </div>
         </div>
 
-        <div class="px-6 py-2 grow overflow-hidden flex flex-col gap-4">
+        <div class="px-6 py-2 grow overflow-hidden flex flex-col gap-2">
           <div class="flex flex-col bg-brave-95 rounded-lg">
             <div class="toolbar px-4 py-2 flex items-stretch gap-1">
               <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line & move next (Alt+Enter)" @click="syncLine"><EqualEnter /> <span class="text-xs">Sync Line & Move Next</span></button>
@@ -62,7 +62,9 @@
             </div>
           </div>
 
-          <div class="h-full grow overflow-hidden">
+          
+          <!-- NOTE: AsyncCodemirror component does not have @wheel event handler, so it has to be handled here (in the container) -->
+          <div class="h-full overflow-hidden w-full max-w-full" @keydown="handleKeydown" @wheel="handleWheel">
             <AsyncCodemirror
               v-if="shouldLoadCodeMirror"
               v-model="unifiedLyrics"
@@ -81,6 +83,16 @@
               <div>Loading editor...</div>
             </div>
           </div>
+          
+          
+          <div v-if="shouldLoadCodeMirror" class="flex flex-col w-fit self-end bg-brave-95 rounded-lg">
+            <div class="toolbar px-2 py-1 flex items-stretch gap-1">
+              <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom out" @click="changeCodemirrorFontSizeBy(-1)"><MagnifyMinus /></button>
+              <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full w-[4.5em]" title="Reset zoom level" @click="resetCodemirrorFontSize">{{ (codemirrorStyle.fontSize * 100).toFixed(0) }}%</button>
+              <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom in" @click="changeCodemirrorFontSizeBy(+1)"><MagnifyPlus /></button>
+            </div>
+          </div>
+
         </div>
       </div>
     </div>
@@ -96,7 +108,7 @@
 <script setup>
 import { invoke } from '@tauri-apps/api/tauri'
 import { ref, onMounted, onUnmounted, shallowRef, watch } from 'vue'
-import { Close, Loading, Equal, Play, Pause, MotionPlay, Minus, Plus, Check, AlertCircleOutline, AlertCircle } from 'mdue'
+import { Close, Loading, Equal, Play, Pause, MotionPlay, Minus, Plus, Check, AlertCircleOutline, AlertCircle, MagnifyPlus, MagnifyMinus } from 'mdue'
 import DropdownButton from '@/components/ui/DropdownButton.vue'
 import DropdownItem from '@/components/ui/DropdownItem.vue'
 import EqualEnter from '@/components/icons/EqualEnter.vue'
@@ -134,6 +146,10 @@ const plainTextLintResult = ref([])
 
 const runner = ref(null)
 const currentIndex = ref(null)
+
+const codemirrorStyle = ref({
+  fontSize: 1.0
+})
 
 const addLineHighlight = StateEffect.define()
 
@@ -180,12 +196,52 @@ const resumeOrPlay = () => {
   }
 }
 
+const handleWheel = (payload) => {
+  if (!payload.ctrlKey) return;
+
+  changeCodemirrorFontSizeBy(payload.deltaY > 0 ? -1 : +1)
+}
+
+const handleKeydown = (payload) => {
+  if (!payload.ctrlKey) return;
+
+  switch (payload.key) {
+    case '+':
+    case '=':
+      changeCodemirrorFontSizeBy(+1)
+      break;
+    case '-':
+    case '_':
+      changeCodemirrorFontSizeBy(-1)
+      break;
+    default:
+      break;
+  }
+
+}
+
+const changeCodemirrorFontSizeBy = (offset) => {
+  if (!shouldLoadCodeMirror) return;
+
+
+  let newFontSize = codemirrorStyle.value.fontSize + offset * 0.1;
+  if (newFontSize < 0.4) newFontSize = 0.4;
+
+  codemirrorStyle.value.fontSize = +(newFontSize.toFixed(2));
+}
+
 const handleReady = (payload) => {
   view.value = payload.view
 
   setTimeout(() => {
     view.value.scrollDOM.scrollTop = 0
   }, 100)
+}
+
+const resetCodemirrorFontSize = () => {
+  if (!shouldLoadCodeMirror) return;
+
+  codemirrorStyle.value.fontSize = 1.0
 }
 
 const lyricsUpdated = (newLyrics) => {
@@ -399,7 +455,16 @@ const publishPlainText = async () => {
 
 </script>
 
+
+<style scoped>
+.codemirror-custom {
+  font-size: calc(v-bind('codemirrorStyle.fontSize') * 1em);
+}
+</style>
+
 <style>
+
+
 .codemirror-custom .cm-editor {
   @apply outline-none h-full;
 }
@@ -412,8 +477,15 @@ const publishPlainText = async () => {
   @apply font-bold;
 }
 
+.codemirror-custom .cm-content {
+  /* Some padding to prevent the text from touching the edge, 
+  the gutter calculates its width internally so it's hard to calculate exactly */
+  @apply max-w-[90%];
+}
+
 .codemirror-custom .cm-line {
-  @apply text-brave-10;
+  /* Text folding */
+  @apply text-brave-10 break-words whitespace-pre-wrap w-full;
 }
 
 .codemirror-custom .cm-activeLine {
@@ -425,6 +497,6 @@ const publishPlainText = async () => {
 }
 
 .codemirror-custom .cm-gutters {
-  @apply bg-brave-90/20 text-brave-40 border-r border-brave-90;
+  @apply bg-brave-90 text-brave-40 border-r border-brave-90;
 }
 </style>
