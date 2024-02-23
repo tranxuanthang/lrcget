@@ -113,10 +113,10 @@ import Config from './library/Config.vue'
 import SearchLyrics from './library/SearchLyrics.vue'
 import EditLyrics from './library/EditLyrics.vue'
 import { useToast } from 'vue-toastification'
-import { usePlayer } from '../composables/player.js'
 import { useDownloader } from '../composables/downloader.js'
 import { useSearchLyrics } from '../composables/search-lyrics.js'
 import { useEditLyrics } from '../composables/edit-lyrics.js'
+import { usePlayer } from '@/composables/player.js'
 
 const toast = useToast()
 const { playingTrack, status, duration, progress, playTrack, pause, resume, stop, seek } = usePlayer()

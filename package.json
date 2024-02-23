@@ -12,7 +12,6 @@
     "@tailwindcss/line-clamp": "^0.4.4",
     "@tauri-apps/api": "^1.5.0",
     "codemirror": "^6.0.1",
-    "howler": "github:tranxuanthang/howler.js",
     "lodash": "^4.17.21",
     "lrc-kit": "github:tranxuanthang/lrc-kit",
     "mdue": "^0.1.4",

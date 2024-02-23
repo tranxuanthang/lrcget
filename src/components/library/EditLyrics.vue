@@ -130,7 +130,7 @@ const AsyncCodemirror = defineAsyncComponent(async () => {
   return Codemirror
 })
 
-const { status, duration, progress, setTrack, playTrack, pause, resume, seek, unload } = usePlayer()
+const { status, duration, progress, playTrack, pause, resume, seek } = usePlayer()
 const toast = useToast()
 const props = defineProps(['isShow'])
 const { editingTrack } = useEditLyrics()
@@ -367,8 +367,8 @@ onMounted(async () => {
     unifiedLyrics.value = ''
   }
 
-  unload()
-  setTrack(editingTrack.value, false)
+  stop()
+  playTrack(editingTrack.value)
 
   const parsed = Lrc.parse(unifiedLyrics.value)
 

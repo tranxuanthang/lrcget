@@ -10,17 +10,13 @@ pub mod persistent_entities;
 pub mod lrclib;
 pub mod lyrics;
 pub mod state;
+pub mod player;
 
 use persistent_entities::{PersistentTrack, PersistentAlbum, PersistentArtist, PersistentConfig};
+use player::Player;
 use tauri::{State, Manager, AppHandle};
 use rusqlite::Connection;
 use state::{AppState, ServiceAccess};
-use axum::{
-  http::{HeaderValue, Method},
-  Router
-};
-use tower_http::services::ServeDir;
-use tower_http::cors::CorsLayer;
 use serde::Serialize;
 
 #[derive(Clone, Serialize)]
@@ -264,21 +260,73 @@ async fn publish_lyrics(title: String, album_name: String, artist_name: String, 
 }
 
 #[tauri::command]
+fn play_track(track_id: i64, app_state: tauri::State<AppState>, app_handle: AppHandle) -> Result<(), String> {
+  let track = app_handle.db(|db| db::get_track_by_id(track_id, db)).map_err(|err| err.to_string())?;
+
+  let mut player_guard = app_state.player.lock().unwrap();
+
+  if let Some(ref mut player) = *player_guard {
+    player.play(track).map_err(|err| err.to_string())?;
+  }
+
+  Ok(())
+}
+
+#[tauri::command]
+fn pause_track(app_state: tauri::State<AppState>) -> Result<(), String> {
+  let mut player_guard = app_state.player.lock().unwrap();
+
+  if let Some(ref mut player) = *player_guard {
+    player.pause().map_err(|err| err.to_string())?;
+  }
+
+  Ok(())
+}
+
+#[tauri::command]
+fn resume_track(app_state: tauri::State<AppState>) -> Result<(), String> {
+  let mut player_guard = app_state.player.lock().unwrap();
+
+  if let Some(ref mut player) = *player_guard {
+    player.resume().map_err(|err| err.to_string())?;
+  }
+
+  Ok(())
+}
+
+#[tauri::command]
+fn seek_track(position: f64, app_state: tauri::State<AppState>) -> Result<(), String> {
+  let mut player_guard = app_state.player.lock().unwrap();
+
+  if let Some(ref mut player) = *player_guard {
+    player.seek(position).map_err(|err| err.to_string())?;
+  }
+
+  Ok(())
+}
+
+#[tauri::command]
+fn stop_track(app_state: tauri::State<AppState>) -> Result<(), String> {
+  let mut player_guard = app_state.player.lock().unwrap();
+
+  if let Some(ref mut player) = *player_guard {
+    player.stop().map_err(|err| err.to_string())?;
+  }
+
+  Ok(())
+}
+
+#[tauri::command]
 fn open_devtools(window: tauri::Window) {
   {
     window.open_devtools();
   }
 }
 
-#[tauri::command]
-fn convert_file_src_2(path: String) -> String {
-  format!("http://localhost:16780{}", path)
-}
-
 #[tokio::main]
 async fn main() {
   tauri::Builder::default()
-    .manage(AppState { db: Default::default() })
+    .manage(AppState { db: Default::default(), player: Default::default() })
     .setup(|app| {
       let handle = app.handle();
 
@@ -286,21 +334,25 @@ async fn main() {
       let db = db::initialize_database(&handle).expect("Database initialize should succeed");
       *app_state.db.lock().unwrap() = Some(db);
 
-      #[cfg(target_os = "linux")]
+      let player = Player::new();
+      *app_state.player.lock().unwrap() = Some(player);
+
+      let handle_clone = handle.clone();
+
       tokio::spawn(async move {
-        let serve_dir = ServeDir::new("/");
+        let mut interval = tokio::time::interval(std::time::Duration::from_millis(40));
+        loop {
+          interval.tick().await;
+          {
+            let app_state: State<AppState> = handle_clone.state();
+            let mut player_guard = app_state.player.lock().unwrap();
+            if let Some(ref mut player) = *player_guard {
+              player.renew_state();
 
-        let axum_app = Router::new()
-          .nest_service("/", serve_dir)
-          .layer(
-            CorsLayer::new()
-              .allow_origin("*".parse::<HeaderValue>().unwrap())
-              .allow_methods([Method::GET, Method::OPTIONS])
-              .allow_headers(tower_http::cors::Any)
-          );
-
-        axum::Server::bind(&"127.0.0.1:16780".parse().unwrap())
-          .serve(axum_app.into_make_service()).await.unwrap();
+              handle_clone.emit_all("player-state", &player).unwrap();
+            }
+          }
+        }
       });
 
       Ok(())
@@ -325,8 +377,12 @@ async fn main() {
       search_lyrics,
       save_lyrics,
       publish_lyrics,
-      open_devtools,
-      convert_file_src_2
+      play_track,
+      pause_track,
+      resume_track,
+      seek_track,
+      stop_track,
+      open_devtools
     ])
     .run(tauri::generate_context!())
     .expect("error while running tauri application");

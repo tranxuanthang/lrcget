@@ -30,6 +30,8 @@ tokio = { version = "1.28.1", features = ["full"] }
 tower-http = { version = "0.4.0", features = ["fs", "cors"] }
 ring = "0.16.20"
 data-encoding = "2.4.0"
+kira = "0.8.7"
+symphonia = { version = "0.5.2", features = ["all"] }
 
 [features]
 # by default Tauri runs in production mode
@@ -38,3 +40,30 @@ default = [ "custom-protocol" ]
 # this feature is used used for production builds where `devPath` points to the filesystem
 # DO NOT remove this
 custom-protocol = [ "tauri/custom-protocol" ]
+
+[profile.dev.package.kira]
+opt-level = 3
+
+[profile.dev.package.cpal]
+opt-level = 3
+
+[profile.dev.package.symphonia]
+opt-level = 3
+
+[profile.dev.package.symphonia-bundle-mp3]
+opt-level = 3
+
+[profile.dev.package.symphonia-format-ogg]
+opt-level = 3
+
+[profile.dev.package.symphonia-codec-vorbis]
+opt-level = 3
+
+[profile.dev.package.symphonia-bundle-flac]
+opt-level = 3
+
+[profile.dev.package.symphonia-format-wav]
+opt-level = 3
+
+[profile.dev.package.symphonia-codec-pcm]
+opt-level = 3
