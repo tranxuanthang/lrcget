@@ -199,7 +199,7 @@ pub fn load_tracks_from_directories(directories: &Vec<String>, conn: &mut Connec
   let mut files_scanned: usize = 0;
   for directory in directories.iter() {
     let mut entry_batch: Vec<DirEntry> = vec![];
-    let globwalker = glob(format!("{}/**/*.{{mp3,m4a,flac,ogg,opus,MP3,M4A,FLAC,OGG,OPUS}}", directory))?;
+    let globwalker = glob(format!("{}/**/*.{{mp3,m4a,flac,ogg,opus,wav,MP3,M4A,FLAC,OGG,OPUS,WAV}}", directory))?;
     for item in globwalker {
       let entry = item?;
       entry_batch.push(entry);
@@ -225,7 +225,7 @@ pub fn load_tracks_from_directories(directories: &Vec<String>, conn: &mut Connec
 pub fn count_files_from_directories(directories: &Vec<String>) -> Result<usize> {
   let mut files_count = 0;
   for directory in directories.iter() {
-    let files_in_dir = glob(format!("{}/**/*.{{mp3,m4a,flac,ogg,opus,MP3,M4A,FLAC,OGG,OPUS}}", directory))?;
+    let files_in_dir = glob(format!("{}/**/*.{{mp3,m4a,flac,ogg,opus,wav,MP3,M4A,FLAC,OGG,OPUS,WAV}}", directory))?;
     files_count += files_in_dir.into_iter().count();
   }
 
