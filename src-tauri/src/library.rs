@@ -48,12 +48,36 @@ pub fn get_tracks(conn: &Connection) -> Result<Vec<PersistentTrack>> {
   db::get_tracks(conn)
 }
 
+pub fn get_track_ids(conn: &Connection) -> Result<Vec<i64>> {
+  db::get_track_ids(conn)
+}
+
+pub fn get_track(id: i64, conn: &Connection) -> Result<PersistentTrack> {
+  db::get_track_by_id(id, conn)
+}
+
 pub fn get_albums(conn: &Connection) -> Result<Vec<PersistentAlbum>> {
   db::get_albums(conn)
 }
 
+pub fn get_album_ids(conn: &Connection) -> Result<Vec<i64>> {
+  db::get_album_ids(conn)
+}
+
+pub fn get_album(id: i64, conn: &Connection) -> Result<PersistentAlbum> {
+  db::get_album_by_id(id, conn)
+}
+
 pub fn get_artists(conn: &Connection) -> Result<Vec<PersistentArtist>> {
   db::get_artists(conn)
+}
+
+pub fn get_artist_ids(conn: &Connection) -> Result<Vec<i64>> {
+  db::get_artist_ids(conn)
+}
+
+pub fn get_artist(id: i64, conn: &Connection) -> Result<PersistentArtist> {
+  db::get_artist_by_id(id, conn)
 }
 
 pub fn get_album_tracks(album_id: i64, conn: &Connection) -> Result<Vec<PersistentTrack>> {

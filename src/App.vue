@@ -1,17 +1,8 @@
 <template>
-  <div class="h-screen w-screen flex flex-col select-none border border-brave-90">
-    <div data-tauri-drag-region class="flex justify-end items-start text-sm flex-none z-50">
-      <div class="py-2 px-4 text-hoa-1400 hover:bg-hoa-600 active:bg-hoa-800 transition" @click="openDevtools">
+  <div class="h-screen w-screen flex flex-col select-none">
+    <div class="fixed top-0 left-0 flex justify-end items-start text-sm flex-none z-50">
+      <div class="p-0.5 m-1 rounded-full text-sm text-hoa-1400 hover:bg-hoa-600 active:bg-hoa-800 transition" @click="openDevtools">
         <Bug />
-      </div>
-      <div class="py-2 px-4 text-brave-35 hover:bg-brave-90 active:bg-brave-80 transition" @click="minimizeWindow">
-        <WindowMinimize />
-      </div>
-      <div class="py-2 px-4 text-brave-35 hover:bg-brave-90 active:bg-brave-80 transition"  @click="maximizeWindow">
-        <WindowMaximize />
-      </div>
-      <div class="py-2 px-4 text-brave-35 hover:bg-brave-35 active:bg-brave-30 hover:text-white active:text-white transition"  @click="closeWindow">
-        <WindowClose />
       </div>
     </div>
     <div v-if="!loading" class="grow overflow-hidden">

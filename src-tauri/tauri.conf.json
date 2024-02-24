@@ -84,8 +84,8 @@
         "height": 768,
         "resizable": true,
         "title": "LRCGET",
-        "decorations": false,
-        "transparent": true
+        "decorations": true,
+        "transparent": false
       }
     ]
   }

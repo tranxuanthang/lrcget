@@ -1,36 +1,89 @@
 <template>
-  <table>
-    <thead class="">
-      <tr class="text-xs text-brave-30/70 font-bold">
-        <th class="text-left">Track</th>
-        <th class="text-right">Duration</th>
-        <th class="text-left">Lyrics</th>
-        <th class="text-right"></th>
-      </tr>
-    </thead>
-    <tbody>
-      <TrackItem
-        v-for="track in tracks"
-        :key="track.file_path"
-        :track="track"
-        :title="track.title"
-        :album-name="track.album_name"
-        :artist-name="track.artist_name"
-        :txt-lyrics="track.txt_lyrics"
-        :lrc-lyrics="track.lrc_lyrics"
-        :duration="track.duration"
-        @play-track="$emit('playTrack', track)"
-        @download-lyrics="$emit('downloadLyrics', track)"
-      />
-    </tbody>
-  </table>
+  <div ref="parentRef" class="p-4 bg-brave-99 overflow-y-auto grow" v-show="props.isActive">
+    <div
+      :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }"
+    >
+      <div class="w-full">
+        <div class="w-full flex">
+          <div class="text-xs text-brave-30/70 font-bold flex w-full">
+            <div class="text-left flex-none w-[65%] p-1">Track</div> <!-- Adjusted width percentage -->
+            <div class="text-right flex-none w-[10%] p-1">Duration</div>
+            <div class="text-center flex-none w-[10%] p-1">Lyrics</div>
+            <div class="text-right flex-none w-[15%] p-1"></div>
+          </div>
+        </div>
+        <div class="w-full flex flex-col">
+          <div
+            v-for="virtualRow in virtualRows"
+            :key="virtualRow.index"
+            class="group flex flex-col w-full"
+            :style="{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: `${virtualRow.size}px`,
+              transform: `translateY(${virtualRow.start}px)`,
+              }"
+          >
+            <TrackItem
+              :trackId="virtualRow.key"
+              @play-track="playTrack"
+              @download-lyrics="downloadLyrics"
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
 </template>
 
 <script setup>
-import TrackItem from './track-list/TrackItem.vue'
+import TrackItem from './track-list/TrackItem2.vue'
+import { useVirtualizer } from '@tanstack/vue-virtual'
+import { ref, computed, watch, onMounted } from 'vue'
+import { invoke } from '@tauri-apps/api/tauri'
 
-const props = defineProps(['tracks'])
-defineEmits(['playTrack', 'downloadLyrics'])
+const props = defineProps(['isActive'])
+const emit = defineEmits(['playTrack', 'downloadLyrics'])
+
+const trackIds = ref([])
+const parentRef = ref(null)
+
+const rowVirtualizer = useVirtualizer(
+  computed(() => ({
+    count: trackIds.value.length,
+    getScrollElement: () => parentRef.value,
+    estimateSize: () => 48,
+    overscan: 5,
+    paddingStart: 32,
+    getItemKey: (index) => trackIds.value[index]
+  }))
+)
+
+const virtualRows = computed(() => rowVirtualizer.value.getVirtualItems())
+
+const totalSize = computed(() => rowVirtualizer.value.getTotalSize())
+
+const playTrack = (track) => {
+  emit('playTrack', track)
+}
+
+const downloadLyrics = (track) => {
+  emit('downloadLyrics', track)
+}
+
+onMounted(async () => {
+  if (props.isActive) {
+    trackIds.value = await invoke('get_track_ids')
+  }
+})
+
+watch(() => props.isActive, async () => {
+  if (props.isActive) {
+    trackIds.value = await invoke('get_track_ids')
+  }
+})
 </script>
 
 <style scoped>
