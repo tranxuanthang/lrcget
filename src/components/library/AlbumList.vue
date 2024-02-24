@@ -1,5 +1,5 @@
 <template>
-  <div ref="parentRef" class="p-4 bg-brave-99 overflow-y-auto grow" v-show="props.isActive">
+  <div ref="parentRef" class="p-4 bg-brave-99 overflow-y-auto h-full" v-show="props.isActive">
     <div
       :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }"
     >
@@ -29,6 +29,10 @@
         </div>
       </div>
     </div>
+
+    <Transition name="slide-fade">
+      <AlbumTrackList v-if="currentAlbum" :album="currentAlbum" @back="currentAlbum = null" />
+    </Transition>
   </div>
 </template>
 
@@ -36,6 +40,7 @@
 import { DownloadMultiple } from 'mdue'
 import { ref, computed, onMounted, watch } from 'vue'
 import AlbumItem from './album-list/AlbumItem.vue'
+import AlbumTrackList from './album-list/AlbumTrackList.vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { invoke } from '@tauri-apps/api/tauri'
 import { listen } from '@tauri-apps/api/event'
@@ -45,6 +50,7 @@ const emit = defineEmits(['downloadLyricsMultiple'])
 
 const albumIds = ref([])
 const parentRef = ref(null)
+const currentAlbum = ref(null)
 
 const rowVirtualizer = useVirtualizer(
   computed(() => ({
@@ -62,7 +68,7 @@ const virtualRows = computed(() => rowVirtualizer.value.getVirtualItems())
 const totalSize = computed(() => rowVirtualizer.value.getTotalSize())
 
 const openAlbum = async (album) => {
-  // TODO
+  currentAlbum.value = album
 }
 
 const downloadLyricsMultiple = async (album) => {

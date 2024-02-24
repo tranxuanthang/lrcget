@@ -8,25 +8,27 @@
       @downloadAllLyrics="downloadAllLyrics"
     />
 
-    <TrackList
-      :isActive="activeTab === 'tracks'"
-      @play-track="playTrack"
-      @download-lyrics="downloadLyrics"
-    />
+    <div class="relative grow overflow-hidden">
+      <TrackList
+        :isActive="activeTab === 'tracks'"
+        @play-track="playTrack"
+        @download-lyrics="downloadLyrics"
+      />
 
-    <AlbumList
-      :isActive="activeTab === 'albums'"
-      @play-track="playTrack"
-      @download-lyrics="downloadLyrics"
-      @download-lyrics-multiple="downloadLyricsMultiple"
-    />
+      <AlbumList
+        :isActive="activeTab === 'albums'"
+        @play-track="playTrack"
+        @download-lyrics="downloadLyrics"
+        @download-lyrics-multiple="downloadLyricsMultiple"
+      />
 
-    <ArtistList
-      :isActive="activeTab === 'artists'"
-      @play-track="playTrack"
-      @download-lyrics="downloadLyrics"
-      @download-lyrics-multiple="downloadLyricsMultiple"
-    />
+      <ArtistList
+        :isActive="activeTab === 'artists'"
+        @play-track="playTrack"
+        @download-lyrics="downloadLyrics"
+        @download-lyrics-multiple="downloadLyricsMultiple"
+      />
+    </div>
 
     <NowPlaying class="flex-none border-t border-brave-90" :playingTrack="playingTrack" :status="status" :duration="duration" :progress="progress" @pause="pause" @resume="resume" @seek="seek" />
   </div>

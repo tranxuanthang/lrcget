@@ -205,6 +205,24 @@ async fn get_artist_tracks(artist_id: i64, app_state: State<'_, AppState>) -> Re
 }
 
 #[tauri::command]
+async fn get_album_track_ids(album_id: i64, app_state: State<'_, AppState>) -> Result<Vec<i64>, String> {
+  let conn_guard = app_state.db.lock().unwrap();
+  let conn = conn_guard.as_ref().unwrap();
+  let track_ids = library::get_album_track_ids(album_id, conn).map_err(|err| err.to_string())?;
+
+  Ok(track_ids)
+}
+
+#[tauri::command]
+async fn get_artist_track_ids(artist_id: i64, app_state: State<'_, AppState>) -> Result<Vec<i64>, String> {
+  let conn_guard = app_state.db.lock().unwrap();
+  let conn = conn_guard.as_ref().unwrap();
+  let track_ids = library::get_artist_track_ids(artist_id, conn).map_err(|err| err.to_string())?;
+
+  Ok(track_ids)
+}
+
+#[tauri::command]
 async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String, String> {
   let track = app_handle.db(|db| db::get_track_by_id(track_id, db)).map_err(|err| err.to_string())?;
   let lyrics = lyrics::download_lyrics_for_track(track).await.map_err(|err| err.to_string())?;
@@ -432,6 +450,8 @@ async fn main() {
       get_artist,
       get_album_tracks,
       get_artist_tracks,
+      get_album_track_ids,
+      get_artist_track_ids,
       download_lyrics,
       apply_lyrics,
       retrieve_lyrics,

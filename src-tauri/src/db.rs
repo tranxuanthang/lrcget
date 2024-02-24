@@ -533,6 +533,24 @@ pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<Persistent
   Ok(tracks)
 }
 
+pub fn get_album_track_ids(album_id: i64, db: &Connection) -> Result<Vec<i64>> {
+  let mut statement = db.prepare(indoc! {"
+      SELECT tracks.id
+      FROM tracks
+      JOIN albums ON tracks.album_id = albums.id
+      WHERE tracks.album_id = ?
+      ORDER BY title ASC
+  "})?;
+  let mut rows = statement.query([album_id])?;
+  let mut tracks: Vec<i64> = Vec::new();
+
+  while let Some(row) = rows.next()? {
+    tracks.push(row.get("id")?);
+  }
+
+  Ok(tracks)
+}
+
 pub fn get_artist_tracks(artist_id: i64, db: &Connection) -> Result<Vec<PersistentTrack>> {
   let mut statement = db.prepare(indoc! {"
       SELECT tracks.id, file_path, file_name, title, artists.name AS artist_name,
@@ -564,6 +582,24 @@ pub fn get_artist_tracks(artist_id: i64, db: &Connection) -> Result<Vec<Persiste
     };
 
     tracks.push(track);
+  }
+
+  Ok(tracks)
+}
+
+pub fn get_artist_track_ids(artist_id: i64, db: &Connection) -> Result<Vec<i64>> {
+  let mut statement = db.prepare(indoc! {"
+      SELECT tracks.id
+      FROM tracks
+      JOIN artists ON tracks.artist_id = artists.id
+      WHERE tracks.artist_id = ?
+      ORDER BY title ASC
+  "})?;
+  let mut rows = statement.query([artist_id])?;
+  let mut tracks: Vec<i64> = Vec::new();
+
+  while let Some(row) = rows.next()? {
+    tracks.push(row.get("id")?);
   }
 
   Ok(tracks)

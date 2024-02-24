@@ -1,5 +1,5 @@
 <template>
-  <div ref="parentRef" class="p-4 bg-brave-99 overflow-y-auto grow" v-show="props.isActive">
+  <div ref="parentRef" class="p-4 bg-brave-99 overflow-y-auto h-full" v-show="props.isActive">
     <div
       :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }"
     >
@@ -29,22 +29,28 @@
         </div>
       </div>
     </div>
+
+    <Transition name="slide-fade">
+      <ArtistTrackList v-if="currentArtist" :artist="currentArtist" @back="currentArtist = null" />
+    </Transition>
   </div>
 </template>
 
 <script setup>
 import { DownloadMultiple } from 'mdue'
 import { ref, computed, onMounted, watch } from 'vue'
-import ArtistItem from './artist-list/ArtistItem.vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { invoke } from '@tauri-apps/api/tauri'
 import { listen } from '@tauri-apps/api/event'
+import ArtistItem from './artist-list/ArtistItem.vue'
+import ArtistTrackList from './artist-list/ArtistTrackList.vue'
 
 const props = defineProps(['isActive'])
 const emit = defineEmits(['downloadLyricsMultiple'])
 
 const artistIds = ref([])
 const parentRef = ref(null)
+const currentArtist = ref(null)
 
 const rowVirtualizer = useVirtualizer(
   computed(() => ({
@@ -62,7 +68,7 @@ const virtualRows = computed(() => rowVirtualizer.value.getVirtualItems())
 const totalSize = computed(() => rowVirtualizer.value.getTotalSize())
 
 const openArtist = async (artist) => {
-  // TODO
+  currentArtist.value = artist
 }
 
 const downloadLyricsMultiple = async (artist) => {

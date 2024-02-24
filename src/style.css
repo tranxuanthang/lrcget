@@ -114,3 +114,17 @@ body {
 /* Applied to a wrapper div when using a custom component as content */
 .Vue-Toastification__toast-component-body.toast-body-2 {
 }
+
+.slide-fade-enter-active {
+  transition: all 0.2s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.2s ease-out;
+}
+
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateX(100px);
+  opacity: 0;
+}

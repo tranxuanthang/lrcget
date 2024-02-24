@@ -88,6 +88,14 @@ pub fn get_artist_tracks(artist_id: i64, conn: &Connection) -> Result<Vec<Persis
   db::get_artist_tracks(artist_id, conn)
 }
 
+pub fn get_album_track_ids(album_id: i64, conn: &Connection) -> Result<Vec<i64>> {
+  db::get_album_track_ids(album_id, conn)
+}
+
+pub fn get_artist_track_ids(artist_id: i64, conn: &Connection) -> Result<Vec<i64>> {
+  db::get_artist_track_ids(artist_id, conn)
+}
+
 pub fn get_init(conn: &Connection) -> Result<bool> {
   db::get_init(conn)
 }

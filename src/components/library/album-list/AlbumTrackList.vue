@@ -1,8 +1,28 @@
 <template>
-  <div ref="parentRef" class="p-4 bg-brave-99 overflow-y-auto h-full" v-show="props.isActive">
+  <div ref="parentRef" class="absolute top-0 left-0 w-full h-full bg-brave-99 p-4 shadow-lg overflow-y-auto">
     <div
       :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }"
     >
+      <div class="mb-4">
+        <button
+          class="text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4"
+          @click="$emit('back')"
+        >
+          <ArrowLeft />
+        </button>
+      </div>
+
+      <div class="flex flex-col mb-8">
+        <div class="text-thin text-xl text-brave-15">
+          {{ album.name }}
+        </div>
+        <div class="flex items-center gap-2">
+          <div class="text-sm text-brave-30 group-hover:text-brave-20 transition">{{ album.tracks_count }} tracks</div>
+          <div class="border-r border-brave-80 h-3 flex-none"></div>
+          <div class="text-sm text-brave-30 group-hover:text-brave-20 transition">{{ album.artist_name }}</div>
+        </div>
+      </div>
+
       <div class="w-full">
         <div class="w-full flex">
           <div class="text-xs text-brave-30/70 font-bold flex w-full">
@@ -39,13 +59,14 @@
 </template>
 
 <script setup>
-import TrackItem from './track-list/TrackItem.vue'
+import { ArrowLeft } from 'mdue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { ref, computed, watch, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/tauri'
+import TrackItem from '../track-list/TrackItem.vue'
 
-const props = defineProps(['isActive'])
-const emit = defineEmits(['playTrack', 'downloadLyrics'])
+const props = defineProps(['album'])
+const emit = defineEmits(['back', 'playTrack', 'downloadLyrics'])
 
 const trackIds = ref([])
 const parentRef = ref(null)
@@ -56,7 +77,7 @@ const rowVirtualizer = useVirtualizer(
     getScrollElement: () => parentRef.value,
     estimateSize: () => 48,
     overscan: 5,
-    paddingStart: 32,
+    paddingStart: 175,
     getItemKey: (index) => trackIds.value[index]
   }))
 )
@@ -74,14 +95,6 @@ const downloadLyrics = (track) => {
 }
 
 onMounted(async () => {
-  if (props.isActive) {
-    trackIds.value = await invoke('get_track_ids')
-  }
-})
-
-watch(() => props.isActive, async () => {
-  if (props.isActive) {
-    trackIds.value = await invoke('get_track_ids')
-  }
+  trackIds.value = await invoke('get_album_track_ids', { albumId: props.album.id })
 })
 </script>
