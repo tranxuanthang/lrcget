@@ -229,16 +229,12 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
   match lyrics {
     lrclib::get::Response::SyncedLyrics(synced_lyrics) => {
       app_handle.db(|db: &Connection| db::update_track_lrc_lyrics(track_id, &synced_lyrics, db)).map_err(|err| err.to_string())?;
-      std::thread::spawn(move || {
-        app_handle.emit_all("reload-database", ()).unwrap();
-      });
+      app_handle.emit_all("reload-track-id", track_id).unwrap();
       Ok("Synced lyrics downloaded".to_owned())
     }
     lrclib::get::Response::UnsyncedLyrics(plain_lyrics) => {
       app_handle.db(|db: &Connection| db::update_track_txt_lyrics(track_id, &plain_lyrics, db)).map_err(|err| err.to_string())?;
-      std::thread::spawn(move || {
-        app_handle.emit_all("reload-database", ()).unwrap();
-      });
+      app_handle.emit_all("reload-track-id", track_id).unwrap();
       Ok("Plain lyrics downloaded".to_owned())
     }
     lrclib::get::Response::IsInstrumental => {
@@ -260,14 +256,14 @@ async fn apply_lyrics(track_id: i64, lrclib_response: lrclib::get::RawResponse, 
     lrclib::get::Response::SyncedLyrics(synced_lyrics) => {
       app_handle.db(|db: &Connection| db::update_track_lrc_lyrics(track_id, &synced_lyrics, db)).map_err(|err| err.to_string())?;
       std::thread::spawn(move || {
-        app_handle.emit_all("reload-database", ()).unwrap();
+        app_handle.emit_all("reload-track-id", track_id).unwrap();
       });
       Ok("Synced lyrics downloaded".to_owned())
     }
     lrclib::get::Response::UnsyncedLyrics(plain_lyrics) => {
       app_handle.db(|db: &Connection| db::update_track_txt_lyrics(track_id, &plain_lyrics, db)).map_err(|err| err.to_string())?;
       std::thread::spawn(move || {
-        app_handle.emit_all("reload-database", ()).unwrap();
+        app_handle.emit_all("reload-track-id", track_id).unwrap();
       });
       Ok("Plain lyrics downloaded".to_owned())
     }
@@ -301,9 +297,7 @@ async fn save_lyrics(track_id: i64, plain_lyrics: String, synced_lyrics: String,
   app_handle.db(|db: &Connection| db::update_track_txt_lyrics(track.id, &plain_lyrics, db)).map_err(|err| err.to_string())?;
   app_handle.db(|db: &Connection| db::update_track_lrc_lyrics(track.id, &synced_lyrics, db)).map_err(|err| err.to_string())?;
 
-  std::thread::spawn(move || {
-    app_handle.emit_all("reload-database", ()).unwrap();
-  });
+  app_handle.emit_all("reload-track-id", track_id).unwrap();
 
   Ok("Lyrics saved successfully".to_owned())
 }

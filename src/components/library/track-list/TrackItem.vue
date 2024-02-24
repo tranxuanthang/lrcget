@@ -44,6 +44,7 @@ import { useSearchLyrics } from '../../../composables/search-lyrics.js'
 import { useEditLyrics } from '../../../composables/edit-lyrics.js'
 import { ref, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/tauri'
+import { listen } from '@tauri-apps/api/event'
 import { usePlayer } from '@/composables/player.js'
 
 const { playTrack } = usePlayer()
@@ -56,19 +57,12 @@ const track = ref(null)
 
 onMounted(async () => {
   track.value = await invoke('get_track', { trackId: props.trackId })
+
+  listen('reload-track-id', async (event) => {
+    const payload = event.payload
+    if (track.value.id === payload) {
+      track.value = await invoke('get_track', { trackId: props.trackId })
+    }
+  })
 })
 </script>
-
-<style scoped>
-td {
-  @apply px-4 py-1 group-hover:bg-brave-95 cursor-pointer transition;
-}
-
-td:first-child {
-  @apply rounded-l-lg;
-}
-
-td:last-child {
-  @apply rounded-r-lg;
-}
-</style>

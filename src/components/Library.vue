@@ -133,7 +133,6 @@ const refreshLibrary = async () => {
     })
     await invoke('refresh_library')
     isInitializing.value = false
-    await retrieveData()
   } catch (error) {
     console.error(error)
     toast.error(`Unknown error happened when initializing the library. Error: ${error}`)
@@ -155,7 +154,6 @@ onMounted(async () => {
       })
       await invoke('initialize_library')
       isInitializing.value = false
-      await retrieveData()
     } catch (error) {
       console.error(error)
       toast.error(`Unknown error happened when initializing the library. Error: ${error}`)
@@ -166,10 +164,6 @@ onMounted(async () => {
   } else {
     isLoading.value = false
   }
-
-  listen('reload-database', async (event) => {
-    retrieveData()
-  })
 })
 
 onUnmounted(() => {
