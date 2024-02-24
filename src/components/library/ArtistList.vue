@@ -23,7 +23,6 @@
             <ArtistItem
               :artistId="virtualRow.key"
               @open-artist="openArtist"
-              @download-lyrics="downloadLyricsMultiple"
             />
           </div>
         </div>
@@ -46,7 +45,6 @@ import ArtistItem from './artist-list/ArtistItem.vue'
 import ArtistTrackList from './artist-list/ArtistTrackList.vue'
 
 const props = defineProps(['isActive'])
-const emit = defineEmits(['downloadLyricsMultiple'])
 
 const artistIds = ref([])
 const parentRef = ref(null)
@@ -69,11 +67,6 @@ const totalSize = computed(() => rowVirtualizer.value.getTotalSize())
 
 const openArtist = async (artist) => {
   currentArtist.value = artist
-}
-
-const downloadLyricsMultiple = async (artist) => {
-  const tracks = await invoke('get_artist_tracks', { artistId: artist.id })
-  emit('downloadLyricsMultiple', tracks)
 }
 
 onMounted(async () => {

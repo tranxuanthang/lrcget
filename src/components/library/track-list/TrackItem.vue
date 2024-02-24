@@ -52,8 +52,11 @@ const { playTrack } = usePlayer()
 const { searchLyrics } = useSearchLyrics()
 const { editLyrics } = useEditLyrics()
 const props = defineProps(['trackId'])
-defineEmits(['downloadLyrics'])
 const track = ref(null)
+
+// const downloadLyrics = () => {
+//   addToQueue([track.value.id])
+// }
 
 onMounted(async () => {
   track.value = await invoke('get_track', { trackId: props.trackId })

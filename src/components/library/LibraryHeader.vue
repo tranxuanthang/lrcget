@@ -29,21 +29,21 @@
         <button class="button button-normal px-4 py-1.5 rounded-full h-full"
           @click="$emit('showConfig')"><Cog /></button>
 
-        <button v-if="isDownloading && downloadedCount !== totalCount" class="button button-working px-4 py-1.5 text-xs rounded-full" @click="$emit('showDownloadViewer')">
+        <button v-if="isDownloading && downloadedCount !== totalCount" class="button button-working px-4 py-1.5 text-xs rounded-full" @click.prevent="$emit('showDownloadViewer')">
           <div class="animate-spin text-sm"><Loading /></div>
           <span>
             Downloading {{ downloadedCount }}/{{ totalCount }}
           </span>
         </button>
 
-        <button v-else-if="isDownloading" class="button button-done px-4 py-1.5 text-xs rounded-full" @click="$emit('showDownloadViewer')">
+        <button v-else-if="isDownloading" class="button button-done px-4 py-1.5 text-xs rounded-full" @click.prevent="$emit('showDownloadViewer')">
           <div class="text-sm"><Check /></div>
           <span>
             Downloaded {{ downloadedCount }}/{{ totalCount }}
           </span>
         </button>
 
-        <button v-else class="button button-primary px-4 py-1.5 text-xs rounded-full" @click="$emit('downloadAllLyrics')">
+        <button v-else class="button button-primary px-4 py-1.5 text-xs rounded-full" @click.prevent="$emit('downloadAllLyrics')">
           <div class="text-sm"><DownloadMultiple /></div>
           <span>
             Download all lyrics

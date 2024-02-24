@@ -10,7 +10,7 @@
 
     <div class="flex items-center gap-2 p-1">
       <div v-if="artist" class="transition gap-1">
-        <button class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition" @click.prevent="downloadLyricsMultiple(artist)"><DownloadMultiple /></button>
+        <button class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition" @click.prevent="downloadLyricsMultiple"><DownloadMultiple /></button>
       </div>
     </div>
   </div>
@@ -20,11 +20,19 @@
 import { DownloadMultiple } from 'mdue'
 import { ref, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/tauri'
+import { useDownloader } from '@/composables/downloader.js'
 
 const props = defineProps(['artistId'])
 defineEmits(['openArtist'])
 
+const { addToQueue } = useDownloader()
+
 const artist = ref(null)
+
+const downloadLyricsMultiple = async () => {
+  const trackIds = await invoke('get_artist_track_ids', { artistId: artist.value.id })
+  addToQueue(trackIds)
+}
 
 onMounted(async () => {
   artist.value = await invoke('get_artist', { artistId: props.artistId })

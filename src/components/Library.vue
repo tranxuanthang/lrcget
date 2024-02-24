@@ -11,22 +11,14 @@
     <div class="relative grow overflow-hidden">
       <TrackList
         :isActive="activeTab === 'tracks'"
-        @play-track="playTrack"
-        @download-lyrics="downloadLyrics"
       />
 
       <AlbumList
         :isActive="activeTab === 'albums'"
-        @play-track="playTrack"
-        @download-lyrics="downloadLyrics"
-        @download-lyrics-multiple="downloadLyricsMultiple"
       />
 
       <ArtistList
         :isActive="activeTab === 'artists'"
-        @play-track="playTrack"
-        @download-lyrics="downloadLyrics"
-        @download-lyrics-multiple="downloadLyricsMultiple"
       />
     </div>
 
@@ -45,7 +37,7 @@
     </div>
   </div>
 
-  <DownloadViewer :is-downloading="isDownloading" :download-queue="downloadQueue" :downloaded-items="downloadedItems" :download-progress="downloadProgress" :success-Count="successCount" :failure-count="failureCount" :total-count="totalCount" :downloaded-count="downloadedCount" :log="log" :is-show="isShowDownloadViewer" @start-over="startOver" @stop-downloading="stopDownloading" @close="closeDownloadViewer" />
+  <DownloadViewer :is-show="isShowDownloadViewer" @close="closeDownloadViewer" />
   <Config :is-show="isShowConfig" @close="isShowConfig = false" @refreshLibrary="refreshLibrary" @uninitialize-library="$emit('uninitializeLibrary')" />
 
   <Teleport to="body">
@@ -80,14 +72,11 @@ import { usePlayer } from '@/composables/player.js'
 
 const toast = useToast()
 const { playingTrack, status, duration, progress, playTrack, pause, resume, stop, seek } = usePlayer()
-const { isDownloading, downloadQueue, downloadedItems, downloadProgress, successCount, failureCount, totalCount, downloadedCount, addToQueue, startOver, stopDownloading, log } = useDownloader()
+const { addToQueue } = useDownloader()
 const { searchingTrack } = useSearchLyrics()
 const { editingTrack } = useEditLyrics()
 defineEmits(['uninitializeLibrary'])
 
-const tracks = ref([])
-const albums = ref([])
-const artists = ref([])
 const isLoading = ref(true)
 const isInitializing = ref(false)
 const initializeProgress = ref(null)
@@ -95,28 +84,22 @@ const activeTab = ref('tracks')
 const isShowDownloadViewer = ref(false)
 const isShowConfig = ref(false)
 
-const downloadLyrics = (track) => {
-  addToQueue([track])
-}
-
-const downloadLyricsMultiple = (tracks) => {
-  addToQueue(tracks)
-}
-
 const changeActiveTab = (tab) => {
   activeTab.value = tab
 }
 
 const downloadAllLyrics = async () => {
-  const config = await invoke('get_config')
+  // TODO implement skip not needed tracks
+  // const config = await invoke('get_config')
+  //
+  // if (config.skip_not_needed_tracks) {
+  //
+  // } else {
+  //
+  // }
 
-  let downloadTracks = []
-  if (config.skip_not_needed_tracks) {
-    downloadTracks = tracks.value.filter((track) => !track.lrc_lyrics)
-  } else {
-    downloadTracks = tracks.value
-  }
-  addToQueue(downloadTracks)
+  const downloadTrackIds = await invoke('get_track_ids')
+  addToQueue(downloadTrackIds)
 }
 
 const closeDownloadViewer = () => {

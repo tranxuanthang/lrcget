@@ -23,7 +23,6 @@
             <AlbumItem
               :albumId="virtualRow.key"
               @open-album="openAlbum"
-              @download-lyrics="downloadLyricsMultiple"
             />
           </div>
         </div>
@@ -46,7 +45,6 @@ import { invoke } from '@tauri-apps/api/tauri'
 import { listen } from '@tauri-apps/api/event'
 
 const props = defineProps(['isActive'])
-const emit = defineEmits(['downloadLyricsMultiple'])
 
 const albumIds = ref([])
 const parentRef = ref(null)
@@ -69,11 +67,6 @@ const totalSize = computed(() => rowVirtualizer.value.getTotalSize())
 
 const openAlbum = async (album) => {
   currentAlbum.value = album
-}
-
-const downloadLyricsMultiple = async (album) => {
-  const tracks = await invoke('get_album_tracks', { albumId: album.id })
-  emit('downloadLyricsMultiple', tracks)
 }
 
 onMounted(async () => {

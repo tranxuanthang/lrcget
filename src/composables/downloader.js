@@ -31,9 +31,10 @@ const downloadLyrics = async (track) => {
   downloadNext()
 }
 
-const downloadNext = () => {
+const downloadNext = async () => {
   if (downloadQueue.value.length > 0) {
-    const track = downloadQueue.value.shift()
+    const trackId = downloadQueue.value.shift()
+    const track = await invoke('get_track', { trackId: trackId })
     currentItem.value = track
     downloadLyrics(track)
   } else {
@@ -49,9 +50,9 @@ const downloadProgress = computed(() => {
   return downloadedCount.value / totalCount.value
 })
 
-const addToQueue = (tracks) => {
-  downloadQueue.value.push(...tracks)
-  totalCount.value += tracks.length
+const addToQueue = (trackIds) => {
+  downloadQueue.value.push(...trackIds)
+  totalCount.value += trackIds.length
 
   if (!currentItem.value) {
     downloadNext()
