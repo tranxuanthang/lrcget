@@ -123,6 +123,15 @@ async fn get_track_ids(app_state: State<'_, AppState>) -> Result<Vec<i64>, Strin
 }
 
 #[tauri::command]
+async fn get_no_lyrics_track_ids(app_state: State<'_, AppState>) -> Result<Vec<i64>, String> {
+  let conn_guard = app_state.db.lock().unwrap();
+  let conn = conn_guard.as_ref().unwrap();
+  let track_ids = library::get_no_lyrics_track_ids(conn).map_err(|err| err.to_string())?;
+
+  Ok(track_ids)
+}
+
+#[tauri::command]
 async fn get_track(track_id: i64, app_state: State<'_, AppState>) -> Result<PersistentTrack, String> {
   let conn_guard = app_state.db.lock().unwrap();
   let conn = conn_guard.as_ref().unwrap();
@@ -435,6 +444,7 @@ async fn main() {
       refresh_library,
       get_tracks,
       get_track_ids,
+      get_no_lyrics_track_ids,
       get_track,
       get_albums,
       get_album_ids,

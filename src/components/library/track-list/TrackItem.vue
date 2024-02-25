@@ -1,14 +1,22 @@
 <template>
-  <div class="flex w-full group hover:bg-brave-95 transition rounded cursor-default">
+  <div class="flex w-full group hover:bg-brave-98 hover:shadow hover:shadow-brave-95/50
+    border border-transparent hover:border-brave-95 transition rounded cursor-default"
+    :class="{
+      'border-brave-95 bg-brave-99': isPlaying
+      }"
+  >
     <!-- Track title, album, and artist -->
     <div class="flex-none w-[65%] flex p-1" @click="playTrack(track)">
       <div v-if="track">
-        <div class="font-bold text-sm text-brave-20 group-hover:text-brave-15 transition">{{ track.title }}</div>
+        <div class="font-bold text-sm text-brave-20 flex items-center">
+          <Equalizer v-if="isPlaying" class="mr-1 text-brave-20" />
+          <span>{{ track.title }}</span>
+        </div>
 
-        <div class="flex items-center gap-2">
-          <div class="text-sm text-brave-20 group-hover:text-brave-15 transition">{{ track.album_name }}</div>
-          <div class="border-r border-brave-80 h-3 flex-none"></div>
-          <div class="text-sm text-brave-20 group-hover:text-brave-15 transition">{{ track.artist_name }}</div>
+        <div class="flex flex-wrap items-center gap-2 line-clamp-1">
+          <span class="text-sm text-brave-20 group-hover:text-brave-15 transition">{{ track.album_name }}</span>
+          <span class="text-brave-80 h-2 mx-1 flex-none">|</span>
+          <span class="text-sm text-brave-20 group-hover:text-brave-15 transition">{{ track.artist_name }}</span>
         </div>
       </div>
     </div>
@@ -42,12 +50,13 @@ import { Play, TextSearch, PlaylistEdit } from 'mdue'
 import { humanDuration } from '../../../utils/human-duration.js'
 import { useSearchLyrics } from '../../../composables/search-lyrics.js'
 import { useEditLyrics } from '../../../composables/edit-lyrics.js'
-import { ref, onMounted } from 'vue'
+import Equalizer from '@/components/icons/Equalizer.vue'
+import { ref, onMounted, computed } from 'vue'
 import { invoke } from '@tauri-apps/api/tauri'
 import { listen } from '@tauri-apps/api/event'
 import { usePlayer } from '@/composables/player.js'
 
-const { playTrack } = usePlayer()
+const { playTrack, playingTrack } = usePlayer()
 
 const { searchLyrics } = useSearchLyrics()
 const { editLyrics } = useEditLyrics()
@@ -57,6 +66,10 @@ const track = ref(null)
 // const downloadLyrics = () => {
 //   addToQueue([track.value.id])
 // }
+
+const isPlaying = computed(() => {
+  return playingTrack.value && track.value && playingTrack.value.id === track.value.id
+})
 
 onMounted(async () => {
   track.value = await invoke('get_track', { trackId: props.trackId })

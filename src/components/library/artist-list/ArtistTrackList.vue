@@ -1,5 +1,5 @@
 <template>
-  <div ref="parentRef" class="absolute top-0 left-0 w-full h-full bg-brave-99 p-4 shadow-lg overflow-y-auto">
+  <div ref="parentRef" class="absolute top-0 left-0 w-full h-full bg-white p-4 shadow-lg overflow-y-auto">
     <div
       :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }"
     >
@@ -13,7 +13,7 @@
       </div>
 
       <div class="flex flex-col mb-8">
-        <div class="text-thin text-xl text-brave-15">
+        <div class="text-thin text-xl text-brave-10">
           {{ artist.name }}
         </div>
         <div class="flex items-center gap-2">
@@ -73,7 +73,7 @@ const rowVirtualizer = useVirtualizer(
   computed(() => ({
     count: trackIds.value.length,
     getScrollElement: () => parentRef.value,
-    estimateSize: () => 48,
+    estimateSize: () => 52,
     overscan: 5,
     paddingStart: 175,
     getItemKey: (index) => trackIds.value[index]

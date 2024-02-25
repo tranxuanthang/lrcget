@@ -10,12 +10,19 @@ const progress = ref(null)
 listen('player-state', async (event) => {
   duration.value = event.payload.duration
   progress.value = event.payload.progress
-  playingTrack.value = event.payload.track
   status.value = event.payload.status
+})
+
+listen('reload-track-id', async (event) => {
+  const payload = event.payload
+  if (playingTrack.value.id === payload) {
+    playingTrack.value = await invoke('get_track', { trackId: playingTrack.value.id })
+  }
 })
 
 export function usePlayer() {
   const playTrack = (track) => {
+    playingTrack.value = track
     invoke('play_track', { trackId: track.id })
   }
 

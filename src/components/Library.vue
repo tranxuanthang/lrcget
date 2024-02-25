@@ -5,10 +5,9 @@
       @changeActiveTab="changeActiveTab"
       @showConfig="isShowConfig = true"
       @showDownloadViewer="isShowDownloadViewer = true"
-      @downloadAllLyrics="downloadAllLyrics"
     />
 
-    <div class="relative grow overflow-hidden">
+    <div class="relative grow overflow-hidden bg-white">
       <TrackList
         :isActive="activeTab === 'tracks'"
       />
@@ -20,9 +19,11 @@
       <ArtistList
         :isActive="activeTab === 'artists'"
       />
+
+      <div class="absolute top-0 left-0 w-full h-[20px] bg-gradient-to-b from-white pointer-events-none"></div>
     </div>
 
-    <NowPlaying class="flex-none border-t border-brave-90" :playingTrack="playingTrack" :status="status" :duration="duration" :progress="progress" @pause="pause" @resume="resume" @seek="seek" />
+    <NowPlaying class="flex-none border-t border-brave-90" />
   </div>
 
   <div v-else class="flex flex-col justify-center items-center w-full h-full">
@@ -53,7 +54,7 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/tauri'
 import { listen } from '@tauri-apps/api/event'
-import { DownloadMultiple, Loading, Check, Cog } from 'mdue'
+import { Loading } from 'mdue'
 import _ from 'lodash'
 import LibraryHeader from './library/LibraryHeader.vue'
 import NowPlaying from './NowPlaying.vue'
@@ -71,8 +72,6 @@ import { useEditLyrics } from '../composables/edit-lyrics.js'
 import { usePlayer } from '@/composables/player.js'
 
 const toast = useToast()
-const { playingTrack, status, duration, progress, playTrack, pause, resume, stop, seek } = usePlayer()
-const { addToQueue } = useDownloader()
 const { searchingTrack } = useSearchLyrics()
 const { editingTrack } = useEditLyrics()
 defineEmits(['uninitializeLibrary'])
@@ -86,20 +85,6 @@ const isShowConfig = ref(false)
 
 const changeActiveTab = (tab) => {
   activeTab.value = tab
-}
-
-const downloadAllLyrics = async () => {
-  // TODO implement skip not needed tracks
-  // const config = await invoke('get_config')
-  //
-  // if (config.skip_not_needed_tracks) {
-  //
-  // } else {
-  //
-  // }
-
-  const downloadTrackIds = await invoke('get_track_ids')
-  addToQueue(downloadTrackIds)
 }
 
 const closeDownloadViewer = () => {

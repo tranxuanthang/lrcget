@@ -349,6 +349,18 @@ pub fn get_track_ids(db: &Connection) -> Result<Vec<i64>> {
   Ok(track_ids)
 }
 
+pub fn get_no_lyrics_track_ids(db: &Connection) -> Result<Vec<i64>> {
+  let mut statement = db.prepare("SELECT id FROM tracks WHERE lrc_lyrics IS NULL ORDER BY title ASC")?;
+  let mut rows = statement.query([])?;
+  let mut track_ids: Vec<i64> = Vec::new();
+
+  while let Some(row) = rows.next()? {
+    track_ids.push(row.get("id")?);
+  }
+
+  Ok(track_ids)
+}
+
 pub fn get_albums(db: &Connection) -> Result<Vec<PersistentAlbum>> {
   let mut statement = db.prepare(indoc! {"
       SELECT albums.id, albums.name, artists.name AS artist_name, albums.artist_id,

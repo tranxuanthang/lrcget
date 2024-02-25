@@ -52,6 +52,10 @@ pub fn get_track_ids(conn: &Connection) -> Result<Vec<i64>> {
   db::get_track_ids(conn)
 }
 
+pub fn get_no_lyrics_track_ids(conn: &Connection) -> Result<Vec<i64>> {
+  db::get_no_lyrics_track_ids(conn)
+}
+
 pub fn get_track(id: i64, conn: &Connection) -> Result<PersistentTrack> {
   db::get_track_by_id(id, conn)
 }

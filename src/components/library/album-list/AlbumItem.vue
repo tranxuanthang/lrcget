@@ -1,7 +1,9 @@
 <template>
-  <div class="flex w-full group hover:bg-brave-95 transition rounded cursor-default">
+  <div class="flex w-full group hover:bg-brave-98 hover:shadow hover:shadow-brave-95/50
+    border border-transparent hover:border-brave-95 transition rounded cursor-default"
+  >
     <div v-if="album" class="p-1 flex flex-col grow" @click="$emit('openAlbum', album)">
-      <div class="font-bold text-sm text-brave-20 group-hover:text-brave-15 transition">{{ album.name }}</div>
+      <div class="font-bold text-sm text-brave-20">{{ album.name }}</div>
 
       <div class="flex items-center gap-2">
         <div class="text-sm text-brave-30 group-hover:text-brave-20 transition">{{ album.tracks_count }} tracks</div>

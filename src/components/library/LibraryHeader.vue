@@ -1,5 +1,5 @@
 <template>
-  <div class="px-4 py-2 flex flex-col gap-4 flex-none justify-center items-center border-b border-brave-90">
+  <div class="px-4 py-2 flex flex-col gap-4 flex-none justify-center items-center bg-white">
     <div class="flex justify-between w-full">
       <div class="flex-1"></div>
       <div class="flex-1 flex gap-5 justify-center text-sm">
@@ -43,7 +43,7 @@
           </span>
         </button>
 
-        <button v-else class="button button-primary px-4 py-1.5 text-xs rounded-full" @click.prevent="$emit('downloadAllLyrics')">
+        <button v-else class="button button-primary px-4 py-1.5 text-xs rounded-full" @click.prevent="downloadAllLyrics">
           <div class="text-sm"><DownloadMultiple /></div>
           <span>
             Download all lyrics
@@ -58,11 +58,23 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { DownloadMultiple, Loading, Check, Cog } from 'mdue'
 import { useDownloader } from '@/composables/downloader.js'
+import { invoke } from '@tauri-apps/api/tauri'
 
 const props = defineProps(['activeTab'])
 defineEmits(['changeActiveTab', 'showConfig', 'showDownloadViewer', 'downloadAllLyrics'])
 
-const { isDownloading, totalCount, downloadedCount } = useDownloader()
+const { isDownloading, totalCount, downloadedCount, addToQueue } = useDownloader()
+
+const downloadAllLyrics = async () => {
+  const config = await invoke('get_config')
+  let downloadTrackIds
+  if (config.skip_not_needed_tracks) {
+    downloadTrackIds = await invoke('get_no_lyrics_track_ids')
+  } else {
+    downloadTrackIds = await invoke('get_track_ids')
+  }
+  addToQueue(downloadTrackIds)
+}
 </script>
 
 <style scoped>

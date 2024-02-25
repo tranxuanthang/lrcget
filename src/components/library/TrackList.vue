@@ -1,5 +1,5 @@
 <template>
-  <div ref="parentRef" class="p-4 bg-brave-99 overflow-y-auto h-full" v-show="props.isActive">
+  <div ref="parentRef" class="p-4 overflow-y-auto h-full" v-show="props.isActive">
     <div
       :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }"
     >
@@ -54,7 +54,7 @@ const rowVirtualizer = useVirtualizer(
   computed(() => ({
     count: trackIds.value.length,
     getScrollElement: () => parentRef.value,
-    estimateSize: () => 48,
+    estimateSize: () => 52,
     overscan: 5,
     paddingStart: 32,
     getItemKey: (index) => trackIds.value[index]

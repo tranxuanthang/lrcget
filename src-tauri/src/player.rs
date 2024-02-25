@@ -3,7 +3,6 @@ use kira::{
   manager::{
     AudioManager, AudioManagerSettings,
     backend::DefaultBackend,
-    MainPlaybackState
   },
   sound::{streaming::{StreamingSoundData, StreamingSoundSettings, StreamingSoundHandle}, FromFileError, PlaybackState},
   tween::Tween
@@ -26,6 +25,7 @@ pub struct Player {
   manager: AudioManager,
   #[serde(skip)]
   sound_handle: Option<StreamingSoundHandle<FromFileError>>,
+  #[serde(skip)]
   pub track: Option<PersistentTrack>,
   pub status: PlayerStatus,
   pub progress: f64,

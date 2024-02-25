@@ -69,7 +69,7 @@ body {
 }
 
 .button-working {
-  @apply bg-white hover:bg-brave-98 text-brave-30 active:bg-brave-25 active:text-white;
+  @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70;
 }
 
 .button-disabled {
