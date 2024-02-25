@@ -1,7 +1,5 @@
 import { createApp } from 'vue'
-import 'overlayscrollbars/css/OverlayScrollbars.css'
 import App from "./App.vue"
-import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import Toast, { POSITION } from 'vue-toastification'
 import 'vue-toastification/dist/index.css'
 import './style.css'
@@ -29,7 +27,6 @@ const clickOutside = {
 
 const app = createApp(App)
   .directive("click-outside", clickOutside)
-  .component('OverlayScrollbars', OverlayScrollbarsComponent)
 
 app.use(Toast, {
   position: POSITION.BOTTOM_RIGHT,

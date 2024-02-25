@@ -8,7 +8,7 @@
   },
   "package": {
     "productName": "LRCGET",
-    "version": "0.2.1"
+    "version": "0.3.0"
   },
   "tauri": {
     "allowlist": {
@@ -31,6 +31,9 @@
         "all": true,
         "asset": true,
         "assetScope": ["**"]
+      },
+      "shell": {
+        "open": true
       }
     },
     "bundle": {

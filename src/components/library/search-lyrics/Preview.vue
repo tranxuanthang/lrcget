@@ -8,7 +8,7 @@
         </div>
 
         <div class="px-6 pb-6 grow overflow-hidden flex flex-col gap-4">
-          <div class="flex gap-2 items-center bg-brave-95 rounded-lg px-4 py-2">
+          <div class="flex flex-none gap-2 items-center bg-brave-95 rounded-lg px-4 py-2">
             <button v-if="status !== 'playing'" @click.prevent="resume" class="button button-primary text-white p-2 rounded-full text-xl"><Play /></button>
             <button v-else @click.prevent="pause" class="button button-primary text-white p-2 rounded-full text-xl"><Pause /></button>
             <div class="flex-none w-12 text-xs text-brave-30">{{ humanDuration(progress) }}</div>
@@ -26,10 +26,10 @@
             <div class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-white"></div>
           </div>
 
-          <div v-else-if="props.lyrics.plainLyrics" class="relative grow rounded text-center text-brave-50 whitespace-pre">
-            <OverlayScrollbars class="grow p-4 h-full overflow-y-auto">
+          <div v-else-if="props.lyrics.plainLyrics" class="relative grow rounded text-center text-brave-50 whitespace-pre overflow-hidden">
+            <div class="grow p-4 h-full overflow-y-auto">
               {{ props.lyrics.plainLyrics }}
-            </OverlayScrollbars>
+            </div>
           </div>
         </div>
       </div>

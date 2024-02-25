@@ -1,14 +1,14 @@
 <template>
   <div>
     <div class="fixed top-0 left-0 h-full w-full flex items-center justify-center z-30 select-none" :class="{ 'hidden': !props.isShow }">
-      <div class="w-full h-[95vh] max-w-screen-sm rounded-lg m-4 bg-white flex flex-col gap-2">
+      <div class="w-full h-[95vh] max-w-screen-sm rounded-lg m-4 bg-white flex flex-col">
         <div class="flex-none flex justify-between items-center px-6 py-2">
           <div class="text-thin text-xl text-brave-15">Search Lyrics</div>
           <button class="text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
         </div>
 
-        <div class="px-6 grow overflow-hidden flex flex-col gap-4">
-          <form @submit.prevent="doSearchLyrics" class="flex flex-col gap-4">
+        <div class="px-6 grow overflow-hidden flex flex-col gap-4 py-6">
+          <form @submit.prevent="doSearchLyrics" class="flex flex-col flex-none gap-4">
             <div class="grid grid-col-2 gap-2">
               <div class="col-span-2">
                 <label for="title" class="group-label mb-1">Title</label>
@@ -52,13 +52,13 @@
             </div>
           </form>
 
-          <div class="grow">
+          <div class="grow overflow-hidden">
             <div v-if="loading" class="flex justify-center items-center h-full">
               <Loading class="animate-spin" />
             </div>
 
-            <div v-else class="flex flex-col h-full gap-2">
-              <div v-if="searchResult && searchResult.length" class="flex flex-col gap-1">
+            <div v-else class="flex flex-col h-full gap-2 overflow-auto">
+              <div v-if="searchResult && searchResult.length" class="flex flex-col gap-1 overflow-auto">
                 <div v-for="item in searchResult" :key="item.id" class="rounded bg-brave-98 hover:bg-brave-95 transition px-2 py-1 flex gap-2">
                   <div class="h-full overflow-hidden grow">
                     <div class="text-sm font-bold">

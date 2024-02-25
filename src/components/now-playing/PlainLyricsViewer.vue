@@ -7,9 +7,9 @@
             <div class="flex justify-center items-center h-6 w-full relative z-10">
               <button class="text-xl text-brave-30 w-full flex justify-center" type="button" @click="expand"><DragHorizontal /></button>
             </div>
-            <OverlayScrollbars class="grow p-4 h-full overflow-y-auto">
+            <div class="grow p-4 h-full overflow-y-auto">
               {{ props.lyrics }}
-            </OverlayScrollbars>
+            </div>
           </div>
         </div>
       </transition>

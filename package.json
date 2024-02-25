@@ -16,8 +16,8 @@
     "lodash": "^4.17.21",
     "lrc-kit": "github:tranxuanthang/lrc-kit",
     "mdue": "^0.1.4",
-    "overlayscrollbars-vue": "^0.3.0",
     "path-browserify": "^1.0.1",
+    "semver": "^7.6.0",
     "vue": "^3.2.37",
     "vue-codemirror": "^6.1.1",
     "vue-toastification": "^2.0.0-rc.5"
