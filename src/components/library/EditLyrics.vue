@@ -7,7 +7,7 @@
             <div class="grow basis-0 inline-flex justify-center invisible">
               <button class="mr-auto self-start p-4"><Close /></button>
             </div>
-            <p class=" leading-[3rem] text-lg font-bold grow basis-full text-center text-ellipsis overflow-hidden whitespace-nowrap text-brave-30 self">
+            <p class="leading-[3rem] text-lg font-bold grow basis-full text-center text-ellipsis overflow-hidden whitespace-nowrap text-brave-30 self">
               {{ editingTrack.title }} - {{ editingTrack.artist_name }}
             </p>
             <div class="grow basis-0 inline-flex justify-center">
@@ -62,7 +62,6 @@
             </div>
           </div>
 
-          
           <!-- NOTE: AsyncCodemirror component does not have @wheel event handler, so it has to be handled here (in the container) -->
           <div class="h-full overflow-hidden w-full max-w-full" @keydown="handleKeydown" @wheel="handleWheel">
             <AsyncCodemirror
@@ -84,7 +83,6 @@
             </div>
           </div>
           
-          
           <div v-if="shouldLoadCodeMirror" class="flex flex-col w-fit self-end bg-brave-95 rounded-lg">
             <div class="toolbar px-2 py-1 flex items-stretch gap-1">
               <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom out" @click="changeCodemirrorFontSizeBy(-1)"><MagnifyMinus /></button>
@@ -92,7 +90,6 @@
               <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom in" @click="changeCodemirrorFontSizeBy(+1)"><MagnifyPlus /></button>
             </div>
           </div>
-
         </div>
       </div>
     </div>
@@ -217,7 +214,6 @@ const handleKeydown = (payload) => {
     default:
       break;
   }
-
 }
 
 const changeCodemirrorFontSizeBy = (offset) => {
@@ -437,7 +433,12 @@ const close = () => {
 
 const saveLyrics = async () => {
   try {
-    await invoke('save_lyrics', { trackId: editingTrack.value.id, plainLyrics: unifiedLyrics.value.replace(/^\[(.*)\] */mg, ''), syncedLyrics: unifiedLyrics.value })
+    const isLyricsSynced = /^\[.*\]/m.test(unifiedLyrics.value);
+    await invoke('save_lyrics', {
+      trackId: editingTrack.value.id,
+      plainLyrics: unifiedLyrics.value.replace(/^\[(.*)\] */mg, ''),
+      syncedLyrics: isLyricsSynced ? unifiedLyrics.value : ''
+    })
     isDirty.value = false
   } catch (error) {
     console.error(error)
@@ -452,7 +453,6 @@ const publishLyrics = async () => {
 const publishPlainText = async () => {
   isPublishingPlainText.value = true
 }
-
 </script>
 
 
@@ -463,8 +463,6 @@ const publishPlainText = async () => {
 </style>
 
 <style>
-
-
 .codemirror-custom .cm-editor {
   @apply outline-none h-full;
 }
