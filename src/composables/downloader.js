@@ -15,14 +15,21 @@ const downloadedCount = computed(() => {
   return downloadedItems.value.length
 })
 
+const addLog = (logObj) => {
+  log.value.unshift(logObj)
+  if (log.value.length > 1000) {
+    log.value.pop()
+  }
+}
+
 const downloadLyrics = async (track) => {
   isDownloading.value = true
   try {
     const result = await invoke('download_lyrics', { trackId: track.id })
-    log.value.unshift({ status: 'success', title: track.title, artistName: track.artist_name, message: result })
+    addLog({ status: 'success', title: track.title, artistName: track.artist_name, message: result })
     successCount.value++
   } catch (error) {
-    log.value.unshift({ status: 'failure', title: track.title, artistName: track.artist_name, message: error })
+    addLog({ status: 'failure', title: track.title, artistName: track.artist_name, message: error })
     failureCount.value++
   }
 
