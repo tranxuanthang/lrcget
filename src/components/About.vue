@@ -40,7 +40,7 @@
                   <div class="mb-1">Buy Me a Coffee:</div>
                   <div>
                     <a href="https://www.buymeacoffee.com/thangtran" target="_blank">
-                      <img src="https://cdn.buymeacoffee.com/buttons/default-orange.png" alt="Buy Me A Coffee" height="41" width="174">
+                      <img src="@/assets/buy-me-a-coffee.png" alt="Buy Me A Coffee" height="41" width="174">
                     </a>
                   </div>
                 </div>

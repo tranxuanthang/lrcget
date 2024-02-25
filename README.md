@@ -54,6 +54,12 @@ Litecoin (LTC):
 ltc1q7texq5qsp59gclqlwf6asrqmhm98gruvz94a48
 ```
 
+## Contact
+
+If you prefer to contact by email:
+
+[hoangtudevops@protonmail.com](mailto:hoangtudevops@protonmail.com)
+
 ## TODO
 
 - [x] Choose multiple directories
