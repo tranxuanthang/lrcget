@@ -69,7 +69,7 @@
         "timestampUrl": ""
       },
       "appimage": {
-        "bundleMediaFramework": true
+        "bundleMediaFramework": false
       }
     },
     "security": {

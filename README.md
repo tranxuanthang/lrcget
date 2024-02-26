@@ -15,8 +15,8 @@ Visit the [release page](https://github.com/tranxuanthang/lrcget/releases) to do
 OS Support:
 
 - [x] Windows 10
-- [x] Linux
-- [x] macOS - no prebuilt package provided
+- [x] Linux (Ubuntu 22.04+ and AppImage build)
+- [x] macOS
 
 ## Screenshots
 

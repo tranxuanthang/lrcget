@@ -15,7 +15,7 @@ listen('player-state', async (event) => {
 
 listen('reload-track-id', async (event) => {
   const payload = event.payload
-  if (playingTrack.value.id === payload) {
+  if (playingTrack.value && playingTrack.value.id === payload) {
     playingTrack.value = await invoke('get_track', { trackId: playingTrack.value.id })
   }
 })
