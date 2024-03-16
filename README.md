@@ -42,6 +42,10 @@ Buy Me a Coffee:
   />
 </a>
 
+Paypal:
+
+https://paypal.me/tranxuanthang98
+
 Monero (XMR):
 
 ```
