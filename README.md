@@ -58,6 +58,16 @@ Litecoin (LTC):
 ltc1q7texq5qsp59gclqlwf6asrqmhm98gruvz94a48
 ```
 
+## Troubleshooting
+
+### Audio cannot be played in Linux (Ubuntu and other distros)
+
+Try install `pipewire-alsa` package. For example, in Ubuntu or Debian-based distros:
+
+```
+sudo apt install pipewire-alsa
+```
+
 ## Contact
 
 If you prefer to contact by email:
@@ -96,7 +106,7 @@ npm run tauri dev
 
 ## Building
 
-Start the development window with the following command:
+Start the build process with the following command:
 
 ``` shell
 cd lrcget
