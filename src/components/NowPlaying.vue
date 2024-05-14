@@ -57,6 +57,20 @@ const plainLyrics = computed(() => {
   return playingTrack.value.txt_lyrics
 })
 
+const forward10 = computed(() => {
+  if (!playingTrack.value) {
+    return null
+  }
+  return Math.min(duration.value, progress.value + 10)
+})
+
+const reverse10 = computed(() => {
+  if (!playingTrack.value) {
+    return null
+  }
+  return Math.max(0, progress.value - 10)
+})
+
 const humanDuration = (seconds) => {
   return new Date(seconds * 1000).toISOString().slice(11, 19)
 }
@@ -72,7 +86,6 @@ onMounted(async () => {
   keydownEvent.value = document.addEventListener('keydown', (event) => {
     switch (event.code) {
       case 'Space':
-        break;
       case 'Enter':
         event.preventDefault()
         if (status.value==='playing') {
