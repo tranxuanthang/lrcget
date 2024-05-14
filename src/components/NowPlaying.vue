@@ -29,6 +29,7 @@
 
 <script setup>
 import { computed } from '@vue/reactivity'
+import { ref, onMounted, onUnmounted } from 'vue'
 import Seek from './now-playing/Seek.vue'
 import LyricsViewer from './now-playing/LyricsViewer.vue'
 import PlainLyricsViewer from './now-playing/PlainLyricsViewer.vue'
@@ -36,6 +37,7 @@ import { Play, Pause, Replay } from 'mdue'
 import { usePlayer } from '@/composables/player.js'
 
 const { playingTrack, status, duration, progress, playTrack, pause, resume, seek } = usePlayer()
+const keydownEvent = ref(null)
 
 const lyrics = computed(() => {
   if (!playingTrack.value) {
@@ -56,4 +58,31 @@ const plainLyrics = computed(() => {
 const humanDuration = (seconds) => {
   return new Date(seconds * 1000).toISOString().slice(11, 19)
 }
+
+
+onUnmounted(async () => {
+  if (keydownEvent.value) {
+    document.removeEventListener(keydownEvent.value)
+  }
+})
+
+onMounted(async () => {
+  keydownEvent.value = document.addEventListener('keydown', (event) => {
+    switch (event.code) {
+      case 'Space':
+        break;
+      case 'Enter':
+        if (status.value==='playing') {
+          pause()
+        } else if (playingTrack.value && status.value==='stopped') {
+          playTrack(playingTrack.value)
+        } else {
+          resume()
+        }
+        break;
+      default:
+        break;
+    }
+  })
+})
 </script>
