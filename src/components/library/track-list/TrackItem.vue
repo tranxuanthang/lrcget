@@ -37,7 +37,9 @@
     <!-- Action buttons -->
     <div class="flex-none w-[15%] h-full flex justify-end items-center p-1">
       <div v-if="track" class="flex justify-end items-center gap-1">
-        <button class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition" @click.prevent="playTrack(track)"><Play /></button>
+        <button v-if="isPlaying && status ==='playing'" @click.prevent="pause" class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition"><Pause /></button>
+        <button v-else-if="isPlaying && status === 'stopped'" @click.prevent="playTrack(track)" class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition"><Replay /></button>
+        <button v-else v-on="isPlaying ? {click: resume} : {click: () => playTrack(track)}" class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition"><Play /></button>
         <button class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition" @click.prevent="searchLyrics(track)"><TextSearch /></button>
         <button class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition" @click.prevent="editLyrics(track)"><PlaylistEdit /></button>
       </div>
@@ -46,7 +48,7 @@
 </template>
 
 <script setup>
-import { Play, TextSearch, PlaylistEdit } from 'mdue'
+import { Play, Pause, TextSearch, PlaylistEdit, Replay } from 'mdue'
 import { humanDuration } from '../../../utils/human-duration.js'
 import { useSearchLyrics } from '../../../composables/search-lyrics.js'
 import { useEditLyrics } from '../../../composables/edit-lyrics.js'
@@ -56,7 +58,7 @@ import { invoke } from '@tauri-apps/api/tauri'
 import { listen } from '@tauri-apps/api/event'
 import { usePlayer } from '@/composables/player.js'
 
-const { playTrack, playingTrack } = usePlayer()
+const { playTrack, playingTrack, status, pause, resume } = usePlayer()
 
 const { searchLyrics } = useSearchLyrics()
 const { editLyrics } = useEditLyrics()

@@ -16,8 +16,9 @@
           </div>
         </div>
         <div class="basis-1/3 flex-1 flex justify-center items-center">
-          <button v-if="status !== 'playing'" @click.prevent="resume" class="button button-primary text-white p-2 rounded-full text-xl"><Play /></button>
-          <button v-else @click.prevent="pause" class="button button-primary text-white p-2 rounded-full text-xl"><Pause /></button>
+          <button v-if="status === 'playing'" @click.prevent="pause" class="button button-primary text-white p-2 rounded-full text-xl"><Pause /></button>
+          <button v-else-if="playingTrack && status === 'stopped'" @click.prevent="playTrack(playingTrack)" class="button button-primary text-white p-2 rounded-full text-xl"><Replay /></button>
+          <button v-else @click.prevent="resume" class="button button-primary text-white p-2 rounded-full text-xl"><Play /></button>
         </div>
         <div class="basis-1/3 flex-1">
         </div>
@@ -31,10 +32,10 @@ import { computed } from '@vue/reactivity'
 import Seek from './now-playing/Seek.vue'
 import LyricsViewer from './now-playing/LyricsViewer.vue'
 import PlainLyricsViewer from './now-playing/PlainLyricsViewer.vue'
-import { Play, Pause } from 'mdue'
+import { Play, Pause, Replay } from 'mdue'
 import { usePlayer } from '@/composables/player.js'
 
-const { playingTrack, status, duration, progress, pause, resume, seek } = usePlayer()
+const { playingTrack, status, duration, progress, playTrack, pause, resume, seek } = usePlayer()
 
 const lyrics = computed(() => {
   if (!playingTrack.value) {
