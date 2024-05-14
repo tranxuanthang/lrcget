@@ -16,9 +16,11 @@
           </div>
         </div>
         <div class="basis-1/3 flex-1 flex justify-center items-center">
+          <button @click.prevent="seek(reverse10)" class="button button-secondary p-2 m-2 rounded-full text-xl"><Rewind_10 /></button>
           <button v-if="status === 'playing'" @click.prevent="pause" class="button button-primary text-white p-2 rounded-full text-xl"><Pause /></button>
           <button v-else-if="playingTrack && status === 'stopped'" @click.prevent="playTrack(playingTrack)" class="button button-primary text-white p-2 rounded-full text-xl"><Replay /></button>
           <button v-else @click.prevent="resume" class="button button-primary text-white p-2 rounded-full text-xl"><Play /></button>
+          <button @click.prevent="seek(forward10)" class="button button-secondary p-2 m-2 rounded-full text-xl"><FastForward_10 /></button>
         </div>
         <div class="basis-1/3 flex-1">
         </div>
@@ -33,7 +35,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import Seek from './now-playing/Seek.vue'
 import LyricsViewer from './now-playing/LyricsViewer.vue'
 import PlainLyricsViewer from './now-playing/PlainLyricsViewer.vue'
-import { Play, Pause, Replay } from 'mdue'
+import { Play, Pause, Replay, Rewind_10, FastForward_10 } from 'mdue'
 import { usePlayer } from '@/composables/player.js'
 
 const { playingTrack, status, duration, progress, playTrack, pause, resume, seek } = usePlayer()
@@ -72,6 +74,7 @@ onMounted(async () => {
       case 'Space':
         break;
       case 'Enter':
+        event.preventDefault()
         if (status.value==='playing') {
           pause()
         } else if (playingTrack.value && status.value==='stopped') {
@@ -79,6 +82,14 @@ onMounted(async () => {
         } else {
           resume()
         }
+        break;
+      case 'ArrowLeft':
+        event.preventDefault()
+        seek(reverse10.value)
+        break;
+      case 'ArrowRight':
+        event.preventDefault()
+        seek(forward10.value)
         break;
       default:
         break;
