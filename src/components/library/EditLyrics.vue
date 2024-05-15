@@ -298,7 +298,7 @@ const rewind100 = () => {
   const parsed = parseLine(currentLineText)
   if (parsed.type === 'TIME') {
     const timestamp = parsed.timestamps[0]
-    const newTimestamp = timestamp - 0.1
+    const newTimestamp = Math.max(0, timestamp - 0.1)
     const stringifiedTime = timestampToString(newTimestamp)
     const replacedText = currentLineText.replace(/^(\s*\[(.*)\]\s*)*/g, `[${stringifiedTime}] `)
 
@@ -324,7 +324,7 @@ const fastForward100 = () => {
   const parsed = parseLine(currentLineText)
   if (parsed.type === 'TIME') {
     const timestamp = parsed.timestamps[0]
-    const newTimestamp = timestamp + 0.1
+    const newTimestamp = Math.min(duration.value, timestamp + 0.1)
     const stringifiedTime = timestampToString(newTimestamp)
     const replacedText = currentLineText.replace(/^(\s*\[(.*)\]\s*)*/g, `[${stringifiedTime}] `)
 
