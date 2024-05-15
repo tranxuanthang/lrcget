@@ -16,8 +16,11 @@
           </div>
         </div>
         <div class="basis-1/3 flex-1 flex justify-center items-center">
-          <button v-if="status !== 'playing'" @click.prevent="resume" class="button button-primary text-white p-2 rounded-full text-xl"><Play /></button>
-          <button v-else @click.prevent="pause" class="button button-primary text-white p-2 rounded-full text-xl"><Pause /></button>
+          <button @click.prevent="seek(reverse10)" class="button button-secondary p-2 m-2 rounded-full text-xl"><Rewind_10 /></button>
+          <button v-if="status === 'playing'" @click.prevent="pause" class="button button-primary text-white p-2 rounded-full text-xl"><Pause /></button>
+          <button v-else-if="playingTrack && status === 'stopped'" @click.prevent="playTrack(playingTrack)" class="button button-primary text-white p-2 rounded-full text-xl"><Replay /></button>
+          <button v-else @click.prevent="resume" class="button button-primary text-white p-2 rounded-full text-xl"><Play /></button>
+          <button @click.prevent="seek(forward10)" class="button button-secondary p-2 m-2 rounded-full text-xl"><FastForward_10 /></button>
         </div>
         <div class="basis-1/3 flex-1">
         </div>
@@ -28,13 +31,15 @@
 
 <script setup>
 import { computed } from '@vue/reactivity'
+import { ref, onMounted, onUnmounted } from 'vue'
 import Seek from './now-playing/Seek.vue'
 import LyricsViewer from './now-playing/LyricsViewer.vue'
 import PlainLyricsViewer from './now-playing/PlainLyricsViewer.vue'
-import { Play, Pause } from 'mdue'
+import { Play, Pause, Replay, Rewind_10, FastForward_10 } from 'mdue'
 import { usePlayer } from '@/composables/player.js'
 
-const { playingTrack, status, duration, progress, pause, resume, seek } = usePlayer()
+const { playingTrack, status, duration, progress, playTrack, pause, resume, seek } = usePlayer()
+const keydownEvent = ref(null)
 
 const lyrics = computed(() => {
   if (!playingTrack.value) {
@@ -52,7 +57,56 @@ const plainLyrics = computed(() => {
   return playingTrack.value.txt_lyrics
 })
 
+const forward10 = computed(() => {
+  if (!playingTrack.value) {
+    return null
+  }
+  return Math.min(duration.value, progress.value + 10)
+})
+
+const reverse10 = computed(() => {
+  if (!playingTrack.value) {
+    return null
+  }
+  return Math.max(0, progress.value - 10)
+})
+
 const humanDuration = (seconds) => {
   return new Date(seconds * 1000).toISOString().slice(11, 19)
 }
+
+
+onUnmounted(async () => {
+  if (keydownEvent.value) {
+    document.removeEventListener(keydownEvent.value)
+  }
+})
+
+onMounted(async () => {
+  keydownEvent.value = document.addEventListener('keydown', (event) => {
+    switch (event.code) {
+      case 'Space':
+      case 'Enter':
+        event.preventDefault()
+        if (status.value==='playing') {
+          pause()
+        } else if (playingTrack.value && status.value==='stopped') {
+          playTrack(playingTrack.value)
+        } else {
+          resume()
+        }
+        break;
+      case 'ArrowLeft':
+        event.preventDefault()
+        seek(reverse10.value)
+        break;
+      case 'ArrowRight':
+        event.preventDefault()
+        seek(forward10.value)
+        break;
+      default:
+        break;
+    }
+  })
+})
 </script>
