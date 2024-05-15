@@ -60,13 +60,17 @@ ltc1q7texq5qsp59gclqlwf6asrqmhm98gruvz94a48
 
 ## Troubleshooting
 
-### Audio cannot be played in Linux (Ubuntu and other distros)
+**Audio cannot be played in Linux (Ubuntu and other distros)**
 
 Try install `pipewire-alsa` package. For example, in Ubuntu or Debian-based distros:
 
 ```
 sudo apt install pipewire-alsa
 ```
+
+**App won't open in Windows 10/11**
+
+If you are using Windows 10 LTSC, or have tried running some scripts to debloat Windows 10 (which will uninstall Microsoft Edge and its webview component), you might have issues as LRCGET depends on WebView2. Reinstalling Microsoft Edge might fix the problem (see issue https://github.com/tranxuanthang/lrcget/issues/45).
 
 ## Contact
 
