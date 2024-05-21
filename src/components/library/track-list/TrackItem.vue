@@ -29,7 +29,8 @@
     <!-- Lyrics indication -->
     <div class="flex-none w-[10%] flex items-center justify-center p-1" @click="playTrack(track)">
       <div v-if="track">
-        <span v-if="track.lrc_lyrics" class="text-green-200 font-bold text-[0.67rem] bg-green-800 rounded px-1 py-0.5">Synced</span>
+        <span v-if="track.instrumental" class="text-gray-200 font-bold text-[0.67rem] bg-gray-500 rounded px-1 py-0.5">Instrumental</span>
+        <span v-else-if="track.lrc_lyrics" class="text-green-200 font-bold text-[0.67rem] bg-green-800 rounded px-1 py-0.5">Synced</span>
         <span v-else-if="track.txt_lyrics" class="text-gray-200 font-bold text-[0.67rem] bg-gray-800 rounded px-1 py-0.5">Plain</span>
       </div>
     </div>

@@ -13,7 +13,8 @@ pub struct PersistentTrack {
   pub image_path: Option<String>,
   pub txt_lyrics: Option<String>,
   pub lrc_lyrics: Option<String>,
-  pub duration: f64
+  pub duration: f64,
+  pub instrumental: bool
 }
 
 #[derive(Serialize)]

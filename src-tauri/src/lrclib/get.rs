@@ -2,6 +2,7 @@ use serde::{Deserialize,Serialize};
 use anyhow::Result;
 use reqwest;
 use thiserror::Error;
+use crate::utils::strip_timestamp;
 
 #[derive(Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -22,7 +23,7 @@ pub struct RawResponse {
 #[derive(Serialize)]
 #[serde(tag = "type", content = "lyrics")]
 pub enum Response {
-  SyncedLyrics(String),
+  SyncedLyrics(String, String),
   UnsyncedLyrics(String),
   IsInstrumental,
   None
@@ -32,7 +33,13 @@ impl Response {
   pub fn from_raw_response(lrclib_response: RawResponse) -> Response {
     match lrclib_response.synced_lyrics {
       Some(synced_lyrics) => {
-        Response::SyncedLyrics(synced_lyrics)
+        let plain_lyrics = match lrclib_response.plain_lyrics {
+          Some(plain_lyrics) => plain_lyrics,
+          None => {
+            strip_timestamp(&synced_lyrics)
+          }
+        };
+        Response::SyncedLyrics(synced_lyrics, plain_lyrics)
       },
       None => {
         match lrclib_response.plain_lyrics {

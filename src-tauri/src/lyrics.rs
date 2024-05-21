@@ -9,10 +9,6 @@ use thiserror::Error;
 
 #[derive(Error, Clone, Debug)]
 pub enum GetLyricsError {
-  #[error("This track only has unsynced lyrics")]
-  OnlyUnsyncedLyrics,
-  #[error("This track is instrumental")]
-  IsInstrumental,
   #[error("This track does not exist in LRCLIB database")]
   NotFound
 }
@@ -32,12 +28,16 @@ pub async fn apply_string_lyrics_for_track(track: &PersistentTrack, plain_lyrics
 
 pub async fn apply_lyrics_for_track(track: PersistentTrack, lyrics: Response) -> Result<Response> {
   match &lyrics {
-    Response::SyncedLyrics(synced_lyrics) => {
+    Response::SyncedLyrics(synced_lyrics, _) => {
       save_synced_lyrics(&track.file_path, &synced_lyrics)?;
       Ok(lyrics)
     }
     Response::UnsyncedLyrics(plain_lyrics) => {
       save_plain_lyrics(&track.file_path, &plain_lyrics)?;
+      Ok(lyrics)
+    }
+    Response::IsInstrumental => {
+      save_instrumental(&track.file_path)?;
       Ok(lyrics)
     }
     _ => {
@@ -48,6 +48,13 @@ pub async fn apply_lyrics_for_track(track: PersistentTrack, lyrics: Response) ->
 
 fn save_plain_lyrics(track_path: &str, lyrics: &str) -> Result<()> {
   let txt_path = build_txt_path(track_path)?;
+  let lrc_path = build_lrc_path(track_path)?;
+
+  let rm_result = remove_file(lrc_path);
+  match rm_result {
+    _ => ()
+  }
+
   if lyrics.is_empty() {
     let rm_result = remove_file(txt_path);
     match rm_result {
@@ -74,6 +81,25 @@ fn save_synced_lyrics(track_path: &str, lyrics: &str) -> Result<()> {
     }
     write(lrc_path, lyrics)?;
   }
+  Ok(())
+}
+
+fn save_instrumental(track_path: &str) -> Result<()> {
+  let txt_path = build_txt_path(track_path)?;
+  let lrc_path = build_lrc_path(track_path)?;
+
+  let rm_result = remove_file(&lrc_path);
+  match rm_result {
+    _ => ()
+  }
+
+  let rm_result = remove_file(txt_path);
+  match rm_result {
+    _ => ()
+  }
+
+  write(lrc_path, "[au: instrumental]")?;
+
   Ok(())
 }
 

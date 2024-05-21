@@ -30,6 +30,7 @@ ring = "0.16.20"
 data-encoding = "2.4.0"
 kira = "0.8.7"
 symphonia = { version = "0.5.2", features = ["all"] }
+regex = "1.10.4"
 
 [features]
 # by default Tauri runs in production mode

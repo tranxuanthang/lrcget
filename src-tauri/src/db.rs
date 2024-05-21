@@ -5,8 +5,9 @@ use anyhow::Result;
 use indoc::indoc;
 use crate::persistent_entities::{PersistentTrack, PersistentAlbum, PersistentArtist, PersistentConfig};
 use crate::fs_track;
+use regex::Regex;
 
-const CURRENT_DB_VERSION: u32 = 2;
+const CURRENT_DB_VERSION: u32 = 3;
 
 /// Initializes the database connection, creating the .sqlite file if needed, and upgrading the database
 /// if it's out of date.
@@ -30,8 +31,11 @@ pub fn initialize_database(app_handle: &AppHandle) -> Result<Connection, rusqlit
 
 /// Upgrades the database to the current version.
 pub fn upgrade_database_if_needed(db: &mut Connection, existing_version: u32) -> Result<(), rusqlite::Error> {
+  println!("Existing database version: {}", existing_version);
+
   if existing_version < CURRENT_DB_VERSION {
     if existing_version <= 0 {
+      println!("Mirgate database version 1...");
       db.pragma_update(None, "journal_mode", "WAL")?;
 
       let tx = db.transaction()?;
@@ -89,6 +93,7 @@ pub fn upgrade_database_if_needed(db: &mut Connection, existing_version: u32) ->
     }
 
     if existing_version <= 1 {
+      println!("Mirgate database version 2...");
       db.pragma_update(None, "journal_mode", "WAL")?;
 
       let tx = db.transaction()?;
@@ -100,6 +105,18 @@ pub fn upgrade_database_if_needed(db: &mut Connection, existing_version: u32) ->
       CREATE INDEX idx_tracks_title ON tracks(title);
       CREATE INDEX idx_albums_name ON albums(name);
       CREATE INDEX idx_artists_name ON artists(name);
+      "})?;
+      tx.commit()?;
+    }
+
+    if existing_version <= 2 {
+      println!("Mirgate database version 3...");
+      let tx = db.transaction()?;
+
+      tx.pragma_update(None, "user_version", 3)?;
+
+      tx.execute_batch(indoc! {"
+      ALTER TABLE tracks ADD instrumental BOOLEAN;
       "})?;
       tx.commit()?;
     }
@@ -198,7 +215,8 @@ pub fn get_track_by_id(id: i64, db: &Connection) -> Result<PersistentTrack> {
         duration,
         albums.image_path,
         txt_lyrics,
-        lrc_lyrics
+        lrc_lyrics,
+        instrumental
     FROM tracks
     JOIN albums ON tracks.album_id = albums.id
     JOIN artists ON tracks.artist_id = artists.id
@@ -209,45 +227,52 @@ pub fn get_track_by_id(id: i64, db: &Connection) -> Result<PersistentTrack> {
   let mut statement = db.prepare(query)?;
   let row = statement.query_row(
     [id],
-    |row|
-    Ok(PersistentTrack {
-      id: row.get("id")?,
-      file_path: row.get("file_path")?,
-      file_name: row.get("file_name")?,
-      title: row.get("title")?,
-      artist_name: row.get("artist_name")?,
-      artist_id: row.get("artist_id")?,
-      album_name: row.get("album_name")?,
-      album_id: row.get("album_id")?,
-      duration: row.get("duration")?,
-      txt_lyrics: row.get("txt_lyrics")?,
-      lrc_lyrics: row.get("lrc_lyrics")?,
-      image_path: row.get("image_path")?
-    })
-  )?;
+    |row| {
+      let is_instrumental: Option<bool> = row.get("instrumental")?;
+
+      Ok(PersistentTrack {
+        id: row.get("id")?,
+        file_path: row.get("file_path")?,
+        file_name: row.get("file_name")?,
+        title: row.get("title")?,
+        artist_name: row.get("artist_name")?,
+        artist_id: row.get("artist_id")?,
+        album_name: row.get("album_name")?,
+        album_id: row.get("album_id")?,
+        duration: row.get("duration")?,
+        txt_lyrics: row.get("txt_lyrics")?,
+        lrc_lyrics: row.get("lrc_lyrics")?,
+        image_path: row.get("image_path")?,
+        instrumental: is_instrumental.unwrap_or(false)
+      })
+    })?;
   Ok(row)
 }
 
-pub fn update_track_lrc_lyrics(id: i64, lrc_lyrics: &str, db: &Connection) -> Result<PersistentTrack> {
-  if lrc_lyrics.is_empty() {
-    let mut statement = db.prepare("UPDATE tracks SET lrc_lyrics = null WHERE id = ?")?;
-    statement.execute(params![id])?;
-  } else {
-    let mut statement = db.prepare("UPDATE tracks SET lrc_lyrics = ? WHERE id = ?")?;
-    statement.execute((lrc_lyrics, id))?;
-  }
+pub fn update_track_synced_lyrics(id: i64, synced_lyrics: &str, plain_lyrics: &str, db: &Connection) -> Result<PersistentTrack> {
+  let mut statement = db.prepare("UPDATE tracks SET lrc_lyrics = ?, txt_lyrics = ?, instrumental = false WHERE id = ?")?;
+  statement.execute((synced_lyrics, plain_lyrics, id))?;
 
   Ok(get_track_by_id(id, db)?)
 }
 
-pub fn update_track_txt_lyrics(id: i64, txt_lyrics: &str, db: &Connection) -> Result<PersistentTrack> {
-  if txt_lyrics.is_empty() {
-    let mut statement = db.prepare("UPDATE tracks SET txt_lyrics = null WHERE id = ?")?;
-    statement.execute(params![id])?;
-  } else {
-    let mut statement = db.prepare("UPDATE tracks SET txt_lyrics = ? WHERE id = ?")?;
-    statement.execute((txt_lyrics, id))?;
-  }
+pub fn update_track_plain_lyrics(id: i64, plain_lyrics: &str, db: &Connection) -> Result<PersistentTrack> {
+  let mut statement = db.prepare("UPDATE tracks SET txt_lyrics = ?, lrc_lyrics = null, instrumental = false WHERE id = ?")?;
+  statement.execute((plain_lyrics, id))?;
+
+  Ok(get_track_by_id(id, db)?)
+}
+
+pub fn update_track_null_lyrics(id: i64, db: &Connection) -> Result<PersistentTrack> {
+  let mut statement = db.prepare("UPDATE tracks SET txt_lyrics = null, lrc_lyrics = null, instrumental = false WHERE id = ?")?;
+  statement.execute([id])?;
+
+  Ok(get_track_by_id(id, db)?)
+}
+
+pub fn update_track_instrumental(id: i64, db: &Connection) -> Result<PersistentTrack> {
+  let mut statement = db.prepare("UPDATE tracks SET txt_lyrics = null, lrc_lyrics = ?, instrumental = true WHERE id = ?")?;
+  statement.execute(params!["[au: instrumental]", id])?;
 
   Ok(get_track_by_id(id, db)?)
 }
@@ -281,6 +306,10 @@ pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
     }
   };
 
+  // Create a regex to match "[au: instrumental]" or "[au:instrumental]"
+  let re = Regex::new(r"\[au:\s*instrumental\]").expect("Invalid regex");
+  let is_instrumental = track.lrc_lyrics().as_ref().map_or(false, |lyrics| re.is_match(lyrics));
+
   let query = indoc! {"
     INSERT INTO tracks (
         file_path,
@@ -290,11 +319,22 @@ pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
         artist_id,
         duration,
         txt_lyrics,
-        lrc_lyrics
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        lrc_lyrics,
+        instrumental
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   "};
   let mut statement = db.prepare(query)?;
-  statement.execute((track.file_path(), track.file_name(), track.title(), album_id, artist_id, track.duration(), track.txt_lyrics(), track.lrc_lyrics()))?;
+  statement.execute((
+    track.file_path(),
+    track.file_name(),
+    track.title(),
+    album_id,
+    artist_id,
+    track.duration(),
+    track.txt_lyrics(),
+    track.lrc_lyrics(),
+    is_instrumental
+  ))?;
 
   Ok(())
 }
@@ -305,7 +345,7 @@ pub fn get_tracks(db: &Connection) -> Result<Vec<PersistentTrack>> {
           tracks.id, file_path, file_name, title,
           artists.name AS artist_name, tracks.artist_id,
           albums.name AS album_name, album_id, duration,
-          albums.image_path, txt_lyrics, lrc_lyrics
+          albums.image_path, txt_lyrics, lrc_lyrics, instrumental
       FROM tracks
       JOIN albums ON tracks.album_id = albums.id
       JOIN artists ON tracks.artist_id = artists.id
@@ -316,6 +356,8 @@ pub fn get_tracks(db: &Connection) -> Result<Vec<PersistentTrack>> {
   let mut tracks: Vec<PersistentTrack> = Vec::new();
 
   while let Some(row) = rows.next()? {
+    let is_instrumental: Option<bool> = row.get("instrumental")?;
+
     let track = PersistentTrack {
       id: row.get("id")?,
       file_path: row.get("file_path")?,
@@ -329,6 +371,7 @@ pub fn get_tracks(db: &Connection) -> Result<Vec<PersistentTrack>> {
       txt_lyrics: row.get("txt_lyrics")?,
       lrc_lyrics: row.get("lrc_lyrics")?,
       image_path: row.get("image_path")?,
+      instrumental: is_instrumental.unwrap_or(false)
     };
 
     tracks.push(track);
@@ -350,7 +393,7 @@ pub fn get_track_ids(db: &Connection) -> Result<Vec<i64>> {
 }
 
 pub fn get_no_lyrics_track_ids(db: &Connection) -> Result<Vec<i64>> {
-  let mut statement = db.prepare("SELECT id FROM tracks WHERE lrc_lyrics IS NULL ORDER BY title ASC")?;
+  let mut statement = db.prepare("SELECT id FROM tracks WHERE lrc_lyrics IS NULL AND instrumental != true ORDER BY title ASC")?;
   let mut rows = statement.query([])?;
   let mut track_ids: Vec<i64> = Vec::new();
 
@@ -513,7 +556,8 @@ pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<Persistent
           duration,
           albums.image_path,
           txt_lyrics,
-          lrc_lyrics
+          lrc_lyrics,
+          instrumental
       FROM tracks
       JOIN albums ON tracks.album_id = albums.id
       JOIN artists ON tracks.artist_id = artists.id
@@ -524,6 +568,8 @@ pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<Persistent
   let mut tracks: Vec<PersistentTrack> = Vec::new();
 
   while let Some(row) = rows.next()? {
+    let is_instrumental: Option<bool> = row.get("instrumental")?;
+
     let track = PersistentTrack {
       id: row.get("id")?,
       file_path: row.get("file_path")?,
@@ -537,6 +583,7 @@ pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<Persistent
       txt_lyrics: row.get("txt_lyrics")?,
       lrc_lyrics: row.get("lrc_lyrics")?,
       image_path: row.get("image_path")?,
+      instrumental: is_instrumental.unwrap_or(false)
     };
 
     tracks.push(track);
@@ -567,7 +614,7 @@ pub fn get_artist_tracks(artist_id: i64, db: &Connection) -> Result<Vec<Persiste
   let mut statement = db.prepare(indoc! {"
       SELECT tracks.id, file_path, file_name, title, artists.name AS artist_name,
              tracks.artist_id, albums.name AS album_name, album_id, duration,
-             albums.image_path, txt_lyrics, lrc_lyrics
+             albums.image_path, txt_lyrics, lrc_lyrics, instrumental
       FROM tracks
       JOIN albums ON tracks.album_id = albums.id
       JOIN artists ON tracks.artist_id = artists.id
@@ -578,6 +625,8 @@ pub fn get_artist_tracks(artist_id: i64, db: &Connection) -> Result<Vec<Persiste
   let mut tracks: Vec<PersistentTrack> = Vec::new();
 
   while let Some(row) = rows.next()? {
+    let is_instrumental: Option<bool> = row.get("instrumental")?;
+
     let track = PersistentTrack {
       id: row.get("id")?,
       file_path: row.get("file_path")?,
@@ -591,6 +640,7 @@ pub fn get_artist_tracks(artist_id: i64, db: &Connection) -> Result<Vec<Persiste
       txt_lyrics: row.get("txt_lyrics")?,
       lrc_lyrics: row.get("lrc_lyrics")?,
       image_path: row.get("image_path")?,
+      instrumental: is_instrumental.unwrap_or(false)
     };
 
     tracks.push(track);

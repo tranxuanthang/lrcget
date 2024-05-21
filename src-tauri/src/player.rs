@@ -33,17 +33,17 @@ pub struct Player {
 }
 
 impl Player {
-  pub fn new() -> Player {
-    let manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default()).unwrap();
+  pub fn new() -> Result<Player> {
+    let manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default())?;
 
-    Player {
+    Ok(Player {
       manager,
       sound_handle: None,
       track: None,
       status: PlayerStatus::Stopped,
       progress: 0.0,
       duration: 0.0
-    }
+    })
   }
 
   pub fn renew_state(&mut self) {
