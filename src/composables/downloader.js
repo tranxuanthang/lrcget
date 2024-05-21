@@ -1,6 +1,8 @@
 import { computed, ref } from 'vue'
 import { invoke } from '@tauri-apps/api/tauri'
 
+const delay = (time) => new Promise((resolve, reject) => setTimeout(resolve, time))
+
 const downloadQueue = ref([])
 const downloadedItems = ref([])
 const currentItem = ref(null)
@@ -35,6 +37,7 @@ const downloadLyrics = async (track) => {
 
   downloadedItems.value.push(currentItem.value)
   currentItem.value = null
+  await delay(50)
   downloadNext()
 }
 

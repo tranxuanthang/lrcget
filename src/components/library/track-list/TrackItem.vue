@@ -9,7 +9,7 @@
     <div class="flex-none w-[65%] flex p-1" @click="playTrack(track)">
       <div v-if="track">
         <div class="font-bold text-sm text-brave-20 flex items-center">
-          <Equalizer v-if="isPlaying" class="mr-1 text-brave-20" />
+          <Equalizer v-if="isPlaying && status === 'playing'" class="mr-1 text-brave-20" />
           <span>{{ track.title }}</span>
         </div>
 

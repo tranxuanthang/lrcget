@@ -68,6 +68,10 @@ body {
   @apply bg-brave-30 hover:bg-brave-35 text-white active:bg-brave-25;
 }
 
+.button-secondary {
+  @apply bg-brave-90 text-brave-30 hover:bg-brave-80 active:bg-brave-70;
+}
+
 .button-working {
   @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70;
 }

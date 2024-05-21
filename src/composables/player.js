@@ -35,6 +35,9 @@ export function usePlayer() {
   }
 
   const seek = (position) => {
+    if (status.value === 'stopped') {
+      invoke('play_track', { trackId: playingTrack.value.id })
+    }
     invoke('seek_track', { position })
   }
 

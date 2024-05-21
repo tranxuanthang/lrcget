@@ -113,6 +113,7 @@ import { useToast } from 'vue-toastification'
 import { Lrc, Runner, timestampToString, parseLine } from 'lrc-kit'
 import { useEditLyrics } from '@/composables/edit-lyrics.js'
 import { usePlayer } from '@/composables/player.js'
+import { useGlobalState } from '@/composables/global-state.js'
 import Seek from '@/components/now-playing/Seek.vue'
 import PublishLyrics from './edit-lyrics/PublishLyrics.vue'
 import PublishPlainText from './edit-lyrics/PublishPlainText.vue'
@@ -127,6 +128,7 @@ const AsyncCodemirror = defineAsyncComponent(async () => {
   return Codemirror
 })
 
+const { disableHotkey, enableHotkey } = useGlobalState()
 const { status, duration, progress, playTrack, pause, resume, seek } = usePlayer()
 const toast = useToast()
 const props = defineProps(['isShow'])
@@ -345,12 +347,14 @@ const fastForward100 = () => {
 }
 
 onUnmounted(async () => {
+  enableHotkey()
   if (keydownEvent.value) {
     document.removeEventListener(keydownEvent.value)
   }
 })
 
 onMounted(async () => {
+  disableHotkey()
   if (!editingTrack.value) {
     return
   }

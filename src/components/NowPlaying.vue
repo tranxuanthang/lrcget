@@ -15,12 +15,12 @@
             <div class="text-xs text-brave-40 line-clamp-1">{{ playingTrack.album_name }} - {{ playingTrack.artist_name }}</div>
           </div>
         </div>
-        <div class="basis-1/3 flex-1 flex justify-center items-center">
-          <button @click.prevent="seek(reverse10)" class="button button-secondary p-2 m-2 rounded-full text-xl"><Rewind_10 /></button>
+        <div class="basis-1/3 flex-1 flex justify-center items-center gap-2">
+          <button @click.prevent="seek(reverse10)" class="button button-secondary p-1 m-1 rounded-full text-lg"><Rewind_10 /></button>
           <button v-if="status === 'playing'" @click.prevent="pause" class="button button-primary text-white p-2 rounded-full text-xl"><Pause /></button>
           <button v-else-if="playingTrack && status === 'stopped'" @click.prevent="playTrack(playingTrack)" class="button button-primary text-white p-2 rounded-full text-xl"><Replay /></button>
           <button v-else @click.prevent="resume" class="button button-primary text-white p-2 rounded-full text-xl"><Play /></button>
-          <button @click.prevent="seek(forward10)" class="button button-secondary p-2 m-2 rounded-full text-xl"><FastForward_10 /></button>
+          <button @click.prevent="seek(forward10)" class="button button-secondary p-1 m-1 rounded-full text-lg"><FastForward_10 /></button>
         </div>
         <div class="basis-1/3 flex-1">
         </div>
@@ -37,7 +37,9 @@ import LyricsViewer from './now-playing/LyricsViewer.vue'
 import PlainLyricsViewer from './now-playing/PlainLyricsViewer.vue'
 import { Play, Pause, Replay, Rewind_10, FastForward_10 } from 'mdue'
 import { usePlayer } from '@/composables/player.js'
+import { useGlobalState } from '@/composables/global-state.js'
 
+const { isHotkey } = useGlobalState()
 const { playingTrack, status, duration, progress, playTrack, pause, resume, seek } = usePlayer()
 const keydownEvent = ref(null)
 
@@ -61,7 +63,7 @@ const forward10 = computed(() => {
   if (!playingTrack.value) {
     return null
   }
-  return Math.min(duration.value, progress.value + 10)
+  return Math.min(duration.value - 1, progress.value + 10)
 })
 
 const reverse10 = computed(() => {
@@ -84,6 +86,11 @@ onUnmounted(async () => {
 
 onMounted(async () => {
   keydownEvent.value = document.addEventListener('keydown', (event) => {
+    console.log(`is hotkey: ${isHotkey.value}`)
+    if (!isHotkey.value) {
+      return
+    }
+
     switch (event.code) {
       case 'Space':
       case 'Enter':
