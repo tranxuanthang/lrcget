@@ -1,8 +1,6 @@
 import { computed, ref } from 'vue'
 import { invoke } from '@tauri-apps/api/tauri'
 
-const delay = (time) => new Promise((resolve, reject) => setTimeout(resolve, time))
-
 const downloadQueue = ref([])
 const downloadedItems = ref([])
 const currentItem = ref(null)
@@ -25,7 +23,6 @@ const addLog = (logObj) => {
 }
 
 const downloadLyrics = async (track) => {
-  isDownloading.value = true
   try {
     const result = await invoke('download_lyrics', { trackId: track.id })
     addLog({ status: 'success', title: track.title, artistName: track.artist_name, message: result })
@@ -37,7 +34,6 @@ const downloadLyrics = async (track) => {
 
   downloadedItems.value.push(currentItem.value)
   currentItem.value = null
-  await delay(50)
   downloadNext()
 }
 
@@ -61,6 +57,8 @@ const downloadProgress = computed(() => {
 })
 
 const addToQueue = (trackIds) => {
+  isDownloading.value = true
+
   downloadQueue.value.push(...trackIds)
   totalCount.value += trackIds.length
 

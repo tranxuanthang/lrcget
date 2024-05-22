@@ -44,9 +44,10 @@
 
         <button v-if="isDownloading && downloadedCount !== totalCount" class="button button-working px-4 py-1.5 text-xs rounded-full" @click.prevent="$emit('showDownloadViewer')">
           <div class="animate-spin text-sm"><Loading /></div>
-          <span>
-            Downloading {{ downloadedCount }}/{{ totalCount }}
-          </span>
+          <div class="flex gap-1">
+            <div>Downloading</div>
+            <div>{{ downloadedCount }}/{{ totalCount }}</div>
+          </div>
         </button>
 
         <button v-else-if="isDownloading" class="button button-done px-4 py-1.5 text-xs rounded-full" @click.prevent="$emit('showDownloadViewer')">
@@ -74,7 +75,7 @@ import { useDownloader } from '@/composables/downloader.js'
 import { invoke } from '@tauri-apps/api/tauri'
 
 const props = defineProps(['activeTab'])
-defineEmits(['changeActiveTab', 'showConfig', 'showAbout', 'showDownloadViewer', 'downloadAllLyrics'])
+defineEmits(['changeActiveTab', 'showConfig', 'showAbout', 'showDownloadViewer'])
 
 const { isDownloading, totalCount, downloadedCount, addToQueue } = useDownloader()
 
