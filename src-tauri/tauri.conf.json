@@ -7,8 +7,7 @@
     "withGlobalTauri": false
   },
   "package": {
-    "productName": "LRCGET",
-    "version": "0.3.0"
+    "productName": "LRCGET"
   },
   "tauri": {
     "allowlist": {

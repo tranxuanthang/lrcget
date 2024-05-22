@@ -1887,7 +1887,7 @@ dependencies = [
 
 [[package]]
 name = "lrcget"
-version = "0.0.0"
+version = "0.3.0"
 dependencies = [
  "anyhow",
  "data-encoding",

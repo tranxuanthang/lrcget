@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use serde::{Deserialize,Serialize};
 use anyhow::Result;
 use reqwest;
@@ -33,7 +35,12 @@ pub async fn request(title: &str, album_name: &str, artist_name: &str, duration:
     synced_lyrics: synced_lyrics.to_owned(),
   };
 
-  let client = reqwest::Client::new();
+  let version = env!("CARGO_PKG_VERSION");
+  let user_agent = format!("LRCGET v{} (https://github.com/tranxuanthang/lrcget)", version);
+  let client = reqwest::Client::builder()
+    .timeout(Duration::from_secs(10))
+    .user_agent(user_agent)
+    .build()?;
   let url = reqwest::Url::parse("https://lrclib.net/api/publish")?;
   let res = client.post(url).header("X-Publish-Token", publish_token).json(&data).send().await?;
 
