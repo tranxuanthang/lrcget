@@ -56,6 +56,10 @@ body {
   @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70;
 }
 
+.button-warning {
+  @apply bg-yellow-100 hover:bg-yellow-200 text-yellow-800 active:bg-yellow-300;
+}
+
 .border-normal {
   @apply border-brave-25;
 }

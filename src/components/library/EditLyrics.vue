@@ -45,12 +45,18 @@
 
         <div class="px-6 py-2 grow overflow-hidden flex flex-col gap-2">
           <div class="flex flex-col bg-brave-95 rounded-lg">
-            <div class="toolbar px-4 py-2 flex items-stretch gap-1">
-              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line & move next (Alt+Enter)" @click="syncLine"><EqualEnter /> <span class="text-xs">Sync Line & Move Next</span></button>
-              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line (Alt+X)" @click="syncLine(false)"><Equal /></button>
-              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms (Alt+LeftArrow)" @click="rewind100"><Minus /></button>
-              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Forward line 100ms (Alt+RightArrow)" @click="fastForward100"><Plus /></button>
-              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Replay line (Alt+Z)" @click="repeatLine"><MotionPlay /></button>
+            <div class="toolbar px-4 py-2 flex justify-between items-stretch gap-1">
+              <div class="flex gap-1">
+                <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line & move next (Alt+Enter)" @click="syncLine"><EqualEnter /> <span class="text-xs">Sync Line & Move Next</span></button>
+                <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line (Alt+X)" @click="syncLine(false)"><Equal /></button>
+                <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms (Alt+LeftArrow)" @click="rewind100"><Minus /></button>
+                <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Forward line 100ms (Alt+RightArrow)" @click="fastForward100"><Plus /></button>
+                <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Replay line (Alt+Z)" @click="repeatLine"><MotionPlay /></button>
+              </div>
+
+              <div>
+                <button class="button button-warning px-3 py-1 text-lg rounded-full" title="Mark track as instrumental" @click="markAsInstrumental"><Music /> <span class="text-xs">Mark Instrumental</span></button>
+              </div>
             </div>
             <div class="w-full border-b border-brave-90"></div>
             <div class="flex gap-1 items-center px-4 py-2">
@@ -105,7 +111,7 @@
 <script setup>
 import { invoke } from '@tauri-apps/api/tauri'
 import { ref, onMounted, onUnmounted, shallowRef, watch } from 'vue'
-import { Close, Loading, Equal, Play, Pause, MotionPlay, Minus, Plus, Check, AlertCircleOutline, AlertCircle, MagnifyPlus, MagnifyMinus } from 'mdue'
+import { Close, Loading, Equal, Play, Pause, MotionPlay, Minus, Plus, Check, AlertCircleOutline, AlertCircle, MagnifyPlus, MagnifyMinus, Music } from 'mdue'
 import DropdownButton from '@/components/ui/DropdownButton.vue'
 import DropdownItem from '@/components/ui/DropdownItem.vue'
 import EqualEnter from '@/components/icons/EqualEnter.vue'
@@ -344,6 +350,24 @@ const fastForward100 = () => {
 
     seek(parsed.timestamps[0])
   }
+}
+
+const markAsInstrumental = () => {
+  if (!view.value) return
+
+  const newContent = '[au: instrumental]'
+
+  view.value.dispatch({
+    changes: {
+      from: 0,
+      to: view.value.state.doc.length,
+      insert: newContent
+    }
+  })
+
+  view.value.focus()
+
+  lyricsUpdated(view.value.state.doc.toString())
 }
 
 onUnmounted(async () => {
