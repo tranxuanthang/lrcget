@@ -15,7 +15,7 @@ Visit the [release page](https://github.com/tranxuanthang/lrcget/releases) to do
 OS Support:
 
 - [x] Windows 10
-- [x] Linux (Ubuntu 22.04+ and AppImage build)
+- [x] Linux (Ubuntu 22.04 and AppImage build)
 - [x] macOS
 
 ## Screenshots
@@ -32,27 +32,25 @@ OS Support:
 
 Toss a coin to your developer?
 
-Buy Me a Coffee:
+**GitHub Sponsors (Recommended - 100% of your support goes to the developer):**
 
-<a href="https://www.buymeacoffee.com/thangtran" target="_blank">
-  <img
-    src="https://img.buymeacoffee.com/button-api/?text=Buy me a coffee&emoji=&slug=thangtran&button_colour=FFDD00&font_colour=000000&font_family=Cookie&outline_colour=000000&coffee_colour=ffffff"
-    width="235"
-    height="72"
-  />
-</a>
+https://github.com/sponsors/tranxuanthang
 
-Paypal:
+**Buy Me a Coffee:**
+
+https://www.buymeacoffee.com/thangtran
+
+**Paypal:**
 
 https://paypal.me/tranxuanthang98
 
-Monero (XMR):
+**Monero (XMR):**
 
 ```
 43ZN5qDdGQhPGthFnngD8rjCHYLsEFBcyJjDC1GPZzVxWSfT8R48QCLNGyy6Z9LvatF5j8kSgv23DgJpixJg8bnmMnKm3b7
 ```
 
-Litecoin (LTC):
+**Litecoin (LTC):**
 
 ```
 ltc1q7texq5qsp59gclqlwf6asrqmhm98gruvz94a48
@@ -88,7 +86,9 @@ If you prefer to contact by email:
 - [x] Support .ogg format
 - [ ] Embedded lyrics option ([temporary alternative](https://github.com/TheRedSpy15/lrcput))
 - [x] Optimize performance for loading large music library (https://github.com/tranxuanthang/lrcget/issues/19)
-- [ ] Search feature
+- [ ] Playlist Filter feature
+- [ ] Playlist Sort feature
+- [ ] Playlist Search feature
 - [ ] Volume control
 - [ ] Mark song as instrumental (https://github.com/tranxuanthang/lrcget/issues/36)
 
@@ -122,7 +122,7 @@ npm install
 npm run tauri build
 ```
 
-Your built binaries will be at the following application:
+Your built binaries are located at:
 
 ```
 ./src-tauri/target/release/
