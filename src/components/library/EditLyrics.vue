@@ -135,7 +135,7 @@ const AsyncCodemirror = defineAsyncComponent(async () => {
 })
 
 const { disableHotkey, enableHotkey } = useGlobalState()
-const { status, duration, progress, playTrack, pause, resume, seek } = usePlayer()
+const { status, duration, progress, playingTrack, playTrack, pause, resume, seek } = usePlayer()
 const toast = useToast()
 const props = defineProps(['isShow'])
 const { editingTrack } = useEditLyrics()
@@ -391,8 +391,10 @@ onMounted(async () => {
     unifiedLyrics.value = ''
   }
 
-  stop()
-  playTrack(editingTrack.value)
+  if (playingTrack.value && playingTrack.value.id !== editingTrack.value.id) {
+    playTrack(editingTrack.value)
+    pause()
+  }
 
   const parsed = Lrc.parse(unifiedLyrics.value)
 

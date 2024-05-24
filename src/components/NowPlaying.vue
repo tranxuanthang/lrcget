@@ -94,8 +94,15 @@ onUnmounted(async () => {
 
 onMounted(async () => {
   keydownEvent.value = document.addEventListener('keydown', (event) => {
-    console.log(`is hotkey: ${isHotkey.value}`)
     if (!isHotkey.value) {
+      // hotkey is explicitly disabled
+      return
+    }
+
+    const target = event.target
+
+    if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.closest('.v-codemirror')) {
+      // Do nothing if the target is an input, textarea, or CodeMirror element
       return
     }
 

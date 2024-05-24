@@ -1,10 +1,10 @@
 [package]
 name = "lrcget"
-version = "0.3.1"
-description = "A Tauri App"
-authors = ["you"]
-license = ""
-repository = ""
+version = "0.3.2"
+description = "Utility for mass-downloading LRC synced lyrics for your offline music library."
+authors = ["tranxuanthang"]
+license = "MIT"
+repository = "https://github.com/tranxuanthang/lrcget"
 edition = "2021"
 rust-version = "1.57"
 
