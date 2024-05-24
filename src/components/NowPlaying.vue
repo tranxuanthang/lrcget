@@ -1,7 +1,7 @@
 <template>
   <div>
-    <LyricsViewer v-if="lyrics" :lyrics="lyrics" :duration="duration" :progress="progress" />
-    <PlainLyricsViewer v-else-if="plainLyrics" :lyrics="plainLyrics" />
+    <LyricsViewer v-if="lyrics && !instrumental" :lyrics="lyrics" :duration="duration" :progress="progress" />
+    <PlainLyricsViewer v-else-if="plainLyrics && !instrumental" :lyrics="plainLyrics" />
     <div class="bg-brave-95 backdrop-blur px-4 py-3 flex-none flex flex-col justify-center items-center gap-3">
       <div class="w-full flex gap-1 justify-center items-center">
         <div class="flex-none w-12 text-xs text-brave-30">{{ humanDuration(progress) }}</div>
@@ -42,6 +42,14 @@ import { useGlobalState } from '@/composables/global-state.js'
 const { isHotkey } = useGlobalState()
 const { playingTrack, status, duration, progress, playTrack, pause, resume, seek } = usePlayer()
 const keydownEvent = ref(null)
+
+const instrumental = computed(() => {
+  if (!playingTrack.value) {
+    return null
+  }
+
+  return playingTrack.value.instrumental
+})
 
 const lyrics = computed(() => {
   if (!playingTrack.value) {
