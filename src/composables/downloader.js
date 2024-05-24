@@ -60,6 +60,8 @@ const addToQueue = (trackIds) => {
   downloadQueue.value.push(...trackIds)
   totalCount.value += trackIds.length
 
+  console.log(`Added ${totalCount.value} tracks to download queue`)
+
   // Defer the call to downloadNext using setTimeout
   if (!currentItem.value) {
     setTimeout(() => {
