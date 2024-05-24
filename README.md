@@ -8,7 +8,7 @@ LRCGET is the official client of [LRCLIB](https://lrclib.net) service.
 
 ## Download
 
-🎉 Newest version: v0.3.0
+🎉 Latest version: v0.3.2
 
 Visit the [release page](https://github.com/tranxuanthang/lrcget/releases) to download.
 
@@ -17,6 +17,11 @@ OS Support:
 - [x] Windows 10
 - [x] Linux (Ubuntu 22.04 and AppImage build)
 - [x] macOS
+
+Known issues:
+
+- No support for macOS Apple Silicon.
+- The DEB build cannot be installed on Ubuntu 24.04. Please use the AppImage build instead for Ubuntu 24.04.
 
 ## Screenshots
 
