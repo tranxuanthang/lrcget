@@ -42,7 +42,14 @@
           <Cog />
         </button>
 
-        <button v-if="isDownloading && downloadedCount !== totalCount" class="button button-working px-4 py-1.5 text-xs rounded-full" @click.prevent="$emit('showDownloadViewer')">
+        <button v-if="isBuildingQueue" class="button button-disabled px-4 py-1.5 min-h-[2rem] min-w-[12rem] text-xs rounded-full" @click.prevent="$emit('showDownloadViewer')" disabled>
+          <div class="animate-spin text-sm"><Loading /></div>
+          <div class="flex gap-1">
+            <div>Preparing</div>
+          </div>
+        </button>
+
+        <button v-else-if="isDownloading && downloadedCount !== totalCount" class="button button-working min-h-[2rem] min-w-[12rem] px-4 py-1.5 text-xs rounded-full" @click.prevent="$emit('showDownloadViewer')">
           <div class="animate-spin text-sm"><Loading /></div>
           <div class="flex gap-1">
             <div>Downloading</div>
@@ -50,14 +57,14 @@
           </div>
         </button>
 
-        <button v-else-if="isDownloading" class="button button-done px-4 py-1.5 text-xs rounded-full" @click.prevent="$emit('showDownloadViewer')">
+        <button v-else-if="isDownloading" class="button button-done min-h-[2rem] min-w-[12rem] px-4 py-1.5 text-xs rounded-full" @click.prevent="$emit('showDownloadViewer')">
           <div class="text-sm"><Check /></div>
           <span>
             Downloaded {{ downloadedCount }}/{{ totalCount }}
           </span>
         </button>
 
-        <button v-else class="button button-primary px-4 py-1.5 text-xs rounded-full" @click.prevent="downloadAllLyrics">
+        <button v-else class="button button-primary px-4 py-1.5 min-h-[2rem] min-w-[12rem] text-xs rounded-full" @click.prevent="downloadAllLyrics">
           <div class="text-sm"><DownloadMultiple /></div>
           <span>
             Download all lyrics
@@ -79,15 +86,26 @@ defineEmits(['changeActiveTab', 'showConfig', 'showAbout', 'showDownloadViewer']
 
 const { isDownloading, totalCount, downloadedCount, addToQueue } = useDownloader()
 
+const isBuildingQueue = ref(false)
+
 const downloadAllLyrics = async () => {
-  const config = await invoke('get_config')
-  let downloadTrackIds
-  if (config.skip_not_needed_tracks) {
-    downloadTrackIds = await invoke('get_no_lyrics_track_ids')
-  } else {
-    downloadTrackIds = await invoke('get_track_ids')
+  isBuildingQueue.value = true
+
+  try {
+    const config = await invoke('get_config')
+    let downloadTrackIds
+    if (config.skip_not_needed_tracks) {
+      downloadTrackIds = await invoke('get_no_lyrics_track_ids')
+    } else {
+      downloadTrackIds = await invoke('get_track_ids')
+    }
+    addToQueue(downloadTrackIds)
+  } catch (error) {
+    // TODO handle error by showing an error popup, etc...
+    console.error(error)
+  } finally {
+    isBuildingQueue.value = false
   }
-  addToQueue(downloadTrackIds)
 }
 </script>
 
