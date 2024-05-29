@@ -1,7 +1,9 @@
 use globwalk::{glob, DirEntry};
-use lofty::{read_from_path, AudioFile, LoftyError};
-use lofty::TaggedFileExt;
-use lofty::Accessor;
+use lofty::error::LoftyError;
+use lofty::file::AudioFile;
+use lofty::file::TaggedFileExt;
+use lofty::read_from_path;
+use lofty::tag::Accessor;
 use anyhow::Result;
 use rusqlite::Connection;
 use tauri::AppHandle;
@@ -21,6 +23,7 @@ pub struct FsTrack {
   title: String,
   album: String,
   artist: String,
+  album_artist: String,
   duration: f64,
   txt_lyrics: Option<String>,
   lrc_lyrics: Option<String>
@@ -49,13 +52,14 @@ struct ScanProgress {
 }
 
 impl FsTrack {
-  fn new(file_path: String, file_name: String, title: String, album: String, artist: String, duration: f64, txt_lyrics: Option<String>, lrc_lyrics: Option<String>) -> FsTrack {
+  fn new(file_path: String, file_name: String, title: String, album: String, artist: String, album_artist: String, duration: f64, txt_lyrics: Option<String>, lrc_lyrics: Option<String>) -> FsTrack {
     FsTrack {
       file_path,
       file_name,
       title,
       album,
       artist,
+      album_artist,
       duration,
       txt_lyrics,
       lrc_lyrics
@@ -66,15 +70,18 @@ impl FsTrack {
     let file_path = path.display().to_string();
     let file_name = path.file_name().unwrap().to_str().unwrap().to_owned();
     let tagged_file = read_from_path(&file_path).or_else(|err| Err(FsTrackError::ParseFailed(file_path.to_owned(), err)))?;
-    let tag = tagged_file.primary_tag().ok_or(FsTrackError::PrimaryTagNotFound(file_path.to_owned()))?;
-    let owned_tag = tag.to_owned();
+    let tag = tagged_file.primary_tag().ok_or(FsTrackError::PrimaryTagNotFound(file_path.to_owned()))?.to_owned();
     let properties = tagged_file.properties();
-    let title = owned_tag.title().ok_or(FsTrackError::TitleNotFound(file_path.to_owned()))?.to_string();
-    let album = owned_tag.album().ok_or(FsTrackError::AlbumNotFound(file_path.to_owned()))?.to_string();
-    let artist = owned_tag.artist().ok_or(FsTrackError::ArtistNotFound(file_path.to_owned()))?.to_string();
+    let title = tag.title().ok_or(FsTrackError::TitleNotFound(file_path.to_owned()))?.to_string();
+    let album = tag.album().ok_or(FsTrackError::AlbumNotFound(file_path.to_owned()))?.to_string();
+    let artist = tag.artist().ok_or(FsTrackError::ArtistNotFound(file_path.to_owned()))?.to_string();
+    let album_artist = tag
+        .get_string(&lofty::tag::ItemKey::AlbumArtist)
+        .map(|s| s.to_string())
+        .unwrap_or_else(|| artist.clone());
     let duration = properties.duration().as_secs_f64();
 
-    let mut track = FsTrack::new(file_path, file_name, title, album, artist, duration, None, None);
+    let mut track = FsTrack::new(file_path, file_name, title, album, artist, album_artist, duration, None, None);
     track.txt_lyrics = track.get_txt_lyrics();
     track.lrc_lyrics = track.get_lrc_lyrics();
 
@@ -99,6 +106,10 @@ impl FsTrack {
 
   pub fn artist(&self) -> String {
     self.artist.to_owned()
+  }
+
+  pub fn album_artist(&self) -> String {
+    self.album_artist.to_owned()
   }
 
   pub fn duration(&self) -> f64 {
