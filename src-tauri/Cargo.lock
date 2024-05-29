@@ -1242,17 +1242,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "globwalk"
-version = "0.8.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "93e3af942408868f6934a7b85134a3230832b9977cf66125df2f9edcfce4ddcc"
-dependencies = [
- "bitflags 1.3.2",
- "ignore",
- "walkdir",
-]
-
-[[package]]
 name = "gobject-sys"
 version = "0.15.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1890,7 +1879,6 @@ version = "0.3.2"
 dependencies = [
  "anyhow",
  "data-encoding",
- "globwalk",
  "indoc",
  "kira",
  "lofty",
@@ -1906,6 +1894,7 @@ dependencies = [
  "tauri-build",
  "thiserror",
  "tokio",
+ "walkdir",
 ]
 
 [[package]]
