@@ -1,55 +1,54 @@
 <template>
-  <div v-if="!isLoading" class="flex flex-col w-full h-screen">
-    <LibraryHeader
-      :activeTab="activeTab"
-      @changeActiveTab="changeActiveTab"
-      @showConfig="isShowConfig = true"
-      @showAbout="isShowAbout = true"
-      @showDownloadViewer="isShowDownloadViewer = true"
-    />
+	<div v-if="!isLoading" class="flex flex-col w-full h-screen">
+		<LibraryHeader :activeTab="activeTab" @changeActiveTab="changeActiveTab" @showConfig="isShowConfig = true"
+			@showAbout="isShowAbout = true" @showSearch="toggleSearch"
+			@showDownloadViewer="isShowDownloadViewer = true" />
 
-    <div class="relative grow overflow-hidden bg-white">
-      <TrackList
-        :isActive="activeTab === 'tracks'"
-      />
+		<div v-show="isShowSearch && activeTab == 'tracks'"
+			class="flex flex-col items-center justify-center w-full bg-red-100">
+			<SearchBar />
+		</div>
 
-      <AlbumList
-        :isActive="activeTab === 'albums'"
-      />
+		<div class="relative grow overflow-hidden bg-white">
+			<TrackList :isActive="activeTab === 'tracks'" />
 
-      <ArtistList
-        :isActive="activeTab === 'artists'"
-      />
+			<AlbumList :isActive="activeTab === 'albums'" />
 
-      <!-- <div class="absolute top-0 left-0 w-full h-[20px] bg-gradient-to-b from-white pointer-events-none"></div> -->
-    </div>
+			<ArtistList :isActive="activeTab === 'artists'" />
 
-    <NowPlaying class="flex-none border-t border-brave-90" />
-  </div>
+			<!-- <div class="absolute top-0 left-0 w-full h-[20px] bg-gradient-to-b from-white pointer-events-none"></div> -->
+		</div>
 
-  <div v-else class="flex flex-col justify-center items-center w-full h-full">
-    <div class="animate-spin text-xl text-brave-30"><Loading /></div>
-    <div v-if="isInitializing" class="flex flex-col items-center justify-center text-sm text-brave-40">
-      <div>Initializing library...</div>
-      <div v-if="initializeProgress">{{ initializeProgress.filesScanned }}/{{ initializeProgress.filesCount }} files scanned</div>
-    </div>
+		<NowPlaying class="flex-none border-t border-brave-90" />
+	</div>
 
-    <div v-else class="flex flex-col items-center justify-center text-sm text-brave-40">
-      <div>Loading library...</div>
-    </div>
-  </div>
+	<div v-else class="flex flex-col justify-center items-center w-full h-full">
+		<div class="animate-spin text-xl text-brave-30">
+			<Loading />
+		</div>
+		<div v-if="isInitializing" class="flex flex-col items-center justify-center text-sm text-brave-40">
+			<div>Initializing library...</div>
+			<div v-if="initializeProgress">{{ initializeProgress.filesScanned }}/{{ initializeProgress.filesCount }}
+				files scanned</div>
+		</div>
 
-  <DownloadViewer :is-show="isShowDownloadViewer" @close="closeDownloadViewer" />
-  <Config :is-show="isShowConfig" @close="isShowConfig = false" @refreshLibrary="refreshLibrary" @uninitialize-library="$emit('uninitializeLibrary')" />
-  <About :is-show="isShowAbout" @close="isShowAbout = false" />
+		<div v-else class="flex flex-col items-center justify-center text-sm text-brave-40">
+			<div>Loading library...</div>
+		</div>
+	</div>
 
-  <Teleport to="body">
-    <SearchLyrics v-if="searchingTrack" :is-show="!!searchingTrack" />
-  </Teleport>
+	<DownloadViewer :is-show="isShowDownloadViewer" @close="closeDownloadViewer" />
+	<Config :is-show="isShowConfig" @close="isShowConfig = false" @refreshLibrary="refreshLibrary"
+		@uninitialize-library="$emit('uninitializeLibrary')" />
+	<About :is-show="isShowAbout" @close="isShowAbout = false" />
 
-  <Teleport to="body">
-    <EditLyrics v-if="editingTrack" :is-show="!!editingTrack" />
-  </Teleport>
+	<Teleport to="body">
+		<SearchLyrics v-if="searchingTrack" :is-show="!!searchingTrack" />
+	</Teleport>
+
+	<Teleport to="body">
+		<EditLyrics v-if="editingTrack" :is-show="!!editingTrack" />
+	</Teleport>
 </template>
 
 <script setup>
@@ -64,6 +63,7 @@ import TrackList from './library/TrackList.vue'
 import AlbumList from './library/AlbumList.vue'
 import ArtistList from './library/ArtistList.vue'
 import DownloadViewer from './library/DownloadViewer.vue'
+import SearchBar from './library/SearchBar.vue'
 import Config from './library/Config.vue'
 import About from './About.vue'
 import SearchLyrics from './library/SearchLyrics.vue'
@@ -86,59 +86,64 @@ const activeTab = ref('tracks')
 const isShowDownloadViewer = ref(false)
 const isShowConfig = ref(false)
 const isShowAbout = ref(false)
+const isShowSearch = ref(false)
 
 const changeActiveTab = (tab) => {
-  activeTab.value = tab
+	activeTab.value = tab
 }
 
 const closeDownloadViewer = () => {
-  isShowDownloadViewer.value = false
+	isShowDownloadViewer.value = false
+}
+
+const toggleSearch = () => {
+	isShowSearch.value = !isShowSearch.value
 }
 
 const refreshLibrary = async () => {
-  isLoading.value = true
-  isInitializing.value = true
+	isLoading.value = true
+	isInitializing.value = true
 
-  try {
-    listen('initialize-progress', async (event) => {
-      initializeProgress.value = event.payload
-    })
-    await invoke('refresh_library')
-    isInitializing.value = false
-  } catch (error) {
-    console.error(error)
-    toast.error(`Unknown error happened when initializing the library. Error: ${error}`)
-  } finally {
-    isLoading.value = false
-    isInitializing.value = false
-  }
+	try {
+		listen('initialize-progress', async (event) => {
+			initializeProgress.value = event.payload
+		})
+		await invoke('refresh_library')
+		isInitializing.value = false
+	} catch (error) {
+		console.error(error)
+		toast.error(`Unknown error happened when initializing the library. Error: ${error}`)
+	} finally {
+		isLoading.value = false
+		isInitializing.value = false
+	}
 }
 
 onMounted(async () => {
-  const init = await invoke('get_init')
-  if (!init) {
-    isLoading.value = true
-    isInitializing.value = true
+	const init = await invoke('get_init')
+	if (!init) {
+		isLoading.value = true
+		isInitializing.value = true
 
-    try {
-      listen('initialize-progress', async (event) => {
-        initializeProgress.value = event.payload
-      })
-      await invoke('initialize_library')
-      isInitializing.value = false
-    } catch (error) {
-      console.error(error)
-      toast.error(`Unknown error happened when initializing the library. Error: ${error}`)
-    } finally {
-      isLoading.value = false
-      isInitializing.value = false
-    }
-  } else {
-    isLoading.value = false
-  }
+		try {
+			listen('initialize-progress', async (event) => {
+				initializeProgress.value = event.payload
+			})
+			await invoke('initialize_library')
+			isInitializing.value = false
+		} catch (error) {
+			console.error(error)
+			toast.error(`Unknown error happened when initializing the library. Error: ${error}`)
+		} finally {
+			isLoading.value = false
+			isInitializing.value = false
+		}
+	} else {
+		isLoading.value = false
+	}
 })
 
 onUnmounted(() => {
-  stop()
+	stop()
 })
 </script>
