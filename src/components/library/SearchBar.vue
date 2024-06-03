@@ -11,9 +11,7 @@
     <button class="button button-normal px-4 py-1.5 rounded-full h-full" @click="makeSearch" :disabled="cooldown"
       :class="{
         'cursor-not-allowed': cooldown,
-        // Make button greyed out when cooldown is active
-        'bg-brave-95': cooldown, 'text-stone-900' : cooldown,
-        'bg-brave-90': !cooldown, 'text-stone-100': !cooldown
+        // TODO: Make button greyed out when cooldown is active
       }">
       <Magnify />
     </button>
