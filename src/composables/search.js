@@ -1,6 +1,5 @@
 import { ref, onMounted, onUnmounted } from 'vue'
 import { invoke } from '@tauri-apps/api/tauri'
-import { distance, closest } from 'fastest-levenshtein'
 
 const searchValue = ref("")
 
