@@ -13,15 +13,14 @@ pub mod player;
 pub mod state;
 pub mod utils;
 
-use std::sync::Mutex;
-
-use persistent_entities::{PersistentAlbum, PersistentArtist, PersistentConfig, PersistentTrack};
+use persistent_entities::{PersistentTrack, PersistentAlbum, PersistentArtist, PersistentConfig};
 use player::Player;
-use regex::Regex;
+use tauri::{State, Manager, AppHandle};
 use rusqlite::Connection;
-use serde::Serialize;
 use state::{AppState, ServiceAccess};
-use tauri::{AppHandle, Manager, State};
+use serde::Serialize;
+use regex::Regex;
+use std::sync::Mutex;
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -135,16 +134,12 @@ async fn get_tracks(app_state: State<'_, AppState>) -> Result<Vec<PersistentTrac
 }
 
 #[tauri::command]
-async fn get_track_ids(
-    enable_search: bool,
-    app_state: State<'_, AppState>,
-) -> Result<Vec<i64>, String> {
-    let conn_guard = app_state.db.lock().unwrap();
-    let conn = conn_guard.as_ref().unwrap();
-    let search_guard = app_state.active_search.lock().unwrap();
-    let search_query = search_guard.as_ref().unwrap();
-    let track_ids = library::get_track_ids(enable_search, search_query, conn)
-        .map_err(|err| err.to_string())?;
+async fn get_track_ids(enable_search: bool, app_state: State<'_, AppState>) -> Result<Vec<i64>, String> {
+  let conn_guard = app_state.db.lock().unwrap();
+  let conn = conn_guard.as_ref().unwrap();
+  let search_guard = app_state.active_search.lock().unwrap();
+  let search_query = search_guard.as_ref().unwrap();
+  let track_ids = library::get_track_ids(enable_search, search_query, conn).map_err(|err| err.to_string())?;
 
     Ok(track_ids)
 }
@@ -565,14 +560,10 @@ fn open_devtools(window: tauri::Window) {
 
 #[tokio::main]
 async fn main() {
-    tauri::Builder::default()
-        .manage(AppState {
-            db: Default::default(),
-            player: Default::default(),
-            active_search: Mutex::new(Some("".to_string())),
-        })
-        .setup(|app| {
-            let handle = app.handle();
+  tauri::Builder::default()
+    .manage(AppState { db: Default::default(), player: Default::default(), active_search: Mutex::new(Some("".to_string()))})
+    .setup(|app| {
+      let handle = app.handle();
 
             let app_state: State<AppState> = handle.state();
             let db = db::initialize_database(&handle).expect("Database initialize should succeed");
@@ -599,45 +590,45 @@ async fn main() {
                 }
             });
 
-            Ok(())
-        })
-        .invoke_handler(tauri::generate_handler![
-            get_directories,
-            set_directories,
-            get_init,
-            get_config,
-            set_config,
-            initialize_library,
-            uninitialize_library,
-            refresh_library,
-            get_tracks,
-            get_track_ids,
-            get_no_lyrics_track_ids,
-            get_track,
-            get_albums,
-            get_album_ids,
-            get_album,
-            get_artists,
-            get_artist_ids,
-            get_artist,
-            get_album_tracks,
-            get_artist_tracks,
-            get_album_track_ids,
-            get_artist_track_ids,
-            set_search,
-            download_lyrics,
-            apply_lyrics,
-            retrieve_lyrics,
-            search_lyrics,
-            save_lyrics,
-            publish_lyrics,
-            play_track,
-            pause_track,
-            resume_track,
-            seek_track,
-            stop_track,
-            open_devtools
-        ])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+      Ok(())
+    })
+    .invoke_handler(tauri::generate_handler![
+      get_directories,
+      set_directories,
+      get_init,
+      get_config,
+      set_config,
+      initialize_library,
+      uninitialize_library,
+      refresh_library,
+      get_tracks,
+      get_track_ids,
+      get_no_lyrics_track_ids,
+      get_track,
+      get_albums,
+      get_album_ids,
+      get_album,
+      get_artists,
+      get_artist_ids,
+      get_artist,
+      get_album_tracks,
+      get_artist_tracks,
+      get_album_track_ids,
+      get_artist_track_ids,
+      set_search,
+      download_lyrics,
+      apply_lyrics,
+      retrieve_lyrics,
+      search_lyrics,
+      save_lyrics,
+      publish_lyrics,
+      play_track,
+      pause_track,
+      resume_track,
+      seek_track,
+      stop_track,
+      open_devtools
+    ])
+    .run(tauri::generate_context!())
+    .expect("error while running tauri application");
 }

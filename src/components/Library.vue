@@ -1,7 +1,13 @@
 <template>
   <div v-if="!isLoading" class="flex flex-col w-full h-screen">
-    <LibraryHeader :activeTab="activeTab" @changeActiveTab="changeActiveTab" @showConfig="isShowConfig = true"
-      @showAbout="isShowAbout = true" @showSearch="toggleSearch" @showDownloadViewer="isShowDownloadViewer = true" />
+    <LibraryHeader
+      :activeTab="activeTab"
+      @changeActiveTab="changeActiveTab"
+      @showConfig="isShowConfig = true"
+      @showAbout="isShowAbout = true"
+      @showDownloadViewer="isShowDownloadViewer = true"
+      @showSearch="toggleSearch"
+    />
 
     <div v-show="isShowSearch && activeTab == 'tracks'"
       class="flex flex-col items-center justify-center w-full bg-red-100">
@@ -57,12 +63,12 @@ import { listen } from '@tauri-apps/api/event'
 import { Loading } from 'mdue'
 import _ from 'lodash'
 import LibraryHeader from './library/LibraryHeader.vue'
+import SearchBar from './library/SearchBar.vue'
 import NowPlaying from './NowPlaying.vue'
 import TrackList from './library/TrackList.vue'
 import AlbumList from './library/AlbumList.vue'
 import ArtistList from './library/ArtistList.vue'
 import DownloadViewer from './library/DownloadViewer.vue'
-import SearchBar from './library/SearchBar.vue'
 import Config from './library/Config.vue'
 import About from './About.vue'
 import SearchLyrics from './library/SearchLyrics.vue'

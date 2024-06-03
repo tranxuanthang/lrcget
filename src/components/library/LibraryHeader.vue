@@ -22,12 +22,17 @@
       </div>
 
       <div class="flex-1 flex justify-end items-center gap-1">
-        <button class="button button-normal px-4 py-1.5 rounded-full h-full" @click="$emit('showSearch')"
-          v-if="props.activeTab === 'tracks'">
+        <button class="button button-normal px-4 py-1.5 rounded-full h-full"
+          @click="$emit('showSearch')"
+          v-if="props.activeTab === 'tracks'"
+        >
           <TableSearch />
         </button>
 
-        <button class="button button-normal px-4 py-1.5 rounded-full h-full" @click="$emit('showAbout')">
+        <button
+          class="button button-normal px-4 py-1.5 rounded-full h-full"
+          @click="$emit('showAbout')"
+        >
           <Information />
         </button>
 
