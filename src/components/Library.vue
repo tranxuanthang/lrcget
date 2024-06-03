@@ -6,6 +6,7 @@
       @showConfig="isShowConfig = true"
       @showAbout="isShowAbout = true"
       @showDownloadViewer="isShowDownloadViewer = true"
+      @showSearch="toggleSearch"
     />
 
     <div v-show="isShowSearch && activeTab == 'tracks'"
@@ -92,6 +93,7 @@ const activeTab = ref('tracks')
 const isShowDownloadViewer = ref(false)
 const isShowConfig = ref(false)
 const isShowAbout = ref(false)
+const isShowSearch = ref(false)
 
 const changeActiveTab = (tab) => {
   activeTab.value = tab
