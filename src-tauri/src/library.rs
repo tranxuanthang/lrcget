@@ -48,8 +48,12 @@ pub fn get_tracks(conn: &Connection) -> Result<Vec<PersistentTrack>> {
   db::get_tracks(conn)
 }
 
-pub fn get_track_ids(conn: &Connection) -> Result<Vec<i64>> {
-  db::get_track_ids(conn)
+pub fn get_track_ids(search_active: bool, search_query: &String, conn: &Connection) -> Result<Vec<i64>> {
+  if search_active {
+    db::get_search_track_ids(search_query, conn)
+  } else {
+    db::get_track_ids(conn)
+  }
 }
 
 pub fn get_no_lyrics_track_ids(conn: &Connection) -> Result<Vec<i64>> {

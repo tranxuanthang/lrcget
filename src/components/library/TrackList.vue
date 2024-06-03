@@ -43,6 +43,7 @@ import TrackItem from './track-list/TrackItem.vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { ref, computed, watch, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/tauri'
+import { useSearchLibrary } from '../../composables/search'
 
 const props = defineProps(['isActive'])
 const emit = defineEmits(['playTrack', 'downloadLyrics'])
@@ -73,15 +74,31 @@ const downloadLyrics = (track) => {
   emit('downloadLyrics', track)
 }
 
+const getTrackIds = async () => {
+  trackIds.value = [];
+  trackIds.value = await invoke('get_track_ids', { enableSearch: useSearchLibrary().searchValue.value ? true : false }).catch((error) => {
+    console.error("Failed to get track ids", error)
+    return []
+  })
+}
+
 onMounted(async () => {
   if (props.isActive) {
-    trackIds.value = await invoke('get_track_ids')
+    await getTrackIds()
   }
 })
 
 watch(() => props.isActive, async () => {
   if (props.isActive) {
-    trackIds.value = await invoke('get_track_ids')
+    await getTrackIds()
+  }
+})
+
+watch(() => useSearchLibrary().searchValue.value, async () => {
+  try {
+    await getTrackIds()
+  } catch (error) {
+    console.error(error)
   }
 })
 </script>
