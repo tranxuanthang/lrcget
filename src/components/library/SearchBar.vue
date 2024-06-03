@@ -8,7 +8,13 @@
     <input type="text" id="searchInput" v-model="searchInput"
       class="bg-brave-95 border border-brave-95 focus:border-brave-90 text-gray-900 outline-none text-sm rounded transition block w-full max-w-2xl p-1.5"
       placeholder="Search" @keyup.enter="makeSearch" @input="handleAutoSearch" />
-    <button class="button button-normal px-4 py-1.5 rounded-full h-full" @click="makeSearch">
+    <button class="button button-normal px-4 py-1.5 rounded-full h-full" @click="makeSearch" :disabled="cooldown"
+      :class="{
+        'cursor-not-allowed': cooldown,
+        // Make button greyed out when cooldown is active
+        'bg-brave-95': cooldown, 'text-stone-900' : cooldown,
+        'bg-brave-90': !cooldown, 'text-stone-100': !cooldown
+      }">
       <Magnify />
     </button>
     <button class="button button-normal px-4 py-1.5 rounded-full h-full" @click="clearSearch">
@@ -24,6 +30,10 @@
 import { ref, computed } from 'vue';
 import { Magnify, Close, Loading } from 'mdue';
 import { useSearchLibrary } from '../../composables/search';
+
+const DEFAULT_WAIT = 500;
+const DEFAULT_COOLDOWN = DEFAULT_WAIT * 0.75;
+
 const autoSearch = ref(false);
 const searchInput = ref('');
 const cooldown = ref(false);
@@ -37,15 +47,18 @@ const handleAutoSearch = () => {
     preClear = setTimeout(() => {
       makeSearch();
       preClear = null;
-    }, 500);
+    }, 1000);
   }
 };
 const makeSearch = () => {
+  if (cooldown.value) {
+    return;
+  }
   cooldown.value = true;
   useSearchLibrary().setSearch(searchInput.value);
   setTimeout(() => {
     cooldown.value = false;
-  }, 1000);
+  }, 750);
 };
 const clearSearch = () => {
   searchInput.value = '';

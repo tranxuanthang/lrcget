@@ -37,14 +37,7 @@ import { useSearchLibrary } from '../../composables/search';
 const props = defineProps(['isActive'])
 const emit = defineEmits(['playTrack', 'downloadLyrics'])
 
-const unfilteredTrackIds = ref([])
 const trackIds = ref([])
-
-const searchPass = async () => {
-  trackIds.value = []
-  const res = await useSearchLibrary().filter(unfilteredTrackIds.value)
-  trackIds.value = res
-}
 
 const parentRef = ref(null)
 
@@ -72,10 +65,12 @@ const downloadLyrics = (track) => {
 }
 
 const getTrackIds = async () => {
-  unfilteredTrackIds.value = await invoke('get_track_ids')
-  await searchPass()
+  trackIds.value = [];
+  trackIds.value = await invoke('get_track_ids', { enableSearch: useSearchLibrary().searchValue.value ? true : false }).catch((error) => {
+    console.error("Failed to get track ids", error)
+    return []
+  })
 }
-
 
 onMounted(async () => {
   if (props.isActive) {
