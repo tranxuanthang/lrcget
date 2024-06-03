@@ -1,6 +1,8 @@
 <template>
   <div ref="parentRef" class="p-4 overflow-y-auto h-full" v-show="props.isActive">
-    <div :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }">
+    <div
+      :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }"
+    >
       <div class="w-full">
         <div class="w-full flex">
           <div class="text-xs text-brave-30/70 font-bold flex w-full">
@@ -11,15 +13,24 @@
           </div>
         </div>
         <div class="w-full flex flex-col">
-          <div v-for="virtualRow in virtualRows" :key="virtualRow.index" class="group flex flex-col w-full" :style="{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: `${virtualRow.size}px`,
-            transform: `translateY(${virtualRow.start}px)`,
-          }">
-            <TrackItem :trackId="virtualRow.key" @play-track="playTrack" @download-lyrics="downloadLyrics" />
+          <div
+            v-for="virtualRow in virtualRows"
+            :key="virtualRow.index"
+            class="group flex flex-col w-full"
+            :style="{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
+              height: `${virtualRow.size}px`,
+              transform: `translateY(${virtualRow.start}px)`,
+              }"
+          >
+            <TrackItem
+              :trackId="virtualRow.key"
+              @play-track="playTrack"
+              @download-lyrics="downloadLyrics"
+            />
           </div>
         </div>
       </div>
@@ -32,13 +43,11 @@ import TrackItem from './track-list/TrackItem.vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { ref, computed, watch, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/tauri'
-import { useSearchLibrary } from '../../composables/search'
 
 const props = defineProps(['isActive'])
 const emit = defineEmits(['playTrack', 'downloadLyrics'])
 
 const trackIds = ref([])
-
 const parentRef = ref(null)
 
 const rowVirtualizer = useVirtualizer(
@@ -52,7 +61,7 @@ const rowVirtualizer = useVirtualizer(
   }))
 )
 
-const virtualRows = computed(() => rowVirtualizer.value.getVirtualItems());
+const virtualRows = computed(() => rowVirtualizer.value.getVirtualItems())
 
 const totalSize = computed(() => rowVirtualizer.value.getTotalSize())
 
