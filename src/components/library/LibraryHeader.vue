@@ -28,6 +28,11 @@
       </div>
 
       <div class="flex-1 flex justify-end items-center gap-1">
+        <button class="button button-normal px-4 py-1.5 rounded-full h-full" @click="$emit('showSearch')"
+          v-if="props.activeTab === 'tracks'">
+          <TableSearch />
+        </button>
+
         <button
           class="button button-normal px-4 py-1.5 rounded-full h-full"
           @click="$emit('showAbout')"
@@ -77,12 +82,12 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { DownloadMultiple, Loading, Check, Cog, Information } from 'mdue'
+import { DownloadMultiple, Loading, Check, Cog, Information, TableSearch } from 'mdue'
 import { useDownloader } from '@/composables/downloader.js'
 import { invoke } from '@tauri-apps/api/tauri'
 
 const props = defineProps(['activeTab'])
-defineEmits(['changeActiveTab', 'showConfig', 'showAbout', 'showDownloadViewer'])
+defineEmits(['changeActiveTab', 'showConfig', 'showAbout', 'showDownloadViewer', 'showSearch'])
 
 const { isDownloading, totalCount, downloadedCount, addToQueue } = useDownloader()
 
@@ -97,7 +102,7 @@ const downloadAllLyrics = async () => {
     if (config.skip_not_needed_tracks) {
       downloadTrackIds = await invoke('get_no_lyrics_track_ids')
     } else {
-      downloadTrackIds = await invoke('get_track_ids')
+      downloadTrackIds = await invoke('get_track_ids', { enableSearch: false })
     }
     addToQueue(downloadTrackIds)
   } catch (error) {

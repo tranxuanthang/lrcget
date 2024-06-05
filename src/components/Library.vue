@@ -6,7 +6,13 @@
       @showConfig="isShowConfig = true"
       @showAbout="isShowAbout = true"
       @showDownloadViewer="isShowDownloadViewer = true"
+      @showSearch="toggleSearch"
     />
+
+    <div v-show="isShowSearch && activeTab == 'tracks'"
+      class="flex flex-col items-center justify-center w-full bg-red-100">
+      <SearchBar />
+    </div>
 
     <div class="relative grow overflow-hidden bg-white">
       <TrackList
@@ -64,6 +70,7 @@ import TrackList from './library/TrackList.vue'
 import AlbumList from './library/AlbumList.vue'
 import ArtistList from './library/ArtistList.vue'
 import DownloadViewer from './library/DownloadViewer.vue'
+import SearchBar from './library/SearchBar.vue'
 import Config from './library/Config.vue'
 import About from './About.vue'
 import SearchLyrics from './library/SearchLyrics.vue'
@@ -86,6 +93,7 @@ const activeTab = ref('tracks')
 const isShowDownloadViewer = ref(false)
 const isShowConfig = ref(false)
 const isShowAbout = ref(false)
+const isShowSearch = ref(false)
 
 const changeActiveTab = (tab) => {
   activeTab.value = tab
@@ -93,6 +101,10 @@ const changeActiveTab = (tab) => {
 
 const closeDownloadViewer = () => {
   isShowDownloadViewer.value = false
+}
+
+const toggleSearch = () => {
+  isShowSearch.value = !isShowSearch.value
 }
 
 const refreshLibrary = async () => {

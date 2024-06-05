@@ -21,6 +21,8 @@ use state::{AppState, ServiceAccess};
 use serde::Serialize;
 use regex::Regex;
 
+use std::sync::Mutex;
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PublishLyricsProgress {
@@ -116,12 +118,18 @@ async fn get_tracks(app_state: State<'_, AppState>) -> Result<Vec<PersistentTrac
 }
 
 #[tauri::command]
-async fn get_track_ids(app_state: State<'_, AppState>) -> Result<Vec<i64>, String> {
-  let conn_guard = app_state.db.lock().unwrap();
-  let conn = conn_guard.as_ref().unwrap();
-  let track_ids = library::get_track_ids(conn).map_err(|err| err.to_string())?;
+async fn get_track_ids(
+    enable_search: bool,
+    app_state: State<'_, AppState>,
+) -> Result<Vec<i64>, String> {
+    let conn_guard = app_state.db.lock().unwrap();
+    let conn = conn_guard.as_ref().unwrap();
+    let search_guard = app_state.active_search.lock().unwrap();
+    let search_query = search_guard.as_ref().unwrap();
+    let track_ids = library::get_track_ids(enable_search, search_query, conn)
+        .map_err(|err| err.to_string())?;
 
-  Ok(track_ids)
+    Ok(track_ids)
 }
 
 #[tauri::command]
@@ -231,6 +239,14 @@ async fn get_artist_track_ids(artist_id: i64, app_state: State<'_, AppState>) ->
   let track_ids = library::get_artist_track_ids(artist_id, conn).map_err(|err| err.to_string())?;
 
   Ok(track_ids)
+}
+
+#[tauri::command]
+async fn set_search(query: String, app_state: State<'_, AppState>) -> Result<String, String> {
+    let mut search_guard = app_state.active_search.lock().unwrap();
+    *search_guard = Some(query.clone());
+
+    Ok(query)
 }
 
 #[tauri::command]
@@ -419,7 +435,7 @@ fn open_devtools(window: tauri::Window) {
 #[tokio::main]
 async fn main() {
   tauri::Builder::default()
-    .manage(AppState { db: Default::default(), player: Default::default() })
+    .manage(AppState { db: Default::default(), player: Default::default(), active_search: Mutex::new(Some("".to_string())) })
     .setup(|app| {
       let handle = app.handle();
 
@@ -473,6 +489,7 @@ async fn main() {
       get_artist_tracks,
       get_album_track_ids,
       get_artist_track_ids,
+      set_search,
       download_lyrics,
       apply_lyrics,
       retrieve_lyrics,

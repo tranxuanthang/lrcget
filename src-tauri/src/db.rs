@@ -392,6 +392,32 @@ pub fn get_track_ids(db: &Connection) -> Result<Vec<i64>> {
   Ok(track_ids)
 }
 
+pub fn get_search_track_ids(query_str: &String, db: &Connection) -> Result<Vec<i64>> {
+    let query = indoc! {"
+      SELECT tracks.id
+      FROM tracks
+      JOIN artists ON tracks.artist_id = artists.id
+      JOIN albums ON tracks.album_id = albums.id
+      WHERE artists.name LIKE ? OR albums.name LIKE ? OR tracks.title LIKE ?
+      ORDER BY title ASC
+  "};
+
+    let mut statement = db.prepare(query)?;
+    let formatted_query_str = format!("%{}%", query_str);
+    let mut rows = statement.query(params![
+        formatted_query_str,
+        formatted_query_str,
+        formatted_query_str
+    ])?;
+    let mut track_ids: Vec<i64> = Vec::new();
+
+    while let Some(row) = rows.next()? {
+        track_ids.push(row.get("id")?);
+    }
+
+    Ok(track_ids)
+}
+
 pub fn get_no_lyrics_track_ids(db: &Connection) -> Result<Vec<i64>> {
   let mut statement = db.prepare("SELECT id FROM tracks WHERE lrc_lyrics IS NULL AND instrumental != true ORDER BY title ASC")?;
   let mut rows = statement.query([])?;
