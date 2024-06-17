@@ -6,7 +6,6 @@ use crate::player::Player;
 pub struct AppState {
   pub db: std::sync::Mutex<Option<Connection>>,
   pub player: std::sync::Mutex<Option<Player>>,
-  pub active_search: std::sync::Mutex<Option<String>>
 }
 
 pub trait ServiceAccess {

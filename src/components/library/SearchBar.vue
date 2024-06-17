@@ -25,41 +25,41 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { Magnify, Close, Loading } from 'mdue';
-import { useSearchLibrary } from '../../composables/search';
+import { ref, computed } from 'vue'
+import { Magnify, Close, Loading } from 'mdue'
+import { useSearchLibrary } from '@/composables/search-library.js'
 
-const DEFAULT_WAIT = 500;
-const DEFAULT_COOLDOWN = DEFAULT_WAIT * 0.75;
+const DEFAULT_WAIT = 500
+const DEFAULT_COOLDOWN = DEFAULT_WAIT * 0.75
 
-const autoSearch = ref(false);
-const searchInput = ref('');
-const cooldown = ref(false);
-let preClear = null;
+const autoSearch = ref(false)
+const searchInput = ref('')
+const cooldown = ref(false)
+let preClear = null
 
 const handleAutoSearch = () => {
   if (autoSearch.value) {
     if (preClear) {
-      clearTimeout(preClear);
+      clearTimeout(preClear)
     }
     preClear = setTimeout(() => {
-      makeSearch();
-      preClear = null;
+      makeSearch()
+      preClear = null
     }, 1000);
   }
 };
 const makeSearch = () => {
   if (cooldown.value) {
-    return;
+    return
   }
-  cooldown.value = true;
-  useSearchLibrary().setSearch(searchInput.value);
+  cooldown.value = true
+  useSearchLibrary().setSearch(searchInput.value)
   setTimeout(() => {
-    cooldown.value = false;
-  }, 750);
+    cooldown.value = false
+  }, 750)
 };
 const clearSearch = () => {
-  searchInput.value = '';
-  makeSearch();
+  searchInput.value = ''
+  makeSearch()
 };
 </script>

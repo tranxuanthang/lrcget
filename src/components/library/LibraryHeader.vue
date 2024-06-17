@@ -1,7 +1,9 @@
 <template>
   <div class="px-4 py-2 flex flex-col gap-4 flex-none justify-center items-center bg-white">
     <div class="flex justify-between w-full">
-      <div class="flex-1"></div>
+      <div class="flex-1 ml-2">
+        <MiniSearch v-if="props.activeTab === 'tracks'" />
+      </div>
 
       <div class="flex-1 flex gap-5 justify-center text-sm">
         <button
@@ -28,11 +30,6 @@
       </div>
 
       <div class="flex-1 flex justify-end items-center gap-1">
-        <button class="button button-normal px-4 py-1.5 rounded-full h-full" @click="$emit('showSearch')"
-          v-if="props.activeTab === 'tracks'">
-          <TableSearch />
-        </button>
-
         <button
           class="button button-normal px-4 py-1.5 rounded-full h-full"
           @click="$emit('showAbout')"
@@ -82,8 +79,9 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { DownloadMultiple, Loading, Check, Cog, Information, TableSearch } from 'mdue'
+import { DownloadMultiple, Loading, Check, Cog, Information, Magnify } from 'mdue'
 import { useDownloader } from '@/composables/downloader.js'
+import MiniSearch from './MiniSearch.vue'
 import { invoke } from '@tauri-apps/api/tauri'
 
 const props = defineProps(['activeTab'])

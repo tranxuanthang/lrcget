@@ -108,6 +108,10 @@ body {
   @apply text-sm text-brave-35;
 }
 
+.input {
+  @apply bg-brave-98 box-border border border-brave-90 focus:border-brave-80 outline-none text-sm rounded-full transition text-brave-35 placeholder:text-brave-70;
+}
+
 .Vue-Toastification__toast.lrcget-toast {
   padding: 12px 24px !important;
   min-width: auto !important;

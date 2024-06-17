@@ -69,27 +69,30 @@
           </div>
 
           <!-- NOTE: AsyncCodemirror component does not have @wheel event handler, so it has to be handled here (in the container) -->
-          <div class="h-full overflow-hidden w-full max-w-full" @keydown="handleKeydown" @wheel="handleWheel">
-            <AsyncCodemirror
-              v-if="shouldLoadCodeMirror"
-              v-model="unifiedLyrics"
-              placeholder="Lyrics is currently empty"
-              class="codemirror-custom h-full outline-none"
-              :autofocus="true"
-              :indent-with-tab="true"
-              :tab-size="2"
-              :extensions="extensions"
-              @ready="handleReady"
-              @change="lyricsUpdated"
-            />
+          <div class="relative h-full w-full" id="cm-container" ref="cmContainer">
+            <div class="overflow-hidden absolute w-full" :style="{ height: `${cmHeight}px` }" @keydown="handleKeydown" @wheel="handleWheel">
+              <AsyncCodemirror
+                v-if="shouldLoadCodeMirror"
+                v-model="unifiedLyrics"
+                placeholder="Lyrics is currently empty"
+                class="codemirror-custom h-full outline-none"
+                :autofocus="true"
+                :indent-with-tab="true"
+                :tab-size="2"
+                :extensions="extensions"
+                :config="{ height: 'auto' }"
+                @ready="handleReady"
+                @change="lyricsUpdated"
+              />
 
-            <div v-else class="flex flex-col h-full items-center justify-center text-sm text-brave-40">
-              <div class="animate-spin text-xl text-brave-30"><Loading /></div>
-              <div>Loading editor...</div>
+              <div v-else class="flex flex-col h-full items-center justify-center text-sm text-brave-40">
+                <div class="animate-spin text-xl text-brave-30"><Loading /></div>
+                <div>Loading editor...</div>
+              </div>
             </div>
           </div>
           
-          <div v-if="shouldLoadCodeMirror" class="flex flex-col w-fit self-end bg-brave-95 rounded-lg">
+          <div class="flex flex-col w-fit self-end bg-brave-95 rounded-lg">
             <div class="toolbar px-2 py-1 flex items-stretch gap-1">
               <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom out" @click="changeCodemirrorFontSizeBy(-1)"><MagnifyMinus /></button>
               <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full w-[4.5em]" title="Reset zoom level" @click="resetCodemirrorFontSize">{{ (codemirrorStyle.fontSize * 100).toFixed(0) }}%</button>
@@ -148,6 +151,8 @@ const isPublishingLyrics = ref(false)
 const isPublishingPlainText = ref(false)
 const lyricsLintResult = ref([])
 const plainTextLintResult = ref([])
+const cmContainer = ref(null)
+const cmHeight = ref(null)
 
 const runner = ref(null)
 const currentIndex = ref(null)
@@ -237,9 +242,9 @@ const changeCodemirrorFontSizeBy = (offset) => {
 const handleReady = (payload) => {
   view.value = payload.view
 
-  setTimeout(() => {
-    view.value.scrollDOM.scrollTop = 0
-  }, 100)
+  view.value.dispatch({
+    effects: EditorView.scrollIntoView(0)
+  })
 }
 
 const resetCodemirrorFontSize = () => {
@@ -400,6 +405,8 @@ onMounted(async () => {
 
   runner.value = new Runner(parsed)
 
+  cmHeight.value = cmContainer.value.offsetHeight
+
   setTimeout(() => shouldLoadCodeMirror.value = true, 100)
 
   keydownEvent.value = document.addEventListener('keydown', (event) => {
@@ -498,7 +505,7 @@ const publishPlainText = async () => {
 }
 
 .cm-scroller {
-  @apply scroll-smooth;
+  /* @apply scroll-smooth; */
 }
 
 .codemirror-custom .cm-current-lyrics {

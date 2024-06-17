@@ -16,7 +16,7 @@
                   type="text"
                   id="title"
                   v-model="title"
-                  class="bg-brave-95 border border-brave-95 focus:border-brave-90 text-gray-900 outline-none text-sm rounded transition block w-full p-1.5"
+                  class="input w-full py-1.5 px-2"
                   placeholder="Title"
                   :disabled="loading"
                 >
@@ -28,7 +28,7 @@
                   type="text"
                   id="artistName"
                   v-model="albumName"
-                  class="bg-brave-95 border border-brave-95 focus:border-brave-90 text-gray-900 outline-none text-sm rounded transition block w-full p-1.5"
+                  class="input w-full py-1.5 px-2"
                   placeholder="Album"
                   :disabled="loading"
                 >
@@ -40,7 +40,7 @@
                   type="text"
                   id="artistName"
                   v-model="artistName"
-                  class="bg-brave-95 border border-brave-95 focus:border-brave-90 text-gray-900 outline-none text-sm rounded transition block w-full p-1.5"
+                  class="input w-full py-1.5 p-2"
                   placeholder="Artist"
                   :disabled="loading"
                 >

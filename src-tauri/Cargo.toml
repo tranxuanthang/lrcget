@@ -23,13 +23,15 @@ lofty = "0.19.2"
 anyhow = "1.0.71"
 thiserror = "1.0"
 rusqlite = { version = "0.29.0", features = ["bundled"] }
+secular = { version="1.0.1", features= ["bmp", "normalization"] }
+collapse = "0.1.2"
 rayon = "1.7.0"
 indoc = "2"
 tokio = { version = "1.28.1", features = ["full"] }
 ring = "0.16.20"
 data-encoding = "2.4.0"
-kira = "0.8.7"
-symphonia = { version = "0.5.2", features = ["all"] }
+kira = "0.9.3"
+symphonia = { version = "0.5.4", features = ["all"] }
 regex = "1.10.4"
 
 [features]

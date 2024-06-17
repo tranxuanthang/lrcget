@@ -4,7 +4,7 @@ use kira::{
     AudioManager, AudioManagerSettings,
     backend::DefaultBackend,
   },
-  sound::{streaming::{StreamingSoundData, StreamingSoundSettings, StreamingSoundHandle}, FromFileError, PlaybackState},
+  sound::{streaming::{StreamingSoundData, StreamingSoundHandle}, FromFileError, PlaybackState},
   tween::Tween
 };
 
@@ -74,7 +74,6 @@ impl Player {
     if let Some(ref mut track) = self.track {
       let sound_data = StreamingSoundData::from_file(
         &track.file_path,
-        StreamingSoundSettings::default()
       )?;
 
       self.duration = sound_data.duration().as_secs_f64();
@@ -84,42 +83,38 @@ impl Player {
     Ok(())
   }
 
-  pub fn resume(&mut self) -> Result<()> {
+  pub fn resume(&mut self) {
     if let Some(ref mut sound_handle) = self.sound_handle {
-      sound_handle.resume(Tween::default())?;
+      sound_handle.resume(Tween::default());
     }
-
-    Ok(())
   }
 
-  pub fn pause(&mut self) -> Result<()> {
+  pub fn pause(&mut self) {
     if let Some(ref mut sound_handle) = self.sound_handle {
-      sound_handle.pause(Tween::default())?;
+      sound_handle.pause(Tween::default());
     }
-
-    Ok(())
   }
 
-  pub fn seek(&mut self, position: f64) -> Result<()> {
+  pub fn seek(&mut self, position: f64) {
     if let Some(ref mut sound_handle) = self.sound_handle {
-      sound_handle.pause(Tween::default())?;
-      sound_handle.seek_to(position)?;
-      sound_handle.resume(Tween::default())?;
+      match sound_handle.state() {
+        PlaybackState::Playing => sound_handle.seek_to(position),
+        _ => {
+          sound_handle.seek_to(position);
+          sound_handle.resume(Tween::default());
+        }
+      }
     }
-
-    Ok(())
   }
 
-  pub fn stop(&mut self) -> Result<()> {
+  pub fn stop(&mut self) {
     if let Some(ref mut sound_handle) = self.sound_handle {
-      sound_handle.stop(Tween::default())?;
+      sound_handle.stop(Tween::default());
       self.sound_handle = None;
       self.track = None;
       self.duration = 0.0;
       self.progress = 0.0;
       self.status = PlayerStatus::Stopped;
     }
-
-    Ok(())
   }
 }
