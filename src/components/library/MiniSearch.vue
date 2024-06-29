@@ -22,7 +22,7 @@ const searchInput = ref('')
 
 const debouncedSearch = _debounce(async () => {
   searchValue.value = searchInput.value
-}, 500)
+}, 200)
 
 watch(searchInput, debouncedSearch)
 </script>

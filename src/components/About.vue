@@ -37,10 +37,28 @@
                 <label class="group-label mb-2">Donation</label>
 
                 <div class="mb-2">
+                  <div class="mb-1">GitHub Sponsors (Recommended):</div>
+                  <div>
+                    <a href="https://github.com/sponsors/tranxuanthang" class="link" target="_blank">
+                      https://github.com/sponsors/tranxuanthang
+                    </a>
+                  </div>
+                </div>
+
+                <div class="mb-2">
                   <div class="mb-1">Buy Me a Coffee:</div>
                   <div>
-                    <a href="https://www.buymeacoffee.com/thangtran" target="_blank">
-                      <img src="@/assets/buy-me-a-coffee.png" alt="Buy Me A Coffee" height="41" width="174">
+                    <a href="https://www.buymeacoffee.com/thangtran" class="link" target="_blank">
+                      https://www.buymeacoffee.com/thangtran
+                    </a>
+                  </div>
+                </div>
+
+                <div class="mb-2">
+                  <div class="mb-1">Paypal:</div>
+                  <div>
+                    <a href="https://paypal.me/tranxuanthang98" class="link" target="_blank">
+                      https://paypal.me/tranxuanthang98
                     </a>
                   </div>
                 </div>
