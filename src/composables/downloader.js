@@ -57,7 +57,10 @@ const downloadProgress = computed(() => {
 const addToQueue = (trackIds) => {
   isDownloading.value = true
 
-  downloadQueue.value.push(...trackIds)
+  for (let i = 0; i < trackIds.length; i++) {
+    downloadQueue.value.push(trackIds[i])
+  }
+
   totalCount.value += trackIds.length
 
   console.log(`Added ${totalCount.value} tracks to download queue`)

@@ -100,7 +100,7 @@ const downloadAllLyrics = async () => {
     if (config.skip_not_needed_tracks) {
       downloadTrackIds = await invoke('get_no_lyrics_track_ids')
     } else {
-      downloadTrackIds = await invoke('get_track_ids', { enableSearch: false })
+      downloadTrackIds = await invoke('get_track_ids')
     }
     addToQueue(downloadTrackIds)
   } catch (error) {
