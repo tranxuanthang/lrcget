@@ -20,7 +20,6 @@ OS Support:
 
 Known issues:
 
-- No support for macOS Apple Silicon.
 - The DEB build cannot be installed on Ubuntu 24.04. Please use the AppImage build instead for Ubuntu 24.04.
 
 ## Screenshots
