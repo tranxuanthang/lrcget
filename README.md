@@ -8,7 +8,7 @@ LRCGET is the official client of [LRCLIB](https://lrclib.net) service.
 
 ## Download
 
-🎉 Latest version: v0.3.2
+🎉 Latest version: v0.4.0
 
 Visit the [release page](https://github.com/tranxuanthang/lrcget/releases) to download.
 
@@ -92,9 +92,9 @@ If you prefer to contact by email:
 - [x] Optimize performance for loading large music library (https://github.com/tranxuanthang/lrcget/issues/19)
 - [ ] Playlist Filter feature
 - [ ] Playlist Sort feature
-- [ ] Playlist Search feature
+- [x] Playlist Search feature
 - [ ] Volume control
-- [ ] Mark song as instrumental (https://github.com/tranxuanthang/lrcget/issues/36)
+- [x] Mark song as instrumental (https://github.com/tranxuanthang/lrcget/issues/36)
 
 ## Development
 
