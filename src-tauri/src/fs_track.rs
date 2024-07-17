@@ -1,4 +1,3 @@
-use globwalk::{glob, DirEntry};
 use lofty::error::LoftyError;
 use lofty::file::AudioFile;
 use lofty::file::TaggedFileExt;
@@ -15,6 +14,7 @@ use thiserror::Error;
 use std::time::Instant;
 use crate::db;
 use tauri::Manager;
+use walkdir::{WalkDir, DirEntry};
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct FsTrack {
@@ -210,19 +210,25 @@ pub fn load_tracks_from_directories(directories: &Vec<String>, conn: &mut Connec
   let mut files_scanned: usize = 0;
   for directory in directories.iter() {
     let mut entry_batch: Vec<DirEntry> = vec![];
-    let globwalker = glob(format!("{}/**/*.{{mp3,m4a,flac,ogg,opus,wav,MP3,M4A,FLAC,OGG,OPUS,WAV}}", directory))?;
-    for item in globwalker {
-      let entry = item?;
-      entry_batch.push(entry);
-      if entry_batch.len() == 100 {
-        let tracks = load_tracks_from_entry_batch(&entry_batch)?;
-
-        db::add_tracks(&tracks, conn)?;
-        files_scanned += entry_batch.len();
-        app_handle.emit_all("initialize-progress", ScanProgress { progress: None, files_scanned, files_count: Some(files_count) }).unwrap();
-        entry_batch.clear();
+    for entry in WalkDir::new(directory).follow_links(true).into_iter().filter_map(|e| e.ok()) {
+      if let Some(extension) = entry.path().extension() {
+          match extension.to_str().unwrap_or("").to_lowercase().as_str() {
+              "mp3" | "m4a" | "flac" | "ogg" | "opus" | "wav" => {
+                  entry_batch.push(entry);
+              },
+              _ => {}
+          }
       }
+    if entry_batch.len() == 100 {
+      let tracks = load_tracks_from_entry_batch(&entry_batch)?;
+
+      db::add_tracks(&tracks, conn)?;
+      files_scanned += entry_batch.len();
+      app_handle.emit_all("initialize-progress", ScanProgress { progress: None, files_scanned, files_count: Some(files_count) }).unwrap();
+      entry_batch.clear();
     }
+  }
+
     let tracks = load_tracks_from_entry_batch(&entry_batch)?;
     db::add_tracks(&tracks, conn)?;
     files_scanned += entry_batch.len();
@@ -233,11 +239,25 @@ pub fn load_tracks_from_directories(directories: &Vec<String>, conn: &mut Connec
   Ok(())
 }
 
+
 pub fn count_files_from_directories(directories: &Vec<String>) -> Result<usize> {
   let mut files_count = 0;
+
   for directory in directories.iter() {
-    let files_in_dir = glob(format!("{}/**/*.{{mp3,m4a,flac,ogg,opus,wav,MP3,M4A,FLAC,OGG,OPUS,WAV}}", directory))?;
-    files_count += files_in_dir.into_iter().count();
+      println!("Scanning directory: {}", directory);
+
+      for entry in WalkDir::new(directory).follow_links(true).into_iter().filter_map(Result::ok) {
+          let path = entry.path();
+
+          if let Some(extension) = path.extension() {
+              match extension.to_str().unwrap_or("").to_lowercase().as_str() {
+                  "mp3" | "m4a" | "flac" | "ogg" | "opus" | "wav" => {
+                      files_count += 1;
+                  },
+                  _ => {}
+              }
+          }
+      }
   }
 
   Ok(files_count)
