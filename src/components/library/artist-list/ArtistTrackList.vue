@@ -12,12 +12,23 @@
         </button>
       </div>
 
-      <div class="flex flex-col mb-8">
-        <div class="text-thin text-xl text-brave-10">
-          {{ artist.name }}
+      <div class="flex justify-between">
+        <div class="flex flex-col mb-8">
+          <div class="text-thin text-xl text-brave-10">
+            {{ artist.name }}
+          </div>
+          <div class="flex items-center gap-2">
+            <div class="text-sm text-brave-30 group-hover:text-brave-20 transition">{{ artist.tracks_count }} tracks</div>
+          </div>
         </div>
-        <div class="flex items-center gap-2">
-          <div class="text-sm text-brave-30 group-hover:text-brave-20 transition">{{ artist.tracks_count }} tracks</div>
+
+        <div>
+          <button class="button button-normal px-4 py-1.5 text-xs rounded-full" @click.prevent="downloadArtistLyrics">
+            <div class="text-sm"><DownloadMultiple /></div>
+            <span>
+              Download artist lyrics
+            </span>
+          </button>
         </div>
       </div>
 
@@ -57,14 +68,17 @@
 </template>
 
 <script setup>
-import { ArrowLeft } from 'mdue'
+import { ArrowLeft, DownloadMultiple } from 'mdue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { ref, computed, watch, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/tauri'
 import TrackItem from '../track-list/TrackItem.vue'
+import { useDownloader } from '@/composables/downloader.js'
 
 const props = defineProps(['artist'])
 const emit = defineEmits(['back', 'playTrack', 'downloadLyrics'])
+
+const { addToQueue } = useDownloader()
 
 const trackIds = ref([])
 const parentRef = ref(null)
@@ -90,6 +104,10 @@ const playTrack = (track) => {
 
 const downloadLyrics = (track) => {
   emit('downloadLyrics', track)
+}
+
+const downloadArtistLyrics = async () => {
+  addToQueue(trackIds.value)
 }
 
 onMounted(async () => {

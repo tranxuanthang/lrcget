@@ -84,6 +84,6 @@ const removeDirectory = (index) => {
   if (index < 0) {
     return
   }
-  directories.value.splice(index)
+  directories.value.splice(index, 1)
 }
 </script>
