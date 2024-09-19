@@ -241,7 +241,8 @@ async fn get_artist_track_ids(artist_id: i64, app_state: State<'_, AppState>) ->
 #[tauri::command]
 async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String, String> {
   let track = app_handle.db(|db| db::get_track_by_id(track_id, db)).map_err(|err| err.to_string())?;
-  let lyrics = lyrics::download_lyrics_for_track(track).await.map_err(|err| err.to_string())?;
+  let is_try_embed_lyrics = app_handle.db(|db| db::get_config(db)).map_err(|err| err.to_string())?.try_embed_lyrics;
+  let lyrics = lyrics::download_lyrics_for_track(track, is_try_embed_lyrics).await.map_err(|err| err.to_string())?;
   match lyrics {
     lrclib::get::Response::SyncedLyrics(synced_lyrics, plain_lyrics) => {
       app_handle.db(|db: &Connection| db::update_track_synced_lyrics(track_id, &synced_lyrics, &plain_lyrics, db)).map_err(|err| err.to_string())?;
@@ -266,8 +267,10 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
 #[tauri::command]
 async fn apply_lyrics(track_id: i64, lrclib_response: lrclib::get::RawResponse, app_handle: AppHandle) -> Result<String, String> {
   let track = app_handle.db(|db| db::get_track_by_id(track_id, db)).map_err(|err| err.to_string())?;
+  let is_try_embed_lyrics = app_handle.db(|db| db::get_config(db)).map_err(|err| err.to_string())?.try_embed_lyrics;
+
   let lyrics = lrclib::get::Response::from_raw_response(lrclib_response);
-  let lyrics = lyrics::apply_lyrics_for_track(track, lyrics).await.map_err(|err| err.to_string())?;
+  let lyrics = lyrics::apply_lyrics_for_track(track, lyrics, is_try_embed_lyrics).await.map_err(|err| err.to_string())?;
 
   match lyrics {
     lrclib::get::Response::SyncedLyrics(synced_lyrics, plain_lyrics) => {
@@ -311,12 +314,13 @@ async fn search_lyrics(title: String, album_name: String, artist_name: String) -
 #[tauri::command]
 async fn save_lyrics(track_id: i64, plain_lyrics: String, synced_lyrics: String, app_handle: AppHandle) -> Result<String, String> {
   let track = app_handle.db(|db| db::get_track_by_id(track_id, db)).map_err(|err| err.to_string())?;
+  let is_try_embed_lyrics = app_handle.db(|db| db::get_config(db)).map_err(|err| err.to_string())?.try_embed_lyrics;
 
   // Create a regex to match "[au: instrumental]" or "[au:instrumental]"
   let re = Regex::new(r"\[au:\s*instrumental\]").expect("Invalid regex");
   let is_instrumental = re.is_match(&synced_lyrics);
 
-  lyrics::apply_string_lyrics_for_track(&track, &plain_lyrics, &synced_lyrics).await.map_err(|err| err.to_string())?;
+  lyrics::apply_string_lyrics_for_track(&track, &plain_lyrics, &synced_lyrics, is_try_embed_lyrics).await.map_err(|err| err.to_string())?;
 
   if is_instrumental {
     app_handle.db(|db: &Connection| db::update_track_instrumental(track.id, db)).map_err(|err| err.to_string())?;
