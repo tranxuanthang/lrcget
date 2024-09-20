@@ -1,6 +1,6 @@
 <template>
   <div>
-    <LyricsViewer v-if="lyrics && !instrumental" :lyrics="lyrics" :duration="duration" :progress="progress" />
+    <LyricsViewer v-if="lyrics && !instrumental" :lyrics="lyrics" :duration="duration" :progress="progress" @lyrics-clicked="lyricsClicked" />
     <PlainLyricsViewer v-else-if="plainLyrics && !instrumental" :lyrics="plainLyrics" />
     <div class="bg-brave-95 backdrop-blur px-4 py-3 flex-none flex flex-col justify-center items-center gap-3">
       <div class="w-full flex gap-1 justify-center items-center">
@@ -85,6 +85,9 @@ const humanDuration = (seconds) => {
   return new Date(seconds * 1000).toISOString().slice(11, 19)
 }
 
+const lyricsClicked = (line) => {
+  seek(line.timestamp)
+}
 
 onUnmounted(async () => {
   if (keydownEvent.value) {

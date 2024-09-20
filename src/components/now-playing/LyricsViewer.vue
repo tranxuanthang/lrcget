@@ -9,11 +9,19 @@
             </div>
 
             <div id="full-lyrics-container" class="h-full text-center transition" :style="{ transform: fullViewTransform }">
-              <p v-for="(line, index) in parsedLyrics" :key="index" class="text-brave-50" :class="{ 'font-bold': currentIndex === index }">{{ line.content }}</p>
+              <p 
+                v-for="(line, index) in parsedLyrics" 
+                :key="index" class="text-brave-50 transition" 
+                :class="{ 
+                  'font-bold': currentIndex === index,
+                  'text-brave-50 hover:text-brave-40 hover:cursor-pointer': currentIndex !== index
+                }"
+                @click="onLineClick(line)"
+              >{{ line.content }}</p>
             </div>
 
-            <div class="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-brave-95"></div>
-            <div class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-brave-95"></div>
+            <div class="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-brave-95 pointer-events-none"></div>
+            <div class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-brave-95 pointer-events-none"></div>
           </div>
         </div>
       </transition>
@@ -38,6 +46,8 @@ import { ref, onMounted, watch, nextTick } from 'vue'
 import { computed } from '@vue/reactivity'
 
 const props = defineProps(['lyrics', 'duration', 'progress'])
+const emit = defineEmits(['lyricsClicked'])
+
 const runner = ref(null)
 const parsedLyrics = ref(null)
 const currentIndex = ref(null)
@@ -75,6 +85,10 @@ const fullViewTransform = computed(() => {
 
   return `translateY(calc(50% - 2.5em - ${currentLineElementOffset.value}px))`
 })
+
+const onLineClick = (line) => {
+  emit('lyricsClicked', line)
+}
 
 onMounted(() => {
   const parsed = Lrc.parse(props.lyrics)
