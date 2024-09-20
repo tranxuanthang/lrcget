@@ -25,7 +25,7 @@
     </template>
 
     <template #tooltip="{pos, index, value, focus, disabled}">
-      <div v-if="value" class="text-brave-30 text-[0.6rem] font-bold rounded-lg px-1 py-0.5 bg-brave-90">{{ humanDuration(value * props.duration) }}</div>
+      <div v-if="value !== null" class="text-brave-30 text-[0.6rem] font-bold rounded-lg px-1 py-0.5 bg-brave-90">{{ humanDuration(value * props.duration) }}</div>
     </template>
   </VueSlider>
 </template>
@@ -41,7 +41,7 @@ const emit = defineEmits(['seek'])
 const isGracePeriod = ref(false)
 const gracePeriodTimeout = ref(null)
 
-const progressPercent = ref(0)
+const progressPercent = ref(0.0)
 
 // There is a slight delay after seeking before the player can actually start playing from the new position due to kira's StreamingSoundHandle.
 // So this is a hack to prevent the seek bar from jumping back to the old position after user seeks.
@@ -58,15 +58,21 @@ const chooseProgress = _throttle((value) => {
 }, 200)
 
 onMounted(() => {
+  if (!props.duration || !props.progress) return
+
   progressPercent.value = props.progress / props.duration
 })
 
 watch(() => props.progress, (newProgress) => {
+  if (!props.duration || !newProgress) return
   if (isGracePeriod.value) return
+
   progressPercent.value = newProgress / props.duration
 })
 
 watch(() => props.duration, (newDuration) => {
+  if (!props.progress || !newDuration) return
+
   progressPercent.value = props.progress / newDuration
 })
 </script>

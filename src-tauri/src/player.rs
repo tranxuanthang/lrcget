@@ -124,7 +124,7 @@ impl Player {
   pub fn set_volume(&mut self, volume: f64) {
     if let Some(ref mut sound_handle) = self.sound_handle {
       sound_handle.set_volume(volume, Tween::default());
-      self.volume = volume;
     }
+    self.volume = volume;
   }
 }

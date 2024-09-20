@@ -27,7 +27,7 @@
       </template>
 
       <template #tooltip="{pos, index, value, focus, disabled}">
-        <div v-if="value && value > 0" class="text-brave-30 text-[0.6rem] font-bold rounded-lg px-1 py-0.5 bg-brave-90">{{ Math.round(value * 100) }}%</div>
+        <div v-if="value !== null" class="text-brave-30 text-[0.6rem] font-bold rounded-lg px-1 py-0.5 bg-brave-90">{{ Math.round(value * 100) }}%</div>
       </template>
     </VueSlider>
   </div>
@@ -57,7 +57,9 @@ const unmute = () => {
   emit('setVolume', 1.0)
 }
 
-watch(props.volume, (newVolume) => {
+watch(() => props.volume, (newVolume) => {
+  if (!newVolume) return
+
   volume.value = newVolume
 })
 </script>

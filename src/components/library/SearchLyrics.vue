@@ -66,10 +66,10 @@
                       <span v-if="item.syncedLyrics" class="text-green-200 font-bold text-[0.65rem] bg-green-800 rounded px-1 py-0.5">Synced</span>
                       <span v-else-if="item.plainLyrics" class="text-gray-200 font-bold text-[0.65rem] bg-gray-800 rounded px-1 py-0.5">Plain</span>
                       <span v-else-if="item.instrumental" class="text-gray-200 font-bold text-[0.65rem] bg-gray-500 rounded px-1 py-0.5">Instrumental</span>
-                      <span v-if="item.duration - Math.round(searchingTrack.duration) > 0" class="ml-1 text-yellow-800 text-[0.75rem]">
+                      <span v-if="Math.round(item.duration) - Math.round(searchingTrack.duration) > 2" class="ml-1 text-blue-800 text-[0.75rem]">
                         +{{ humanDuration(Math.abs(item.duration - Math.round(searchingTrack.duration))) }}
                       </span>
-                      <span v-else-if="item.duration - Math.round(searchingTrack.duration) < 0" class="ml-1 text-yellow-800 text-[0.75rem]">
+                      <span v-else-if="Math.round(item.duration) - Math.round(searchingTrack.duration) < -2" class="ml-1 text-blue-800 text-[0.75rem]">
                         -{{ humanDuration(Math.abs(item.duration - Math.round(searchingTrack.duration))) }}
                       </span>
                     </div>
