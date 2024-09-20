@@ -27,7 +27,7 @@
               <DropdownButton v-else mainDisabled popupDisabled text="Publish" :mainAction="publishLyrics" title="Publish synced lyrics to LRCLIB service">
                 <DropdownItem disabled :action="publishPlainText" title="Publish unsynced lyrics to LRCLIB service">Publish Unsynced Lyrics</DropdownItem>
               </DropdownButton>
-              
+
               <div class="inline-flex [&>div>svg]:text-2xl items-center justify-center">
                 <div v-if="lyricsLintResult.length === 0" title="No errors detected">
                   <Check class="text-lime-500" />
@@ -91,7 +91,7 @@
               </div>
             </div>
           </div>
-          
+
           <div class="flex flex-col w-fit self-end bg-brave-95 rounded-lg">
             <div class="toolbar px-2 py-1 flex items-stretch gap-1">
               <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom out" @click="changeCodemirrorFontSizeBy(-1)"><MagnifyMinus /></button>
@@ -306,54 +306,86 @@ const repeatLine = () => {
 }
 
 const rewind100 = () => {
-  const currentLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
-  const currentLineText = currentLine.text
-  const parsed = parseLine(currentLineText)
-  if (parsed.type === 'TIME') {
-    const timestamp = parsed.timestamps[0]
-    const newTimestamp = Math.max(0, timestamp - 0.1)
-    const stringifiedTime = timestampToString(newTimestamp)
-    const replacedText = currentLineText.replace(/^(\s*\[(.*)\]\s*)*/g, `[${stringifiedTime}] `)
+  const selection = view.value.state.selection
+  const changes = []
 
-    view.value.dispatch({
-      changes: {
-        from: currentLine.from,
-        to: currentLine.to,
-        insert: replacedText
+  for (let range of selection.ranges) {
+    const startLine = view.value.state.doc.lineAt(range.from)
+    const endLine = view.value.state.doc.lineAt(range.to)
+
+    for (let lineNo = startLine.number; lineNo <= endLine.number; lineNo++) {
+      const currentLine = view.value.state.doc.line(lineNo)
+      const currentLineText = currentLine.text
+      const parsed = parseLine(currentLineText)
+
+      if (parsed.type === 'TIME') {
+        const timestamp = parsed.timestamps[0]
+        const newTimestamp = Math.max(0, timestamp - 0.1)
+        const stringifiedTime = timestampToString(newTimestamp)
+        const replacedText = currentLineText.replace(/^(\s*\[(.*)\]\s*)*/g, `[${stringifiedTime}] `)
+
+        changes.push({
+          from: currentLine.from,
+          to: currentLine.to,
+          insert: replacedText
+        })
       }
-    })
+    }
+  }
 
+  if (changes.length > 0) {
+    view.value.dispatch({ changes })
     view.value.focus()
-
     lyricsUpdated(view.value.state.doc.toString())
 
-    seek(parsed.timestamps[0])
+    // Seek to the timestamp of the first changed line
+    const firstChangedLine = view.value.state.doc.lineAt(changes[0].from)
+    const firstParsed = parseLine(firstChangedLine.text)
+    if (firstParsed.type === 'TIME') {
+      seek(firstParsed.timestamps[0])
+    }
   }
 }
 
 const fastForward100 = () => {
-  const currentLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
-  const currentLineText = currentLine.text
-  const parsed = parseLine(currentLineText)
-  if (parsed.type === 'TIME') {
-    const timestamp = parsed.timestamps[0]
-    const newTimestamp = Math.min(duration.value, timestamp + 0.1)
-    const stringifiedTime = timestampToString(newTimestamp)
-    const replacedText = currentLineText.replace(/^(\s*\[(.*)\]\s*)*/g, `[${stringifiedTime}] `)
+  const selection = view.value.state.selection
+  const changes = []
 
-    view.value.dispatch({
-      changes: {
-        from: currentLine.from,
-        to: currentLine.to,
-        insert: replacedText
+  for (let range of selection.ranges) {
+    const startLine = view.value.state.doc.lineAt(range.from)
+    const endLine = view.value.state.doc.lineAt(range.to)
+
+    for (let lineNo = startLine.number; lineNo <= endLine.number; lineNo++) {
+      const currentLine = view.value.state.doc.line(lineNo)
+      const currentLineText = currentLine.text
+      const parsed = parseLine(currentLineText)
+
+      if (parsed.type === 'TIME') {
+        const timestamp = parsed.timestamps[0]
+        const newTimestamp = Math.min(duration.value, timestamp + 0.1)
+        const stringifiedTime = timestampToString(newTimestamp)
+        const replacedText = currentLineText.replace(/^(\s*\[(.*)\]\s*)*/g, `[${stringifiedTime}] `)
+
+        changes.push({
+          from: currentLine.from,
+          to: currentLine.to,
+          insert: replacedText
+        })
       }
-    })
+    }
+  }
 
+  if (changes.length > 0) {
+    view.value.dispatch({ changes })
     view.value.focus()
-
     lyricsUpdated(view.value.state.doc.toString())
 
-    seek(parsed.timestamps[0])
+    // Seek to the timestamp of the first changed line
+    const firstChangedLine = view.value.state.doc.lineAt(changes[0].from)
+    const firstParsed = parseLine(firstChangedLine.text)
+    if (firstParsed.type === 'TIME') {
+      seek(firstParsed.timestamps[0])
+    }
   }
 }
 
@@ -513,7 +545,7 @@ const publishPlainText = async () => {
 }
 
 .codemirror-custom .cm-content {
-  /* Some padding to prevent the text from touching the edge, 
+  /* Some padding to prevent the text from touching the edge,
   the gutter calculates its width internally so it's hard to calculate exactly */
   @apply max-w-[90%];
 }
