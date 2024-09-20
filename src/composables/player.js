@@ -29,21 +29,38 @@ export function usePlayer() {
   }
 
   const pause = () => {
+    if (!playingTrack.value) {
+      return
+    }
+
     invoke('pause_track')
   }
 
   const resume = () => {
+    if (!playingTrack.value) {
+      return
+    }
+
     invoke('resume_track')
   }
 
   const seek = (position) => {
-    if (status.value === 'stopped') {
+    if (!playingTrack.value) {
+      return
+    }
+
+    if (status.value === 'stopped' ) {
       invoke('play_track', { trackId: playingTrack.value.id })
     }
+
     invoke('seek_track', { position })
   }
 
   const stop = () => {
+    if (!playingTrack.value) {
+      return
+    }
+
     invoke('stop_track')
   }
 

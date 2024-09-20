@@ -1,6 +1,6 @@
 <template>
   <transition name="slide-fade" mode="out-in">
-    <div v-if="lyrics && duration && progress" class="flex flex-col gap-1 border-b border-brave-90/50 relative z-10">
+    <div v-if="lyrics && duration && progress" class="flex flex-col gap-1 border-b border-brave-90/50 relative">
       <transition name="slide-fade" mode="out-in">
         <div v-if="expanded" class="full-viewer absolute bottom-0 left-0 w-full h-[40vh] bg-brave-95 border-t border-brave-90/50 overflow-hidden">
           <div class="relative h-full">

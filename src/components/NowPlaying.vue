@@ -6,7 +6,7 @@
       <div class="w-full flex gap-1 justify-center items-center">
         <div class="flex-none w-12 text-xs text-brave-30">{{ humanDuration(progress) }}</div>
         <Seek class="grow" :duration="duration" :progress="progress" @seek="seek" />
-        <div class="flex-none w-12 text-xs text-brave-30">{{ humanDuration(duration) }}</div>
+        <div class="flex-none text-right w-12 text-xs text-brave-30">{{ humanDuration(duration) }}</div>
       </div>
 
       <div class="flex justify-between w-full">
@@ -43,6 +43,7 @@ import { Play, Pause, Replay, Rewind_10, FastForward_10 } from 'mdue'
 import { usePlayer } from '@/composables/player.js'
 import { useGlobalState } from '@/composables/global-state.js'
 import VolumeSlider from './now-playing/VolumeSlider.vue'
+import { humanDuration } from '@/utils/human-duration'
 
 const { isHotkey } = useGlobalState()
 const { playingTrack, status, duration, progress, volume, playTrack, pause, resume, seek, setVolume: setPlayerVolume } = usePlayer()
@@ -89,10 +90,6 @@ const reverse10 = computed(() => {
 const setVolume = (event) => {
   const volume = parseFloat(event.target.value)
   setPlayerVolume(volume)
-}
-
-const humanDuration = (seconds) => {
-  return new Date(seconds * 1000).toISOString().slice(11, 19)
 }
 
 const lyricsClicked = (line) => {

@@ -1,38 +1,72 @@
 <template>
-  <div class="bg-brave-90 w-full h-2 relative origin-center hover:scale-y-150 transition" @mouseover="onMouseOver" @mousemove="onMouseOver" @mouseleave="onMouseLeave" @click="chooseProgress">
-    <div class="bg-brave-30 h-full" :style="{ width: progressPercent }"></div>
-    <div class="bg-brave-60 h-full absolute top-0 left-0 opacity-40" :style="{ width: choosingProgressPercent }"></div>
-  </div>
+  <VueSlider
+    v-model="progressPercent"
+    :min="0"
+    :max="1"
+    :interval="0.001"
+    :duration="0"
+    :rail-style="{ backgroundColor: '#ffd9e2' }"
+    :dot-style="{ transition: 'initial' }"
+    :tooltip-style="{ zIndex: 200 }"
+    tooltip="hover"
+    @change="chooseProgress"
+  >
+    <template #dot="{pos, index, value, focus, disabled}">
+      <div
+        class="w-full h-full rounded-full bg-brave-30"
+      />
+    </template>
+
+    <template #process="{ start, end }">
+      <div
+        class="absolute h-full rounded-full bg-brave-30"
+        :style="'width: ' + end + '%;'"
+      />
+    </template>
+
+    <template #tooltip="{pos, index, value, focus, disabled}">
+      <div v-if="value" class="text-brave-30 text-[0.6rem] font-bold rounded-lg px-1 py-0.5 bg-brave-90">{{ humanDuration(value * props.duration) }}</div>
+    </template>
+  </VueSlider>
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import VueSlider from "vue-3-slider-component";
+import { ref, onMounted, watch } from 'vue'
+import { humanDuration } from '@/utils/human-duration'
+import _throttle from 'lodash/throttle'
 
 const props = defineProps(['duration', 'progress'])
 const emit = defineEmits(['seek'])
+const isGracePeriod = ref(false)
+const gracePeriodTimeout = ref(null)
 
-const progressPercent = computed(() => {
-  if (!props.progress || !props.duration) {
-    return '0%'
-  }
-  return `${(props.progress / props.duration) * 100}%` 
+const progressPercent = ref(0)
+
+// There is a slight delay after seeking before the player can actually start playing from the new position due to kira's StreamingSoundHandle.
+// So this is a hack to prevent the seek bar from jumping back to the old position after user seeks.
+// Also throttle the seek event to prevent it from being called too frequently.
+const chooseProgress = _throttle((value) => {
+  emit('seek', value * props.duration)
+
+  isGracePeriod.value = true
+
+  clearTimeout(gracePeriodTimeout.value)
+  gracePeriodTimeout.value = setTimeout(() => {
+    isGracePeriod.value = false
+  }, 500)
+}, 200)
+
+onMounted(() => {
+  progressPercent.value = props.progress / props.duration
 })
 
-const choosingProgress = ref(0.0)
+watch(() => props.progress, (newProgress) => {
+  if (isGracePeriod.value) return
+  progressPercent.value = newProgress / props.duration
+})
 
-const choosingProgressPercent = computed(() => `${choosingProgress.value * 100}%` )
-
-const onMouseOver = (event) => {
-  const totalWidth = event.currentTarget.clientWidth
-  const seekWidth = event.offsetX
-  choosingProgress.value = seekWidth / totalWidth
-}
-
-const onMouseLeave = (event) => {
-  choosingProgress.value = 0.0
-}
-
-const chooseProgress = () => {
-  emit('seek', choosingProgress.value * props.duration)
-}
+watch(() => props.duration, (newDuration) => {
+  progressPercent.value = props.progress / newDuration
+})
 </script>

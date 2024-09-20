@@ -80,6 +80,7 @@ impl Player {
 
       self.duration = sound_data.duration().as_secs_f64();
       self.sound_handle = Some(self.manager.play(sound_data)?);
+      self.sound_handle.as_mut().unwrap().set_volume(self.volume, Tween::default());
     }
 
     Ok(())
