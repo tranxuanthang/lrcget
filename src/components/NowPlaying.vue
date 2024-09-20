@@ -8,6 +8,7 @@
         <Seek class="grow" :duration="duration" :progress="progress" @seek="seek" />
         <div class="flex-none w-12 text-xs text-brave-30">{{ humanDuration(duration) }}</div>
       </div>
+
       <div class="flex justify-between w-full">
         <div class="basis-1/3 flex-1 grow-0 flex flex-col justify-center items-start gap-0.5">
           <div v-if="playingTrack">
@@ -15,6 +16,7 @@
             <div class="text-xs text-brave-40 line-clamp-1">{{ playingTrack.album_name }} - {{ playingTrack.artist_name }}</div>
           </div>
         </div>
+
         <div class="basis-1/3 flex-1 flex justify-center items-center gap-2">
           <button @click.prevent="seek(reverse10)" class="button button-secondary p-1 m-1 rounded-full text-lg"><Rewind_10 /></button>
           <button v-if="status === 'playing'" @click.prevent="pause" class="button button-primary text-white p-2 rounded-full text-xl"><Pause /></button>
@@ -22,7 +24,9 @@
           <button v-else @click.prevent="resume" class="button button-primary text-white p-2 rounded-full text-xl"><Play /></button>
           <button @click.prevent="seek(forward10)" class="button button-secondary p-1 m-1 rounded-full text-lg"><FastForward_10 /></button>
         </div>
-        <div class="basis-1/3 flex-1">
+
+        <div class="basis-1/3 flex-1 flex justify-end items-center">
+          <VolumeSlider :volume="volume" @set-volume="setPlayerVolume" />
         </div>
       </div>
     </div>
@@ -38,9 +42,10 @@ import PlainLyricsViewer from './now-playing/PlainLyricsViewer.vue'
 import { Play, Pause, Replay, Rewind_10, FastForward_10 } from 'mdue'
 import { usePlayer } from '@/composables/player.js'
 import { useGlobalState } from '@/composables/global-state.js'
+import VolumeSlider from './now-playing/VolumeSlider.vue'
 
 const { isHotkey } = useGlobalState()
-const { playingTrack, status, duration, progress, playTrack, pause, resume, seek } = usePlayer()
+const { playingTrack, status, duration, progress, volume, playTrack, pause, resume, seek, setVolume: setPlayerVolume } = usePlayer()
 const keydownEvent = ref(null)
 
 const instrumental = computed(() => {
@@ -80,6 +85,11 @@ const reverse10 = computed(() => {
   }
   return Math.max(0, progress.value - 10)
 })
+
+const setVolume = (event) => {
+  const volume = parseFloat(event.target.value)
+  setPlayerVolume(volume)
+}
 
 const humanDuration = (seconds) => {
   return new Date(seconds * 1000).toISOString().slice(11, 19)

@@ -9,10 +9,10 @@
             </div>
 
             <div id="full-lyrics-container" class="h-full text-center transition" :style="{ transform: fullViewTransform }">
-              <p 
-                v-for="(line, index) in parsedLyrics" 
-                :key="index" class="text-brave-50 transition" 
-                :class="{ 
+              <p
+                v-for="(line, index) in parsedLyrics"
+                :key="index" class="text-brave-50 transition"
+                :class="{
                   'font-bold': currentIndex === index,
                   'text-brave-50 hover:text-brave-40 hover:cursor-pointer': currentIndex !== index
                 }"

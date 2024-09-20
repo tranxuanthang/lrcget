@@ -6,11 +6,13 @@ const playingTrack = ref(null)
 const status = ref('stopped')
 const duration = ref(null)
 const progress = ref(null)
+const volume = ref(1.0)
 
 listen('player-state', async (event) => {
   duration.value = event.payload.duration
   progress.value = event.payload.progress
   status.value = event.payload.status
+  volume.value = event.payload.volume
 })
 
 listen('reload-track-id', async (event) => {
@@ -45,15 +47,21 @@ export function usePlayer() {
     invoke('stop_track')
   }
 
+  const setVolume = (volume) => {
+    invoke('set_volume', { volume })
+  }
+
   return {
     playingTrack,
     status,
     duration,
     progress,
+    volume,
     playTrack,
     pause,
     resume,
     stop,
-    seek
+    seek,
+    setVolume
   }
 }

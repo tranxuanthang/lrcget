@@ -419,6 +419,17 @@ fn stop_track(app_state: tauri::State<AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn set_volume(volume: f64, app_state: tauri::State<AppState>) -> Result<(), String> {
+  let mut player_guard = app_state.player.lock().unwrap();
+
+  if let Some(ref mut player) = *player_guard {
+    player.set_volume(volume);
+  }
+
+  Ok(())
+}
+
+#[tauri::command]
 fn open_devtools(window: tauri::Window) {
   {
     window.open_devtools();
@@ -493,6 +504,7 @@ async fn main() {
       resume_track,
       seek_track,
       stop_track,
+      set_volume,
       open_devtools
     ])
     .run(tauri::generate_context!())

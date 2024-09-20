@@ -29,7 +29,8 @@ pub struct Player {
   pub track: Option<PersistentTrack>,
   pub status: PlayerStatus,
   pub progress: f64,
-  pub duration: f64
+  pub duration: f64,
+  pub volume: f64
 }
 
 impl Player {
@@ -42,7 +43,8 @@ impl Player {
       track: None,
       status: PlayerStatus::Stopped,
       progress: 0.0,
-      duration: 0.0
+      duration: 0.0,
+      volume: 1.0
     })
   }
 
@@ -115,6 +117,13 @@ impl Player {
       self.duration = 0.0;
       self.progress = 0.0;
       self.status = PlayerStatus::Stopped;
+    }
+  }
+
+  pub fn set_volume(&mut self, volume: f64) {
+    if let Some(ref mut sound_handle) = self.sound_handle {
+      sound_handle.set_volume(volume, Tween::default());
+      self.volume = volume;
     }
   }
 }
