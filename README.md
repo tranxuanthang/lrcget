@@ -8,7 +8,7 @@ LRCGET is the official client of [LRCLIB](https://lrclib.net) service.
 
 ## Download
 
-🎉 Latest version: v0.4.0
+🎉 Latest version: v0.5.0
 
 Visit the [release page](https://github.com/tranxuanthang/lrcget/releases) to download.
 
@@ -88,12 +88,12 @@ If you prefer to contact by email:
 
 - [x] Choose multiple directories
 - [x] Support .ogg format
-- [ ] Embedded lyrics option ([temporary alternative](https://github.com/TheRedSpy15/lrcput))
+- [x] Embedded lyrics option
 - [x] Optimize performance for loading large music library (https://github.com/tranxuanthang/lrcget/issues/19)
 - [ ] Playlist Filter feature
 - [ ] Playlist Sort feature
 - [x] Playlist Search feature
-- [ ] Volume control
+- [x] Volume control
 - [x] Mark song as instrumental (https://github.com/tranxuanthang/lrcget/issues/36)
 
 ## Development
@@ -105,7 +105,7 @@ To start developing the application, you need to do the [prerequisites](https://
 For example, you need the following components to start the development in Windows:
 
 - Microsoft Visual Studio C++ Build Tools
-- Rust 1.64.0 or higher
+- Rust 1.81.0 or higher
 - NodeJS v16.18.0 or higher
 
 Start the development window with the following command:
