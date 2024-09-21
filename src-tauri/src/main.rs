@@ -376,7 +376,7 @@ fn play_track(track_id: i64, app_state: tauri::State<AppState>, app_handle: AppH
 
 #[tauri::command]
 fn pause_track(app_state: tauri::State<AppState>) -> Result<(), String> {
-  let mut player_guard = app_state.player.lock().unwrap();
+  let mut player_guard = app_state.player.lock().map_err(|e| e.to_string())?;
 
   if let Some(ref mut player) = *player_guard {
     player.pause();
@@ -387,7 +387,7 @@ fn pause_track(app_state: tauri::State<AppState>) -> Result<(), String> {
 
 #[tauri::command]
 fn resume_track(app_state: tauri::State<AppState>) -> Result<(), String> {
-  let mut player_guard = app_state.player.lock().unwrap();
+  let mut player_guard = app_state.player.lock().map_err(|e| e.to_string())?;
 
   if let Some(ref mut player) = *player_guard {
     player.resume();
@@ -398,7 +398,7 @@ fn resume_track(app_state: tauri::State<AppState>) -> Result<(), String> {
 
 #[tauri::command]
 fn seek_track(position: f64, app_state: tauri::State<AppState>) -> Result<(), String> {
-  let mut player_guard = app_state.player.lock().unwrap();
+  let mut player_guard = app_state.player.lock().map_err(|e| e.to_string())?;
 
   if let Some(ref mut player) = *player_guard {
     player.seek(position);
@@ -409,7 +409,7 @@ fn seek_track(position: f64, app_state: tauri::State<AppState>) -> Result<(), St
 
 #[tauri::command]
 fn stop_track(app_state: tauri::State<AppState>) -> Result<(), String> {
-  let mut player_guard = app_state.player.lock().unwrap();
+  let mut player_guard = app_state.player.lock().map_err(|e| e.to_string())?;
 
   if let Some(ref mut player) = *player_guard {
     player.stop();
@@ -420,7 +420,7 @@ fn stop_track(app_state: tauri::State<AppState>) -> Result<(), String> {
 
 #[tauri::command]
 fn set_volume(volume: f64, app_state: tauri::State<AppState>) -> Result<(), String> {
-  let mut player_guard = app_state.player.lock().unwrap();
+  let mut player_guard = app_state.player.lock().map_err(|e| e.to_string())?;
 
   if let Some(ref mut player) = *player_guard {
     player.set_volume(volume);
@@ -458,11 +458,21 @@ async fn main() {
           interval.tick().await;
           {
             let app_state: State<AppState> = handle_clone.state();
-            let mut player_guard = app_state.player.lock().unwrap();
-            if let Some(ref mut player) = *player_guard {
-              player.renew_state();
+            let player_guard = app_state.player.lock();
 
-              handle_clone.emit_all("player-state", &player).unwrap();
+            match player_guard {
+              Ok(mut player_guard) => {
+                if let Some(ref mut player) = *player_guard {
+                  player.renew_state();
+
+                  let emit_player_state = handle_clone.emit_all("player-state", &player);
+
+                  if let Err(e) = emit_player_state {
+                    eprintln!("Failed to emit player state: {}", e);
+                  }
+                }
+              }
+              Err(e) => eprintln!("Failed to lock player: {}", e),
             }
           }
         }
