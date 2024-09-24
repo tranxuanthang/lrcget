@@ -1,11 +1,11 @@
 <template>
-  <div class="h-screen w-screen flex flex-col select-none">
+  <div :class="{'dark': isDarkMode}" class="h-screen w-screen flex flex-col select-none">
     <div class="fixed top-0 left-0 flex justify-end items-start text-sm flex-none z-50">
       <div class="p-0.5 m-1 rounded-full text-sm text-hoa-1400 hover:bg-hoa-600 active:bg-hoa-800 transition" @click="openDevtools">
         <Bug />
       </div>
     </div>
-    <div v-if="!loading" class="grow overflow-hidden">
+    <div v-if="!loading" class="grow overflow-hidden bg-white dark:bg-brave-background-dark">
       <ChooseDirectory v-if="!init" @progressStep="init = true" />
       <Library v-else @uninitialize-library="uninitializeLibrary" />
     </div>
@@ -23,6 +23,7 @@ import { invoke } from '@tauri-apps/api/tauri'
 const loading = ref(true)
 const init = ref(false)
 const isProd = ref(import.meta.env.PROD)
+const isDarkMode = ref(true)
 
 const uninitializeLibrary = async () => {
   loading.value = true
@@ -34,6 +35,7 @@ const uninitializeLibrary = async () => {
 onMounted(async () => {
   init.value = await invoke('get_init')
   loading.value = false
+  // isDarkMode.value = window.matchMedia('(prefers-color-scheme: dark)').matches
 })
 
 const openDevtools = () => {
@@ -50,6 +52,11 @@ const maximizeWindow = () => {
 
 const closeWindow = () => {
   appWindow.close()
+}
+
+// Function to toggle dark mode
+const toggleDarkMode = () => {
+  isDarkMode.value = !isDarkMode.value
 }
 
 </script>

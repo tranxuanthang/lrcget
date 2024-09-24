@@ -53,7 +53,9 @@ body {
 }
 
 .button-normal {
-  @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70;
+  @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70
+  dark:bg-transparent dark:border-2 dark:border-brave-20 dark:text-brave-90
+  dark:hover:bg-brave-20 dark:active:bg-brave-25;
 }
 
 .button-warning {
@@ -69,7 +71,7 @@ body {
 }
 
 .button-primary {
-  @apply bg-brave-30 hover:bg-brave-35 text-white active:bg-brave-25;
+  @apply bg-brave-30 hover:bg-brave-35 text-white active:bg-brave-25 dark:bg-brave-80 dark:hover:bg-brave-90 dark:active:bg-brave-90 dark:text-brave-20;
 }
 
 .button-secondary {
@@ -109,7 +111,10 @@ body {
 }
 
 .input {
-  @apply bg-brave-98 box-border border border-brave-90 focus:border-brave-80 outline-none text-sm rounded-full transition text-brave-35 placeholder:text-brave-70;
+  @apply bg-brave-98 box-border border-2 border-brave-90 focus:border-brave-80 outline-none
+  text-sm rounded-full transition text-brave-35 placeholder:text-brave-70
+  dark:bg-brave-5 dark:border-brave-30 dark:focus:border-brave-20 dark:text-brave-95
+  dark:placeholder:text-brave-90;
 }
 
 .Vue-Toastification__toast.lrcget-toast {

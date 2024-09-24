@@ -10,11 +10,11 @@
     />
 
     <div v-show="isShowSearch && activeTab == 'tracks'"
-      class="flex flex-col items-center justify-center w-full bg-red-100">
+      class="flex flex-col items-center justify-center w-full">
       <SearchBar />
     </div>
 
-    <div class="relative grow overflow-hidden bg-white">
+    <div class="relative grow overflow-hidden">
       <TrackList
         :isActive="activeTab === 'tracks'"
       />
@@ -30,7 +30,7 @@
       <!-- <div class="absolute top-0 left-0 w-full h-[20px] bg-gradient-to-b from-white pointer-events-none"></div> -->
     </div>
 
-    <NowPlaying class="flex-none border-t border-brave-90" />
+    <NowPlaying class="flex-none" />
   </div>
 
   <div v-else class="flex flex-col justify-center items-center w-full h-full">

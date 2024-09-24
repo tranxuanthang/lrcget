@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
+  darkMode: 'class', // Enable dark mode
   content: [
     './src/**/*.{html,js,vue}',
   ],
@@ -42,8 +43,10 @@ module.exports = {
           15: "#510028",
           10: "#3e001d",
           5: "#2b0012",
+          1: "#0f0004",
           0: "#000000",
-          primary: "#b90063"
+          primary: "#b90063",
+          'background-dark': "#0f0004"
         }
       }
     },
