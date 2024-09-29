@@ -68,6 +68,10 @@ body {
   @apply bg-brave-90/50 hover:bg-brave-80 text-brave-25 active:bg-brave-70;
 }
 
+.button-normal3 {
+  @apply hover:bg-brave-80 text-brave-25 active:bg-brave-70;
+}
+
 .button-primary {
   @apply bg-brave-30 hover:bg-brave-35 text-white active:bg-brave-25;
 }
@@ -110,6 +114,22 @@ body {
 
 .input {
   @apply bg-brave-98 box-border border border-brave-90 focus:border-brave-80 outline-none text-sm rounded-full transition text-brave-35 placeholder:text-brave-70;
+}
+
+.textarea {
+  @apply bg-brave-98 box-border border border-brave-90 focus:border-brave-80 outline-none text-sm rounded-lg transition text-brave-35 placeholder:text-brave-70 resize-none;
+}
+
+.modal-title-bar {
+  @apply flex-none flex justify-between items-center px-6 py-2;
+}
+
+.modal-button {
+  @apply flex-none button button-normal3 rounded-full p-4;
+}
+
+.modal-title {
+  @apply text-lg grow line-clamp-1 overflow-hidden text-brave-30;
 }
 
 .Vue-Toastification__toast.lrcget-toast {

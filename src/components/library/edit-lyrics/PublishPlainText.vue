@@ -7,9 +7,11 @@
         <div class="grow overflow-y-scroll h-full">
           <table class="lint-result table">
             <thead class="text-xs text-brave-30/70 font-bold">
-              <th class="p-1 text-right">Line</th>
-              <th class="p-1 text-center">Severity</th>
-              <th class="p-1">Message</th>
+              <tr>
+                <th class="p-1 text-right">Line</th>
+                <th class="p-1 text-center">Severity</th>
+                <th class="p-1">Message</th>
+              </tr>
             </thead>
             <tbody class="text-xs text-brave-20">
               <tr v-for="(problem, index) in lintResult" :key="index">
@@ -31,8 +33,12 @@
 
     <div v-else class="px-8 py-4 max-w-[500px] max-h-[60vh] rounded-lg m-4 bg-white flex flex-col gap-4">
       <div class="flex flex-col items-center">
-        <div v-if="!isPublishing" class="text-brave-10 mb-4">Do you want to publish your unsynced lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong> to your current LRCLIB instance?</div>
-        <div v-else class="text-brave-10 mb-4">Publishing your unsynced lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong>...</div>
+        <div v-if="!isPublishing" class="text-brave-10 mb-4">
+          Do you want to publish your unsynced lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong> to your current LRCLIB instance?
+        </div>
+        <div v-else class="text-brave-10 mb-4">
+          Publishing your unsynced lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong>...
+        </div>
 
         <table v-if="isPublishing" class="text-xs table-auto text-brave-20 font-mono uppercase">
           <tbody>
@@ -93,8 +99,15 @@ const publishPlainText = async () => {
   const plainLyrics = props.lyrics
   const syncedLyrics = ''
   try {
-    await invoke('publish_lyrics', { title: props.track.title, albumName: props.track.album_name, artistName: props.track.artist_name, duration: props.track.duration, plainLyrics, syncedLyrics })
-    toast.success('Your unsynced lyrics has been published successfully!')
+    await invoke('publish_lyrics', {
+      title: props.track.title,
+      albumName: props.track.album_name,
+      artistName: props.track.artist_name,
+      duration: props.track.duration,
+      plainLyrics,
+      syncedLyrics
+    })
+    toast.success('Your unsynced lyrics has been published successfully! It might take up to 24 hours to be visible on the search results.')
   } catch (error) {
     isError.value = true
     console.error(error)

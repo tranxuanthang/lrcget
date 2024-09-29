@@ -14,11 +14,11 @@
           <div
             v-for="virtualRow in virtualRows"
             :key="virtualRow.index"
-            class="group flex flex-col w-full absolute top-0 left-0 w-full"
+            class="group flex flex-col w-full absolute top-0 left-0"
             :style="{
               height: `${virtualRow.size}px`,
               transform: `translateY(${virtualRow.start}px)`,
-              }"
+            }"
           >
             <AlbumItem
               :albumId="virtualRow.key"

@@ -27,6 +27,10 @@
         :isActive="activeTab === 'artists'"
       />
 
+      <MyLrclib
+        :isActive="activeTab === 'my-lrclib'"
+      />
+
       <!-- <div class="absolute top-0 left-0 w-full h-[20px] bg-gradient-to-b from-white pointer-events-none"></div> -->
     </div>
 
@@ -50,7 +54,7 @@
   <About :is-show="isShowAbout" @close="isShowAbout = false" />
 
   <Teleport to="body">
-    <SearchLyrics v-if="searchingTrack" :is-show="!!searchingTrack" />
+    <SearchLyrics v-model="searchingTrack" :searching-track="searchingTrack" @close="searchingTrack = null" />
   </Teleport>
 
   <Teleport to="body">
@@ -69,6 +73,7 @@ import NowPlaying from './NowPlaying.vue'
 import TrackList from './library/TrackList.vue'
 import AlbumList from './library/AlbumList.vue'
 import ArtistList from './library/ArtistList.vue'
+import MyLrclib from './library/MyLrclib.vue'
 import DownloadViewer from './library/DownloadViewer.vue'
 import SearchBar from './library/SearchBar.vue'
 import Config from './library/Config.vue'

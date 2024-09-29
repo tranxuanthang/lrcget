@@ -29,6 +29,14 @@ struct PublishLyricsProgress {
   publish_lyrics: String
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FlagLyricsProgress {
+  request_challenge: String,
+  solve_challenge: String,
+  flag_lyrics: String
+}
+
 #[tauri::command]
 async fn get_directories(app_state: State<'_, AppState>) -> Result<Vec<String>, String> {
   let conn_guard = app_state.db.lock().unwrap();
@@ -305,8 +313,15 @@ async fn retrieve_lyrics(title: String, album_name: String, artist_name: String,
 }
 
 #[tauri::command]
-async fn search_lyrics(title: String, album_name: String, artist_name: String) -> Result<lrclib::search::Response, String> {
-  let response = lrclib::search::request(&title, &album_name, &artist_name).await.map_err(|err| err.to_string())?;
+async fn retrieve_lyrics_by_id(id: i64) -> Result<lrclib::get_by_id::RawResponse, String> {
+  let response = lrclib::get_by_id::request_raw(id).await.map_err(|err| err.to_string())?;
+
+  Ok(response)
+}
+
+#[tauri::command]
+async fn search_lyrics(title: String, album_name: String, artist_name: String, q: String) -> Result<lrclib::search::Response, String> {
+  let response = lrclib::search::request(&title, &album_name, &artist_name, &q).await.map_err(|err| err.to_string())?;
 
   Ok(response)
 }
@@ -360,6 +375,31 @@ async fn publish_lyrics(title: String, album_name: String, artist_name: String, 
   app_handle.emit_all("publish-lyrics-progress", &progress).unwrap();
   Ok(())
 }
+
+#[tauri::command]
+async fn flag_lyrics(track_id: i64, flag_reason: String, app_handle: AppHandle) -> Result<(), String> {
+  let mut progress = FlagLyricsProgress {
+    request_challenge: "Pending".to_owned(),
+    solve_challenge: "Pending".to_owned(),
+    flag_lyrics: "Pending".to_owned()
+  };
+  progress.request_challenge = "In Progress".to_owned();
+  app_handle.emit_all("flag-lyrics-progress", &progress).unwrap();
+  let challenge_response = lrclib::request_challenge::request().await.map_err(|err| err.to_string())?;
+  progress.request_challenge = "Done".to_owned();
+  progress.solve_challenge = "In Progress".to_owned();
+  app_handle.emit_all("flag-lyrics-progress", &progress).unwrap();
+  let nonce = lrclib::challenge_solver::solve_challenge(&challenge_response.prefix, &challenge_response.target);
+  progress.solve_challenge = "Done".to_owned();
+  progress.flag_lyrics = "In Progress".to_owned();
+  app_handle.emit_all("flag-lyrics-progress", &progress).unwrap();
+  let publish_token = format!("{}:{}", challenge_response.prefix, nonce);
+  lrclib::flag::request(track_id, &flag_reason, &publish_token).await.map_err(|err| err.to_string())?;
+  progress.flag_lyrics = "Done".to_owned();
+  app_handle.emit_all("flag-lyrics-progress", &progress).unwrap();
+  Ok(())
+}
+
 
 #[tauri::command]
 fn play_track(track_id: i64, app_state: tauri::State<AppState>, app_handle: AppHandle) -> Result<(), String> {
@@ -506,9 +546,11 @@ async fn main() {
       download_lyrics,
       apply_lyrics,
       retrieve_lyrics,
+      retrieve_lyrics_by_id,
       search_lyrics,
       save_lyrics,
       publish_lyrics,
+      flag_lyrics,
       play_track,
       pause_track,
       resume_track,

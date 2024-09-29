@@ -18,7 +18,7 @@
     "mdue": "^0.1.4",
     "path-browserify": "^1.0.1",
     "semver": "^7.6.0",
-    "vue": "^3.2.37",
+    "vue": "^3.4",
     "vue-3-slider-component": "^1.0.1",
     "vue-codemirror": "^6.1.1",
     "vue-toastification": "^2.0.0-rc.5"

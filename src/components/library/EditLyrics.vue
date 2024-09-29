@@ -407,11 +407,16 @@ const markAsInstrumental = () => {
   lyricsUpdated(view.value.state.doc.toString())
 }
 
+const handleResize = () => {
+  cmHeight.value = cmContainer.value.offsetHeight
+}
+
 onUnmounted(async () => {
   enableHotkey()
   if (keydownEvent.value) {
     document.removeEventListener(keydownEvent.value)
   }
+  window.removeEventListener('resize', handleResize)
 })
 
 onMounted(async () => {
@@ -436,10 +441,6 @@ onMounted(async () => {
   const parsed = Lrc.parse(unifiedLyrics.value)
 
   runner.value = new Runner(parsed)
-
-  cmHeight.value = cmContainer.value.offsetHeight
-
-  setTimeout(() => shouldLoadCodeMirror.value = true, 100)
 
   keydownEvent.value = document.addEventListener('keydown', (event) => {
     if (event.altKey === true && event.key === 'Enter') {
@@ -522,6 +523,17 @@ const publishLyrics = async () => {
 const publishPlainText = async () => {
   isPublishingPlainText.value = true
 }
+
+watch(cmContainer, () => {
+  if (cmContainer.value) {
+    setTimeout(() => shouldLoadCodeMirror.value = true, 100)
+
+    // Monitor the window size and dynamically adjust the height of the CodeMirror editor accordingly
+    window.addEventListener('resize', handleResize)
+    handleResize()
+    return () => window.removeEventListener('resize', handleResize)
+  }
+})
 </script>
 
 
