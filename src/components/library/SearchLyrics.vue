@@ -1,9 +1,9 @@
 <template>
   <div>
     <div class="fixed top-0 left-0 h-full w-full flex items-center justify-center z-30 select-none" :class="{ 'hidden': !props.isShow }">
-      <div class="w-full h-[95vh] max-w-screen-sm rounded-lg m-4 bg-white flex flex-col">
+      <div class="w-full h-[95vh] max-w-screen-sm rounded-lg m-4 bg-white dark:bg-black flex flex-col">
         <div class="flex-none flex justify-between items-center px-6 py-2">
-          <div class="text-thin text-xl text-brave-15">Search Lyrics</div>
+          <div class="text-thin text-xl text-brave-15 dark:text-brave-40">Search Lyrics</div>
           <button class="text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
         </div>
 
@@ -59,7 +59,7 @@
 
             <div v-else class="flex flex-col h-full gap-2 overflow-auto">
               <div v-if="searchResult && searchResult.length" class="flex flex-col gap-1 overflow-auto">
-                <div v-for="item in searchResult" :key="item.id" class="rounded bg-brave-98 hover:bg-brave-95 transition px-2 py-1 flex gap-2">
+                <div v-for="item in searchResult" :key="item.id" class="rounded bg-brave-98 dark:bg-brave-5 hover:bg-brave-95 hover:dark:bg-brave-10 transition px-2 py-1 flex gap-2">
                   <div class="h-full overflow-hidden grow">
                     <div class="text-sm font-bold">
                       <span class="mr-2 text-brave-30">{{ item.name }}</span>

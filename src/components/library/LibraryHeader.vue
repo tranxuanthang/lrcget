@@ -1,5 +1,5 @@
 <template>
-  <div class="px-4 py-2 h-12 flex justify-between gap-4 flex-none items-stretch bg-white">
+  <div class="px-4 py-2 h-12 flex justify-between gap-4 flex-none items-stretch bg-white dark:bg-black">
     <div class="flex-1 ml-2">
       <MiniSearch v-if="props.activeTab === 'tracks'" />
     </div>
@@ -112,11 +112,11 @@ const downloadAllLyrics = async () => {
 
 <style scoped>
 .active-tab {
-  @apply text-brave-15 border-brave-15;
+  @apply text-brave-15 dark:text-brave-25 border-brave-15 dark:border-brave-25;
 }
 
 .inactive-tab {
-  @apply text-brave-15/50 hover:text-brave-15/80 border-transparent;
+  @apply text-brave-15/50 dark:text-brave-25/50 hover:text-brave-15/80 hover:dark:text-brave-25/80 border-transparent;
 }
 
 .tab {

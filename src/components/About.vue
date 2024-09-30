@@ -2,13 +2,13 @@
   <div>
     <Transition name="pop-fade">
       <div v-if="isShow" class="fixed top-0 left-0 h-full w-full flex items-center justify-center z-30" :class="{ 'hidden': !props.isShow }">
-        <div class="w-full h-[80vh] max-w-screen-sm rounded-lg m-4 bg-white flex flex-col">
+        <div class="w-full h-[80vh] max-w-screen-sm rounded-lg m-4 bg-white dark:bg-black flex flex-col">
           <div class="flex-none flex justify-between items-center px-6 py-2">
-            <div class="text-thin text-xl text-brave-15">About</div>
-            <button class="text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
+            <div class="text-thin text-xl text-brave-15 dark:text-brave-40">About</div>
+            <button class="text-brave-20 dark:text-brave-35 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
           </div>
 
-          <div class="px-6 grow gap-4 flex flex-col text-brave-20 py-6 overflow-hidden">
+          <div class="px-6 grow gap-4 flex flex-col text-brave-20 dark:text-brave-35 py-6 overflow-hidden">
             <div class="overflow-auto">
               <div class="text-sm mb-6">
                 <label class="group-label mb-2">Update</label>
@@ -20,7 +20,7 @@
                     New update is available. See what's new and download at
                     <span><a :href="newestReleaseUrl" class="link" target="_blank" @click="downloadUpdate">LRCGET GitHub Release Page</a>!</span>
                   </div>
-                  <div v-else class="font-bold text-green-600 flex flex-wrap gap-1 items-center">
+                  <div v-else class="font-bold text-green-600 dark:text-green-500 flex flex-wrap gap-1 items-center">
                     <CheckCircle class="text-lg"/>
                     You are using newest version ;-)
                   </div>

@@ -93,7 +93,7 @@ body {
 }
 
 .link {
-  @apply text-green-800 hover:text-green-900 active:text-green-700 transition text-sm;
+  @apply text-green-800 dark:text-green-600 hover:text-green-900 hover:dark:text-green-700 active:text-green-700 transition text-sm;
 }
 
 .group-label {
@@ -101,11 +101,11 @@ body {
 }
 
 .checkbox {
-  @apply w-4 h-4 text-brave-90 bg-brave-35 accent-brave-35 rounded border-brave-35;
+  @apply w-4 h-4 text-brave-90 dark:text-brave-50 bg-brave-35 accent-brave-35 rounded border-brave-35;
 }
 
 .checkbox-label {
-  @apply text-sm text-brave-35;
+  @apply text-sm text-brave-35 dark:text-brave-50;
 }
 
 .input {

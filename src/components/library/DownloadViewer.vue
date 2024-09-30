@@ -2,10 +2,10 @@
   <div>
     <Transition name="pop-fade">
       <div v-if="isShow" class="fixed top-0 left-0 h-full w-full flex items-center justify-center z-30">
-        <div class="w-full h-[80vh] max-w-screen-md rounded-lg m-4 bg-white flex flex-col gap-2 overflow-hidden">
+        <div class="w-full h-[80vh] max-w-screen-md rounded-lg m-4 bg-white dark:bg-black flex flex-col gap-2 overflow-hidden">
           <div class="flex-none flex justify-between items-center px-6 py-2">
             <div v-if="downloadedCount === totalCount" class="text-thin text-xl text-brave-15">Downloaded</div>
-            <div v-else class="text-thin text-xl text-brave-15">Downloading</div>
+            <div v-else class="text-thin text-xl text-brave-15 dark:text-brave-30">Downloading</div>
             <button class="text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click.prevent="checkAndClose"><Close /></button>
           </div>
 
@@ -14,13 +14,13 @@
               <div class="w-full bg-brave-95 h-1 rounded">
                 <div class="bg-brave-30 h-1" :style="{ width: progressWidth }"></div>
               </div>
-              <div class="text-[0.7rem] text-brave-30/60 flex gap-3">
+              <div class="text-[0.7rem] text-brave-30/60 dark:text-brave-60/60 flex gap-3">
                 <span>{{ successCount }} FOUND</span>
                 <span>{{ failureCount }} NOT FOUND</span>
               </div>
             </div>
 
-            <div class="rounded-lg p-3 bg-brave-98 w-full text-xs grow overflow-auto">
+            <div class="rounded-lg p-3 bg-brave-98 dark:bg-brave-5 w-full text-xs grow overflow-auto">
               <div v-for="logItem in log" :key="logItem.title + logItem.artistName" :class="{ 'text-green-800': logItem.status === 'success', 'text-red-800': logItem.status === 'failure' }">
                 <strong>{{ logItem.title }} - {{ logItem.artistName }}</strong>:
                 <span>{{ logItem.message }}</span>

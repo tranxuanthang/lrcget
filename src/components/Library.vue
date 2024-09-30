@@ -14,7 +14,7 @@
       <SearchBar />
     </div>
 
-    <div class="relative grow overflow-hidden bg-white">
+    <div class="relative grow overflow-hidden bg-white dark:bg-black">
       <TrackList
         :isActive="activeTab === 'tracks'"
       />
@@ -33,7 +33,7 @@
     <NowPlaying class="flex-none border-t border-brave-90" />
   </div>
 
-  <div v-else class="flex flex-col justify-center items-center w-full h-full">
+  <div v-else class="flex flex-col justify-center items-center w-full h-full dark:bg-black">
     <div class="animate-spin text-xl text-brave-30"><Loading /></div>
     <div v-if="isInitializing" class="flex flex-col items-center justify-center text-sm text-brave-40">
       <div>Initializing library...</div>

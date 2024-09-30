@@ -2,7 +2,7 @@
   <transition name="slide-fade" mode="out-in">
     <div v-if="lyrics && duration && progress" class="flex flex-col gap-1 border-b border-brave-90/50 relative">
       <transition name="slide-fade" mode="out-in">
-        <div v-if="expanded" class="full-viewer absolute bottom-0 left-0 w-full h-[40vh] bg-brave-95 border-t border-brave-90/50 overflow-hidden">
+        <div v-if="expanded" class="full-viewer absolute bottom-0 left-0 w-full h-[40vh] bg-brave-95 dark:bg-dark-100 border-t border-brave-90/50 overflow-hidden">
           <div class="relative h-full">
             <div class="flex justify-center items-center h-6 w-full relative z-10">
               <button class="text-xl text-brave-30 w-full flex justify-center" type="button" @click="expand"><DragHorizontal /></button>

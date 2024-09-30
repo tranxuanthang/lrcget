@@ -1,5 +1,5 @@
 <template>
-  <div class="flex w-full group hover:bg-brave-98 hover:shadow hover:shadow-brave-95/50
+  <div class="flex w-full group hover:bg-brave-98 hover:dark:bg-brave-5 hover:shadow hover:shadow-brave-95/50
     border border-transparent hover:border-brave-95 transition rounded cursor-default"
     :class="{
       'border-brave-95 bg-brave-99': isPlaying

@@ -1,5 +1,5 @@
 <template>
-  <div ref="parentRef" class="absolute top-0 left-0 w-full h-full bg-white p-4 shadow-lg overflow-y-auto">
+  <div ref="parentRef" class="absolute top-0 left-0 w-full h-full bg-white dark:bg-black p-4 shadow-lg overflow-y-auto">
     <div
       :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }"
     >

@@ -1,9 +1,9 @@
 <template>
   <div v-if="isShow">
     <div class="fixed top-0 left-0 h-full w-full flex items-center justify-center z-40">
-      <div class="w-full h-[60vh] max-w-screen-md rounded-lg m-4 bg-white flex flex-col gap-2">
+      <div class="w-full h-[60vh] max-w-screen-md rounded-lg m-4 bg-white dark:bg-black flex flex-col gap-2">
         <div class="flex-none flex justify-between items-center px-6 py-2">
-          <div class="text-thin text-xl text-brave-15">Preview</div>
+          <div class="text-thin text-xl text-brave-15 dark:text-brave-40">Preview</div>
           <button class="text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
         </div>
 

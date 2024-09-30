@@ -1,7 +1,7 @@
 <template>
   <div>
     <div class="fixed top-0 left-0 h-full w-full flex items-center justify-center z-40" :class="{ 'hidden': !props.isShow }">
-      <div class="px-8 py-4 rounded-lg m-4 bg-white flex flex-col gap-2 shadow-lg">
+      <div class="px-8 py-4 rounded-lg m-4 bg-white dark:bg-black flex flex-col gap-2 shadow-lg">
         a
       </div>
     </div>

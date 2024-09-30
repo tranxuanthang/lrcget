@@ -1,17 +1,17 @@
 <template>
   <div class="fixed top-0 left-0 w-full h-full flex items-center justify-center z-40" :class="{ 'hidden': !props.isShow }">
-    <div v-if="lintResult.length" class="px-8 py-4 max-w-screen-sm max-h-[60vh] rounded-lg m-4 bg-white flex flex-col gap-4">
+    <div v-if="lintResult.length" class="px-8 py-4 max-w-screen-sm max-h-[60vh] rounded-lg m-4 bg-white dark:bg-black flex flex-col gap-4">
       <div class="grow flex flex-col h-full overflow-hidden">
-        <div class="mb-4 text-brave-10">Please fix the following problem(s) before publishing</div>
+        <div class="mb-4 text-brave-10 dark:text-brave-50">Please fix the following problem(s) before publishing</div>
 
         <div class="grow overflow-y-scroll h-full">
           <table class="lint-result table">
-            <thead class="text-xs text-brave-30/70 font-bold">
+            <thead class="text-xs text-brave-30/70 dark:text-brave-60/70 font-bold">
               <th class="p-1 text-right">Line</th>
               <th class="p-1 text-center">Severity</th>
               <th class="p-1">Message</th>
             </thead>
-            <tbody class="text-xs text-brave-20">
+            <tbody class="text-xs text-brave-20 dark:text-brave-50">
               <tr v-for="(problem, index) in lintResult" :key="index">
                 <td class="p-1 text-right">{{ problem.line }}</td>
                 <td class="p-1 text-center">
