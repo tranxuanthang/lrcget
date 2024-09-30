@@ -2,10 +2,10 @@
   <div>
     <Transition name="pop-fade">
       <div v-if="isShow" class="fixed top-0 left-0 h-full w-full flex items-center justify-center z-30">
-        <div class="w-full h-[80vh] max-w-screen-sm rounded-lg m-4 bg-white flex flex-col gap-2">
+        <div class="w-full h-[80vh] max-w-screen-sm rounded-lg m-4 bg-white dark:bg-brave-background-modal-dark flex flex-col gap-2">
           <div class="flex-none flex justify-between items-center px-6 py-2">
-            <div class="text-thin text-xl text-brave-15">Configuration</div>
-            <button class="text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
+            <div class="text-thin text-xl text-brave-15 dark:text-brave-50">Configuration</div>
+            <button class="text-brave-20 hover:text-brave-15 hover:dark:text-brave-90 hover:dark:bg-brave-30 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
           </div>
 
           <div class="px-6 grow flex flex-col justify-between gap-4">

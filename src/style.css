@@ -29,15 +29,15 @@ body {
 }
 
 .dropdown-arrow-button {
-  @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70 !border-brave-80;
+  @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70 active:dark:bg-brave-5 border-brave-80;
 }
 
 .dropdown-arrow-button-disabled {
-  @apply box-border border-2 !border-brave-90 bg-brave-98 text-brave-70 cursor-not-allowed;
+  @apply box-border border-2 border-brave-90 dark:border-brave-30 bg-brave-98 dark:bg-brave-5 text-brave-70 cursor-not-allowed;
 }
 
 .dropdown-arrow-button-active {
-  @apply bg-brave-70;
+  @apply bg-brave-70 active:dark:bg-brave-5;
 }
 
 .dropdown-popup {
@@ -83,7 +83,7 @@ body {
 }
 
 .button-disabled {
-  @apply box-border border-2 border-brave-90 bg-brave-98 text-brave-70 cursor-not-allowed;
+  @apply box-border border-2 border-brave-90 dark:border-brave-30 bg-brave-98 dark:bg-brave-5 text-brave-70 cursor-not-allowed;
 }
 
 .button-blend {
@@ -95,7 +95,7 @@ body {
 }
 
 .link {
-  @apply text-green-800 hover:text-green-900 active:text-green-700 transition text-sm;
+  @apply text-green-800 dark:text-green-600 hover:text-green-900 hover:dark:text-green-700 active:text-green-700 transition text-sm;
 }
 
 .group-label {
@@ -107,7 +107,7 @@ body {
 }
 
 .checkbox-label {
-  @apply text-sm text-brave-35;
+  @apply text-sm text-brave-35 dark:text-brave-40;
 }
 
 .input {
