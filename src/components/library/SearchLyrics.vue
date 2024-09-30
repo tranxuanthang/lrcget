@@ -1,10 +1,10 @@
 <template>
   <div>
     <div class="fixed top-0 left-0 h-full w-full flex items-center justify-center z-30 select-none" :class="{ 'hidden': !props.isShow }">
-      <div class="w-full h-[95vh] max-w-screen-sm rounded-lg m-4 bg-white flex flex-col">
+      <div class="w-full h-[95vh] max-w-screen-sm rounded-lg m-4 bg-white dark:bg-brave-background-modal-dark flex flex-col">
         <div class="flex-none flex justify-between items-center px-6 py-2">
-          <div class="text-thin text-xl text-brave-15">Search Lyrics</div>
-          <button class="text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
+          <div class="text-thin text-xl text-brave-15 dark:text-brave-50">Search Lyrics</div>
+          <button class="text-brave-20 hover:text-brave-15 hover:dark:text-brave-90 hover:dark:bg-brave-30 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
         </div>
 
         <div class="px-6 grow overflow-hidden flex flex-col gap-4 py-6">
@@ -59,10 +59,10 @@
 
             <div v-else class="flex flex-col h-full gap-2 overflow-auto">
               <div v-if="searchResult && searchResult.length" class="flex flex-col gap-1 overflow-auto">
-                <div v-for="item in searchResult" :key="item.id" class="rounded bg-brave-98 hover:bg-brave-95 transition px-2 py-1 flex gap-2">
+                <div v-for="item in searchResult" :key="item.id" class="rounded bg-brave-98 dark:bg-brave-5 hover:bg-brave-95 hover:dark:bg-brave-10 border border-transparent hover:dark:border-brave-30 transition px-2 py-1 flex gap-2">
                   <div class="h-full overflow-hidden grow">
                     <div class="text-sm font-bold">
-                      <span class="mr-2 text-brave-30">{{ item.name }}</span>
+                      <span class="mr-2 text-brave-30 dark:text-white">{{ item.name }}</span>
                       <span v-if="item.syncedLyrics" class="text-green-200 font-bold text-[0.65rem] bg-green-800 rounded px-1 py-0.5">Synced</span>
                       <span v-else-if="item.plainLyrics" class="text-gray-200 font-bold text-[0.65rem] bg-gray-800 rounded px-1 py-0.5">Plain</span>
                       <span v-else-if="item.instrumental" class="text-gray-200 font-bold text-[0.65rem] bg-gray-500 rounded px-1 py-0.5">Instrumental</span>
@@ -73,7 +73,7 @@
                         -{{ humanDuration(Math.abs(item.duration - Math.round(searchingTrack.duration))) }}
                       </span>
                     </div>
-                    <div class="text-sm text-brave-35 truncate"><span>{{ item.albumName }}</span> | <span>{{ item.artistName }}</span></div>
+                    <div class="text-sm text-brave-35 dark:text-white truncate"><span>{{ item.albumName }}</span> | <span>{{ item.artistName }}</span></div>
                   </div>
 
                   <div class="flex gap-2 items-center">
@@ -83,7 +83,7 @@
                 </div>
               </div>
 
-              <div v-else class="flex justify-center items-center h-full text-sm text-gray-700">
+              <div v-else class="flex justify-center items-center h-full text-sm text-gray-700 dark:text-gray-500">
                 There is no lyrics record that matches your search
               </div>
             </div>

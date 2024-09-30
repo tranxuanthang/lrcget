@@ -5,7 +5,7 @@
       class="whitespace-pre overflow-x-auto cursor-pointer select-all p-4"
     ><slot /></pre>
     <div class="absolute top-0 right-0 h-full flex items-center px-1">
-      <button class="p-2 rounded bg-white text-indigo-800" @click="copyToClipboard">
+      <button class="p-2 rounded bg-white dark:bg-black text-indigo-800 dark:text-indigo-400" @click="copyToClipboard">
         <ContentCopy />
       </button>
     </div>

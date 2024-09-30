@@ -2,13 +2,13 @@
   <div>
     <Transition name="pop-fade">
       <div v-if="isShow" class="fixed top-0 left-0 h-full w-full flex items-center justify-center z-30" :class="{ 'hidden': !props.isShow }">
-        <div class="w-full h-[80vh] max-w-screen-sm rounded-lg m-4 bg-white flex flex-col">
+        <div class="w-full h-[80vh] max-w-screen-sm rounded-lg m-4 bg-white dark:bg-brave-background-modal-dark flex flex-col">
           <div class="flex-none flex justify-between items-center px-6 py-2">
-            <div class="text-thin text-xl text-brave-15">About</div>
-            <button class="text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
+            <div class="text-thin text-xl text-brave-15 dark:text-brave-50">About</div>
+            <button class="text-brave-20 hover:text-brave-15 hover:dark:text-brave-90 hover:dark:bg-brave-30 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4" @click="close"><Close /></button>
           </div>
 
-          <div class="px-6 grow gap-4 flex flex-col text-brave-20 py-6 overflow-hidden">
+          <div class="px-6 grow gap-4 flex flex-col text-brave-20 dark:text-brave-40 py-6 overflow-hidden">
             <div class="overflow-auto">
               <div class="text-sm mb-6">
                 <label class="group-label mb-2">Update</label>
@@ -70,7 +70,7 @@
 
                 <div class="mb-2">
                   <div class="mb-1">Litecoin (LTC):</div>
-                  <CopyablePre>ltc1q7texq5qsp59gclqlwf6asrqmhm98gruvz94a48</CopyablePre>
+                  <CopyablePre class="">ltc1q7texq5qsp59gclqlwf6asrqmhm98gruvz94a48</CopyablePre>
                 </div>
               </div>
 
