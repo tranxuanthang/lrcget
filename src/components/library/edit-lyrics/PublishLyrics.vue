@@ -1,23 +1,23 @@
 <template>
   <div class="fixed top-0 left-0 w-full h-full flex items-center justify-center z-40" :class="{ 'hidden': !props.isShow }">
-    <div v-if="lintResult.length" class="px-8 py-4 max-w-screen-sm max-h-[60vh] rounded-lg m-4 bg-white flex flex-col gap-4">
+    <div v-if="lintResult.length" class="px-8 py-4 max-w-screen-sm max-h-[60vh] rounded-lg m-4 bg-white dark:bg-black flex flex-col gap-4">
       <div class="grow flex flex-col h-full overflow-hidden">
-        <div class="mb-4 text-brave-10">Please fix the following problem(s) before publishing</div>
+        <div class="mb-4 text-brave-10 dark:text-white">Please fix the following problem(s) before publishing</div>
 
         <div class="grow overflow-y-scroll h-full">
           <table class="lint-result table">
-            <thead class="text-xs text-brave-30/70 font-bold">
+            <thead class="text-xs text-brave-30/70 dark:text-white font-bold">
               <th class="p-1 text-right">Line</th>
               <th class="p-1 text-center">Severity</th>
               <th class="p-1">Message</th>
             </thead>
             <tbody class="text-xs text-brave-20">
               <tr v-for="(problem, index) in lintResult" :key="index">
-                <td class="p-1 text-right">{{ problem.line }}</td>
+                <td class="p-1 text-right dark:text-white">{{ problem.line }}</td>
                 <td class="p-1 text-center">
-                  <span v-if="problem.severity === 'error'" class="bg-red-200 text-red-800 font-bold text-xs px-1 py-0.5 rounded">Error</span>
+                  <span v-if="problem.severity === 'error'" class="bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-100 font-bold text-xs px-1 py-0.5 rounded">Error</span>
                 </td>
-                <td class="p-1">{{ problem.message }}</td>
+                <td class="p-1 dark:text-white">{{ problem.message }}</td>
               </tr>
             </tbody>
           </table>
@@ -29,26 +29,26 @@
       </div>
     </div>
 
-    <div v-else class="px-8 py-4 max-w-[500px] max-h-[60vh] rounded-lg m-4 bg-white flex flex-col gap-4">
+    <div v-else class="px-8 py-4 max-w-[500px] max-h-[60vh] rounded-lg m-4 bg-white dark:bg-black flex flex-col gap-4">
       <div class="flex flex-col items-center">
-        <div v-if="!isPublishing" class="text-brave-10 mb-4">Do you want to publish your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong> to your current LRCLIB instance?</div>
-        <div v-else class="text-brave-10 mb-4">Publishing your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong>...</div>
+        <div v-if="!isPublishing" class="text-brave-10 dark:text-white mb-4">Do you want to publish your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong> to your current LRCLIB instance?</div>
+        <div v-else class="text-brave-10 mb-4 dark:text-white">Publishing your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong>...</div>
 
         <table v-if="isPublishing" class="text-xs table-auto text-brave-20 font-mono uppercase">
           <tbody>
             <tr>
-              <td class="px-2 py-1">Request challenge...</td>
-              <td class="text-right px-2 py-1">{{ progress.requestChallenge }}</td>
+              <td class="px-2 py-1 dark:text-white">Request challenge...</td>
+              <td class="text-right px-2 py-1 dark:text-white">{{ progress.requestChallenge }}</td>
             </tr>
 
             <tr>
-              <td class="px-2 py-1">Solve challenge...</td>
-              <td class="text-right px-2 py-1">{{ progress.solveChallenge }}</td>
+              <td class="px-2 py-1 dark:text-white">Solve challenge...</td>
+              <td class="text-right px-2 py-1 dark:text-white">{{ progress.solveChallenge }}</td>
             </tr>
 
             <tr>
-              <td class="px-2 py-1">Publish lyrics...</td>
-              <td class="text-right px-2 py-1">{{ progress.publishLyrics }}</td>
+              <td class="px-2 py-1 dark:text-white">Publish lyrics...</td>
+              <td class="text-right px-2 py-1 dark:text-white">{{ progress.publishLyrics }}</td>
             </tr>
           </tbody>
         </table>
