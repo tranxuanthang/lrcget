@@ -29,9 +29,9 @@
       </div>
     </div>
 
-    <div v-else class="px-8 py-4 max-w-[500px] max-h-[60vh] rounded-lg m-4 bg-white flex flex-col gap-4">
+    <div v-else class="px-8 py-4 max-w-[500px] max-h-[60vh] rounded-lg m-4 bg-white dark:bg-black flex flex-col gap-4">
       <div class="flex flex-col items-center">
-        <div v-if="!isPublishing" class="text-brave-10 mb-4">Do you want to publish your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong> to your current LRCLIB instance?</div>
+        <div v-if="!isPublishing" class="text-brave-10 dark:text-white mb-4">Do you want to publish your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong> to your current LRCLIB instance?</div>
         <div v-else class="text-brave-10 mb-4">Publishing your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong>...</div>
 
         <table v-if="isPublishing" class="text-xs table-auto text-brave-20 font-mono uppercase">
