@@ -32,23 +32,23 @@
     <div v-else class="px-8 py-4 max-w-[500px] max-h-[60vh] rounded-lg m-4 bg-white dark:bg-black flex flex-col gap-4">
       <div class="flex flex-col items-center">
         <div v-if="!isPublishing" class="text-brave-10 dark:text-white mb-4">Do you want to publish your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong> to your current LRCLIB instance?</div>
-        <div v-else class="text-brave-10 mb-4">Publishing your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong>...</div>
+        <div v-else class="text-brave-10 mb-4 dark:text-white">Publishing your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong>...</div>
 
         <table v-if="isPublishing" class="text-xs table-auto text-brave-20 font-mono uppercase">
           <tbody>
             <tr>
-              <td class="px-2 py-1">Request challenge...</td>
-              <td class="text-right px-2 py-1">{{ progress.requestChallenge }}</td>
+              <td class="px-2 py-1 dark:text-white">Request challenge...</td>
+              <td class="text-right px-2 py-1 dark:text-white">{{ progress.requestChallenge }}</td>
             </tr>
 
             <tr>
-              <td class="px-2 py-1">Solve challenge...</td>
-              <td class="text-right px-2 py-1">{{ progress.solveChallenge }}</td>
+              <td class="px-2 py-1 dark:text-white">Solve challenge...</td>
+              <td class="text-right px-2 py-1 dark:text-white">{{ progress.solveChallenge }}</td>
             </tr>
 
             <tr>
-              <td class="px-2 py-1">Publish lyrics...</td>
-              <td class="text-right px-2 py-1">{{ progress.publishLyrics }}</td>
+              <td class="px-2 py-1 dark:text-white">Publish lyrics...</td>
+              <td class="text-right px-2 py-1 dark:text-white">{{ progress.publishLyrics }}</td>
             </tr>
           </tbody>
         </table>
