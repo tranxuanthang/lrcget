@@ -552,7 +552,7 @@ const publishPlainText = async () => {
 
 .codemirror-custom .cm-line {
   /* Text folding */
-  @apply text-brave-10 dark:text-brave-50 break-words whitespace-pre-wrap w-full;
+  @apply text-brave-10 dark:text-brave-90 break-words whitespace-pre-wrap w-full;
 }
 
 .codemirror-custom .cm-activeLine {
