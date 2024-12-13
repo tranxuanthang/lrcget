@@ -10,6 +10,8 @@
       <Library v-else @uninitialize-library="uninitializeLibrary" />
     </div>
   </div>
+
+  <ModalsContainer />
 </template>
 
 <script setup>
@@ -19,6 +21,7 @@ import Library from "./components/Library.vue";
 import { ref, onMounted } from 'vue'
 import { appWindow } from '@tauri-apps/api/window'
 import { invoke } from '@tauri-apps/api/tauri'
+import { ModalsContainer } from 'vue-final-modal'
 
 const loading = ref(true)
 const init = ref(false)

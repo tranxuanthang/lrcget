@@ -1,94 +1,117 @@
 <template>
-  <BaseModal :clickOutsideToClose="false">
-    <div class="w-[80vw] h-[80vh] max-w-screen-lg rounded-lg m-4 bg-white flex flex-col gap-2">
-      <div class="flex flex-col">
-        <div class="modal-title-bar">
-          <div class="modal-title">{{ editingTrack.name }} - {{ editingTrack.artistName }}</div>
-          <button class="modal-button" @click="$emit('close')"><Close /></button>
-        </div>
+  <VueFinalModal
+    class="flex justify-center items-center"
+    content-class="modal-content w-full h-[80vh] max-w-screen-lg flex flex-col"
+    overlay-transition="fade"
+    content-transition="pop-fade"
+    :click-to-close="false"
+    :esc-to-close="false"
+  >
+    <div class="modal-title-bar">
+      <div class="flex-none flex gap-1 items-center">
+        <VTooltip theme="lrcget-tooltip">
+          <button
+            class="button text-sm px-5 py-1.5 h-8 w-24 rounded-full"
+            :class="{ 'button-primary': !isDirty, 'button-disabled': isDirty }"
+            :disabled="isDirty"
+            @click="handlePublish"
+          >
+            Publish
+          </button>
 
-        <div class="flex px-6 py-2 gap-2">
-          <div class="inline-flex gap-1">
-            <DropdownButton :mainDisabled="false" :popupDisabled="lyricsLintResult.length === 0" text="Publish" :mainAction="publishLyrics" title="Publish synced lyrics to LRCLIB service">
-              <DropdownItem :disabled="lyricsLintResult.length === 0" :action="publishPlainText" title="Publish unsynced lyrics to LRCLIB service">Publish Unsynced Lyrics</DropdownItem>
-            </DropdownButton>
+          <template #popper>
+            <div v-if="isSynchronizedLyrics(unifiedLyrics)" class="text-xs font-bold">Publish synchronized lyrics to LRCLIB service</div>
+            <div v-else class="text-xs font-bold">Publish plain text lyrics to LRCLIB service</div>
+          </template>
+        </VTooltip>
 
-            <div class="inline-flex [&>div>svg]:text-2xl items-center justify-center">
-              <div v-if="lyricsLintResult.length === 0" title="No errors detected">
-                <Check class="text-lime-500" />
-              </div>
-              <div v-else-if="plainTextLintResult.length === 0" :title="`Lyrics not synchronized\nYou can still publish it, but consider synchronizing it to help others`">
-                <AlertCircleOutline class="text-orange-500" />
-              </div>
-              <div v-else :title="`Lyrics error detected\nPress the publish button for details`">
-                <AlertCircle class="text-red-500" />
-              </div>
-            </div>
+        <VTooltip v-if="lyricsLintResult.length === 0" theme="lrcget-tooltip">
+          <Check class="text-lime-500 text-2xl block" />
+
+          <template #popper>
+            <div class="text-xs font-bold">No errors detected, you can publish it now</div>
+          </template>
+        </VTooltip>
+
+        <VTooltip v-else-if="plainTextLintResult.length === 0" theme="lrcget-tooltip">
+          <AlertCircleOutline class="text-orange-500 text-2xl block" />
+
+          <template #popper>
+            <div class="text-xs font-bold">Lyrics not synchronized<br />You can still publish it, but consider synchronizing it to help others</div>
+          </template>
+        </VTooltip>
+
+        <VTooltip v-else theme="lrcget-tooltip">
+          <AlertCircle class="text-red-500 text-2xl block" />
+
+          <template #popper>
+            <div class="text-xs font-bold">Lyrics error detected<br />Press the publish button for details</div>
+          </template>
+        </VTooltip>
+      </div>
+
+      <div class="modal-title text-center">
+        {{ editingTrack.name }} - {{ editingTrack.artistName }}
+      </div>
+
+      <button class="modal-button" @click="emit('close')"><Close /></button>
+    </div>
+
+    <div class="px-6 py-2 grow overflow-hidden flex flex-col gap-2">
+      <div class="flex flex-col bg-brave-95 rounded-lg">
+        <div class="toolbar px-4 py-2 flex justify-between items-stretch gap-1">
+          <div class="flex gap-1">
+            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms (Alt+LeftArrow)" @click="rewind100"><Minus /></button>
+            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Forward line 100ms (Alt+RightArrow)" @click="fastForward100"><Plus /></button>
+          </div>
+
+          <div>
+            <button class="button button-warning px-3 py-1 text-lg rounded-full" title="Mark track as instrumental" @click="markAsInstrumental"><Music /> <span class="text-xs">Mark Instrumental</span></button>
           </div>
         </div>
       </div>
 
-      <div class="px-6 py-2 grow overflow-hidden flex flex-col gap-2">
-        <div class="flex flex-col bg-brave-95 rounded-lg">
-          <div class="toolbar px-4 py-2 flex justify-between items-stretch gap-1">
-            <div class="flex gap-1">
-              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms (Alt+LeftArrow)" @click="rewind100"><Minus /></button>
-              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Forward line 100ms (Alt+RightArrow)" @click="fastForward100"><Plus /></button>
-            </div>
+      <!-- NOTE: AsyncCodemirror component does not have @wheel event handler, so it has to be handled here (in the container) -->
+      <div class="relative h-full w-full" id="cm-container" ref="cmContainer">
+        <div class="overflow-hidden absolute w-full" :style="{ height: `${cmHeight}px` }" @keydown="handleKeydown" @wheel="handleWheel">
+          <AsyncCodemirror
+            v-if="shouldLoadCodeMirror"
+            v-model="unifiedLyrics"
+            placeholder="Lyrics is currently empty"
+            class="codemirror-custom h-full outline-none"
+            :autofocus="true"
+            :indent-with-tab="true"
+            :tab-size="2"
+            :extensions="extensions"
+            :config="{ height: 'auto' }"
+            @ready="handleReady"
+            @change="lyricsUpdated"
+          />
 
-            <div>
-              <button class="button button-warning px-3 py-1 text-lg rounded-full" title="Mark track as instrumental" @click="markAsInstrumental"><Music /> <span class="text-xs">Mark Instrumental</span></button>
-            </div>
+          <div v-else class="flex flex-col h-full items-center justify-center text-sm text-brave-40">
+            <div class="animate-spin text-xl text-brave-30"><Loading /></div>
+            <div>Loading editor...</div>
           </div>
         </div>
+      </div>
 
-        <!-- NOTE: AsyncCodemirror component does not have @wheel event handler, so it has to be handled here (in the container) -->
-        <div class="relative h-full w-full" id="cm-container" ref="cmContainer">
-          <div class="overflow-hidden absolute w-full" :style="{ height: `${cmHeight}px` }" @keydown="handleKeydown" @wheel="handleWheel">
-            <AsyncCodemirror
-              v-if="shouldLoadCodeMirror"
-              v-model="unifiedLyrics"
-              placeholder="Lyrics is currently empty"
-              class="codemirror-custom h-full outline-none"
-              :autofocus="true"
-              :indent-with-tab="true"
-              :tab-size="2"
-              :extensions="extensions"
-              :config="{ height: 'auto' }"
-              @ready="handleReady"
-              @change="lyricsUpdated"
-            />
-
-            <div v-else class="flex flex-col h-full items-center justify-center text-sm text-brave-40">
-              <div class="animate-spin text-xl text-brave-30"><Loading /></div>
-              <div>Loading editor...</div>
-            </div>
-          </div>
+      <div class="flex flex-col w-fit self-end bg-brave-95 rounded-lg">
+        <div class="toolbar px-2 py-1 flex items-stretch gap-1">
+          <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom out" @click="changeCodemirrorFontSizeBy(-1)"><MagnifyMinus /></button>
+          <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full w-[4.5em]" title="Reset zoom level" @click="resetCodemirrorFontSize">{{ (codemirrorStyle.fontSize * 100).toFixed(0) }}%</button>
+          <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom in" @click="changeCodemirrorFontSizeBy(+1)"><MagnifyPlus /></button>
         </div>
-
-        <div class="flex flex-col w-fit self-end bg-brave-95 rounded-lg">
-          <div class="toolbar px-2 py-1 flex items-stretch gap-1">
-            <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom out" @click="changeCodemirrorFontSizeBy(-1)"><MagnifyMinus /></button>
-            <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full w-[4.5em]" title="Reset zoom level" @click="resetCodemirrorFontSize">{{ (codemirrorStyle.fontSize * 100).toFixed(0) }}%</button>
-            <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom in" @click="changeCodemirrorFontSizeBy(+1)"><MagnifyPlus /></button>
-          </div>
-        </div>
-
-        <PublishLyrics v-model="isPublishingLyrics" :lint-result="lyricsLintResult" :track="editingTrack" :lyrics="unifiedLyrics" @close="isPublishingLyrics = false" />
-        <PublishPlainText v-model="isPublishingPlainText" :lint-result="plainTextLintResult" :track="editingTrack" :lyrics="unifiedLyrics" @close="isPublishingPlainText = false" />
       </div>
     </div>
-  </BaseModal>
+  </VueFinalModal>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted, shallowRef, watch } from 'vue'
 import { Close, Loading, Minus, Plus, Check, AlertCircleOutline, AlertCircle, MagnifyPlus, MagnifyMinus, Music } from 'mdue'
-import BaseModal from '@/components/ui/BaseModal.vue'
-import DropdownButton from '@/components/ui/DropdownButton.vue'
-import DropdownItem from '@/components/ui/DropdownItem.vue'
 import { Lrc, Runner, timestampToString, parseLine } from 'lrc-kit'
 import { useGlobalState } from '@/composables/global-state.js'
+import { useToast } from 'vue-toastification'
 import PublishLyrics from '@/components/library/my-lrclib/PublishLyrics.vue'
 import PublishPlainText from '@/components/library/my-lrclib/PublishPlainText.vue'
 import { Decoration, EditorView } from '@codemirror/view'
@@ -96,29 +119,55 @@ import { StateField, StateEffect } from '@codemirror/state'
 import { defineAsyncComponent } from 'vue'
 import { executeLint as executeLyricsLint } from '@/utils/lyrics-lint.js'
 import { executeLint as executePlainTextLint } from '@/utils/plain-text-lint.js'
+import { useModal } from 'vue-final-modal'
+import { isSynchronizedLyrics } from '@/utils/lyrics.js'
 
 const AsyncCodemirror = defineAsyncComponent(async () => {
   const { Codemirror } = await import('vue-codemirror')
   return Codemirror
 })
 
-const { disableHotkey, enableHotkey } = useGlobalState()
 const props = defineProps(['editingTrack'])
+const emit = defineEmits(['close'])
 
+const { disableHotkey, enableHotkey } = useGlobalState()
 const editingTrack = ref(props.editingTrack)
+
 const unifiedLyrics = ref('')
 const shouldLoadCodeMirror = ref(false)
 const view = shallowRef()
 const keydownEvent = ref(null)
 const isDirty = ref(false)
-const isPublishingLyrics = ref(false)
-const isPublishingPlainText = ref(false)
 const lyricsLintResult = ref([])
 const plainTextLintResult = ref([])
 const cmContainer = ref(null)
 const cmHeight = ref(null)
 
 const runner = ref(null)
+
+const { open: openPublishLyricsModal, close: closePublishLyricsModal, patchOptions: patchPublishLyricsModalOptions } = useModal({
+  component: PublishLyrics,
+  attrs: {
+    track: props.editingTrack,
+    lyrics: unifiedLyrics.value,
+    lintResult: lyricsLintResult.value,
+    onClose() {
+      closePublishLyricsModal()
+    }
+  }
+})
+
+const { open: openPublishPlainTextModal, close: closePublishPlainTextModal, patchOptions: patchPublishPlainTextModalOptions } = useModal({
+  component: PublishPlainText,
+  attrs: {
+    track: props.editingTrack,
+    lyrics: unifiedLyrics.value,
+    lintResult: plainTextLintResult.value,
+    onClose() {
+      closePublishPlainTextModal()
+    }
+  }
+})
 
 const codemirrorStyle = ref({
   fontSize: 1.0
@@ -300,6 +349,28 @@ const handleResize = () => {
   cmHeight.value = cmContainer.value.offsetHeight
 }
 
+const handlePublish = () => {
+  if (isSynchronizedLyrics(unifiedLyrics.value)) {
+    patchPublishLyricsModalOptions({
+      attrs: {
+        track: props.editingTrack,
+        lyrics: unifiedLyrics.value,
+        lintResult: plainTextLintResult.value,
+      }
+    })
+    openPublishLyricsModal()
+  } else {
+    patchPublishPlainTextModalOptions({
+      attrs: {
+        track: props.editingTrack,
+        lyrics: unifiedLyrics.value,
+        lintResult: lyricsLintResult.value,
+      }
+    })
+    openPublishPlainTextModal()
+  }
+}
+
 onUnmounted(async () => {
   enableHotkey()
   if (keydownEvent.value) {
@@ -344,14 +415,6 @@ onMounted(async () => {
   plainTextLintResult.value = executePlainTextLint(unifiedLyrics.value)
 })
 
-const publishLyrics = async () => {
-  isPublishingLyrics.value = true
-}
-
-const publishPlainText = async () => {
-  isPublishingPlainText.value = true
-}
-
 watch(cmContainer, () => {
   if (cmContainer.value) {
     setTimeout(() => shouldLoadCodeMirror.value = true, 100)
@@ -390,10 +453,6 @@ watch(() => props.editingTrack, () => {
 <style>
 .codemirror-custom .cm-editor {
   @apply outline-none h-full;
-}
-
-.cm-scroller {
-  /* @apply scroll-smooth; */
 }
 
 .codemirror-custom .cm-current-lyrics {

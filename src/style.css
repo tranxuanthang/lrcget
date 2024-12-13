@@ -17,6 +17,7 @@ body {
   left: 0;
   right: 0;
 }
+
 .titlebar-button {
   display: inline-flex;
   justify-content: center;
@@ -24,28 +25,9 @@ body {
   width: 30px;
   height: 30px;
 }
+
 .titlebar-button:hover {
   background: #5bbec3;
-}
-
-.dropdown-arrow-button {
-  @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70 !border-brave-80;
-}
-
-.dropdown-arrow-button-disabled {
-  @apply box-border border-2 !border-brave-90 bg-brave-98 text-brave-70 cursor-not-allowed;
-}
-
-.dropdown-arrow-button-active {
-  @apply bg-brave-70;
-}
-
-.dropdown-popup {
-  @apply absolute rounded-lg left-1/2 top-8 -translate-x-1/2 z-10 py-1 shadow-xl bg-brave-95;
-}
-
-.dropdown-item {
-  @apply text-xs transition uppercase font-bold;
 }
 
 .button {
@@ -125,11 +107,16 @@ body {
 }
 
 .modal-button {
-  @apply flex-none button button-normal3 rounded-full p-4;
+  @apply flex-none button text-brave-35 hover:text-brave-30 active:text-brave-25 rounded-full p-4;
 }
 
 .modal-title {
   @apply text-lg grow line-clamp-1 overflow-hidden text-brave-30;
+}
+
+.modal-content {
+  @apply rounded-lg bg-white flex flex-col m-2 select-none;
+  overscroll-behavior: contain;
 }
 
 .Vue-Toastification__toast.lrcget-toast {
@@ -185,4 +172,13 @@ body {
 
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.2s ease;
+}
+
+.v-popper--theme-lrcget-tooltip .v-popper__inner {
+  background: #ffd9e2;
+  color: #8e004b;
+}
+
+.v-popper--theme-lrcget-tooltip .v-popper__arrow-outer {
+  border-color: #ffd9e2;
 }

@@ -1,32 +1,20 @@
 import { createApp } from 'vue'
 import App from "./App.vue"
 import Toast, { POSITION } from 'vue-toastification'
+import { createVfm } from 'vue-final-modal'
+import FloatingVue from 'floating-vue'
+
 import 'vue-toastification/dist/index.css'
+import 'vue-final-modal/style.css'
+import 'floating-vue/dist/style.css'
 import './style.css'
 
-// Directive that listens for clicks outside a components, useful for popups
-// Source: https://stackoverflow.com/a/64698630
-const clickOutside = {
-  beforeMount: (el, binding) => {
-    el.clickOutsideEvent = event => {
-      // here I check that click was outside the el and his children
-      if (!(el == event.target || el.contains(event.target))) {
-        // and if it did, call method provided in attribute value
-        binding.value(event);
-      }
-    };
-    document.addEventListener("click", el.clickOutsideEvent);
-    document.addEventListener("touchstart", el.clickOutsideEvent);
-  },
-  unmounted: el => {
-    document.removeEventListener("click", el.clickOutsideEvent);
-    document.removeEventListener("touchstart", el.clickOutsideEvent);
-  },
-};
+import { VueFinalModal } from 'vue-final-modal'
 
+const vfm = createVfm()
 
 const app = createApp(App)
-  .directive("click-outside", clickOutside)
+  .component('VueFinalModal', VueFinalModal)
 
 app.use(Toast, {
   position: POSITION.BOTTOM_RIGHT,
@@ -39,6 +27,18 @@ app.use(Toast, {
   draggablePercent: 0.4,
   closeOnClick: false
 })
+app.use(FloatingVue, {
+  themes: {
+    'lrcget-tooltip': {
+      '$extend': 'tooltip',
+      delay: {
+        show: 50,
+        hide: 50,
+      }
+    },
+  },
+})
+app.use(vfm)
 app.mount('#app')
 
 document.addEventListener(

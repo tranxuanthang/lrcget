@@ -71,18 +71,6 @@
     <div v-if="isOpeningTrack" class="flex items-center justify-center w-full h-full fixed top-0 left-0 bg-white/50">
       <Loading class="animate-spin" />
     </div>
-
-    <Teleport to="body">
-      <EditLyrics v-model="editingTrack" :editing-track="editingTrack" @close="editingTrack = null" />
-    </Teleport>
-
-    <Teleport to="body">
-      <PreviewLyrics v-model="showingTrack" :track="showingTrack" @close="showingTrack = null" />
-    </Teleport>
-
-    <Teleport to="body">
-      <FlagLyrics v-model="flagLyricsTrack" :track="flagLyricsTrack" @close="flagLyricsTrack = null" />
-    </Teleport>
   </div>
 </template>
 
@@ -95,6 +83,7 @@ import { useToast } from 'vue-toastification'
 import EditLyrics from './EditLyrics.vue'
 import PreviewLyrics from './PreviewLyrics.vue'
 import FlagLyrics from './FlagLyrics.vue'
+import { useModal } from 'vue-final-modal'
 
 const toast = useToast()
 
@@ -111,6 +100,42 @@ const isOpeningTrack = ref(false)
 const showingTrack = ref(null)
 const editingTrack = ref(null)
 const flagLyricsTrack = ref(null)
+
+const { open: openPreviewModal, close: closePreviewModal } = useModal({
+  component: PreviewLyrics,
+  attrs: {
+    track: showingTrack,
+    onClose() {
+      closePreviewModal()
+    },
+    onClosed() {
+      showingTrack.value = null
+    }
+  }
+})
+
+const { open: openEditLyricsModal, close: closeEditLyricsModal } = useModal({
+  component: EditLyrics,
+  attrs: {
+    editingTrack: editingTrack,
+    onClose() {
+      closeEditLyricsModal()
+    },
+    onClosed() {
+      editingTrack.value = null
+    }
+  }
+})
+
+const { open: openFlagLyricsModal, close: closeFlagLyricsModal } = useModal({
+  component: FlagLyrics,
+  attrs: {
+    track: flagLyricsTrack,
+    onClose() {
+      closeFlagLyricsModal()
+    }
+  }
+})
 
 onMounted(async () => {
   loading.value = true
@@ -130,6 +155,7 @@ const setShowingTrack = async (track) => {
   try {
     const refreshedTrack = await invoke('retrieve_lyrics_by_id', { id: track.id })
     showingTrack.value = refreshedTrack
+    openPreviewModal()
   } catch (error) {
     toast.error('An error occurred while opening the lyrics. Please try again.')
     console.error(error)
@@ -141,10 +167,9 @@ const setShowingTrack = async (track) => {
 const setEditingTrack = async (track) => {
   isOpeningTrack.value = true
   try {
-    console.log(track)
     const refreshedTrack = await invoke('retrieve_lyrics_by_id', { id: track.id })
-    console.log(refreshedTrack)
     editingTrack.value = refreshedTrack
+    openEditLyricsModal()
     isOpeningTrack.value = false
   } catch (error) {
     toast.error('An error occurred while opening the lyrics. Please try again.')
@@ -156,5 +181,6 @@ const setEditingTrack = async (track) => {
 
 const flagLyrics = async (track) => {
   flagLyricsTrack.value = track
+  openFlagLyricsModal()
 }
 </script>

@@ -3,9 +3,9 @@
     <LibraryHeader
       :activeTab="activeTab"
       @changeActiveTab="changeActiveTab"
-      @showConfig="isShowConfig = true"
-      @showAbout="isShowAbout = true"
-      @showDownloadViewer="isShowDownloadViewer = true"
+      @showConfig="openConfigModal"
+      @showAbout="openAboutModal"
+      @showDownloadViewer="openDownloadViewer"
       @showSearch="toggleSearch"
     />
 
@@ -49,13 +49,7 @@
     </div>
   </div>
 
-  <DownloadViewer :is-show="isShowDownloadViewer" @close="closeDownloadViewer" />
   <Config :is-show="isShowConfig" @close="isShowConfig = false" @refreshLibrary="refreshLibrary" @uninitialize-library="$emit('uninitializeLibrary')" />
-  <About :is-show="isShowAbout" @close="isShowAbout = false" />
-
-  <Teleport to="body">
-    <SearchLyrics v-model="searchingTrack" :searching-track="searchingTrack" @close="searchingTrack = null" />
-  </Teleport>
 
   <Teleport to="body">
     <EditLyrics v-if="editingTrack" :is-show="!!editingTrack" />
@@ -78,16 +72,12 @@ import DownloadViewer from './library/DownloadViewer.vue'
 import SearchBar from './library/SearchBar.vue'
 import Config from './library/Config.vue'
 import About from './About.vue'
-import SearchLyrics from './library/SearchLyrics.vue'
 import EditLyrics from './library/EditLyrics.vue'
 import { useToast } from 'vue-toastification'
-import { useDownloader } from '../composables/downloader.js'
-import { useSearchLyrics } from '../composables/search-lyrics.js'
 import { useEditLyrics } from '../composables/edit-lyrics.js'
-import { usePlayer } from '@/composables/player.js'
+import { useModal } from 'vue-final-modal'
 
 const toast = useToast()
-const { searchingTrack } = useSearchLyrics()
 const { editingTrack } = useEditLyrics()
 defineEmits(['uninitializeLibrary'])
 
@@ -95,17 +85,38 @@ const isLoading = ref(true)
 const isInitializing = ref(false)
 const initializeProgress = ref(null)
 const activeTab = ref('tracks')
-const isShowDownloadViewer = ref(false)
 const isShowConfig = ref(false)
-const isShowAbout = ref(false)
 const isShowSearch = ref(false)
+
+const { open: openAboutModal, close: closeAboutModal } = useModal({
+  component: About,
+  attrs: {
+    onClose() {
+      closeAboutModal()
+    }
+  },
+})
+
+const { open: openConfigModal, close: closeConfigModal } = useModal({
+  component: Config,
+  attrs: {
+    onClose() {
+      closeConfigModal()
+    }
+  },
+})
+
+const { open: openDownloadViewer, close: closeDownloadViewer } = useModal({
+  component: DownloadViewer,
+  attrs: {
+    onClose() {
+      closeDownloadViewer()
+    }
+  },
+})
 
 const changeActiveTab = (tab) => {
   activeTab.value = tab
-}
-
-const closeDownloadViewer = () => {
-  isShowDownloadViewer.value = false
 }
 
 const toggleSearch = () => {
