@@ -1,15 +1,24 @@
 <template>
-  <div class="fixed top-0 left-0 w-full h-full flex items-center justify-center z-40" :class="{ 'hidden': !props.isShow }">
-    <div v-if="lintResult.length" class="px-8 py-4 max-w-screen-sm max-h-[60vh] rounded-lg m-4 bg-white dark:bg-black flex flex-col gap-4">
+  <VueFinalModal
+    class="flex justify-center items-center"
+    content-class="px-8 py-4 max-w-screen-sm max-h-[60vh] rounded-lg m-4 bg-white flex flex-col gap-4"
+    overlay-transition="fade"
+    content-transition="pop-fade"
+    :click-to-close="!isPublishing"
+    :esc-to-close="!isPublishing"
+  >
+    <template v-if="lintResult.length">
       <div class="grow flex flex-col h-full overflow-hidden">
         <div class="mb-4 text-brave-10 dark:text-white">Please fix the following problem(s) before publishing</div>
 
         <div class="grow overflow-y-scroll h-full">
           <table class="lint-result table">
             <thead class="text-xs text-brave-30/70 dark:text-white font-bold">
-              <th class="p-1 text-right">Line</th>
-              <th class="p-1 text-center">Severity</th>
-              <th class="p-1">Message</th>
+              <tr>
+                <th class="p-1 text-right">Line</th>
+                <th class="p-1 text-center">Severity</th>
+                <th class="p-1">Message</th>
+              </tr>
             </thead>
             <tbody class="text-xs text-brave-20">
               <tr v-for="(problem, index) in lintResult" :key="index">
@@ -27,12 +36,16 @@
       <div class="flex gap-2 justify-center w-full">
         <button class="button button-primary px-8 py-2 rounded-full" @click="close">Close</button>
       </div>
-    </div>
+    </template>
 
-    <div v-else class="px-8 py-4 max-w-[500px] max-h-[60vh] rounded-lg m-4 bg-white dark:bg-black flex flex-col gap-4">
+    <template v-else>
       <div class="flex flex-col items-center">
-        <div v-if="!isPublishing" class="text-brave-10 dark:text-white mb-4">Do you want to publish your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong> to your current LRCLIB instance?</div>
-        <div v-else class="text-brave-10 mb-4 dark:text-white">Publishing your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong>...</div>
+        <div v-if="!isPublishing" class="text-brave-10 mb-4">
+          Do you want to publish your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong> to your current LRCLIB instance?
+        </div>
+        <div v-else class="text-brave-10 mb-4">
+          Publishing your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong>...
+        </div>
 
         <table v-if="isPublishing" class="text-xs table-auto text-brave-20 font-mono uppercase">
           <tbody>
@@ -62,11 +75,8 @@
       <div v-else class="flex gap-2 justify-center w-full">
         <button class="button button-disabled px-8 py-2 rounded-full flex gap-3" disabled><div class="animate-spin"><Loading /></div><div>Publishing</div></button>
       </div>
-    </div>
-  </div>
-
-  <div class="fixed top-0 left-0 h-full w-full z-30 bg-black/30" :class="{ 'hidden': !props.isShow }" @click.prevent="close">
-  </div>
+    </template>
+  </VueFinalModal>
 </template>
 
 <script setup>
@@ -78,7 +88,7 @@ import { useToast } from 'vue-toastification'
 
 const toast = useToast()
 const emit = defineEmits(['close'])
-const props = defineProps(['isShow', 'lintResult', 'track', 'lyrics'])
+const props = defineProps(['lintResult', 'track', 'lyrics'])
 
 const isPublishing = ref(false)
 const isError = ref(false)
@@ -93,8 +103,15 @@ const publishLyrics = async () => {
   const plainLyrics = props.lyrics.replace(/^\[(.*)\] */mg, '')
   const syncedLyrics = props.lyrics
   try {
-    await invoke('publish_lyrics', { title: props.track.title, albumName: props.track.album_name, artistName: props.track.artist_name, duration: props.track.duration, plainLyrics, syncedLyrics })
-    toast.success('Your lyrics has been published successfully!')
+    await invoke('publish_lyrics', {
+      title: props.track.title,
+      albumName: props.track.album_name,
+      artistName: props.track.artist_name,
+      duration: props.track.duration,
+      plainLyrics,
+      syncedLyrics
+    })
+    toast.success('Your lyrics has been published successfully! It might take up to 24 hours to be visible on the search results.')
   } catch (error) {
     isError.value = true
     console.error(error)
@@ -106,6 +123,7 @@ const publishLyrics = async () => {
 }
 
 onMounted(() => {
+  console.log('lintResult', props.lintResult)
   listen('publish-lyrics-progress', (event) => {
     progress.value = event.payload
   })

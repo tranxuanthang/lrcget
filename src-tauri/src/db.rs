@@ -8,7 +8,7 @@ use crate::fs_track;
 use crate::utils::prepare_input;
 use regex::Regex;
 
-const CURRENT_DB_VERSION: u32 = 4;
+const CURRENT_DB_VERSION: u32 = 5;
 
 /// Initializes the database connection, creating the .sqlite file if needed, and upgrading the database
 /// if it's out of date.
@@ -35,6 +35,16 @@ pub fn upgrade_database_if_needed(db: &mut Connection, existing_version: u32) ->
   println!("Existing database version: {}", existing_version);
 
   if existing_version < CURRENT_DB_VERSION {
+    if existing_version <= 4 {
+      // Completely reset the database
+      db.execute("DROP TABLE IF EXISTS tracks", ())?;
+      db.execute("DROP TABLE IF EXISTS albums", ())?;
+      db.execute("DROP TABLE IF EXISTS artists", ())?;
+      db.execute("DROP TABLE IF EXISTS directories", ())?;
+      db.execute("DROP TABLE IF EXISTS library_data", ())?;
+      db.execute("DROP TABLE IF EXISTS config_data", ())?;
+    }
+
     if existing_version <= 0 {
       println!("Mirgate database version 1...");
       db.pragma_update(None, "journal_mode", "WAL")?;
@@ -137,41 +147,23 @@ pub fn upgrade_database_if_needed(db: &mut Connection, existing_version: u32) ->
       CREATE INDEX idx_artists_name_lower ON artists(name_lower);
       "})?;
 
-      // Update all tracks with the lower case title
-      {
-        let mut stmt = tx.prepare("SELECT id, title FROM tracks")?;
-        let tracks: Vec<(i64, String)> = stmt.query_map([], |row| {
-          Ok((row.get(0)?, row.get(1)?))
-        })?.collect::<Result<Vec<_>, rusqlite::Error>>()?;
-        for (id, title) in tracks {
-          let title_lower = prepare_input(&title);
-          tx.execute("UPDATE tracks SET title_lower = ? WHERE id = ?", (&title_lower, &id))?;
-        }
-      }
+      tx.commit()?;
+    }
 
-      // Update all albums with the lower case name
-      {
-        let mut stmt = tx.prepare("SELECT id, name FROM albums")?;
-        let albums: Vec<(i64, String)> = stmt.query_map([], |row| {
-          Ok((row.get(0)?, row.get(1)?))
-        })?.collect::<Result<Vec<_>, rusqlite::Error>>()?;
-        for (id, name) in albums {
-          let name_lower = prepare_input(&name);
-          tx.execute("UPDATE albums SET name_lower = ? WHERE id = ?", (&name_lower, &id))?;
-        }
-      }
+    if existing_version <= 4 {
+      println!("Mirgate database version 5...");
+      let tx = db.transaction()?;
 
-      // Update all artists with the lower case name
-      {
-        let mut stmt = tx.prepare("SELECT id, name FROM artists")?;
-        let artists: Vec<(i64, String)> = stmt.query_map([], |row| {
-          Ok((row.get(0)?, row.get(1)?))
-        })?.collect::<Result<Vec<_>, rusqlite::Error>>()?;
-        for (id, name) in artists {
-          let name_lower = prepare_input(&name);
-          tx.execute("UPDATE artists SET name_lower = ? WHERE id = ?", (&name_lower, &id))?;
-        }
-      }
+      tx.pragma_update(None, "user_version", 5)?;
+
+      tx.execute_batch(indoc! {"
+      ALTER TABLE tracks ADD track_number INTEGER;
+      ALTER TABLE albums ADD album_artist_name TEXT;
+      ALTER TABLE albums ADD album_artist_name_lower TEXT;
+      ALTER TABLE config_data ADD theme_mode TEXT DEFAULT 'auto';
+      CREATE INDEX idx_albums_album_artist_name_lower ON albums(album_artist_name_lower);
+      CREATE INDEX idx_tracks_track_number ON tracks(track_number);
+      "})?;
 
       tx.commit()?;
     }
@@ -216,19 +208,20 @@ pub fn set_init(init: bool, db: &Connection) -> Result<()> {
 }
 
 pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
-  let mut statement = db.prepare("SELECT skip_not_needed_tracks, try_embed_lyrics FROM config_data LIMIT 1")?;
+  let mut statement = db.prepare("SELECT skip_not_needed_tracks, try_embed_lyrics, theme_mode FROM config_data LIMIT 1")?;
   let row = statement.query_row([], |r| {
     Ok(PersistentConfig {
       skip_not_needed_tracks: r.get("skip_not_needed_tracks")?,
-      try_embed_lyrics: r.get("try_embed_lyrics")?
+      try_embed_lyrics: r.get("try_embed_lyrics")?,
+      theme_mode: r.get("theme_mode")?
     })
   })?;
   Ok(row)
 }
 
-pub fn set_config(skip_not_needed_tracks: bool, try_embed_lyrics: bool, db: &Connection) -> Result<()> {
-  let mut statement = db.prepare("UPDATE config_data SET skip_not_needed_tracks = ?, try_embed_lyrics = ? WHERE 1")?;
-  statement.execute([skip_not_needed_tracks, try_embed_lyrics])?;
+pub fn set_config(skip_not_needed_tracks: bool, try_embed_lyrics: bool, theme_mode: &str, db: &Connection) -> Result<()> {
+  let mut statement = db.prepare("UPDATE config_data SET skip_not_needed_tracks = ?, try_embed_lyrics = ?, theme_mode = ? WHERE 1")?;
+  statement.execute((skip_not_needed_tracks, try_embed_lyrics, theme_mode))?;
   Ok(())
 }
 
@@ -244,34 +237,36 @@ pub fn add_artist(name: &str, db: &Connection) -> Result<i64> {
   Ok(row_id)
 }
 
-pub fn find_album(name: &str, artist_id: i64, db: &Connection) -> Result<i64> {
-  let mut statement = db.prepare("SELECT id FROM albums WHERE name = ? AND artist_id = ?")?;
-  let id: i64 = statement.query_row((name, artist_id), |r| r.get(0))?;
+pub fn find_album(name: &str, album_artist_name: &str, db: &Connection) -> Result<i64> {
+  let mut statement = db.prepare("SELECT id FROM albums WHERE name = ? AND album_artist_name = ?")?;
+  let id: i64 = statement.query_row((name, album_artist_name), |r| r.get(0))?;
   Ok(id)
 }
 
-pub fn add_album(name: &str, artist_id: i64, db: &Connection) -> Result<i64> {
-  let mut statement = db.prepare("INSERT INTO albums (name, name_lower, artist_id) VALUES (?, ?, ?)")?;
-  let row_id = statement.insert((name, prepare_input(name), artist_id))?;
+pub fn add_album(name: &str, album_artist_name: &str, db: &Connection) -> Result<i64> {
+  let mut statement = db.prepare("INSERT INTO albums (name, name_lower, album_artist_name, album_artist_name_lower) VALUES (?, ?, ?, ?)")?;
+  let row_id = statement.insert((name, prepare_input(name), album_artist_name, prepare_input(album_artist_name)))?;
   Ok(row_id)
 }
 
 pub fn get_track_by_id(id: i64, db: &Connection) -> Result<PersistentTrack> {
   let query = indoc! {"
     SELECT
-        tracks.id,
-        file_path,
-        file_name,
-        title,
-        artists.name AS artist_name,
-        tracks.artist_id,
-        albums.name AS album_name,
-        album_id,
-        duration,
-        albums.image_path,
-        txt_lyrics,
-        lrc_lyrics,
-        instrumental
+      tracks.id,
+      file_path,
+      file_name,
+      title,
+      artists.name AS artist_name,
+      tracks.artist_id,
+      albums.name AS album_name,
+      albums.album_artist_name,
+      album_id,
+      duration,
+      track_number,
+      albums.image_path,
+      txt_lyrics,
+      lrc_lyrics,
+      instrumental
     FROM tracks
     JOIN albums ON tracks.album_id = albums.id
     JOIN artists ON tracks.artist_id = artists.id
@@ -293,8 +288,10 @@ pub fn get_track_by_id(id: i64, db: &Connection) -> Result<PersistentTrack> {
         artist_name: row.get("artist_name")?,
         artist_id: row.get("artist_id")?,
         album_name: row.get("album_name")?,
+        album_artist_name: row.get("album_artist_name")?,
         album_id: row.get("album_id")?,
         duration: row.get("duration")?,
+        track_number: row.get("track_number")?,
         txt_lyrics: row.get("txt_lyrics")?,
         lrc_lyrics: row.get("lrc_lyrics")?,
         image_path: row.get("image_path")?,
@@ -353,11 +350,11 @@ pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
     }
   };
 
-  let album_result = find_album(&track.album(), artist_id, db);
+  let album_result = find_album(&track.album(), &track.album_artist(), db);
   let album_id = match album_result {
     Ok(album_id) => album_id,
     Err(_) => {
-      add_album(&track.album(), artist_id, db)?
+      add_album(&track.album(), &track.album_artist(), db)?
     }
   };
 
@@ -374,10 +371,11 @@ pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
         album_id,
         artist_id,
         duration,
+        track_number,
         txt_lyrics,
         lrc_lyrics,
         instrumental
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   "};
   let mut statement = db.prepare(query)?;
   statement.execute((
@@ -388,6 +386,7 @@ pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
     album_id,
     artist_id,
     track.duration(),
+    track.track_number(),
     track.txt_lyrics(),
     track.lrc_lyrics(),
     is_instrumental
@@ -401,7 +400,7 @@ pub fn get_tracks(db: &Connection) -> Result<Vec<PersistentTrack>> {
       SELECT
           tracks.id, file_path, file_name, title,
           artists.name AS artist_name, tracks.artist_id,
-          albums.name AS album_name, album_id, duration,
+          albums.name AS album_name, albums.album_artist_name, album_id, duration, track_number,
           albums.image_path, txt_lyrics, lrc_lyrics, instrumental
       FROM tracks
       JOIN albums ON tracks.album_id = albums.id
@@ -423,8 +422,10 @@ pub fn get_tracks(db: &Connection) -> Result<Vec<PersistentTrack>> {
       artist_name: row.get("artist_name")?,
       artist_id: row.get("artist_id")?,
       album_name: row.get("album_name")?,
+      album_artist_name: row.get("album_artist_name")?,
       album_id: row.get("album_id")?,
       duration: row.get("duration")?,
+      track_number: row.get("track_number")?,
       txt_lyrics: row.get("txt_lyrics")?,
       lrc_lyrics: row.get("lrc_lyrics")?,
       image_path: row.get("image_path")?,
@@ -491,12 +492,11 @@ pub fn get_no_lyrics_track_ids(db: &Connection) -> Result<Vec<i64>> {
 
 pub fn get_albums(db: &Connection) -> Result<Vec<PersistentAlbum>> {
   let mut statement = db.prepare(indoc! {"
-      SELECT albums.id, albums.name, artists.name AS artist_name, albums.artist_id,
-            COUNT(tracks.id) AS tracks_count, image_path
+      SELECT albums.id, albums.name, albums.album_artist_name AS album_artist_name, albums.album_artist_name,
+          COUNT(tracks.id) AS tracks_count
       FROM albums
-      JOIN artists ON artists.id = albums.artist_id
       JOIN tracks ON tracks.album_id = albums.id
-      GROUP BY albums.id, albums.name, artist_name, albums.artist_id, image_path
+      GROUP BY albums.id, albums.name, albums.album_artist_name
       ORDER BY albums.name_lower ASC
   "})?;
   let mut rows = statement.query([])?;
@@ -507,8 +507,8 @@ pub fn get_albums(db: &Connection) -> Result<Vec<PersistentAlbum>> {
       id: row.get("id")?,
       name: row.get("name")?,
       image_path: row.get("image_path")?,
-      artist_name: row.get("artist_name")?,
-      artist_id: row.get("artist_id")?,
+      artist_name: row.get("album_artist_name")?,
+      album_artist_name: row.get("album_artist_name")?,
       tracks_count: row.get("tracks_count")?,
     };
 
@@ -520,24 +520,19 @@ pub fn get_albums(db: &Connection) -> Result<Vec<PersistentAlbum>> {
 
 pub fn get_album_by_id(id: i64, db: &Connection) -> Result<PersistentAlbum> {
   let mut statement = db.prepare(indoc! {"
-      SELECT
-          albums.id,
-          albums.name,
-          artists.name AS artist_name,
-          albums.artist_id,
-          COUNT(tracks.id) AS tracks_count,
-          image_path
-      FROM albums
-      JOIN artists ON artists.id = albums.artist_id
-      JOIN tracks ON tracks.album_id = albums.id
-      WHERE albums.id = ?
-      GROUP BY
-          albums.id,
-          albums.name,
-          artist_name,
-          albums.artist_id,
-          image_path
-      LIMIT 1
+    SELECT
+      albums.id,
+      albums.name,
+      albums.album_artist_name,
+      COUNT(tracks.id) AS tracks_count
+    FROM albums
+    JOIN tracks ON tracks.album_id = albums.id
+    WHERE albums.id = ?
+    GROUP BY
+      albums.id,
+      albums.name,
+      albums.album_artist_name
+    LIMIT 1
   "})?;
   let row = statement.query_row(
     [id],
@@ -545,9 +540,9 @@ pub fn get_album_by_id(id: i64, db: &Connection) -> Result<PersistentAlbum> {
     Ok(PersistentAlbum {
       id: row.get("id")?,
       name: row.get("name")?,
-      image_path: row.get("image_path")?,
-      artist_name: row.get("artist_name")?,
-      artist_id: row.get("artist_id")?,
+      image_path: None,
+      artist_name: row.get("album_artist_name")?,
+      album_artist_name: row.get("album_artist_name")?,
       tracks_count: row.get("tracks_count")?,
     })
   )?;
@@ -568,11 +563,11 @@ pub fn get_album_ids(db: &Connection) -> Result<Vec<i64>> {
 
 pub fn get_artists(db: &Connection) -> Result<Vec<PersistentArtist>> {
   let mut statement = db.prepare(indoc! {"
-      SELECT artists.id, artists.name AS name, COUNT(tracks.id) AS tracks_count
-      FROM artists
-      JOIN tracks ON tracks.artist_id = artists.id
-      GROUP BY artists.id, artists.name
-      ORDER BY artists.name_lower ASC
+    SELECT artists.id, artists.name AS name, COUNT(tracks.id) AS tracks_count
+    FROM artists
+    JOIN tracks ON tracks.artist_id = artists.id
+    GROUP BY artists.id, artists.name
+    ORDER BY artists.name_lower ASC
   "})?;
   let mut rows = statement.query([])?;
   let mut artists: Vec<PersistentArtist> = Vec::new();
@@ -593,14 +588,14 @@ pub fn get_artists(db: &Connection) -> Result<Vec<PersistentArtist>> {
 
 pub fn get_artist_by_id(id: i64, db: &Connection) -> Result<PersistentArtist> {
   let mut statement = db.prepare(indoc! {"
-      SELECT artists.id,
-            artists.name AS name,
-            COUNT(tracks.id) AS tracks_count
-      FROM artists
-      JOIN tracks ON tracks.artist_id = artists.id
-      WHERE artists.id = ?
-      GROUP BY artists.id, artists.name
-      LIMIT 1
+    SELECT artists.id,
+      artists.name AS name,
+      COUNT(tracks.id) AS tracks_count
+    FROM artists
+    JOIN tracks ON tracks.artist_id = artists.id
+    WHERE artists.id = ?
+    GROUP BY artists.id, artists.name
+    LIMIT 1
   "})?;
   let row = statement.query_row(
     [id],
@@ -629,25 +624,27 @@ pub fn get_artist_ids(db: &Connection) -> Result<Vec<i64>> {
 
 pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<PersistentTrack>> {
   let mut statement = db.prepare(indoc! {"
-      SELECT
-          tracks.id,
-          file_path,
-          file_name,
-          title,
-          artists.name AS artist_name,
-          tracks.artist_id,
-          albums.name AS album_name,
-          album_id,
-          duration,
-          albums.image_path,
-          txt_lyrics,
-          lrc_lyrics,
-          instrumental
-      FROM tracks
-      JOIN albums ON tracks.album_id = albums.id
-      JOIN artists ON tracks.artist_id = artists.id
-      WHERE tracks.album_id = ?
-      ORDER BY title_lower ASC
+    SELECT
+      tracks.id,
+      file_path,
+      file_name,
+      title,
+      artists.name AS artist_name,
+      tracks.artist_id,
+      albums.name AS album_name,
+      albums.album_artist_name,
+      album_id,
+      duration,
+      track_number,
+      albums.image_path,
+      txt_lyrics,
+      lrc_lyrics,
+      instrumental
+    FROM tracks
+    JOIN albums ON tracks.album_id = albums.id
+    JOIN artists ON tracks.artist_id = artists.id
+    WHERE tracks.album_id = ?
+    ORDER BY track_number ASC
   "})?;
   let mut rows = statement.query([album_id])?;
   let mut tracks: Vec<PersistentTrack> = Vec::new();
@@ -661,10 +658,12 @@ pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<Persistent
       file_name: row.get("file_name")?,
       title: row.get("title")?,
       artist_name: row.get("artist_name")?,
-      artist_id: row.get("artist_id")?,
+      album_artist_name: row.get("album_artist_name")?,
       album_name: row.get("album_name")?,
       album_id: row.get("album_id")?,
+      artist_id: row.get("artist_id")?,
       duration: row.get("duration")?,
+      track_number: row.get("track_number")?,
       txt_lyrics: row.get("txt_lyrics")?,
       lrc_lyrics: row.get("lrc_lyrics")?,
       image_path: row.get("image_path")?,
@@ -679,11 +678,11 @@ pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<Persistent
 
 pub fn get_album_track_ids(album_id: i64, db: &Connection) -> Result<Vec<i64>> {
   let mut statement = db.prepare(indoc! {"
-      SELECT tracks.id
-      FROM tracks
-      JOIN albums ON tracks.album_id = albums.id
-      WHERE tracks.album_id = ?
-      ORDER BY title_lower ASC
+    SELECT tracks.id
+    FROM tracks
+    JOIN albums ON tracks.album_id = albums.id
+    WHERE tracks.album_id = ?
+    ORDER BY track_number ASC
   "})?;
   let mut rows = statement.query([album_id])?;
   let mut tracks: Vec<i64> = Vec::new();
@@ -698,13 +697,13 @@ pub fn get_album_track_ids(album_id: i64, db: &Connection) -> Result<Vec<i64>> {
 pub fn get_artist_tracks(artist_id: i64, db: &Connection) -> Result<Vec<PersistentTrack>> {
   let mut statement = db.prepare(indoc! {"
       SELECT tracks.id, file_path, file_name, title, artists.name AS artist_name,
-             tracks.artist_id, albums.name AS album_name, album_id, duration,
-             albums.image_path, txt_lyrics, lrc_lyrics, instrumental
+        tracks.artist_id, albums.name AS album_name, albums.album_artist_name, album_id, duration, track_number,
+        albums.image_path, txt_lyrics, lrc_lyrics, instrumental
       FROM tracks
       JOIN albums ON tracks.album_id = albums.id
       JOIN artists ON tracks.artist_id = artists.id
       WHERE tracks.artist_id = ?
-      ORDER BY title_lower ASC
+      ORDER BY album_name_lower ASC, track_number ASC
   "})?;
   let mut rows = statement.query([artist_id])?;
   let mut tracks: Vec<PersistentTrack> = Vec::new();
@@ -720,8 +719,10 @@ pub fn get_artist_tracks(artist_id: i64, db: &Connection) -> Result<Vec<Persiste
       artist_name: row.get("artist_name")?,
       artist_id: row.get("artist_id")?,
       album_name: row.get("album_name")?,
+      album_artist_name: row.get("album_artist_name")?,
       album_id: row.get("album_id")?,
       duration: row.get("duration")?,
+      track_number: row.get("track_number")?,
       txt_lyrics: row.get("txt_lyrics")?,
       lrc_lyrics: row.get("lrc_lyrics")?,
       image_path: row.get("image_path")?,
@@ -738,9 +739,10 @@ pub fn get_artist_track_ids(artist_id: i64, db: &Connection) -> Result<Vec<i64>>
   let mut statement = db.prepare(indoc! {"
       SELECT tracks.id
       FROM tracks
+      JOIN albums ON tracks.album_id = albums.id
       JOIN artists ON tracks.artist_id = artists.id
       WHERE tracks.artist_id = ?
-      ORDER BY title_lower ASC
+      ORDER BY albums.name_lower ASC, tracks.track_number ASC
   "})?;
   let mut rows = statement.query([artist_id])?;
   let mut tracks: Vec<i64> = Vec::new();

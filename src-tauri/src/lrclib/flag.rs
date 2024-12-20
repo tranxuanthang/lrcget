@@ -5,21 +5,12 @@ use anyhow::Result;
 use reqwest;
 use thiserror::Error;
 
-#[derive(Deserialize, Serialize)]
+#[derive(Serialize)]
 #[serde(rename_all = "camelCase")]
-struct SearchItem {
-  id: i64,
-  name: Option<String>,
-  artist_name: Option<String>,
-  album_name: Option<String>,
-  duration: Option<f64>,
-  instrumental: bool,
-  plain_lyrics: Option<String>,
-  synced_lyrics: Option<String>,
+pub struct Request {
+  track_id: i64,
+  reason: String
 }
-
-#[derive(Deserialize, Serialize)]
-pub struct Response(Vec<SearchItem>);
 
 #[derive(Error, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -30,14 +21,11 @@ pub struct ResponseError {
   message: String
 }
 
-pub async fn request(title: &str, album_name: &str, artist_name: &str, q: &str) -> Result<Response> {
-  let params: Vec<(String, String)> = vec![
-    ("track_name".to_owned(), title.to_owned()),
-    ("artist_name".to_owned(), artist_name.to_owned()),
-    ("album_name".to_owned(), album_name.to_owned()),
-    ("q".to_owned(), q.to_owned())
-  ];
-
+pub async fn request(track_id: i64, reason: &str, publish_token: &str) -> Result<()> {
+  let data = Request {
+    track_id,
+    reason: reason.to_owned()
+  };
 
   let version = env!("CARGO_PKG_VERSION");
   let user_agent = format!("LRCGET v{} (https://github.com/tranxuanthang/lrcget)", version);
@@ -45,13 +33,12 @@ pub async fn request(title: &str, album_name: &str, artist_name: &str, q: &str) 
     .timeout(Duration::from_secs(10))
     .user_agent(user_agent)
     .build()?;
-  let url = reqwest::Url::parse_with_params("https://lrclib.net/api/search", &params)?;
-  let res = client.get(url).send().await?;
+  let url = reqwest::Url::parse("https://lrclib.net/api/flag")?;
+  let res = client.post(url).header("X-Publish-Token", publish_token).json(&data).send().await?;
 
   match res.status() {
-    reqwest::StatusCode::OK => {
-      let lrclib_response = res.json::<Response>().await?;
-      Ok(lrclib_response)
+    reqwest::StatusCode::CREATED => {
+      Ok(())
     },
 
     reqwest::StatusCode::BAD_REQUEST | reqwest::StatusCode::SERVICE_UNAVAILABLE | reqwest::StatusCode::INTERNAL_SERVER_ERROR => {

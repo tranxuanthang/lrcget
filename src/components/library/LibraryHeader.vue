@@ -4,7 +4,7 @@
       <MiniSearch v-if="props.activeTab === 'tracks'" />
     </div>
 
-    <div class="flex-1 flex gap-5 justify-center text-sm">
+    <div class="flex-1 flex gap-4 justify-center items-center text-sm">
       <button
         class="tab"
         :class="{'active-tab': props.activeTab === 'tracks', 'inactive-tab': activeTab !== 'tracks'}"
@@ -25,6 +25,17 @@
         @click.prevent="$emit('changeActiveTab', 'artists')"
       >
         Artists
+      </button>
+
+      <!-- Create a separator -->
+      <div class="w-[2px] h-[70%] bg-brave-30/30" />
+
+      <button
+        class="tab"
+        :class="{'active-tab': props.activeTab === 'my-lrclib', 'inactive-tab': activeTab !== 'my-lrclib'}"
+        @click.prevent="$emit('changeActiveTab', 'my-lrclib')"
+      >
+        LRCLIB
       </button>
     </div>
 

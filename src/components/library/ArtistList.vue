@@ -18,7 +18,7 @@
             :style="{
               height: `${virtualRow.size}px`,
               transform: `translateY(${virtualRow.start}px)`,
-              }"
+            }"
           >
             <ArtistItem
               :artistId="virtualRow.key"

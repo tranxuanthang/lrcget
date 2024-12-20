@@ -17,6 +17,7 @@ body {
   left: 0;
   right: 0;
 }
+
 .titlebar-button {
   display: inline-flex;
   justify-content: center;
@@ -24,28 +25,9 @@ body {
   width: 30px;
   height: 30px;
 }
+
 .titlebar-button:hover {
   background: #5bbec3;
-}
-
-.dropdown-arrow-button {
-  @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70 active:dark:bg-brave-5 border-brave-80;
-}
-
-.dropdown-arrow-button-disabled {
-  @apply box-border border-2 border-brave-90 dark:border-brave-30 bg-brave-98 dark:bg-brave-5 text-brave-70 cursor-not-allowed;
-}
-
-.dropdown-arrow-button-active {
-  @apply bg-brave-70 active:dark:bg-brave-5;
-}
-
-.dropdown-popup {
-  @apply absolute rounded-lg left-1/2 top-8 -translate-x-1/2 z-10 py-1 shadow-xl bg-brave-95;
-}
-
-.dropdown-item {
-  @apply text-xs transition uppercase font-bold;
 }
 
 .button {
@@ -54,7 +36,7 @@ body {
 
 .button-normal {
   @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70
-  dark:bg-transparent dark:border-2 dark:border-brave-20 dark:text-brave-90
+  dark:bg-brave-10 dark:text-brave-90
   dark:hover:bg-brave-20 dark:active:bg-brave-25;
 }
 
@@ -70,6 +52,10 @@ body {
   @apply bg-brave-90/50 hover:bg-brave-80 text-brave-25 active:bg-brave-70;
 }
 
+.button-normal3 {
+  @apply hover:bg-brave-80 text-brave-25 active:bg-brave-70;
+}
+
 .button-primary {
   @apply bg-brave-30 hover:bg-brave-35 text-white active:bg-brave-25 dark:bg-brave-80 dark:hover:bg-brave-90 dark:active:bg-brave-90 dark:text-brave-20;
 }
@@ -83,7 +69,7 @@ body {
 }
 
 .button-disabled {
-  @apply box-border border-2 border-brave-90 dark:border-brave-30 bg-brave-98 dark:bg-brave-5 text-brave-70 cursor-not-allowed;
+  @apply box-border border-2 border-brave-90 dark:border-brave-20 bg-brave-98 dark:bg-brave-10 text-brave-70 dark:text-brave-20 cursor-not-allowed;
 }
 
 .button-blend {
@@ -99,7 +85,11 @@ body {
 }
 
 .group-label {
-  @apply font-bold text-xs uppercase text-brave-70 block;
+  @apply font-bold text-xs uppercase text-brave-70 dark:text-brave-95 block;
+}
+
+.child-label {
+  @apply text-sm text-brave-35 dark:text-brave-95;
 }
 
 .checkbox {
@@ -107,7 +97,7 @@ body {
 }
 
 .checkbox-label {
-  @apply text-sm text-brave-35 dark:text-brave-40;
+  @apply text-sm text-brave-35 dark:text-brave-95;
 }
 
 .input {
@@ -115,6 +105,27 @@ body {
   text-sm rounded-full transition text-brave-35 placeholder:text-brave-70
   dark:bg-brave-5 dark:border-brave-30 dark:focus:border-brave-20 dark:text-brave-95
   dark:placeholder:text-brave-90;
+}
+
+.textarea {
+  @apply bg-brave-98 box-border border border-brave-90 focus:border-brave-80 outline-none text-sm rounded-lg transition text-brave-35 placeholder:text-brave-70 resize-none;
+}
+
+.modal-title-bar {
+  @apply flex-none flex justify-between items-center px-6 py-2;
+}
+
+.modal-button {
+  @apply flex-none button text-brave-35 hover:text-brave-30 active:text-brave-25 dark:text-brave-95 dark:hover:text-brave-95 dark:active:text-brave-90 rounded-full p-4;
+}
+
+.modal-title {
+  @apply text-lg grow line-clamp-1 overflow-hidden text-brave-30 dark:text-brave-95;
+}
+
+.modal-content {
+  @apply rounded-lg bg-white dark:bg-brave-1 flex flex-col m-2 select-none text-brave-5 dark:text-brave-95;
+  overscroll-behavior: contain;
 }
 
 .Vue-Toastification__toast.lrcget-toast {
@@ -170,4 +181,44 @@ body {
 
 .fade-enter-active, .fade-leave-active {
   transition: opacity 0.2s ease;
+}
+
+.v-popper--theme-lrcget-tooltip .v-popper__inner {
+  background: #ffd9e2;
+  color: #8e004b;
+}
+
+.v-popper--theme-lrcget-tooltip .v-popper__arrow-outer {
+  border-color: #ffd9e2;
+}
+
+.codemirror-custom .cm-editor {
+  @apply outline-none h-full;
+}
+
+.codemirror-custom .cm-current-lyrics {
+  @apply font-bold;
+}
+
+.codemirror-custom .cm-content {
+  /* Some padding to prevent the text from touching the edge,
+  the gutter calculates its width internally so it's hard to calculate exactly */
+  @apply max-w-[90%];
+}
+
+.codemirror-custom .cm-line {
+  /* Text folding */
+  @apply text-brave-10 dark:text-brave-90 break-words whitespace-pre-wrap w-full;
+}
+
+.codemirror-custom .cm-activeLine {
+  @apply bg-brave-80/30 dark:bg-brave-60/30;
+}
+
+.codemirror-custom .cm-activeLineGutter {
+  @apply bg-brave-80/30 dark:bg-brave-60/30;
+}
+
+.codemirror-custom .cm-gutters {
+  @apply bg-brave-90 dark:bg-brave-10 text-brave-40 border-r border-brave-90 dark:border-brave-10;
 }

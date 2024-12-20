@@ -6,8 +6,17 @@
       'border-brave-95 bg-brave-99 dark:border-brave-20 dark:bg-brave-5': isPlaying
       }"
   >
+    <!-- Track number -->
+    <div
+      v-if="isShowTrackNumber"
+      class="flex-none w-[5%] flex items-center justify-end p-1 pr-2 text-xs text-brave-30/70 dark:text-brave-95 font-bold"
+    >
+      <div v-if="track && track.track_number">{{ track.track_number }}</div>
+      <div v-else>--</div>
+    </div>
+
     <!-- Track title, album, and artist -->
-    <div class="flex-none w-[65%] flex p-1" @click="playTrack(track)">
+    <div class="flex-none flex p-1" :class="{ 'w-[65%]': !isShowTrackNumber, 'w-[60%]': isShowTrackNumber }" @click="playTrack(track)">
       <div v-if="track">
         <div class="font-bold text-sm text-brave-20 flex items-center dark:text-brave-95">
           <Equalizer v-if="isPlaying && status === 'playing'" class="mr-1" />
@@ -64,7 +73,7 @@ const { playTrack, playingTrack, status, pause, resume } = usePlayer()
 
 const { searchLyrics } = useSearchLyrics()
 const { editLyrics } = useEditLyrics()
-const props = defineProps(['trackId'])
+const props = defineProps(['trackId', 'isShowTrackNumber'])
 const track = ref(null)
 
 // const downloadLyrics = () => {
@@ -77,6 +86,8 @@ const isPlaying = computed(() => {
 
 onMounted(async () => {
   track.value = await invoke('get_track', { trackId: props.trackId })
+
+  console.log('track number', track.value.track_number)
 
   listen('reload-track-id', async (event) => {
     const payload = event.payload

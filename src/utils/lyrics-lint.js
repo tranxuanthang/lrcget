@@ -44,7 +44,6 @@ export const executeLint = (source) => {
     }
   })
 
-
   if (lines.length > 1 && lastNonEmptyLine) {
     const parsed = parseLine(lastNonEmptyLine.content)
 

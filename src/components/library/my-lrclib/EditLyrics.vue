@@ -12,24 +12,6 @@
         <VTooltip theme="lrcget-tooltip">
           <button
             class="button text-sm px-5 py-1.5 h-8 w-24 rounded-full"
-            :class="{ 'button-primary': isDirty, 'button-disabled': !isDirty }"
-            :disabled="!isDirty"
-            @click="saveLyrics"
-        >
-            Save
-          </button>
-
-          <template #popper>
-            <div class="text-xs font-bold">
-              Save lyrics
-              <span class="text-[0.65rem] text-brave-30 bg-brave-95 px-1 rounded-full">Ctrl+S</span>
-            </div>
-          </template>
-        </VTooltip>
-
-        <VTooltip theme="lrcget-tooltip">
-          <button
-            class="button text-sm px-5 py-1.5 h-8 w-24 rounded-full"
             :class="{ 'button-primary': !isDirty, 'button-disabled': isDirty }"
             :disabled="isDirty"
             @click="handlePublish"
@@ -69,34 +51,23 @@
       </div>
 
       <div class="modal-title text-center">
-        {{ editingTrack.title }} - {{ editingTrack.artist_name }}
+        {{ editingTrack.name }} - {{ editingTrack.artistName }}
       </div>
 
       <button class="modal-button" @click="emit('close')"><Close /></button>
     </div>
 
-    <div class="px-6 pb-6 grow overflow-hidden flex flex-col gap-2">
-      <div class="flex flex-col bg-brave-95 dark:bg-brave-5 rounded-lg">
+    <div class="px-6 py-2 grow overflow-hidden flex flex-col gap-2">
+      <div class="flex flex-col bg-brave-95 rounded-lg">
         <div class="toolbar px-4 py-2 flex justify-between items-stretch gap-1">
           <div class="flex gap-1">
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line & move next (Alt+Enter)" @click="syncLine"><EqualEnter /> <span class="text-xs">Sync Line & Move Next</span></button>
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line (Alt+X)" @click="syncLine(false)"><Equal /></button>
             <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms (Alt+LeftArrow)" @click="rewind100"><Minus /></button>
             <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Forward line 100ms (Alt+RightArrow)" @click="fastForward100"><Plus /></button>
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Replay line (Alt+Z)" @click="repeatLine"><MotionPlay /></button>
           </div>
 
           <div>
             <button class="button button-warning px-3 py-1 text-lg rounded-full" title="Mark track as instrumental" @click="markAsInstrumental"><Music /> <span class="text-xs">Mark Instrumental</span></button>
           </div>
-        </div>
-        <div class="w-full border-b border-brave-90 dark:border-brave-20"></div>
-        <div class="flex gap-4 items-center px-4 py-2">
-          <button v-if="status !== 'playing'" @click.prevent="resumeOrPlay" class="button button-normal p-2 rounded-full text-xl"><Play /></button>
-          <button v-else @click.prevent="pause" class="button button-normal p-2 rounded-full text-xl"><Pause /></button>
-          <div class="flex-none w-12 text-xs text-brave-30">{{ humanDuration(progress) }}</div>
-          <Seek class="grow" :duration="duration" :progress="progress" @seek="seek" />
-          <div class="flex-none w-12 text-xs text-brave-30">{{ humanDuration(duration) }}</div>
         </div>
       </div>
 
@@ -124,7 +95,7 @@
         </div>
       </div>
 
-      <div class="flex flex-col w-fit self-end bg-brave-95 dark:bg-brave-5 rounded-lg">
+      <div class="flex flex-col w-fit self-end bg-brave-95 rounded-lg">
         <div class="toolbar px-2 py-1 flex items-stretch gap-1">
           <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom out" @click="changeCodemirrorFontSizeBy(-1)"><MagnifyMinus /></button>
           <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full w-[4.5em]" title="Reset zoom level" @click="resetCodemirrorFontSize">{{ (codemirrorStyle.fontSize * 100).toFixed(0) }}%</button>
@@ -136,18 +107,13 @@
 </template>
 
 <script setup>
-import { invoke } from '@tauri-apps/api/tauri'
 import { ref, onMounted, onUnmounted, shallowRef, watch } from 'vue'
-import { Close, Loading, Equal, Play, Pause, MotionPlay, Minus, Plus, Check, AlertCircleOutline, AlertCircle, MagnifyPlus, MagnifyMinus, Music } from 'mdue'
-import EqualEnter from '@/components/icons/EqualEnter.vue'
-import { useToast } from 'vue-toastification'
+import { Close, Loading, Minus, Plus, Check, AlertCircleOutline, AlertCircle, MagnifyPlus, MagnifyMinus, Music } from 'mdue'
 import { Lrc, Runner, timestampToString, parseLine } from 'lrc-kit'
-import { useEditLyrics } from '@/composables/edit-lyrics.js'
-import { usePlayer } from '@/composables/player.js'
 import { useGlobalState } from '@/composables/global-state.js'
-import Seek from '@/components/now-playing/Seek.vue'
-import PublishLyrics from './edit-lyrics/PublishLyrics.vue'
-import PublishPlainText from './edit-lyrics/PublishPlainText.vue'
+import { useToast } from 'vue-toastification'
+import PublishLyrics from '@/components/library/my-lrclib/PublishLyrics.vue'
+import PublishPlainText from '@/components/library/my-lrclib/PublishPlainText.vue'
 import { Decoration, EditorView } from '@codemirror/view'
 import { StateField, StateEffect } from '@codemirror/state'
 import { defineAsyncComponent } from 'vue'
@@ -161,12 +127,11 @@ const AsyncCodemirror = defineAsyncComponent(async () => {
   return Codemirror
 })
 
+const props = defineProps(['editingTrack'])
 const emit = defineEmits(['close'])
 
 const { disableHotkey, enableHotkey } = useGlobalState()
-const { status, duration, progress, playingTrack, playTrack, pause, resume, seek } = usePlayer()
-const toast = useToast()
-const { editingTrack } = useEditLyrics()
+const editingTrack = ref(props.editingTrack)
 
 const unifiedLyrics = ref('')
 const shouldLoadCodeMirror = ref(false)
@@ -177,13 +142,13 @@ const lyricsLintResult = ref([])
 const plainTextLintResult = ref([])
 const cmContainer = ref(null)
 const cmHeight = ref(null)
+
 const runner = ref(null)
-const currentIndex = ref(null)
 
 const { open: openPublishLyricsModal, close: closePublishLyricsModal, patchOptions: patchPublishLyricsModalOptions } = useModal({
   component: PublishLyrics,
   attrs: {
-    track: editingTrack.value,
+    track: props.editingTrack,
     lyrics: unifiedLyrics.value,
     lintResult: lyricsLintResult.value,
     onClose() {
@@ -195,7 +160,7 @@ const { open: openPublishLyricsModal, close: closePublishLyricsModal, patchOptio
 const { open: openPublishPlainTextModal, close: closePublishPlainTextModal, patchOptions: patchPublishPlainTextModalOptions } = useModal({
   component: PublishPlainText,
   attrs: {
-    track: editingTrack.value,
+    track: props.editingTrack,
     lyrics: unifiedLyrics.value,
     lintResult: plainTextLintResult.value,
     onClose() {
@@ -236,22 +201,6 @@ const lineHighlightMark = Decoration.line({
 })
 
 const extensions = [lineHighlightField]
-
-const humanDuration = (seconds) => {
-  if (!seconds) {
-    seconds = 0
-  }
-
-  return new Date(seconds * 1000).toISOString().slice(11, 19)
-}
-
-const resumeOrPlay = () => {
-  if (status.value === 'paused') {
-    resume()
-  } else {
-    playTrack(editingTrack.value)
-  }
-}
 
 const handleWheel = (payload) => {
   if (!payload.ctrlKey) return;
@@ -308,50 +257,6 @@ const lyricsUpdated = (newLyrics) => {
   plainTextLintResult.value = executePlainTextLint(newLyrics)
 }
 
-const syncLine = (moveNext = true) => {
-  const currentLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
-  const currentLineText = currentLine.text
-  const stringifiedTime = timestampToString(progress.value)
-  const replacedText = currentLineText.replace(/^(\s*\[(.*)\]\s*)*/g, `[${stringifiedTime}] `)
-
-  view.value.dispatch({
-    changes: {
-      from: currentLine.from,
-      to: currentLine.to,
-      insert: replacedText
-    }
-  })
-
-  if (moveNext) {
-    const newLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
-
-    if (newLine.to + 1 < view.value.state.doc.length) {
-      view.value.dispatch({
-        selection: {
-          anchor: newLine.to + 1
-        }
-      })
-    }
-
-    view.value.dispatch({
-      effects: EditorView.scrollIntoView(newLine.from, { y: 'center', behavior: 'smooth' })
-    })
-  }
-
-  view.value.focus()
-
-  lyricsUpdated(view.value.state.doc.toString())
-}
-
-const repeatLine = () => {
-  const currentLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
-  const currentLineText = currentLine.text
-  const parsed = parseLine(currentLineText)
-  if (parsed.type === 'TIME') {
-    seek(parsed.timestamps[0])
-  }
-}
-
 const rewind100 = () => {
   const selection = view.value.state.selection
   const changes = []
@@ -384,13 +289,6 @@ const rewind100 = () => {
     view.value.dispatch({ changes })
     view.value.focus()
     lyricsUpdated(view.value.state.doc.toString())
-
-    // Seek to the timestamp of the first changed line
-    const firstChangedLine = view.value.state.doc.lineAt(changes[0].from)
-    const firstParsed = parseLine(firstChangedLine.text)
-    if (firstParsed.type === 'TIME') {
-      seek(firstParsed.timestamps[0])
-    }
   }
 }
 
@@ -426,13 +324,6 @@ const fastForward100 = () => {
     view.value.dispatch({ changes })
     view.value.focus()
     lyricsUpdated(view.value.state.doc.toString())
-
-    // Seek to the timestamp of the first changed line
-    const firstChangedLine = view.value.state.doc.lineAt(changes[0].from)
-    const firstParsed = parseLine(firstChangedLine.text)
-    if (firstParsed.type === 'TIME') {
-      seek(firstParsed.timestamps[0])
-    }
   }
 }
 
@@ -462,67 +353,48 @@ const handlePublish = () => {
   if (isSynchronizedLyrics(unifiedLyrics.value)) {
     patchPublishLyricsModalOptions({
       attrs: {
-        track: editingTrack.value,
+        track: props.editingTrack,
         lyrics: unifiedLyrics.value,
-        lintResult: lyricsLintResult.value,
+        lintResult: plainTextLintResult.value,
       }
     })
     openPublishLyricsModal()
   } else {
     patchPublishPlainTextModalOptions({
       attrs: {
-        track: editingTrack.value,
+        track: props.editingTrack,
         lyrics: unifiedLyrics.value,
-        lintResult: plainTextLintResult.value,
+        lintResult: lyricsLintResult.value,
       }
     })
     openPublishPlainTextModal()
   }
 }
 
-const saveLyrics = async () => {
-  try {
-    const isLyricsSynced = /^\[.*\]/m.test(unifiedLyrics.value);
-    await invoke('save_lyrics', {
-      trackId: editingTrack.value.id,
-      plainLyrics: unifiedLyrics.value.replace(/^\[(.*)\] */mg, ''),
-      syncedLyrics: isLyricsSynced ? unifiedLyrics.value : ''
-    })
-    isDirty.value = false
-  } catch (error) {
-    console.error(error)
-    toast.error(error)
-  }
-}
-
 onUnmounted(async () => {
-  runner.value = null
-
   enableHotkey()
   if (keydownEvent.value) {
     document.removeEventListener(keydownEvent.value)
   }
+
+  // stop monitoring the window size
   window.removeEventListener('resize', handleResize)
 })
 
 onMounted(async () => {
   disableHotkey()
-
   if (!editingTrack.value) {
     return
   }
 
-  if (editingTrack.value.lrc_lyrics) {
-    unifiedLyrics.value = editingTrack.value.lrc_lyrics
-  } else if (editingTrack.value.txt_lyrics) {
-    unifiedLyrics.value = editingTrack.value.txt_lyrics
+  if (editingTrack.value.syncedLyrics) {
+    unifiedLyrics.value = editingTrack.value.syncedLyrics
+  } else if (editingTrack.value.plainLyrics) {
+    unifiedLyrics.value = editingTrack.value.plainLyrics
+  } else if (editingTrack.value.instrumental) {
+    unifiedLyrics.value = '[au: instrumental]'
   } else {
     unifiedLyrics.value = ''
-  }
-
-  if (playingTrack.value && playingTrack.value.id !== editingTrack.value.id) {
-    playTrack(editingTrack.value)
-    pause()
   }
 
   const parsed = Lrc.parse(unifiedLyrics.value)
@@ -530,21 +402,7 @@ onMounted(async () => {
   runner.value = new Runner(parsed)
 
   keydownEvent.value = document.addEventListener('keydown', (event) => {
-    if (event.altKey === true && event.key === 'Enter') {
-      event.preventDefault()
-      syncLine()
-    } else if (event.altKey === true && event.key === 'x') {
-      event.preventDefault()
-      syncLine(false)
-    } else if (event.altKey === true && event.key === 'z') {
-      event.preventDefault()
-      repeatLine()
-    } else if (event.ctrlKey === true && event.key === 's') {
-      event.preventDefault()
-      if (isDirty.value) {
-        saveLyrics()
-      }
-    } else if (event.altKey === true && event.key === 'ArrowLeft') {
+    if (event.altKey === true && event.key === 'ArrowLeft') {
       event.preventDefault()
       rewind100()
     } else if (event.altKey === true && event.key === 'ArrowRight') {
@@ -557,32 +415,6 @@ onMounted(async () => {
   plainTextLintResult.value = executePlainTextLint(unifiedLyrics.value)
 })
 
-watch(progress, (newProgress) => {
-  if (!editingTrack.value || !view.value) {
-    return
-  }
-
-  if (!runner.value || !unifiedLyrics.value) {
-    return
-  }
-
-  runner.value.timeUpdate(newProgress)
-  let resultCurrentIndex = runner.value.curIndex()
-
-  if (resultCurrentIndex === null) {
-    resultCurrentIndex = -1
-  }
-
-  currentIndex.value = resultCurrentIndex
-
-  if (currentIndex.value >= 0) {
-    const line = view.value.state.doc.line(currentIndex.value + 1)
-    view.value.dispatch({ effects: addLineHighlight.of(line.from) })
-  } else {
-    view.value.dispatch({ effects: addLineHighlight.of(null) })
-  }
-})
-
 watch(cmContainer, () => {
   if (cmContainer.value) {
     setTimeout(() => shouldLoadCodeMirror.value = true, 100)
@@ -593,7 +425,24 @@ watch(cmContainer, () => {
     return () => window.removeEventListener('resize', handleResize)
   }
 })
+
+watch(() => props.editingTrack, () => {
+  if (props.editingTrack) {
+    editingTrack.value = props.editingTrack
+
+    if (editingTrack.value.syncedLyrics) {
+      unifiedLyrics.value = editingTrack.value.syncedLyrics
+    } else if (editingTrack.value.plainLyrics) {
+      unifiedLyrics.value = editingTrack.value.plainLyrics
+    } else if (editingTrack.value.instrumental) {
+      unifiedLyrics.value = '[au: instrumental]'
+    } else {
+      unifiedLyrics.value = ''
+    }
+  }
+})
 </script>
+
 
 <style scoped>
 .codemirror-custom {

@@ -1,7 +1,7 @@
 <template>
   <VueFinalModal
     class="flex justify-center items-center"
-    content-class="px-8 py-4 max-w-screen-sm max-h-[60vh] rounded-lg m-4 bg-white flex flex-col gap-4"
+    content-class="modal-content max-w-screen-sm max-h-[60vh] flex flex-col gap-6 p-6"
     overlay-transition="fade"
     content-transition="pop-fade"
     :click-to-close="!isPublishing"
@@ -34,17 +34,17 @@
       </div>
 
       <div class="flex gap-2 justify-center w-full">
-        <button class="button button-primary px-8 py-2 rounded-full" @click="emit('close')">Close</button>
+        <button class="button button-primary px-8 py-2 rounded-full" @click="close">Close</button>
       </div>
     </template>
 
     <template v-else>
       <div class="flex flex-col items-center">
         <div v-if="!isPublishing" class="text-brave-10 mb-4">
-          Do you want to publish your unsynced lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong> to your current LRCLIB instance?
+          Do you want to publish your lyrics of the song <strong>{{ track.name }} - {{ track.artistName }}</strong> to your current LRCLIB instance?
         </div>
         <div v-else class="text-brave-10 mb-4">
-          Publishing your unsynced lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong>...
+          Publishing your lyrics of the song <strong>{{ track.name }} - {{ track.artistName }}</strong>...
         </div>
 
         <table v-if="isPublishing" class="text-xs table-auto text-brave-20 font-mono uppercase">
@@ -60,7 +60,7 @@
             </tr>
 
             <tr>
-              <td class="px-2 py-1">Publish unsynced lyrics...</td>
+              <td class="px-2 py-1">Publish lyrics...</td>
               <td class="text-right px-2 py-1">{{ progress.publishLyrics }}</td>
             </tr>
           </tbody>
@@ -68,7 +68,7 @@
       </div>
 
       <div v-if="!isPublishing" class="flex gap-2 justify-center w-full">
-        <button class="button button-primary px-8 py-2 rounded-full" @click="publishPlainText">Publish Now</button>
+        <button class="button button-primary px-8 py-2 rounded-full" @click="publishLyrics">Publish Now</button>
         <button class="button button-normal px-8 py-2 rounded-full" @click="close">Cancel</button>
       </div>
 
@@ -98,20 +98,20 @@ const progress = ref({
   publishLyrics: 'Pending'
 })
 
-const publishPlainText = async () => {
+const publishLyrics = async () => {
   isPublishing.value = true
-  const plainLyrics = props.lyrics
-  const syncedLyrics = ''
+  const plainLyrics = props.lyrics.replace(/^\[(.*)\] */mg, '')
+  const syncedLyrics = props.lyrics
   try {
     await invoke('publish_lyrics', {
-      title: props.track.title,
-      albumName: props.track.album_name,
-      artistName: props.track.artist_name,
+      title: props.track.name,
+      albumName: props.track.albumName,
+      artistName: props.track.artistName,
       duration: props.track.duration,
       plainLyrics,
       syncedLyrics
     })
-    toast.success('Your unsynced lyrics has been published successfully! It might take up to 24 hours to be visible on the search results.')
+    toast.success('Your lyrics has been published successfully! It might take up to 24 hours to be visible on the search results.')
   } catch (error) {
     isError.value = true
     console.error(error)
@@ -123,6 +123,8 @@ const publishPlainText = async () => {
 }
 
 onMounted(() => {
+  console.log('lintResult', props.lintResult)
+  console.log('track', props.track)
   listen('publish-lyrics-progress', (event) => {
     progress.value = event.payload
   })
