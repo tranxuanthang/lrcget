@@ -35,16 +35,6 @@ pub fn upgrade_database_if_needed(db: &mut Connection, existing_version: u32) ->
   println!("Existing database version: {}", existing_version);
 
   if existing_version < CURRENT_DB_VERSION {
-    if existing_version <= 4 {
-      // Completely reset the database
-      db.execute("DROP TABLE IF EXISTS tracks", ())?;
-      db.execute("DROP TABLE IF EXISTS albums", ())?;
-      db.execute("DROP TABLE IF EXISTS artists", ())?;
-      db.execute("DROP TABLE IF EXISTS directories", ())?;
-      db.execute("DROP TABLE IF EXISTS library_data", ())?;
-      db.execute("DROP TABLE IF EXISTS config_data", ())?;
-    }
-
     if existing_version <= 0 {
       println!("Mirgate database version 1...");
       db.pragma_update(None, "journal_mode", "WAL")?;
@@ -161,8 +151,14 @@ pub fn upgrade_database_if_needed(db: &mut Connection, existing_version: u32) ->
       ALTER TABLE albums ADD album_artist_name TEXT;
       ALTER TABLE albums ADD album_artist_name_lower TEXT;
       ALTER TABLE config_data ADD theme_mode TEXT DEFAULT 'auto';
+      ALTER TABLE config_data ADD lrclib_instance_url TEXT DEFAULT 'https://lrclib.net';
       CREATE INDEX idx_albums_album_artist_name_lower ON albums(album_artist_name_lower);
       CREATE INDEX idx_tracks_track_number ON tracks(track_number);
+
+      DELETE FROM tracks WHERE 1;
+      DELETE FROM albums WHERE 1;
+      DELETE FROM artists WHERE 1;
+      UPDATE library_data SET init = 0 WHERE 1;
       "})?;
 
       tx.commit()?;

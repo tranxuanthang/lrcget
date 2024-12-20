@@ -9,7 +9,6 @@
     "tauri": "tauri"
   },
   "dependencies": {
-    "@tailwindcss/line-clamp": "^0.4.4",
     "@tanstack/vue-virtual": "^3.1.2",
     "@tauri-apps/api": "^1.6.0",
     "codemirror": "^6.0.1",
