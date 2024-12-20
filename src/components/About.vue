@@ -2,6 +2,7 @@
   <VueFinalModal
     class="flex justify-center items-center"
     content-class="modal-content w-full h-[80vh] max-w-screen-sm"
+    overlay-class="modal-overlay"
     @opened="openedHandler"
     overlay-transition="fade"
     content-transition="pop-fade"

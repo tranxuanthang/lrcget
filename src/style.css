@@ -40,20 +40,16 @@ body {
   dark:hover:bg-brave-20 dark:active:bg-brave-25;
 }
 
+.toolbar .button-normal {
+  @apply dark:bg-brave-5;
+}
+
 .button-warning {
   @apply bg-yellow-100 hover:bg-yellow-200 text-yellow-800 active:bg-yellow-300;
 }
 
 .border-normal {
   @apply border-brave-25;
-}
-
-.button-normal2 {
-  @apply bg-brave-90/50 hover:bg-brave-80 text-brave-25 active:bg-brave-70;
-}
-
-.button-normal3 {
-  @apply hover:bg-brave-80 text-brave-25 active:bg-brave-70;
 }
 
 .button-primary {
@@ -105,16 +101,25 @@ body {
 }
 
 .input {
-  @apply bg-brave-98 box-border border-2 border-brave-90 focus:border-brave-80 outline-none
+  @apply bg-brave-98 box-border border border-brave-90 focus:border-brave-80 outline-none
   text-sm rounded-full transition text-brave-35 placeholder:text-brave-70
   dark:bg-brave-5 dark:border-brave-30 dark:focus:border-brave-20 dark:text-brave-95
-  dark:placeholder:text-brave-90;
+  dark:placeholder:text-brave-60/50;
+}
+
+.modal-content .input {
+  @apply dark:bg-brave-10;
 }
 
 .textarea {
   @apply bg-brave-98 box-border border border-brave-90 focus:border-brave-80 outline-none
-   text-sm rounded-lg transition text-brave-35 placeholder:text-brave-70 resize-none
-   dark:bg-brave-5 dark:border-brave-30 dark:focus:border-brave-20 dark:text-brave-95 dark:placeholder:text-brave-90;
+  text-sm rounded-lg transition text-brave-35 placeholder:text-brave-70 resize-none
+  dark:bg-brave-5 dark:border-brave-30 dark:focus:border-brave-20 dark:text-brave-95
+  dark:placeholder:text-brave-60/50;
+}
+
+.modal-content .textarea {
+  @apply dark:bg-brave-10;
 }
 
 .modal-title-bar {
@@ -130,8 +135,12 @@ body {
 }
 
 .modal-content {
-  @apply rounded-lg bg-white dark:bg-brave-1 flex flex-col m-2 select-none text-brave-5 dark:text-brave-95;
+  @apply rounded-lg bg-white dark:bg-brave-5 flex flex-col m-2 select-none text-brave-5 dark:text-brave-95;
   overscroll-behavior: contain;
+}
+
+.modal-overlay {
+  @apply bg-brave-1/70 dark:bg-brave-1/70;
 }
 
 .textarea {
@@ -221,6 +230,10 @@ body {
 
 .codemirror-custom .cm-editor {
   @apply outline-none h-full;
+}
+
+.codemirror-custom .cm-cursor {
+  @apply border-brave-30 dark:border-brave-90 border-r-[1.2px];
 }
 
 .codemirror-custom .cm-current-lyrics {

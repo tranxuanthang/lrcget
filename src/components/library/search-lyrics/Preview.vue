@@ -2,6 +2,7 @@
   <VueFinalModal
     class="flex justify-center items-center"
     content-class="modal-content w-full h-[60vh] max-w-screen-md flex flex-col"
+    overlay-class="modal-overlay"
     overlay-transition="fade"
     content-transition="pop-fade"
   >
@@ -11,7 +12,7 @@
     </div>
 
     <div class="px-6 pb-6 grow flex flex-col gap-4 min-h-0">
-      <div class="flex flex-none gap-4 items-center bg-brave-95 dark:bg-brave-5 rounded-lg px-4 py-2">
+      <div class="flex flex-none gap-4 items-center bg-brave-95 dark:bg-brave-10 rounded-lg px-4 py-2">
         <button v-if="status !== 'playing'" @click.prevent="resume" class="button button-primary text-white p-2 rounded-full text-xl"><Play /></button>
         <button v-else @click.prevent="pause" class="button button-primary text-white p-2 rounded-full text-xl"><Pause /></button>
         <div class="flex-none w-12 text-xs text-brave-30 dark:text-brave-95">{{ humanDuration(progress) }}</div>
@@ -24,8 +25,8 @@
           <p v-for="(line, index) in parsedLyrics" :key="index" class="text-brave-50 dark:text-brave-95" :class="{ 'font-bold': currentIndex === index }">{{ line.content }}</p>
         </div>
 
-        <div class="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-white dark:from-brave-1"></div>
-        <div class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-white dark:from-brave-1"></div>
+        <div class="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-white dark:from-brave-5"></div>
+        <div class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-white dark:from-brave-5"></div>
       </div>
 
       <div v-else-if="props.lyrics.plainLyrics" class="relative grow text-center text-brave-50 whitespace-pre h-full overflow-hidden">

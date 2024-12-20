@@ -2,6 +2,7 @@
   <VueFinalModal
     class="flex justify-center items-center"
     content-class="modal-content w-full h-[80vh] max-w-screen-lg flex flex-col"
+    overlay-class="modal-overlay"
     overlay-transition="fade"
     content-transition="pop-fade"
     :click-to-close="false"
@@ -76,8 +77,8 @@
     </div>
 
     <div class="px-6 pb-6 grow overflow-hidden flex flex-col gap-2">
-      <div class="flex flex-col bg-brave-95 dark:bg-brave-5 rounded-lg">
-        <div class="toolbar px-4 py-2 flex justify-between items-stretch gap-1">
+      <div class="toolbar flex flex-col bg-brave-95 dark:bg-brave-10 rounded-lg">
+        <div class="px-4 py-2 flex justify-between items-stretch gap-1">
           <div class="flex gap-1">
             <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line & move next (Alt+Enter)" @click="syncLine"><EqualEnter /> <span class="text-xs">Sync Line & Move Next</span></button>
             <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line (Alt+X)" @click="syncLine(false)"><Equal /></button>
@@ -94,9 +95,9 @@
         <div class="flex gap-4 items-center px-4 py-2">
           <button v-if="status !== 'playing'" @click.prevent="resumeOrPlay" class="button button-normal p-2 rounded-full text-xl"><Play /></button>
           <button v-else @click.prevent="pause" class="button button-normal p-2 rounded-full text-xl"><Pause /></button>
-          <div class="flex-none w-12 text-xs text-brave-30">{{ humanDuration(progress) }}</div>
+          <div class="flex-none w-12 text-xs">{{ humanDuration(progress) }}</div>
           <Seek class="grow" :duration="duration" :progress="progress" @seek="seek" />
-          <div class="flex-none w-12 text-xs text-brave-30">{{ humanDuration(duration) }}</div>
+          <div class="flex-none w-12 text-xs">{{ humanDuration(duration) }}</div>
         </div>
       </div>
 
@@ -124,7 +125,7 @@
         </div>
       </div>
 
-      <div class="flex flex-col w-fit self-end bg-brave-95 dark:bg-brave-5 rounded-lg">
+      <div class="flex flex-col w-fit self-end bg-brave-95 dark:bg-brave-10 rounded-lg">
         <div class="toolbar px-2 py-1 flex items-stretch gap-1">
           <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom out" @click="changeCodemirrorFontSizeBy(-1)"><MagnifyMinus /></button>
           <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full w-[4.5em]" title="Reset zoom level" @click="resetCodemirrorFontSize">{{ (codemirrorStyle.fontSize * 100).toFixed(0) }}%</button>
@@ -520,7 +521,7 @@ onMounted(async () => {
     unifiedLyrics.value = ''
   }
 
-  if (playingTrack.value && playingTrack.value.id !== editingTrack.value.id) {
+  if (!playingTrack.value || playingTrack.value.id !== editingTrack.value.id) {
     playTrack(editingTrack.value)
     pause()
   }

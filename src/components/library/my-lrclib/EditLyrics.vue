@@ -2,6 +2,7 @@
   <VueFinalModal
     class="flex justify-center items-center"
     content-class="modal-content w-full h-[80vh] max-w-screen-lg flex flex-col"
+    overlay-class="modal-overlay"
     overlay-transition="fade"
     content-transition="pop-fade"
     :click-to-close="false"
@@ -58,7 +59,7 @@
     </div>
 
     <div class="px-6 py-2 grow overflow-hidden flex flex-col gap-2">
-      <div class="flex flex-col bg-brave-95 dark:bg-brave-5 rounded-lg">
+      <div class="flex flex-col bg-brave-95 dark:bg-brave-10 rounded-lg">
         <div class="toolbar px-4 py-2 flex justify-between items-stretch gap-1">
           <div class="flex gap-1">
             <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms (Alt+LeftArrow)" @click="rewind100"><Minus /></button>
@@ -95,7 +96,7 @@
         </div>
       </div>
 
-      <div class="flex flex-col w-fit self-end bg-brave-95 dark:bg-brave-5 rounded-lg">
+      <div class="flex flex-col w-fit self-end bg-brave-95 dark:bg-brave-10 rounded-lg">
         <div class="toolbar px-2 py-1 flex items-stretch gap-1">
           <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom out" @click="changeCodemirrorFontSizeBy(-1)"><MagnifyMinus /></button>
           <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full w-[4.5em]" title="Reset zoom level" @click="resetCodemirrorFontSize">{{ (codemirrorStyle.fontSize * 100).toFixed(0) }}%</button>
@@ -307,7 +308,7 @@ const fastForward100 = () => {
 
       if (parsed.type === 'TIME') {
         const timestamp = parsed.timestamps[0]
-        const newTimestamp = Math.min(duration.value, timestamp + 0.1)
+        const newTimestamp = timestamp + 0.1
         const stringifiedTime = timestampToString(newTimestamp)
         const replacedText = currentLineText.replace(/^(\s*\[(.*)\]\s*)*/g, `[${stringifiedTime}] `)
 

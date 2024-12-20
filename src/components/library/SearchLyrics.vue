@@ -2,6 +2,7 @@
   <VueFinalModal
     class="flex justify-center items-center"
     content-class="modal-content w-full h-[80vh] max-w-screen-sm flex flex-col"
+    overlay-class="modal-overlay"
     overlay-transition="fade"
     content-transition="pop-fade"
     background="non-interactive"
@@ -64,7 +65,7 @@
 
         <div v-else class="flex flex-col h-full gap-2 overflow-auto">
           <div v-if="searchResult && searchResult.length" class="flex flex-col gap-1 overflow-auto">
-            <div v-for="item in searchResult" :key="item.id" class="rounded bg-brave-98 dark:bg-brave-5 hover:bg-brave-95 hover:dark:bg-brave-10 border border-transparent hover:dark:border-brave-30 transition px-2 py-1 flex gap-2">
+            <div v-for="item in searchResult" :key="item.id" class="rounded bg-brave-98 dark:bg-brave-10 hover:bg-brave-95 hover:dark:bg-brave-10 border border-transparent hover:dark:border-brave-30 transition px-2 py-1 flex gap-2">
               <div class="h-full overflow-hidden grow">
                 <div class="text-sm font-bold">
                   <span class="mr-2 text-brave-30 dark:text-brave-95">{{ item.name }}</span>

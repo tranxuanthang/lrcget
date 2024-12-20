@@ -1,7 +1,7 @@
 <template>
   <div class="flex items-center gap-1 w-40">
-    <button v-if="volume > 0" @click="mute" class="flex-none button text-brave-30 p-1 m-1 rounded-full"><VolumeMedium /></button>
-    <button v-else @click="unmute" class="flex-none button text-brave-30 p-1 m-1 rounded-full"><VolumeMute /></button>
+    <button v-if="volume > 0" @click="mute" class="flex-none button text-brave-30 dark:text-brave-80 p-1 m-1 rounded-full"><VolumeMedium /></button>
+    <button v-else @click="unmute" class="flex-none button text-brave-30 dark:text-brave-80 p-1 m-1 rounded-full"><VolumeMute /></button>
 
     <VueSlider
       class="grow"

@@ -7,12 +7,12 @@
       <span class="text-brave-30 dark:text-brave-95 rounded-full px-2 py-1 bg-brave-95 dark:bg-brave-10">https://lrclib.net</span>
     </div>
 
-    <form class="flex items-center rounded-full w-full max-w-screen-sm h-auto overflow-hidden bg-brave-98 dark:bg-brave-5 transition"
+    <form class="flex items-center rounded-full w-full max-w-screen-sm h-auto overflow-hidden bg-brave-98 dark:bg-brave-10 transition"
       :class="{ 'ring ring-brave-30/30': inputActive }" @submit.prevent="onSubmit">
       <input
         type="text"
         v-model="keyword"
-        class="outline-none grow h-12 px-6 bg-brave-98 dark:bg-brave-5 placeholder:text-brave-30/50 text-brave-20 dark:text-brave-95 dark:placeholder:text-brave-60/50"
+        class="outline-none grow h-12 px-6 bg-brave-98 dark:bg-brave-10 placeholder:text-brave-30/50 text-brave-20 dark:text-brave-95 dark:placeholder:text-brave-60/50"
         placeholder="Type a song title, album, or artist to find lyrics..."
         @focus="inputActive = true"
         @blur="inputActive = false"

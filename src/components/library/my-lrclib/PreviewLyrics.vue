@@ -2,6 +2,7 @@
   <VueFinalModal
     class="flex justify-center items-center"
     content-class="modal-content w-full h-[80vh] max-w-screen-sm flex flex-col"
+    overlay-class="modal-overlay"
     overlay-transition="fade"
     content-transition="pop-fade"
   >

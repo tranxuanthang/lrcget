@@ -23,7 +23,7 @@
           <span>{{ track.title }}</span>
         </div>
 
-        <div class="flex flex-wrap items-center gap-2 line-clamp-1">
+        <div class="gap-2 line-clamp-1">
           <span class="text-sm text-brave-20 group-hover:text-brave-15 transition dark:text-brave-90 dark:group-hover:text-brave-90">{{ track.album_name }}</span>
           <span class="text-brave-80 h-full mx-1 flex-none dark:text-white/50">|</span>
           <span class="text-sm text-brave-20 group-hover:text-brave-15 transition dark:text-brave-90 dark:group-hover:text-brave-90">{{ track.artist_name }}</span>
@@ -86,8 +86,6 @@ const isPlaying = computed(() => {
 
 onMounted(async () => {
   track.value = await invoke('get_track', { trackId: props.trackId })
-
-  console.log('track number', track.value.track_number)
 
   listen('reload-track-id', async (event) => {
     const payload = event.payload
