@@ -355,7 +355,7 @@ const handlePublish = () => {
       attrs: {
         track: props.editingTrack,
         lyrics: unifiedLyrics.value,
-        lintResult: plainTextLintResult.value,
+        lintResult: lyricsLintResult.value,
       }
     })
     openPublishLyricsModal()
@@ -364,7 +364,7 @@ const handlePublish = () => {
       attrs: {
         track: props.editingTrack,
         lyrics: unifiedLyrics.value,
-        lintResult: lyricsLintResult.value,
+        lintResult: plainTextLintResult.value,
       }
     })
     openPublishPlainTextModal()

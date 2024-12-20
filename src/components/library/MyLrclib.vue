@@ -12,7 +12,7 @@
       <input
         type="text"
         v-model="keyword"
-        class="outline-none grow h-12 px-6 bg-brave-98 dark:bg-brave-5 placeholder:text-brave-30/50 text-brave-20 dark:text-brave-95 dark:placeholder:text-brave-30"
+        class="outline-none grow h-12 px-6 bg-brave-98 dark:bg-brave-5 placeholder:text-brave-30/50 text-brave-20 dark:text-brave-95 dark:placeholder:text-brave-60/50"
         placeholder="Type a song title, album, or artist to find lyrics..."
         @focus="inputActive = true"
         @blur="inputActive = false"

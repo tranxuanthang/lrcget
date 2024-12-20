@@ -1,7 +1,7 @@
 <template>
   <VueFinalModal
     class="flex justify-center items-center"
-    content-class="px-8 py-4 max-w-screen-sm max-h-[60vh] rounded-lg m-4 bg-white flex flex-col gap-4"
+    content-class="modal-content max-w-screen-sm max-h-[60vh] flex flex-col gap-4 p-6"
     overlay-transition="fade"
     content-transition="pop-fade"
     :click-to-close="!isPublishing"
@@ -9,18 +9,18 @@
   >
     <template v-if="lintResult.length">
       <div class="grow flex flex-col h-full overflow-hidden">
-        <div class="mb-4 text-brave-10">Please fix the following problem(s) before publishing</div>
+        <div class="mb-4">Please fix the following problem(s) before publishing</div>
 
         <div class="grow overflow-y-scroll h-full">
           <table class="lint-result table">
-            <thead class="text-xs text-brave-30/70 font-bold">
+            <thead class="text-xs font-bold">
               <tr>
                 <th class="p-1 text-right">Line</th>
                 <th class="p-1 text-center">Severity</th>
                 <th class="p-1">Message</th>
               </tr>
             </thead>
-            <tbody class="text-xs text-brave-20">
+            <tbody class="text-xs">
               <tr v-for="(problem, index) in lintResult" :key="index">
                 <td class="p-1 text-right">{{ problem.line }}</td>
                 <td class="p-1 text-center">
@@ -40,14 +40,14 @@
 
     <template v-else>
       <div class="flex flex-col items-center">
-        <div v-if="!isPublishing" class="text-brave-10 mb-4">
-          Do you want to publish your unsynced lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong> to your current LRCLIB instance?
+        <div v-if="!isPublishing" class="mb-4">
+          Do you want to publish your unsynced lyrics of the song <strong>{{ track.name }} - {{ track.artistName }}</strong> to your current LRCLIB instance?
         </div>
-        <div v-else class="text-brave-10 mb-4">
-          Publishing your unsynced lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong>...
+        <div v-else class="mb-4">
+          Publishing your unsynced lyrics of the song <strong>{{ track.name }} - {{ track.artistName }}</strong>...
         </div>
 
-        <table v-if="isPublishing" class="text-xs table-auto text-brave-20 font-mono uppercase">
+        <table v-if="isPublishing" class="text-xs table-auto font-mono uppercase">
           <tbody>
             <tr>
               <td class="px-2 py-1">Request challenge...</td>
@@ -104,9 +104,9 @@ const publishPlainText = async () => {
   const syncedLyrics = ''
   try {
     await invoke('publish_lyrics', {
-      title: props.track.title,
-      albumName: props.track.album_name,
-      artistName: props.track.artist_name,
+      title: props.track.name,
+      albumName: props.track.albumName,
+      artistName: props.track.artistName,
       duration: props.track.duration,
       plainLyrics,
       syncedLyrics

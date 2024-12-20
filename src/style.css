@@ -85,7 +85,7 @@ body {
 }
 
 .link {
-  @apply text-green-800 dark:text-green-600 hover:text-green-900 hover:dark:text-green-700 active:text-green-700 transition text-sm;
+  @apply text-green-800 dark:text-green-400 hover:text-green-900 hover:dark:text-green-200 active:text-green-700 active:dark:text-white transition text-sm;
 }
 
 .group-label {
