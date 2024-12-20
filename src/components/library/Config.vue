@@ -26,8 +26,8 @@
           <label class="group-label mb-2">Experimental</label>
 
           <div class="flex items-center">
-          <input id="try-embed-lyrics" type="checkbox" v-model="tryEmbedLyrics" class="checkbox">
-          <label for="try-embed-lyrics" class="checkbox-label ml-2">Try to embed the lyrics to the track files when possible</label>
+            <input id="try-embed-lyrics" type="checkbox" v-model="tryEmbedLyrics" class="checkbox">
+            <label for="try-embed-lyrics" class="checkbox-label ml-2">Try to embed the lyrics to the track files when possible</label>
           </div>
         </div>
       </div>
@@ -49,7 +49,7 @@ import { Close } from 'mdue'
 import { ref, watch } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
 
-const emit = defineEmits(['close', 'refreshLibrary', 'uninitializeLibrary', 'chooseDirectory'])
+const emit = defineEmits(['close', 'refreshLibrary', 'uninitializeLibrary'])
 
 const skipNotNeededTracks = ref(true)
 const tryEmbedLyrics = ref(false)

@@ -7,10 +7,12 @@ pub struct PersistentTrack {
   pub file_name: String,
   pub title: String,
   pub album_name: String,
+  pub album_artist_name: Option<String>,
   pub album_id: i64,
   pub artist_name: String,
   pub artist_id: i64,
   pub image_path: Option<String>,
+  pub track_number: Option<i64>,
   pub txt_lyrics: Option<String>,
   pub lrc_lyrics: Option<String>,
   pub duration: f64,
@@ -23,7 +25,7 @@ pub struct PersistentAlbum {
   pub name: String,
   pub image_path: Option<String>,
   pub artist_name: String,
-  pub artist_id: i64,
+  pub album_artist_name: Option<String>,
   pub tracks_count: i64
 }
 

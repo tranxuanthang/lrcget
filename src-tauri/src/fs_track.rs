@@ -26,7 +26,8 @@ pub struct FsTrack {
   album_artist: String,
   duration: f64,
   txt_lyrics: Option<String>,
-  lrc_lyrics: Option<String>
+  lrc_lyrics: Option<String>,
+  track_number: Option<u32>,
 }
 
 #[derive(Error, Debug)]
@@ -52,7 +53,7 @@ struct ScanProgress {
 }
 
 impl FsTrack {
-  fn new(file_path: String, file_name: String, title: String, album: String, artist: String, album_artist: String, duration: f64, txt_lyrics: Option<String>, lrc_lyrics: Option<String>) -> FsTrack {
+  fn new(file_path: String, file_name: String, title: String, album: String, artist: String, album_artist: String, duration: f64, txt_lyrics: Option<String>, lrc_lyrics: Option<String>, track_number: Option<u32>) -> FsTrack {
     FsTrack {
       file_path,
       file_name,
@@ -62,7 +63,8 @@ impl FsTrack {
       album_artist,
       duration,
       txt_lyrics,
-      lrc_lyrics
+      lrc_lyrics,
+      track_number,
     }
   }
 
@@ -80,8 +82,9 @@ impl FsTrack {
         .map(|s| s.to_string())
         .unwrap_or_else(|| artist.clone());
     let duration = properties.duration().as_secs_f64();
+    let track_number = tag.track();
 
-    let mut track = FsTrack::new(file_path, file_name, title, album, artist, album_artist, duration, None, None);
+    let mut track = FsTrack::new(file_path, file_name, title, album, artist, album_artist, duration, None, None, track_number);
     track.txt_lyrics = track.get_txt_lyrics();
     track.lrc_lyrics = track.get_lrc_lyrics();
 
@@ -122,6 +125,10 @@ impl FsTrack {
 
   pub fn lrc_lyrics(&self) -> Option<String> {
     self.lrc_lyrics.to_owned()
+  }
+
+  pub fn track_number(&self) -> Option<u32> {
+    self.track_number
   }
 
   fn get_txt_path(&self) -> String {

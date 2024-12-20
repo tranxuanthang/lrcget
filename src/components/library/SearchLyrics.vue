@@ -59,7 +59,7 @@
 
       <div class="grow overflow-hidden">
         <div v-if="loading" class="flex justify-center items-center h-full">
-          <Loading class="animate-spin" />
+          <Loading class="animate-spin text-xl text-brave-30" />
         </div>
 
         <div v-else class="flex flex-col h-full gap-2 overflow-auto">
@@ -88,7 +88,7 @@
             </div>
           </div>
 
-          <div v-else class="flex justify-center items-center h-full text-sm text-gray-700">
+          <div v-else class="flex justify-center items-center h-full text-sm text-brave-60">
             There is no lyrics record that matches your search
           </div>
         </div>

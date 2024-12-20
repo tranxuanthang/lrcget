@@ -102,6 +102,12 @@ const { open: openConfigModal, close: closeConfigModal } = useModal({
   attrs: {
     onClose() {
       closeConfigModal()
+    },
+    onRefreshLibrary() {
+      refreshLibrary()
+    },
+    onUninitializeLibrary() {
+      uninitializeLibrary()
     }
   },
 })
