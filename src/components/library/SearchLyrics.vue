@@ -82,8 +82,8 @@
               </div>
 
               <div class="flex gap-2 items-center">
-                <button class="text-brave-30 hover:bg-brave-30 hover:text-white dark:text-brave-95 rounded p-2 transition" title="Preview this lyrics" @click="preview(item)"><Eye /></button>
-                <button class="text-brave-30 hover:bg-brave-30 hover:text-white dark:text-brave-95 rounded p-2 transition" title="Apply this lyrics" @click="apply(item)"><ContentSave /></button>
+                <button class="button-tiny" title="Preview this lyrics" @click="preview(item)"><Eye /></button>
+                <button class="button-tiny" title="Apply this lyrics" @click="apply(item)"><ContentSave /></button>
               </div>
             </div>
           </div>

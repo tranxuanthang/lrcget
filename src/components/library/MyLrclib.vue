@@ -2,12 +2,22 @@
   <div class="flex flex-col justify-center gap-6 items-center w-full h-full p-4" v-show="props.isActive">
     <!--<img src="@/assets/lrclib.png" class="w-20 h-20" />-->
 
-    <div class="font-bold text-xs text-brave-30 select-none cursor-default">Search with LRCLIB instance: <span class="text-brave-30 rounded-full px-2 py-1 bg-brave-95">https://lrclib.net</span></div>
+    <div class="font-bold text-xs text-brave-30 dark:text-brave-95 select-none cursor-default">
+      Search with LRCLIB instance:
+      <span class="text-brave-30 dark:text-brave-95 rounded-full px-2 py-1 bg-brave-95 dark:bg-brave-10">https://lrclib.net</span>
+    </div>
 
-    <form class="flex items-center rounded-full w-full max-w-screen-sm h-auto overflow-hidden bg-brave-98 transition"
+    <form class="flex items-center rounded-full w-full max-w-screen-sm h-auto overflow-hidden bg-brave-98 dark:bg-brave-5 transition"
       :class="{ 'ring ring-brave-30/30': inputActive }" @submit.prevent="onSubmit">
-      <input type="text" v-model="keyword" class="outline-none grow h-12 px-6 bg-brave-98 placeholder:text-brave-30/50 text-brave-20" placeholder="Type a song title, album, or artist to find lyrics..."
-        @focus="inputActive = true" @blur="inputActive = false" autofocus>
+      <input
+        type="text"
+        v-model="keyword"
+        class="outline-none grow h-12 px-6 bg-brave-98 dark:bg-brave-5 placeholder:text-brave-30/50 text-brave-20 dark:text-brave-95 dark:placeholder:text-brave-30"
+        placeholder="Type a song title, album, or artist to find lyrics..."
+        @focus="inputActive = true"
+        @blur="inputActive = false"
+        autofocus
+      >
       <button
         class="rounded-full bg-brave-30 hover:bg-brave-25 active:bg-brave-20 transition text-white text-lg h-12 w-12 flex justify-center items-center m-1">
         <Magnify />

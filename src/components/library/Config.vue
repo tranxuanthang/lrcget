@@ -116,8 +116,9 @@ const beforeOpenHandler = async () => {
 
 <style scoped>
 .button-group {
-  @apply flex gap-1 items-center;
+  @apply flex gap-0.5 items-center;
 }
+
 .grouped-button {
   @apply first:rounded-l-full last:rounded-r-full  text-sm px-4 py-1 w-24;
 }
