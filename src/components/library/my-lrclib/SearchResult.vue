@@ -1,9 +1,9 @@
 <template>
-  <div class="absolute top-0 left-0 w-full h-full bg-white p-4 shadow-lg overflow-y-auto">
+  <div class="secondary-page">
     <div>
      <div class="mb-4">
         <button
-          class="text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4"
+          class="secondary-page-back-button"
           @click="$emit('back')"
         >
           <ArrowLeft />
@@ -17,19 +17,19 @@
 
     <div v-else class="mx-auto max-w-screen-sm">
       <div class="flex flex-col mb-8">
-        <div class="text-thin text-xl text-brave-10">
+        <div class="text-thin text-xl">
           Searching for <span class="font-bold">{{ keyword }}</span>
         </div>
         <div class="flex items-center gap-2">
-          <div class="text-sm text-brave-30 group-hover:text-brave-20 transition">Found {{ tracks.length }} tracks</div>
+          <div class="text-sm text-brave-30 dark:text-brave-80 group-hover:text-brave-20 transition">Found {{ tracks.length }} tracks</div>
         </div>
       </div>
 
       <div class="flex flex-col gap-2">
-        <div v-for="track in tracks" :key="track.id" class="rounded bg-brave-98 hover:bg-brave-95 transition px-2 py-1 flex gap-2 justify-between items-center">
+        <div v-for="track in tracks" :key="track.id" class="rounded bg-brave-98 hover:bg-brave-95 dark:bg-brave-5 dark:hover:bg-brave-10 transition px-2 py-1 flex gap-2 justify-between items-center">
           <div class="flex flex-col gap-1">
             <div class="flex gap-2 items-center">
-              <div class="text-sm font-bold text-brave-30">{{ track.name }}</div>
+              <div class="text-sm font-bold text-brave-30 dark:text-brave-95">{{ track.name }}</div>
               <div class="text-[0.65rem] font-bold flex gap-1">
                 <span class="bg-brave-90 text-brave-30 px-1 py-0.5 rounded">{{ humanDuration(track.duration) }}</span>
                 <span v-if="!!track.syncedLyrics" class="bg-green-800 text-green-200 px-1 py-0.5 rounded">Synced</span>
@@ -37,11 +37,11 @@
                 <span v-else-if="!!track.instrumental" class="bg-gray-300 text-gray-600 px-1 py-0.5 rounded">Instrumental</span>
               </div>
             </div>
-            <div class="text-sm text-brave-35">{{ track.albumName }} - {{ track.artistName }}</div>
+            <div class="text-sm text-brave-35 dark:text-brave-80">{{ track.albumName }} - {{ track.artistName }}</div>
           </div>
           <div class="flex gap-1 items-center">
             <button
-              class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition"
+              class="button-tiny"
               type="button"
               @click="setShowingTrack(track)"
             >
@@ -49,7 +49,7 @@
             </button>
 
             <button
-              class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition"
+              class="button-tiny"
               type="button"
               @click="setEditingTrack(track)"
             >
@@ -57,7 +57,7 @@
             </button>
 
             <button
-              class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition"
+              class="button-tiny"
               type="button"
               @click="flagLyrics(track)"
             >
@@ -68,7 +68,7 @@
       </div>
     </div>
 
-    <div v-if="isOpeningTrack" class="flex items-center justify-center w-full h-full fixed top-0 left-0 bg-white/50">
+    <div v-if="isOpeningTrack" class="flex items-center justify-center w-full h-full fixed top-0 left-0 bg-white/50 dark:bg-brave-10/50 transition">
       <Loading class="animate-spin" />
     </div>
   </div>

@@ -42,11 +42,15 @@ module.exports = {
           15: "#510028",
           10: "#3e001d",
           5: "#2b0012",
+          1: "#0f0004",
           0: "#000000",
-          primary: "#b90063"
+          primary: "#b90063",
+          'background-dark': "#0f0004",
+          'background-modal-dark': "#140000"
         }
       }
     },
   },
   plugins: [require('@tailwindcss/line-clamp')],
+  darkMode: 'class',
 }

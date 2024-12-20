@@ -11,21 +11,21 @@
     </div>
 
     <div class="px-6 pb-6 grow flex flex-col gap-4 min-h-0">
-      <div class="flex flex-none gap-4 items-center bg-brave-95 rounded-lg px-4 py-2">
+      <div class="flex flex-none gap-4 items-center bg-brave-95 dark:bg-brave-5 rounded-lg px-4 py-2">
         <button v-if="status !== 'playing'" @click.prevent="resume" class="button button-primary text-white p-2 rounded-full text-xl"><Play /></button>
         <button v-else @click.prevent="pause" class="button button-primary text-white p-2 rounded-full text-xl"><Pause /></button>
-        <div class="flex-none w-12 text-xs text-brave-30">{{ humanDuration(progress) }}</div>
+        <div class="flex-none w-12 text-xs text-brave-30 dark:text-brave-95">{{ humanDuration(progress) }}</div>
         <Seek class="grow" :duration="duration" :progress="progress" @seek="seek" />
-        <div class="flex-none w-12 text-xs text-brave-30">{{ humanDuration(duration) }}</div>
+        <div class="flex-none w-12 text-xs text-brave-30 dark:text-brave-95">{{ humanDuration(duration) }}</div>
       </div>
 
       <div v-if="props.lyrics.syncedLyrics" class="relative grow h-full overflow-hidden">
         <div id="full-lyrics-container" class="h-full text-center transition" :style="{ transform: fullViewTransform }">
-          <p v-for="(line, index) in parsedLyrics" :key="index" class="text-brave-50" :class="{ 'font-bold': currentIndex === index }">{{ line.content }}</p>
+          <p v-for="(line, index) in parsedLyrics" :key="index" class="text-brave-50 dark:text-brave-95" :class="{ 'font-bold': currentIndex === index }">{{ line.content }}</p>
         </div>
 
-        <div class="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-white"></div>
-        <div class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-white"></div>
+        <div class="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-white dark:from-brave-1"></div>
+        <div class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-white dark:from-brave-1"></div>
       </div>
 
       <div v-else-if="props.lyrics.plainLyrics" class="relative grow text-center text-brave-50 whitespace-pre h-full overflow-hidden">

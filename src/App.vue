@@ -5,7 +5,7 @@
         <Bug />
       </div>
     </div>
-    <div v-if="!loading" class="grow overflow-hidden">
+    <div v-if="!loading" class="grow overflow-hidden bg-white dark:bg-brave-background-dark">
       <ChooseDirectory v-if="!init" @progressStep="init = true" />
       <Library v-else @uninitialize-library="uninitializeLibrary" />
     </div>
@@ -18,10 +18,13 @@
 import { Bug, WindowMinimize, WindowMaximize, WindowClose } from 'mdue'
 import ChooseDirectory from "./components/ChooseDirectory.vue";
 import Library from "./components/Library.vue";
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { appWindow } from '@tauri-apps/api/window'
 import { invoke } from '@tauri-apps/api/tauri'
 import { ModalsContainer } from 'vue-final-modal'
+import { useGlobalState } from './composables/global-state'
+
+const { themeMode, setThemeMode } = useGlobalState()
 
 const loading = ref(true)
 const init = ref(false)
@@ -37,7 +40,19 @@ const uninitializeLibrary = async () => {
 onMounted(async () => {
   init.value = await invoke('get_init')
   loading.value = false
+  darkModeHandle()
 })
+
+const darkModeHandle = async () => {
+  // check and insert the `dark` class to html tag
+  const config = await invoke('get_config')
+  setThemeMode(config.theme_mode)
+  if (config.theme_mode === 'dark') {
+    document.documentElement.classList.add('dark')
+  } else {
+    document.documentElement.classList.remove('dark')
+  }
+}
 
 const openDevtools = () => {
   invoke("open_devtools");
@@ -55,6 +70,9 @@ const closeWindow = () => {
   appWindow.close()
 }
 
+watch(themeMode, () => {
+  darkModeHandle()
+})
 </script>
 
 <style>

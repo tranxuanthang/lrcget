@@ -64,10 +64,10 @@
 
         <div v-else class="flex flex-col h-full gap-2 overflow-auto">
           <div v-if="searchResult && searchResult.length" class="flex flex-col gap-1 overflow-auto">
-            <div v-for="item in searchResult" :key="item.id" class="rounded bg-brave-98 hover:bg-brave-95 transition px-2 py-1 flex gap-2">
+            <div v-for="item in searchResult" :key="item.id" class="rounded bg-brave-98 dark:bg-brave-5 hover:bg-brave-95 hover:dark:bg-brave-10 border border-transparent hover:dark:border-brave-30 transition px-2 py-1 flex gap-2">
               <div class="h-full overflow-hidden grow">
                 <div class="text-sm font-bold">
-                  <span class="mr-2 text-brave-30">{{ item.name }}</span>
+                  <span class="mr-2 text-brave-30 dark:text-brave-95">{{ item.name }}</span>
                   <span v-if="item.syncedLyrics" class="text-green-200 font-bold text-[0.65rem] bg-green-800 rounded px-1 py-0.5">Synced</span>
                   <span v-else-if="item.plainLyrics" class="text-gray-200 font-bold text-[0.65rem] bg-gray-800 rounded px-1 py-0.5">Plain</span>
                   <span v-else-if="item.instrumental" class="text-gray-200 font-bold text-[0.65rem] bg-gray-500 rounded px-1 py-0.5">Instrumental</span>
@@ -78,12 +78,12 @@
                     -{{ humanDuration(Math.abs(item.duration - Math.round(searchingTrack.duration))) }}
                   </span>
                 </div>
-                <div class="text-sm text-brave-35 truncate"><span>{{ item.albumName }}</span> | <span>{{ item.artistName }}</span></div>
+                <div class="text-sm text-brave-35 dark:text-brave-90 truncate"><span>{{ item.albumName }}</span> | <span>{{ item.artistName }}</span></div>
               </div>
 
               <div class="flex gap-2 items-center">
-                <button class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition" title="Preview this lyrics" @click="preview(item)"><Eye /></button>
-                <button class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition" title="Apply this lyrics" @click="apply(item)"><ContentSave /></button>
+                <button class="button-tiny" title="Preview this lyrics" @click="preview(item)"><Eye /></button>
+                <button class="button-tiny" title="Apply this lyrics" @click="apply(item)"><ContentSave /></button>
               </div>
             </div>
           </div>

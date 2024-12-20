@@ -1,6 +1,7 @@
 import { ref, computed } from 'vue'
 
 const isHotkeyState = ref(true)
+const themeModeState = ref(true)
 
 export function useGlobalState() {
   const disableHotkey = () => {
@@ -13,9 +14,17 @@ export function useGlobalState() {
   }
   const isHotkey = computed(() => isHotkeyState.value)
 
+  const setThemeMode = (mode) => {
+    themeModeState.value = mode
+  }
+
+  const themeMode = computed(() => themeModeState.value)
+
   return {
     isHotkey,
     disableHotkey,
-    enableHotkey
+    enableHotkey,
+    setThemeMode,
+    themeMode
   }
 }

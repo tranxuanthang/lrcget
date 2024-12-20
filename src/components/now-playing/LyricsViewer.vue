@@ -1,38 +1,43 @@
 <template>
   <transition name="slide-fade" mode="out-in">
-    <div v-if="lyrics && duration && progress" class="flex flex-col gap-1 border-b border-brave-90/50 relative">
+    <div v-if="lyrics && duration && progress" class="flex flex-col gap-1 relative">
       <transition name="slide-fade" mode="out-in">
-        <div v-if="expanded" class="full-viewer absolute bottom-0 left-0 w-full h-[40vh] bg-brave-95 border-t border-brave-90/50 overflow-hidden">
+        <div v-if="expanded" class="full-viewer absolute bottom-0 left-0 w-full h-[40vh] bg-brave-95 dark:bg-brave-10 border-t border-brave-90/50 dark:border-brave-10/50 overflow-hidden">
           <div class="relative h-full">
             <div class="flex justify-center items-center h-6 w-full relative z-10">
-              <button class="text-xl text-brave-30 w-full flex justify-center" type="button" @click="expand"><DragHorizontal /></button>
+              <button class="text-xl text-brave-30 dark:text-brave-80 w-full flex justify-center" type="button" @click="expand"><DragHorizontal /></button>
             </div>
 
             <div id="full-lyrics-container" class="h-full text-center transition" :style="{ transform: fullViewTransform }">
               <p
                 v-for="(line, index) in parsedLyrics"
-                :key="index" class="text-brave-50 transition"
+                :key="index"
+                class="transition"
                 :class="{
-                  'font-bold': currentIndex === index,
-                  'text-brave-50 hover:text-brave-40 hover:cursor-pointer': currentIndex !== index
+                  'font-bold text-brave-50 dark:text-brave-95': currentIndex === index,
+                  'text-brave-50 hover:text-brave-40 hover:cursor-pointer dark:text-brave-80 dark:hover:text-brave-90': currentIndex !== index
                 }"
                 @click="onLineClick(line)"
               >{{ line.content }}</p>
             </div>
 
-            <div class="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-brave-95 pointer-events-none"></div>
-            <div class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-brave-95 pointer-events-none"></div>
+            <div class="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-brave-95 dark:from-brave-10 pointer-events-none"></div>
+            <div class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-brave-95 dark:from-brave-10 pointer-events-none"></div>
           </div>
         </div>
       </transition>
 
-      <div class="mini-viewer transition cursor-pointer top-0 left-0 w-full h-12 bg-brave-95 border-t border-brave-90/50 flex flex-col" :class="{ 'invisible opacity-0': expanded }" @click="expand">
+      <div
+        class="mini-viewer transition cursor-pointer top-0 left-0 w-full h-12 bg-brave-95 dark:bg-brave-10 border-t border-brave-90/50 dark:border-brave-10/50 flex flex-col"
+        :class="{ 'invisible opacity-0': expanded }"
+        @click="expand"
+      >
         <div class="flex justify-center items-center h-4 w-full">
-          <button class="text-xl text-brave-30 w-full flex justify-center" type="button"><DragHorizontal /></button>
+          <button class="text-xl text-brave-30 dark:text-brave-95 w-full flex justify-center" type="button"><DragHorizontal /></button>
         </div>
 
         <transition name="slide-fade" mode="out-in">
-          <div class="flex w-full justify-center items-center text-brave-30 text-sm grow" :key="currentLyrics">{{ currentLyrics }}</div>
+          <div class="flex w-full justify-center items-center text-brave-30 dark:text-brave-95 text-sm grow" :key="currentLyrics">{{ currentLyrics }}</div>
         </transition>
       </div>
     </div>

@@ -1,35 +1,39 @@
 <template>
   <div class="flex w-full group hover:bg-brave-98 hover:shadow hover:shadow-brave-95/50
-    border border-transparent hover:border-brave-95 transition rounded cursor-default"
+    border border-transparent hover:border-brave-95 transition rounded cursor-default
+    dark:hover:bg-brave-5 dark:hover:border-brave-20 dark:hover:shadow-brave-30/50"
     :class="{
-      'border-brave-95 bg-brave-99': isPlaying
+      'border-brave-95 bg-brave-99 dark:border-brave-20 dark:bg-brave-5': isPlaying
       }"
   >
     <!-- Track number -->
-    <div v-if="isShowTrackNumber" class="flex-none w-[5%] flex items-center justify-end p-1 pr-2">
-      <div v-if="track && track.track_number" class="text-xs text-brave-30/70 font-bold">{{ track.track_number }}</div>
-      <div v-else class="text-xs text-brave-30/70 font-bold">--</div>
+    <div
+      v-if="isShowTrackNumber"
+      class="flex-none w-[5%] flex items-center justify-end p-1 pr-2 text-xs text-brave-30/70 dark:text-brave-95 font-bold"
+    >
+      <div v-if="track && track.track_number">{{ track.track_number }}</div>
+      <div v-else>--</div>
     </div>
 
     <!-- Track title, album, and artist -->
     <div class="flex-none flex p-1" :class="{ 'w-[65%]': !isShowTrackNumber, 'w-[60%]': isShowTrackNumber }" @click="playTrack(track)">
       <div v-if="track">
-        <div class="font-bold text-sm text-brave-20 flex items-center">
-          <Equalizer v-if="isPlaying && status === 'playing'" class="mr-1 text-brave-20" />
+        <div class="font-bold text-sm text-brave-20 flex items-center dark:text-brave-95">
+          <Equalizer v-if="isPlaying && status === 'playing'" class="mr-1" />
           <span>{{ track.title }}</span>
         </div>
 
         <div class="flex flex-wrap items-center gap-2 line-clamp-1">
-          <span class="text-sm text-brave-20 group-hover:text-brave-15 transition">{{ track.album_name }}</span>
-          <span class="text-brave-80 h-2 mx-1 flex-none">|</span>
-          <span class="text-sm text-brave-20 group-hover:text-brave-15 transition">{{ track.artist_name }}</span>
+          <span class="text-sm text-brave-20 group-hover:text-brave-15 transition dark:text-brave-90 dark:group-hover:text-brave-90">{{ track.album_name }}</span>
+          <span class="text-brave-80 h-full mx-1 flex-none dark:text-white/50">|</span>
+          <span class="text-sm text-brave-20 group-hover:text-brave-15 transition dark:text-brave-90 dark:group-hover:text-brave-90">{{ track.artist_name }}</span>
         </div>
       </div>
     </div>
 
     <!-- Duration -->
     <div class="flex-none w-[10%] flex items-center justify-end p-1" @click="playTrack(track)">
-      <div v-if="track" class="text-brave-30 font-bold text-xs text-right">{{ humanDuration(track.duration) }}</div>
+      <div v-if="track" class="text-brave-30 font-bold text-xs text-right dark:text-brave-95">{{ humanDuration(track.duration) }}</div>
     </div>
 
     <!-- Lyrics indication -->
@@ -44,11 +48,11 @@
     <!-- Action buttons -->
     <div class="flex-none w-[15%] h-full flex justify-end items-center p-1">
       <div v-if="track" class="flex justify-end items-center gap-1">
-        <button v-if="isPlaying && status ==='playing'" @click.prevent="pause" class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition"><Pause /></button>
-        <button v-else-if="isPlaying && status === 'stopped'" @click.prevent="playTrack(track)" class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition"><Replay /></button>
-        <button v-else v-on="isPlaying ? {click: resume} : {click: () => playTrack(track)}" class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition"><Play /></button>
-        <button class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition" @click.prevent="searchLyrics(track)"><TextSearch /></button>
-        <button class="text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition" @click.prevent="editLyrics(track)"><PlaylistEdit /></button>
+        <button v-if="isPlaying && status ==='playing'" @click.prevent="pause" class="track-button"><Pause /></button>
+        <button v-else-if="isPlaying && status === 'stopped'" @click.prevent="playTrack(track)" class="track-button"><Replay /></button>
+        <button v-else v-on="isPlaying ? {click: resume} : {click: () => playTrack(track)}" class="track-button"><Play /></button>
+        <button class="track-button" @click.prevent="searchLyrics(track)"><TextSearch /></button>
+        <button class="track-button" @click.prevent="editLyrics(track)"><PlaylistEdit /></button>
       </div>
     </div>
   </div>
@@ -93,3 +97,9 @@ onMounted(async () => {
   })
 })
 </script>
+
+<style scoped>
+.track-button {
+  @apply text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition dark:text-white dark:hover:bg-brave-30;
+}
+</style>

@@ -12,13 +12,39 @@
     </div>
 
     <div class="px-6 grow flex flex-col justify-between gap-4">
-      <div class="flex flex-col gap-6">
+      <div class="flex flex-col gap-8">
         <div>
           <label class="group-label mb-2">Common</label>
 
-          <div class="flex items-center">
+          <div class="flex items-center mb-2">
             <input id="skip-not-needed-tracks" type="checkbox" v-model="skipNotNeededTracks" class="checkbox">
             <label for="skip-not-needed-tracks" class="checkbox-label ml-2">Skip tracks that already have lyrics or are instrumental</label>
+          </div>
+
+          <label class="block mb-1 child-label">Theme mode</label>
+
+          <div class="flex gap-2 button-group">
+            <button
+              @click="editingThemeMode = 'auto'"
+              class="button grouped-button"
+              :class="{ 'button-primary': editingThemeMode === 'auto', 'button-normal': editingThemeMode !== 'auto' }"
+            >
+              Auto
+            </button>
+            <button
+              @click="editingThemeMode = 'light'"
+              class="button grouped-button"
+              :class="{ 'button-primary': editingThemeMode === 'light', 'button-normal': editingThemeMode !== 'light' }"
+            >
+              Light
+            </button>
+            <button
+              @click="editingThemeMode = 'dark'"
+              class="button grouped-button"
+              :class="{ 'button-primary': editingThemeMode === 'dark', 'button-normal': editingThemeMode !== 'dark' }"
+            >
+              Dark
+            </button>
           </div>
         </div>
 
@@ -27,7 +53,10 @@
 
           <div class="flex items-center">
             <input id="try-embed-lyrics" type="checkbox" v-model="tryEmbedLyrics" class="checkbox">
-            <label for="try-embed-lyrics" class="checkbox-label ml-2">Try to embed the lyrics to the track files when possible</label>
+            <div class="flex flex-col ml-2">
+              <label for="try-embed-lyrics" class="checkbox-label mb-0.5">Try to embed the lyrics to the track files when possible</label>
+              <div class="text-xs text-yellow-700">This option could corrupt your track files. Make sure to backup your library before enabling it.</div>
+            </div>
           </div>
         </div>
       </div>
@@ -48,17 +77,23 @@ import { invoke } from '@tauri-apps/api/tauri';
 import { Close } from 'mdue'
 import { ref, watch } from 'vue'
 import { VueFinalModal } from 'vue-final-modal'
+import { useGlobalState } from '../../composables/global-state'
+
+const { themeMode, setThemeMode } = useGlobalState()
 
 const emit = defineEmits(['close', 'refreshLibrary', 'uninitializeLibrary'])
 
 const skipNotNeededTracks = ref(true)
 const tryEmbedLyrics = ref(false)
+const editingThemeMode = ref('auto')
 
 const save = async () => {
   await invoke('set_config', {
     skipNotNeededTracks: skipNotNeededTracks.value,
-    tryEmbedLyrics: tryEmbedLyrics.value
+    tryEmbedLyrics: tryEmbedLyrics.value,
+    themeMode: editingThemeMode.value
   })
+  setThemeMode(editingThemeMode.value)
   emit('close')
 }
 
@@ -76,5 +111,16 @@ const beforeOpenHandler = async () => {
   const config = await invoke('get_config')
   skipNotNeededTracks.value = config.skip_not_needed_tracks
   tryEmbedLyrics.value = config.try_embed_lyrics
+  editingThemeMode.value = config.theme_mode
 }
 </script>
+
+<style scoped>
+.button-group {
+  @apply flex gap-0.5 items-center;
+}
+
+.grouped-button {
+  @apply first:rounded-l-full last:rounded-r-full  text-sm px-4 py-1 w-24;
+}
+</style>

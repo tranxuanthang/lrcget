@@ -1,11 +1,11 @@
 <template>
-  <div ref="parentRef" class="absolute top-0 left-0 w-full h-full bg-white p-4 shadow-lg overflow-y-auto">
+  <div ref="parentRef" class="secondary-page">
     <div
       :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }"
     >
       <div class="mb-4">
         <button
-          class="text-brave-20 hover:text-brave-15 hover:bg-brave-95 active:text-white active:bg-brave-25 transition rounded-full p-4"
+          class="button button-normal transition rounded-full p-4"
           @click="$emit('back')"
         >
           <ArrowLeft />
@@ -14,13 +14,13 @@
 
       <div class="flex justify-between">
         <div class="flex flex-col mb-8">
-          <div class="text-thin text-xl text-brave-10">
+          <div class="text-thin text-xl text-brave-10 dark:text-white">
             {{ album.name }}
           </div>
           <div class="flex items-center gap-2">
-            <div class="text-sm text-brave-30 group-hover:text-brave-20 transition">{{ album.tracks_count }} tracks</div>
+            <div class="text-sm text-brave-30 group-hover:text-brave-20 transition dark:text-white">{{ album.tracks_count }} tracks</div>
             <div class="border-r border-brave-80 h-3 flex-none"></div>
-            <div class="text-sm text-brave-30 group-hover:text-brave-20 transition">{{ album.artist_name }}</div>
+            <div class="text-sm text-brave-30 group-hover:text-brave-20 transition dark:text-white">{{ album.artist_name }}</div>
           </div>
         </div>
 
@@ -36,7 +36,7 @@
 
       <div class="w-full">
         <div class="w-full flex">
-          <div class="text-xs text-brave-30/70 font-bold flex w-full">
+          <div class="text-xs text-brave-30/70 font-bold flex w-full dark:text-brave-95">
             <div class="text-right flex-none w-[5%] p-1 pr-2">#</div>
             <div class="text-left flex-none w-[60%] p-1">Track</div> <!-- Adjusted width percentage -->
             <div class="text-right flex-none w-[10%] p-1">Duration</div>

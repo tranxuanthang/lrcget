@@ -76,10 +76,10 @@ async fn get_config(app_state: State<'_, AppState>) -> Result<PersistentConfig, 
 }
 
 #[tauri::command]
-async fn set_config(skip_not_needed_tracks: bool, try_embed_lyrics: bool, app_state: State<'_, AppState>) -> Result<(), String> {
+async fn set_config(skip_not_needed_tracks: bool, try_embed_lyrics: bool, theme_mode: &str, app_state: State<'_, AppState>) -> Result<(), String> {
   let conn_guard = app_state.db.lock().unwrap();
   let conn = conn_guard.as_ref().unwrap();
-  db::set_config(skip_not_needed_tracks, try_embed_lyrics, conn).map_err(|err| err.to_string())?;
+  db::set_config(skip_not_needed_tracks, try_embed_lyrics, theme_mode, conn).map_err(|err| err.to_string())?;
 
   Ok(())
 }

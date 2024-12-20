@@ -37,12 +37,12 @@ pub fn upgrade_database_if_needed(db: &mut Connection, existing_version: u32) ->
   if existing_version < CURRENT_DB_VERSION {
     if existing_version <= 4 {
       // Completely reset the database
-      db.execute("DELETE FROM tracks IF EXISTS", ())?;
-      db.execute("DELETE FROM albums IF EXISTS", ())?;
-      db.execute("DELETE FROM artists IF EXISTS", ())?;
-      db.execute("DELETE FROM directories IF EXISTS", ())?;
-      db.execute("DELETE FROM library_data IF EXISTS", ())?;
-      db.execute("DELETE FROM config_data IF EXISTS", ())?;
+      db.execute("DROP TABLE IF EXISTS tracks", ())?;
+      db.execute("DROP TABLE IF EXISTS albums", ())?;
+      db.execute("DROP TABLE IF EXISTS artists", ())?;
+      db.execute("DROP TABLE IF EXISTS directories", ())?;
+      db.execute("DROP TABLE IF EXISTS library_data", ())?;
+      db.execute("DROP TABLE IF EXISTS config_data", ())?;
     }
 
     if existing_version <= 0 {
@@ -160,6 +160,7 @@ pub fn upgrade_database_if_needed(db: &mut Connection, existing_version: u32) ->
       ALTER TABLE tracks ADD track_number INTEGER;
       ALTER TABLE albums ADD album_artist_name TEXT;
       ALTER TABLE albums ADD album_artist_name_lower TEXT;
+      ALTER TABLE config_data ADD theme_mode TEXT DEFAULT 'auto';
       CREATE INDEX idx_albums_album_artist_name_lower ON albums(album_artist_name_lower);
       CREATE INDEX idx_tracks_track_number ON tracks(track_number);
       "})?;
@@ -207,19 +208,20 @@ pub fn set_init(init: bool, db: &Connection) -> Result<()> {
 }
 
 pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
-  let mut statement = db.prepare("SELECT skip_not_needed_tracks, try_embed_lyrics FROM config_data LIMIT 1")?;
+  let mut statement = db.prepare("SELECT skip_not_needed_tracks, try_embed_lyrics, theme_mode FROM config_data LIMIT 1")?;
   let row = statement.query_row([], |r| {
     Ok(PersistentConfig {
       skip_not_needed_tracks: r.get("skip_not_needed_tracks")?,
-      try_embed_lyrics: r.get("try_embed_lyrics")?
+      try_embed_lyrics: r.get("try_embed_lyrics")?,
+      theme_mode: r.get("theme_mode")?
     })
   })?;
   Ok(row)
 }
 
-pub fn set_config(skip_not_needed_tracks: bool, try_embed_lyrics: bool, db: &Connection) -> Result<()> {
-  let mut statement = db.prepare("UPDATE config_data SET skip_not_needed_tracks = ?, try_embed_lyrics = ? WHERE 1")?;
-  statement.execute([skip_not_needed_tracks, try_embed_lyrics])?;
+pub fn set_config(skip_not_needed_tracks: bool, try_embed_lyrics: bool, theme_mode: &str, db: &Connection) -> Result<()> {
+  let mut statement = db.prepare("UPDATE config_data SET skip_not_needed_tracks = ?, try_embed_lyrics = ?, theme_mode = ? WHERE 1")?;
+  statement.execute((skip_not_needed_tracks, try_embed_lyrics, theme_mode))?;
   Ok(())
 }
 

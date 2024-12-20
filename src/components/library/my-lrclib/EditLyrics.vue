@@ -58,7 +58,7 @@
     </div>
 
     <div class="px-6 py-2 grow overflow-hidden flex flex-col gap-2">
-      <div class="flex flex-col bg-brave-95 rounded-lg">
+      <div class="flex flex-col bg-brave-95 dark:bg-brave-5 rounded-lg">
         <div class="toolbar px-4 py-2 flex justify-between items-stretch gap-1">
           <div class="flex gap-1">
             <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms (Alt+LeftArrow)" @click="rewind100"><Minus /></button>
@@ -95,7 +95,7 @@
         </div>
       </div>
 
-      <div class="flex flex-col w-fit self-end bg-brave-95 rounded-lg">
+      <div class="flex flex-col w-fit self-end bg-brave-95 dark:bg-brave-5 rounded-lg">
         <div class="toolbar px-2 py-1 flex items-stretch gap-1">
           <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom out" @click="changeCodemirrorFontSizeBy(-1)"><MagnifyMinus /></button>
           <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full w-[4.5em]" title="Reset zoom level" @click="resetCodemirrorFontSize">{{ (codemirrorStyle.fontSize * 100).toFixed(0) }}%</button>
@@ -355,7 +355,7 @@ const handlePublish = () => {
       attrs: {
         track: props.editingTrack,
         lyrics: unifiedLyrics.value,
-        lintResult: plainTextLintResult.value,
+        lintResult: lyricsLintResult.value,
       }
     })
     openPublishLyricsModal()
@@ -364,7 +364,7 @@ const handlePublish = () => {
       attrs: {
         track: props.editingTrack,
         lyrics: unifiedLyrics.value,
-        lintResult: lyricsLintResult.value,
+        lintResult: plainTextLintResult.value,
       }
     })
     openPublishPlainTextModal()
@@ -447,38 +447,5 @@ watch(() => props.editingTrack, () => {
 <style scoped>
 .codemirror-custom {
   font-size: calc(v-bind('codemirrorStyle.fontSize') * 1em);
-}
-</style>
-
-<style>
-.codemirror-custom .cm-editor {
-  @apply outline-none h-full;
-}
-
-.codemirror-custom .cm-current-lyrics {
-  @apply font-bold;
-}
-
-.codemirror-custom .cm-content {
-  /* Some padding to prevent the text from touching the edge,
-  the gutter calculates its width internally so it's hard to calculate exactly */
-  @apply max-w-[90%];
-}
-
-.codemirror-custom .cm-line {
-  /* Text folding */
-  @apply text-brave-10 break-words whitespace-pre-wrap w-full;
-}
-
-.codemirror-custom .cm-activeLine {
-  @apply bg-brave-80/30;
-}
-
-.codemirror-custom .cm-activeLineGutter {
-  @apply bg-brave-80/30;
-}
-
-.codemirror-custom .cm-gutters {
-  @apply bg-brave-90 text-brave-40 border-r border-brave-90;
 }
 </style>

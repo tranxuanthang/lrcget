@@ -11,7 +11,7 @@
       <button class="modal-button" @click="emit('close')"><Close /></button>
     </div>
 
-    <div class="px-6 grow gap-4 flex flex-col text-brave-20 pb-6 overflow-hidden">
+    <div class="px-6 grow gap-4 flex flex-col pb-6 overflow-hidden">
       <div class="overflow-auto">
         <div class="text-sm mb-6">
           <label class="group-label mb-2">Update</label>
