@@ -23,8 +23,10 @@ import { appWindow } from '@tauri-apps/api/window'
 import { invoke } from '@tauri-apps/api/tauri'
 import { ModalsContainer } from 'vue-final-modal'
 import { useGlobalState } from './composables/global-state'
+import { useDownloader } from '@/composables/downloader.js'
 
 const { themeMode, setThemeMode } = useGlobalState()
+const { downloadNext } = useDownloader()
 
 const loading = ref(true)
 const init = ref(false)
@@ -41,6 +43,7 @@ onMounted(async () => {
   init.value = await invoke('get_init')
   loading.value = false
   darkModeHandle()
+  downloadNext()
 })
 
 const darkModeHandle = async () => {

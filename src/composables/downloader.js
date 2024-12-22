@@ -1,11 +1,12 @@
 import { computed, ref } from 'vue'
 import { invoke } from '@tauri-apps/api/tauri'
 
+const delay = (time) => new Promise((resolve, reject) => setTimeout(resolve, time))
+
 const downloadQueue = ref([])
 const downloadedItems = ref([])
 const currentItem = ref(null)
 const log = ref([])
-const queueResolved = ref(false)
 const successCount = ref(0)
 const failureCount = ref(0)
 const isDownloading = ref(false)
@@ -25,9 +26,18 @@ const addLog = (logObj) => {
 const downloadLyrics = async (track) => {
   try {
     const result = await invoke('download_lyrics', { trackId: track.id })
+
+    if (!isDownloading.value) {
+      return
+    }
+
     addLog({ status: 'success', title: track.title, artistName: track.artist_name, message: result })
     successCount.value++
   } catch (error) {
+    if (!isDownloading.value) {
+      return
+    }
+
     addLog({ status: 'failure', title: track.title, artistName: track.artist_name, message: error })
     failureCount.value++
   }
@@ -37,18 +47,26 @@ const downloadLyrics = async (track) => {
 }
 
 const downloadNext = async () => {
-  while (downloadQueue.value.length > 0) {
+  while (true) {
+    if (downloadQueue.value.length === 0) {
+      await delay(1000)
+      continue
+    }
+
     const trackId = downloadQueue.value.shift()
     const track = await invoke('get_track', { trackId: trackId })
     currentItem.value = track
     await downloadLyrics(track)
   }
-  queueResolved.value = true
 }
 
 const downloadProgress = computed(() => {
   if (!downloadQueue.value) {
-    return 100.0
+    return 0.0
+  }
+
+  if (downloadedCount.value >= totalCount.value) {
+    return 1.0
   }
 
   return downloadedCount.value / totalCount.value
@@ -64,17 +82,9 @@ const addToQueue = (trackIds) => {
   totalCount.value += trackIds.length
 
   console.log(`Added ${totalCount.value} tracks to download queue`)
-
-  // Defer the call to downloadNext using setTimeout
-  if (!currentItem.value) {
-    setTimeout(() => {
-      downloadNext()
-    }, 0)
-  }
 }
 
 const startOver = () => {
-  queueResolved.value = false
   downloadedItems.value = []
   log.value = []
   successCount.value = 0
@@ -85,7 +95,6 @@ const startOver = () => {
 
 const stopDownloading = () => {
   downloadQueue.value = []
-  queueResolved.value = false
   downloadedItems.value = []
   log.value = []
   successCount.value = 0
@@ -104,9 +113,10 @@ export function useDownloader() {
     failureCount,
     totalCount,
     downloadedCount,
+    log,
     addToQueue,
     startOver,
     stopDownloading,
-    log
+    downloadNext,
   }
 }

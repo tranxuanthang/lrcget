@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 body {
-  @apply bg-brave-95;
+  @apply bg-brave-95 cursor-default;
 }
 
 .titlebar {
@@ -213,7 +213,7 @@ body {
 }
 
 .codemirror-custom .cm-editor {
-  @apply outline-none h-full;
+  @apply outline-none h-full cursor-text;
 }
 
 .codemirror-custom .cm-cursor {

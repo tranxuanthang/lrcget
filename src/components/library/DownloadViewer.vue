@@ -4,7 +4,7 @@
     @close="checkAndClose"
     content-class="w-full h-[80vh] max-w-screen-md"
     body-class="flex flex-col h-full min-h-0 justify-between gap-6"
-    :title="downloadedCount === totalCount ? 'Downloaded' : 'Downloading'"
+    :title="isFinished ? 'Downloaded' : 'Downloading'"
   >
     <div class="flex flex-col items-center justify-center gap-1">
       <div class="w-full bg-brave-95 h-1 rounded">
@@ -29,7 +29,7 @@
 
     <template #footer>
       <div class="flex-none flex justify-center">
-        <button v-if="finishable" class="button button-primary px-8 py-2 rounded-full" @click="checkAndClose">Finish</button>
+        <button v-if="isFinished" class="button button-primary px-8 py-2 rounded-full" @click="checkAndClose">Finish</button>
         <button v-else class="button button-normal px-8 py-2 rounded-full" @click="handleStop">Stop</button>
       </div>
     </template>
@@ -59,11 +59,15 @@ const progressWidth = computed(() => {
     return '100%'
   }
 
+  if (downloadProgress.value > 1.0) {
+    return '100%'
+  }
+
   return `${downloadProgress.value * 100}%`
 })
 
-const finishable = computed(() => {
-  return downloadedCount.value === totalCount.value
+const isFinished = computed(() => {
+  return downloadedCount.value >= totalCount.value
 })
 
 const handleStop = () => {
@@ -72,7 +76,7 @@ const handleStop = () => {
 }
 
 const checkAndClose = () => {
-  if (finishable.value) {
+  if (isFinished.value) {
     startOver()
     emit('close')
   } else {
