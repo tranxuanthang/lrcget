@@ -1,12 +1,12 @@
 <template>
-  <VueFinalModal
-    class="flex justify-center items-center"
-    content-class="modal-content max-w-[500px] max-h-[60vh] flex flex-col gap-4 p-6"
-    overlay-class="modal-overlay"
-    overlay-transition="fade"
-    content-transition="pop-fade"
+  <BaseModal
+    content-class="max-w-[500px] max-h-[60vh]"
+    @close="emit('close')"
+    :title="`${props.track.name} - ${props.track.artistName}`"
+    body-class="flex flex-col h-full min-h-0"
     :click-to-close="!isFlagging"
     :esc-to-close="!isFlagging"
+    :closeButton="!isFlagging"
   >
     <div class="flex flex-col items-center">
       <div v-if="!isFlagging">
@@ -37,15 +37,20 @@
       </table>
     </div>
 
-    <div v-if="!isFlagging" class="flex gap-2 justify-center w-full">
-      <button class="button button-primary px-8 py-2 rounded-full" @click="flagLyrics">Confirm Flag</button>
-      <button class="button button-normal px-8 py-2 rounded-full" @click="$emit('close')">Cancel</button>
-    </div>
+    <template #footer>
+      <div v-if="!isFlagging" class="flex gap-2 justify-center w-full">
+        <button class="button button-primary px-8 py-2 rounded-full" @click="flagLyrics">Confirm Flag</button>
+        <button class="button button-normal px-8 py-2 rounded-full" @click="$emit('close')">Cancel</button>
+      </div>
 
-    <div v-else class="flex gap-2 justify-center w-full">
-      <button class="button button-disabled px-8 py-2 rounded-full flex gap-3" disabled><div class="animate-spin"><Loading /></div><div>Flagging</div></button>
-    </div>
-  </VueFinalModal>
+      <div v-else class="flex gap-2 justify-center w-full">
+        <button class="button button-disabled px-8 py-2 rounded-full flex gap-3" disabled>
+          <Loading class="animate-spin" />
+          <div>Flagging</div>
+        </button>
+      </div>
+    </template>
+  </BaseModal>
 </template>
 
 <script setup>

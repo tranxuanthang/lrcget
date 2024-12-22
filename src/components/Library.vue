@@ -6,13 +6,7 @@
       @showConfig="openConfigModal"
       @showAbout="openAboutModal"
       @showDownloadViewer="openDownloadViewer"
-      @showSearch="toggleSearch"
     />
-
-    <div v-show="isShowSearch && activeTab == 'tracks'"
-      class="flex flex-col items-center justify-center w-full">
-      <SearchBar />
-    </div>
 
     <div class="relative grow overflow-hidden">
       <TrackList
@@ -49,8 +43,6 @@
     </div>
   </div>
 
-  <Config :is-show="isShowConfig" @close="isShowConfig = false" @refreshLibrary="refreshLibrary" @uninitialize-library="$emit('uninitializeLibrary')" />
-
   <Teleport to="body">
     <EditLyrics v-if="editingTrack" :is-show="!!editingTrack" />
   </Teleport>
@@ -69,7 +61,6 @@ import AlbumList from './library/AlbumList.vue'
 import ArtistList from './library/ArtistList.vue'
 import MyLrclib from './library/MyLrclib.vue'
 import DownloadViewer from './library/DownloadViewer.vue'
-import SearchBar from './library/SearchBar.vue'
 import Config from './library/Config.vue'
 import About from './About.vue'
 import EditLyrics from './library/EditLyrics.vue'
@@ -79,14 +70,12 @@ import { useModal } from 'vue-final-modal'
 
 const toast = useToast()
 const { editingTrack } = useEditLyrics()
-defineEmits(['uninitializeLibrary'])
+const emit = defineEmits(['uninitializeLibrary'])
 
 const isLoading = ref(true)
 const isInitializing = ref(false)
 const initializeProgress = ref(null)
 const activeTab = ref('tracks')
-const isShowConfig = ref(false)
-const isShowSearch = ref(false)
 
 const { open: openAboutModal, close: closeAboutModal } = useModal({
   component: About,
@@ -107,7 +96,7 @@ const { open: openConfigModal, close: closeConfigModal } = useModal({
       refreshLibrary()
     },
     onUninitializeLibrary() {
-      uninitializeLibrary()
+      emit('uninitializeLibrary')
     }
   },
 })
@@ -123,10 +112,6 @@ const { open: openDownloadViewer, close: closeDownloadViewer } = useModal({
 
 const changeActiveTab = (tab) => {
   activeTab.value = tab
-}
-
-const toggleSearch = () => {
-  isShowSearch.value = !isShowSearch.value
 }
 
 const refreshLibrary = async () => {

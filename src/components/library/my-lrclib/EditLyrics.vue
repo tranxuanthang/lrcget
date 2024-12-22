@@ -1,14 +1,12 @@
 <template>
-  <VueFinalModal
-    class="flex justify-center items-center"
-    content-class="modal-content w-full h-[80vh] max-w-screen-lg flex flex-col"
-    overlay-class="modal-overlay"
-    overlay-transition="fade"
-    content-transition="pop-fade"
+  <BaseModal
     :click-to-close="false"
     :esc-to-close="false"
+    content-class="w-full h-[80vh] max-w-screen-lg"
+    @close="emit('close')"
+    :title="`${editingTrack.name} - ${editingTrack.artistName}`"
   >
-    <div class="modal-title-bar">
+    <template #titleLeft>
       <div class="flex-none flex gap-1 items-center">
         <VTooltip theme="lrcget-tooltip">
           <button
@@ -50,15 +48,9 @@
           </template>
         </VTooltip>
       </div>
+    </template>
 
-      <div class="modal-title text-center">
-        {{ editingTrack.name }} - {{ editingTrack.artistName }}
-      </div>
-
-      <button class="modal-button" @click="emit('close')"><Close /></button>
-    </div>
-
-    <div class="px-6 py-2 grow overflow-hidden flex flex-col gap-2">
+    <div class="grow overflow-hidden flex flex-col gap-2 h-full">
       <div class="flex flex-col bg-brave-95 dark:bg-brave-10 rounded-lg">
         <div class="toolbar px-4 py-2 flex justify-between items-stretch gap-1">
           <div class="flex gap-1">
@@ -104,7 +96,7 @@
         </div>
       </div>
     </div>
-  </VueFinalModal>
+  </BaseModal>
 </template>
 
 <script setup>
@@ -113,8 +105,8 @@ import { Close, Loading, Minus, Plus, Check, AlertCircleOutline, AlertCircle, Ma
 import { Lrc, Runner, timestampToString, parseLine } from 'lrc-kit'
 import { useGlobalState } from '@/composables/global-state.js'
 import { useToast } from 'vue-toastification'
-import PublishLyrics from '@/components/library/my-lrclib/PublishLyrics.vue'
-import PublishPlainText from '@/components/library/my-lrclib/PublishPlainText.vue'
+import PublishLyrics from '@/components/library/edit-lyrics/PublishLyrics.vue'
+import PublishPlainText from '@/components/library/edit-lyrics/PublishPlainText.vue'
 import { Decoration, EditorView } from '@codemirror/view'
 import { StateField, StateEffect } from '@codemirror/state'
 import { defineAsyncComponent } from 'vue'
@@ -354,7 +346,10 @@ const handlePublish = () => {
   if (isSynchronizedLyrics(unifiedLyrics.value)) {
     patchPublishLyricsModalOptions({
       attrs: {
-        track: props.editingTrack,
+        title: editingTrack.value.name,
+        albumName: editingTrack.value.albumName,
+        artistName: editingTrack.value.artistName,
+        duration: editingTrack.value.duration,
         lyrics: unifiedLyrics.value,
         lintResult: lyricsLintResult.value,
       }
@@ -363,7 +358,10 @@ const handlePublish = () => {
   } else {
     patchPublishPlainTextModalOptions({
       attrs: {
-        track: props.editingTrack,
+        title: editingTrack.value.name,
+        albumName: editingTrack.value.albumName,
+        artistName: editingTrack.value.artistName,
+        duration: editingTrack.value.duration,
         lyrics: unifiedLyrics.value,
         lintResult: plainTextLintResult.value,
       }

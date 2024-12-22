@@ -1,15 +1,13 @@
 <template>
-  <VueFinalModal
-    class="flex justify-center items-center"
-    content-class="modal-content max-w-screen-sm max-h-[60vh] flex flex-col gap-4 p-6"
-    overlay-class="modal-overlay"
-    overlay-transition="fade"
-    content-transition="pop-fade"
+  <BaseModal
     :click-to-close="!isPublishing"
     :esc-to-close="!isPublishing"
+    :closeButton="!isPublishing"
+    @close="close"
+    content-class="max-w-screen-sm max-h-[60vh] flex flex-col"
   >
-    <template v-if="lintResult.length">
-      <div class="grow flex flex-col h-full overflow-hidden">
+    <template #default>
+      <div v-if="lintResult.length" class="grow flex flex-col h-full overflow-hidden">
         <div class="mb-4">Please fix the following problem(s) before publishing</div>
 
         <div class="grow overflow-y-scroll h-full">
@@ -34,18 +32,12 @@
         </div>
       </div>
 
-      <div class="flex gap-2 justify-center w-full">
-        <button class="button button-primary px-8 py-2 rounded-full" @click="close">Close</button>
-      </div>
-    </template>
-
-    <template v-else>
-      <div class="flex flex-col items-center">
+      <div v-else class="flex flex-col items-center">
         <div v-if="!isPublishing" class="mb-4">
-          Do you want to publish your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong> to your current LRCLIB instance?
+          Do you want to publish your lyrics of the song <strong>{{ title }} - {{ artistName }}</strong> to your current LRCLIB instance?
         </div>
         <div v-else class="mb-4">
-          Publishing your lyrics of the song <strong>{{ track.title }} - {{ track.artist_name }}</strong>...
+          Publishing your lyrics of the song <strong>{{ title }} - {{ artistName }}</strong>...
         </div>
 
         <table v-if="isPublishing" class="text-xs table-auto font-mono uppercase">
@@ -67,17 +59,26 @@
           </tbody>
         </table>
       </div>
+    </template>
 
-      <div v-if="!isPublishing" class="flex gap-2 justify-center w-full">
+    <template #footer>
+      <div v-if="lintResult.length" class="flex gap-2 justify-center w-full">
+        <button class="button button-primary px-8 py-2 rounded-full" @click="close">Close</button>
+      </div>
+
+      <div v-else-if="!isPublishing" class="flex gap-2 justify-center w-full">
         <button class="button button-primary px-8 py-2 rounded-full" @click="publishLyrics">Publish Now</button>
         <button class="button button-normal px-8 py-2 rounded-full" @click="close">Cancel</button>
       </div>
 
       <div v-else class="flex gap-2 justify-center w-full">
-        <button class="button button-disabled px-8 py-2 rounded-full flex gap-3" disabled><div class="animate-spin"><Loading /></div><div>Publishing</div></button>
+        <button class="button button-disabled px-8 py-2 rounded-full flex gap-3" disabled>
+          <div class="animate-spin"><Loading /></div>
+          <div>Publishing</div>
+        </button>
       </div>
     </template>
-  </VueFinalModal>
+  </BaseModal>
 </template>
 
 <script setup>
@@ -89,7 +90,32 @@ import { useToast } from 'vue-toastification'
 
 const toast = useToast()
 const emit = defineEmits(['close'])
-const props = defineProps(['lintResult', 'track', 'lyrics'])
+const props = defineProps({
+  lintResult: {
+    type: Array,
+    required: true
+  },
+  title: {
+    type: String,
+    required: true,
+  },
+  albumName: {
+    type: String,
+    required: true,
+  },
+  artistName: {
+    type: String,
+    required: true,
+  },
+  duration: {
+    type: Number,
+    required: true,
+  },
+  lyrics: {
+    type: Object,
+    required: true,
+  }
+})
 
 const isPublishing = ref(false)
 const isError = ref(false)
@@ -105,10 +131,10 @@ const publishLyrics = async () => {
   const syncedLyrics = props.lyrics
   try {
     await invoke('publish_lyrics', {
-      title: props.track.title,
-      albumName: props.track.album_name,
-      artistName: props.track.artist_name,
-      duration: props.track.duration,
+      title: props.title,
+      albumName: props.albumName,
+      artistName: props.artistName,
+      duration: props.duration,
       plainLyrics,
       syncedLyrics
     })

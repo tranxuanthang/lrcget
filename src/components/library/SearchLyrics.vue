@@ -1,19 +1,12 @@
 <template>
-  <VueFinalModal
-    class="flex justify-center items-center"
-    content-class="modal-content w-full h-[80vh] max-w-screen-sm flex flex-col"
-    overlay-class="modal-overlay"
-    overlay-transition="fade"
-    content-transition="pop-fade"
+  <BaseModal
+    title="Search Lyrics"
+    @close="emit('close')"
+    content-class="w-full h-[80vh] max-w-screen-sm"
     background="non-interactive"
     :lock-scroll="true"
   >
-    <div class="modal-title-bar">
-      <div class="modal-title">Search Lyrics</div>
-      <button class="modal-button" @click="emit('close')"><Close /></button>
-    </div>
-
-    <div class="px-6 grow overflow-hidden flex flex-col gap-4 pb-6">
+    <div class="grow overflow-hidden flex flex-col gap-6">
       <form @submit.prevent="doSearchLyrics" class="flex flex-col flex-none gap-4">
         <div class="grid grid-cols-2 gap-2">
           <div class="col-span-2">
@@ -95,13 +88,13 @@
         </div>
       </div>
     </div>
-  </VueFinalModal>
+  </BaseModal>
 </template>
 
 <script setup>
 import { invoke } from '@tauri-apps/api/tauri'
 import { ref, onMounted, watch } from 'vue'
-import { Close, Loading, Eye, ContentSave } from 'mdue'
+import { Loading, Eye, ContentSave } from 'mdue'
 import { useToast } from 'vue-toastification'
 import Preview from './search-lyrics/Preview.vue'
 import { useModal } from 'vue-final-modal'

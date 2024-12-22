@@ -94,7 +94,7 @@ import MiniSearch from './MiniSearch.vue'
 import { invoke } from '@tauri-apps/api/tauri'
 
 const props = defineProps(['activeTab'])
-defineEmits(['changeActiveTab', 'showConfig', 'showAbout', 'showDownloadViewer', 'showSearch'])
+defineEmits(['changeActiveTab', 'showConfig', 'showAbout', 'showDownloadViewer'])
 
 const { isDownloading, totalCount, downloadedCount, addToQueue } = useDownloader()
 

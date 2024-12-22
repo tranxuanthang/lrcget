@@ -122,25 +122,9 @@ body {
   @apply dark:bg-brave-10;
 }
 
-.modal-title-bar {
-  @apply flex-none flex justify-between items-center px-6 py-2;
-}
-
-.modal-button {
-  @apply flex-none button text-brave-35 hover:text-brave-30 active:text-brave-25 dark:text-brave-95 dark:hover:text-brave-95 dark:active:text-brave-90 rounded-full p-4;
-}
-
-.modal-title {
-  @apply text-lg grow line-clamp-1 overflow-hidden text-brave-30 dark:text-brave-95;
-}
-
 .modal-content {
   @apply rounded-lg bg-white dark:bg-brave-5 flex flex-col m-2 select-none text-brave-5 dark:text-brave-95;
   overscroll-behavior: contain;
-}
-
-.modal-overlay {
-  @apply bg-brave-1/70 dark:bg-brave-1/70;
 }
 
 .textarea {

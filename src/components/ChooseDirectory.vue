@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col w-full h-full justify-center items-center">
     <div class="px-4 py-2 flex flex-col gap-4 flex-none">
-      <div class="text-thin text-xl text-brave-15 dark:text-brave-50">Select directories</div>
+      <div class="text-thin text-xl text-brave-5 dark:text-brave-95">Select directories</div>
     </div>
 
     <div class="grow flex flex-col items-center justify-center gap-8 w-full max-w-screen-sm">
@@ -9,12 +9,15 @@
         <div
           v-for="(directory, index) in directories"
           :key="directory"
-          class="w-full bg-brave-99 dark:bg-brave-15 text-brave-5 dark:text-brave-95 font-bold p-4 rounded-lg flex items-center"
+          class="w-full bg-brave-90 dark:bg-brave-10 text-brave-5 dark:text-brave-95 font-bold p-4 rounded-lg flex items-center"
         >
           <div class="grow">
             {{ directory }}
           </div>
-          <button class="flex-none text-white bg-gray-700 hover:bg-gray-600 active:bg-gray-800 p-1 flex justify-center items-center rounded-full" @click.prevent="removeDirectory(index)">
+          <button
+            class="flex-none button button-normal p-2 rounded-full"
+            @click.prevent="removeDirectory(index)"
+          >
             <Close />
           </button>
         </div>
@@ -29,7 +32,7 @@
       </div>
 
       <button
-        class="w-full max-w-screen-sm bg-brave-30 hover:bg-brave-35 active:bg-brave-25 text-white uppercase font-bold p-4 rounded-lg"
+        class="button button-primary w-full p-4 rounded-lg"
         @click.prevent="progressStep"
       >
         Continue

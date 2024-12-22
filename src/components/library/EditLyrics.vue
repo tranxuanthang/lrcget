@@ -1,14 +1,12 @@
 <template>
-  <VueFinalModal
-    class="flex justify-center items-center"
-    content-class="modal-content w-full h-[80vh] max-w-screen-lg flex flex-col"
-    overlay-class="modal-overlay"
-    overlay-transition="fade"
-    content-transition="pop-fade"
+  <BaseModal
     :click-to-close="false"
     :esc-to-close="false"
+    content-class="w-full h-[80vh] max-w-screen-lg"
+    @close="emit('close')"
+    :title="`${editingTrack.title} - ${editingTrack.artist_name}`"
   >
-    <div class="modal-title-bar">
+    <template #titleLeft>
       <div class="flex-none flex gap-1 items-center">
         <VTooltip theme="lrcget-tooltip">
           <button
@@ -16,7 +14,7 @@
             :class="{ 'button-primary': isDirty, 'button-disabled': !isDirty }"
             :disabled="!isDirty"
             @click="saveLyrics"
-        >
+          >
             Save
           </button>
 
@@ -68,15 +66,9 @@
           </template>
         </VTooltip>
       </div>
+    </template>
 
-      <div class="modal-title text-center">
-        {{ editingTrack.title }} - {{ editingTrack.artist_name }}
-      </div>
-
-      <button class="modal-button" @click="emit('close')"><Close /></button>
-    </div>
-
-    <div class="px-6 pb-6 grow overflow-hidden flex flex-col gap-2">
+    <div class="grow overflow-hidden flex flex-col gap-2 h-full">
       <div class="toolbar flex flex-col bg-brave-95 dark:bg-brave-10 rounded-lg">
         <div class="px-4 py-2 flex justify-between items-stretch gap-1">
           <div class="flex gap-1">
@@ -133,14 +125,15 @@
         </div>
       </div>
     </div>
-  </VueFinalModal>
+  </BaseModal>
 </template>
 
 <script setup>
 import { invoke } from '@tauri-apps/api/tauri'
 import { ref, onMounted, onUnmounted, shallowRef, watch } from 'vue'
-import { Close, Loading, Equal, Play, Pause, MotionPlay, Minus, Plus, Check, AlertCircleOutline, AlertCircle, MagnifyPlus, MagnifyMinus, Music } from 'mdue'
+import { Loading, Equal, Play, Pause, MotionPlay, Minus, Plus, Check, AlertCircleOutline, AlertCircle, MagnifyPlus, MagnifyMinus, Music } from 'mdue'
 import EqualEnter from '@/components/icons/EqualEnter.vue'
+import BaseModal from '@/components/common/BaseModal.vue'
 import { useToast } from 'vue-toastification'
 import { Lrc, Runner, timestampToString, parseLine } from 'lrc-kit'
 import { useEditLyrics } from '@/composables/edit-lyrics.js'
@@ -463,7 +456,10 @@ const handlePublish = () => {
   if (isSynchronizedLyrics(unifiedLyrics.value)) {
     patchPublishLyricsModalOptions({
       attrs: {
-        track: editingTrack.value,
+        title: editingTrack.value.title,
+        albumName: editingTrack.value.album_name,
+        artistName: editingTrack.value.artist_name,
+        duration: editingTrack.value.duration,
         lyrics: unifiedLyrics.value,
         lintResult: lyricsLintResult.value,
       }
@@ -472,7 +468,10 @@ const handlePublish = () => {
   } else {
     patchPublishPlainTextModalOptions({
       attrs: {
-        track: editingTrack.value,
+        title: editingTrack.value.title,
+        albumName: editingTrack.value.album_name,
+        artistName: editingTrack.value.artist_name,
+        duration: editingTrack.value.duration,
         lyrics: unifiedLyrics.value,
         lintResult: plainTextLintResult.value,
       }
