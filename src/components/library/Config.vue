@@ -94,7 +94,7 @@ import { useGlobalState } from '../../composables/global-state'
 import RadioButton from '@/components/common/RadioButton.vue'
 import CheckboxButton from '@/components/common/CheckboxButton.vue'
 
-const { setThemeMode } = useGlobalState()
+const { setThemeMode, setLrclibInstance } = useGlobalState()
 
 const emit = defineEmits(['close', 'refreshLibrary', 'uninitializeLibrary'])
 
@@ -111,6 +111,7 @@ const save = async () => {
     lrclibInstance: editingLrclibInstance.value
   })
   setThemeMode(editingThemeMode.value)
+  setLrclibInstance(editingLrclibInstance.value)
   emit('close')
 }
 

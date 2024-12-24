@@ -25,7 +25,7 @@ import { ModalsContainer } from 'vue-final-modal'
 import { useGlobalState } from './composables/global-state'
 import { useDownloader } from '@/composables/downloader.js'
 
-const { themeMode, setThemeMode } = useGlobalState()
+const { themeMode, setThemeMode, setLrclibInstance } = useGlobalState()
 const { downloadNext } = useDownloader()
 
 const loading = ref(true)
@@ -42,15 +42,20 @@ const uninitializeLibrary = async () => {
 onMounted(async () => {
   init.value = await invoke('get_init')
   loading.value = false
+  await loadGlobalState()
   darkModeHandle()
   downloadNext()
 })
 
-const darkModeHandle = async () => {
-  // check and insert the `dark` class to html tag
+const loadGlobalState = async () => {
   const config = await invoke('get_config')
   setThemeMode(config.theme_mode)
-  if (config.theme_mode === 'dark') {
+  setLrclibInstance(config.lrclib_instance)
+}
+
+const darkModeHandle = async () => {
+  // check and insert the `dark` class to html tag
+  if (themeMode.value === 'dark') {
     document.documentElement.classList.add('dark')
   } else {
     document.documentElement.classList.remove('dark')

@@ -2,6 +2,7 @@ import { ref, computed } from 'vue'
 
 const isHotkeyState = ref(true)
 const themeModeState = ref(true)
+const lrclibInstanceState = ref('')
 
 export function useGlobalState() {
   const disableHotkey = () => {
@@ -17,6 +18,11 @@ export function useGlobalState() {
   const setThemeMode = (mode) => {
     themeModeState.value = mode
   }
+  const setLrclibInstance = (instance) => {
+    lrclibInstanceState.value = instance
+  }
+
+  const lrclibInstance = computed(() => lrclibInstanceState.value)
 
   const themeMode = computed(() => themeModeState.value)
 
@@ -25,6 +31,8 @@ export function useGlobalState() {
     disableHotkey,
     enableHotkey,
     setThemeMode,
-    themeMode
+    themeMode,
+    setLrclibInstance,
+    lrclibInstance
   }
 }

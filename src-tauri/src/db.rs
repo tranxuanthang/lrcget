@@ -216,9 +216,9 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
   Ok(row)
 }
 
-pub fn set_config(skip_not_needed_tracks: bool, try_embed_lyrics: bool, theme_mode: &str, db: &Connection) -> Result<()> {
-  let mut statement = db.prepare("UPDATE config_data SET skip_not_needed_tracks = ?, try_embed_lyrics = ?, theme_mode = ? WHERE 1")?;
-  statement.execute((skip_not_needed_tracks, try_embed_lyrics, theme_mode))?;
+pub fn set_config(skip_not_needed_tracks: bool, try_embed_lyrics: bool, theme_mode: &str, lrclib_instance: &str, db: &Connection) -> Result<()> {
+  let mut statement = db.prepare("UPDATE config_data SET skip_not_needed_tracks = ?, try_embed_lyrics = ?, theme_mode = ?, lrclib_instance = ? WHERE 1")?;
+  statement.execute((skip_not_needed_tracks, try_embed_lyrics, theme_mode, lrclib_instance))?;
   Ok(())
 }
 
