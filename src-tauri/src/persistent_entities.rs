@@ -40,7 +40,7 @@ pub struct PersistentArtist {
 #[derive(Serialize)]
 pub struct PersistentConfig {
   pub skip_not_needed_tracks: bool,
-  // pub albums_count: i64,
   pub try_embed_lyrics: bool,
-  pub theme_mode: String
+  pub theme_mode: String,
+  pub lrclib_instance: String
 }

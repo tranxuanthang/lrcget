@@ -85,7 +85,7 @@ body {
 }
 
 .group-label {
-  @apply font-bold text-xs uppercase text-brave-70 dark:text-brave-95 block;
+  @apply font-bold text-xs uppercase text-brave-30 dark:text-brave-80 block;
 }
 
 .child-label {

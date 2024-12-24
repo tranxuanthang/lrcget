@@ -21,7 +21,7 @@ pub struct ResponseError {
   message: String
 }
 
-pub async fn request(track_id: i64, reason: &str, publish_token: &str) -> Result<()> {
+pub async fn request(track_id: i64, reason: &str, publish_token: &str, lrclib_instance: &str) -> Result<()> {
   let data = Request {
     track_id,
     reason: reason.to_owned()
@@ -33,7 +33,8 @@ pub async fn request(track_id: i64, reason: &str, publish_token: &str) -> Result
     .timeout(Duration::from_secs(10))
     .user_agent(user_agent)
     .build()?;
-  let url = reqwest::Url::parse("https://lrclib.net/api/flag")?;
+  let api_endpoint = format!("{}/api/flag", lrclib_instance.trim_end_matches('/'));
+  let url = reqwest::Url::parse(&api_endpoint)?;
   let res = client.post(url).header("X-Publish-Token", publish_token).json(&data).send().await?;
 
   match res.status() {

@@ -151,7 +151,7 @@ pub fn upgrade_database_if_needed(db: &mut Connection, existing_version: u32) ->
       ALTER TABLE albums ADD album_artist_name TEXT;
       ALTER TABLE albums ADD album_artist_name_lower TEXT;
       ALTER TABLE config_data ADD theme_mode TEXT DEFAULT 'auto';
-      ALTER TABLE config_data ADD lrclib_instance_url TEXT DEFAULT 'https://lrclib.net';
+      ALTER TABLE config_data ADD lrclib_instance TEXT DEFAULT 'https://lrclib.net';
       CREATE INDEX idx_albums_album_artist_name_lower ON albums(album_artist_name_lower);
       CREATE INDEX idx_tracks_track_number ON tracks(track_number);
 
@@ -204,12 +204,13 @@ pub fn set_init(init: bool, db: &Connection) -> Result<()> {
 }
 
 pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
-  let mut statement = db.prepare("SELECT skip_not_needed_tracks, try_embed_lyrics, theme_mode FROM config_data LIMIT 1")?;
+  let mut statement = db.prepare("SELECT skip_not_needed_tracks, try_embed_lyrics, theme_mode, lrclib_instance FROM config_data LIMIT 1")?;
   let row = statement.query_row([], |r| {
     Ok(PersistentConfig {
       skip_not_needed_tracks: r.get("skip_not_needed_tracks")?,
       try_embed_lyrics: r.get("try_embed_lyrics")?,
-      theme_mode: r.get("theme_mode")?
+      theme_mode: r.get("theme_mode")?,
+      lrclib_instance: r.get("lrclib_instance")?
     })
   })?;
   Ok(row)

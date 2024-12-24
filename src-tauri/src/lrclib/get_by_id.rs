@@ -70,15 +70,19 @@ pub struct ResponseError {
   message: String
 }
 
-pub async fn request_raw(id: i64) -> Result<RawResponse> {
+async fn make_request(id: i64, lrclib_instance: &str) -> Result<reqwest::Response> {
   let version = env!("CARGO_PKG_VERSION");
   let user_agent = format!("LRCGET v{} (https://github.com/tranxuanthang/lrcget)", version);
   let client = reqwest::Client::builder()
     .timeout(Duration::from_secs(10))
     .user_agent(user_agent)
     .build()?;
-  let url = format!("https://lrclib.net/api/get/{}", id);
-  let res = client.get(&url).send().await?;
+  let api_endpoint = format!("{}/api/get/{}", lrclib_instance.trim_end_matches('/'), id);
+  Ok(client.get(&api_endpoint).send().await?)
+}
+
+pub async fn request_raw(id: i64, lrclib_instance: &str) -> Result<RawResponse> {
+  let res = make_request(id, lrclib_instance).await?;
 
   match res.status() {
     reqwest::StatusCode::OK => {
@@ -118,15 +122,8 @@ pub async fn request_raw(id: i64) -> Result<RawResponse> {
   }
 }
 
-pub async fn request(id: i64) -> Result<Response> {
-  let version = env!("CARGO_PKG_VERSION");
-  let user_agent = format!("LRCGET v{} (https://github.com/tranxuanthang/lrcget)", version);
-  let client = reqwest::Client::builder()
-    .timeout(Duration::from_secs(10))
-    .user_agent(user_agent)
-    .build()?;
-  let url = format!("https://lrclib.net/api/get/{}", id);
-  let res = client.get(&url).send().await?;
+pub async fn request(id: i64, lrclib_instance: &str) -> Result<Response> {
+  let res = make_request(id, lrclib_instance).await?;
 
   match res.status() {
     reqwest::StatusCode::OK => {

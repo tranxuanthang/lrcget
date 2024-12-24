@@ -21,14 +21,15 @@ pub struct ResponseError {
   message: String
 }
 
-pub async fn request() -> Result<Response> {
+pub async fn request(lrclib_instance: &str) -> Result<Response> {
   let version = env!("CARGO_PKG_VERSION");
   let user_agent = format!("LRCGET v{} (https://github.com/tranxuanthang/lrcget)", version);
   let client = reqwest::Client::builder()
     .timeout(Duration::from_secs(10))
     .user_agent(user_agent)
     .build()?;
-  let url = reqwest::Url::parse("https://lrclib.net/api/request-challenge")?;
+  let api_endpoint = format!("{}/api/request-challenge", lrclib_instance.trim_end_matches('/'));
+  let url = reqwest::Url::parse(&api_endpoint)?;
   let res = client.post(url).send().await?;
 
   match res.status() {

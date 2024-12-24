@@ -25,7 +25,7 @@ pub struct ResponseError {
   message: String
 }
 
-pub async fn request(title: &str, album_name: &str, artist_name: &str, duration: f64, plain_lyrics: &str, synced_lyrics: &str, publish_token: &str) -> Result<()> {
+pub async fn request(title: &str, album_name: &str, artist_name: &str, duration: f64, plain_lyrics: &str, synced_lyrics: &str, publish_token: &str, lrclib_instance: &str) -> Result<()> {
   let data = Request {
     artist_name: artist_name.to_owned(),
     track_name: title.to_owned(),
@@ -41,7 +41,8 @@ pub async fn request(title: &str, album_name: &str, artist_name: &str, duration:
     .timeout(Duration::from_secs(10))
     .user_agent(user_agent)
     .build()?;
-  let url = reqwest::Url::parse("https://lrclib.net/api/publish")?;
+  let api_endpoint = format!("{}/api/publish", lrclib_instance.trim_end_matches('/'));
+  let url = reqwest::Url::parse(&api_endpoint)?;
   let res = client.post(url).header("X-Publish-Token", publish_token).json(&data).send().await?;
 
   match res.status() {

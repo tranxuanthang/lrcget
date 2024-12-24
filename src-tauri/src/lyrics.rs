@@ -25,8 +25,8 @@ pub enum GetLyricsError {
   NotFound
 }
 
-pub async fn download_lyrics_for_track(track: PersistentTrack, is_try_embed_lyrics: bool) -> Result<Response> {
-  let lyrics = request(&track.title, &track.album_name, &track.artist_name, track.duration).await?;
+pub async fn download_lyrics_for_track(track: PersistentTrack, is_try_embed_lyrics: bool, lrclib_instance: &str) -> Result<Response> {
+  let lyrics = request(&track.title, &track.album_name, &track.artist_name, track.duration, lrclib_instance).await?;
 
   apply_lyrics_for_track(track, lyrics, is_try_embed_lyrics).await
 }
@@ -223,7 +223,7 @@ fn insert_id3v2_sylt_frame(id3v2: &mut Id3v2Tag, synced_lyrics: &str) -> Result<
 fn synced_lyrics_to_sylt_vec(synced_lyrics: &str) -> Result<Vec<(u32, String)>> {
   let lyrics = Lyrics::from_str(synced_lyrics)?;
   let lyrics_vec = lyrics.get_timed_lines();
-  
+
   let converted_lyrics: Vec<(u32, String)> = lyrics_vec
     .iter()
     .map(|(time_tag, text)| (time_tag.get_timestamp() as u32, text.to_string()))

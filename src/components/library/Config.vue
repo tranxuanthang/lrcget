@@ -7,49 +7,71 @@
   >
     <div class="flex flex-col gap-8">
       <div>
-        <label class="group-label mb-2">Common</label>
+        <label class="group-label mb-4">Common</label>
 
-        <div class="flex items-center mb-2">
-          <input id="skip-not-needed-tracks" type="checkbox" v-model="skipNotNeededTracks" class="checkbox">
-          <label for="skip-not-needed-tracks" class="checkbox-label ml-2">Skip tracks that already have lyrics or are instrumental</label>
+        <div class="flex items-center mb-4">
+          <CheckboxButton
+            v-model="skipNotNeededTracks"
+            name="skip-not-needed-tracks"
+            id="skip-not-needed-tracks"
+          >
+            Skip tracks that already have lyrics or are instrumental
+          </CheckboxButton>
         </div>
 
-        <label class="block mb-1 child-label">Theme mode</label>
+        <div class="flex flex-col mb-4">
+          <label class="block mb-1 child-label">Theme mode</label>
 
-        <div class="flex gap-2 button-group">
-          <button
-            @click="editingThemeMode = 'auto'"
-            class="button grouped-button"
-            :class="{ 'button-primary': editingThemeMode === 'auto', 'button-normal': editingThemeMode !== 'auto' }"
-          >
-            Auto
-          </button>
-          <button
-            @click="editingThemeMode = 'light'"
-            class="button grouped-button"
-            :class="{ 'button-primary': editingThemeMode === 'light', 'button-normal': editingThemeMode !== 'light' }"
-          >
-            Light
-          </button>
-          <button
-            @click="editingThemeMode = 'dark'"
-            class="button grouped-button"
-            :class="{ 'button-primary': editingThemeMode === 'dark', 'button-normal': editingThemeMode !== 'dark' }"
-          >
-            Dark
-          </button>
+          <div class="flex gap-4">
+            <RadioButton
+              v-model="editingThemeMode"
+              name="theme-mode"
+              id="theme-auto"
+              value="auto"
+            >
+              Auto
+            </RadioButton>
+
+            <RadioButton
+              v-model="editingThemeMode"
+              name="theme-mode"
+              id="theme-light"
+              value="light"
+            >
+              Light
+            </RadioButton>
+
+            <RadioButton
+              v-model="editingThemeMode"
+              name="theme-mode"
+              id="theme-dark"
+              value="dark"
+            >
+              Dark
+            </RadioButton>
+          </div>
+        </div>
+
+        <div class="flex flex-col">
+          <label class="block mb-1 child-label" for="lrclib-instance">LRCLIB instance</label>
+          <input id="lrclib-instance" type="text" v-model="editingLrclibInstance" placeholder="https://" class="input px-4 h-8">
         </div>
       </div>
 
       <div>
-        <label class="group-label mb-2">Experimental</label>
+        <label class="group-label mb-4">Experimental</label>
 
         <div class="flex items-start">
-          <input id="try-embed-lyrics" type="checkbox" v-model="tryEmbedLyrics" class="checkbox mt-0.5">
-          <div class="flex flex-col ml-2">
-            <label for="try-embed-lyrics" class="checkbox-label mb-0.5">Try to embed the lyrics to the track files when possible</label>
-            <div class="text-xs text-yellow-700">This option could corrupt your track files. Make sure to backup your library before enabling it.</div>
-          </div>
+          <CheckboxButton
+            v-model="tryEmbedLyrics"
+            name="try-embed-lyrics"
+            id="try-embed-lyrics"
+          >
+            <div class="flex flex-col">
+              <span class="mb-0.5">Try to embed the lyrics to the track files when possible</span>
+              <span class="text-xs text-yellow-700">This option could corrupt your track files. Make sure to backup your library before enabling it.</span>
+            </div>
+          </CheckboxButton>
         </div>
       </div>
     </div>
@@ -69,6 +91,8 @@
 import { invoke } from '@tauri-apps/api/tauri'
 import { ref } from 'vue'
 import { useGlobalState } from '../../composables/global-state'
+import RadioButton from '@/components/common/RadioButton.vue'
+import CheckboxButton from '@/components/common/CheckboxButton.vue'
 
 const { setThemeMode } = useGlobalState()
 
@@ -77,12 +101,14 @@ const emit = defineEmits(['close', 'refreshLibrary', 'uninitializeLibrary'])
 const skipNotNeededTracks = ref(true)
 const tryEmbedLyrics = ref(false)
 const editingThemeMode = ref('auto')
+const editingLrclibInstance = ref('')
 
 const save = async () => {
   await invoke('set_config', {
     skipNotNeededTracks: skipNotNeededTracks.value,
     tryEmbedLyrics: tryEmbedLyrics.value,
-    themeMode: editingThemeMode.value
+    themeMode: editingThemeMode.value,
+    lrclibInstance: editingLrclibInstance.value
   })
   setThemeMode(editingThemeMode.value)
   emit('close')
@@ -103,15 +129,6 @@ const beforeOpenHandler = async () => {
   skipNotNeededTracks.value = config.skip_not_needed_tracks
   tryEmbedLyrics.value = config.try_embed_lyrics
   editingThemeMode.value = config.theme_mode
+  editingLrclibInstance.value = config.lrclib_instance
 }
 </script>
-
-<style scoped>
-.button-group {
-  @apply flex gap-0.5 items-center;
-}
-
-.grouped-button {
-  @apply first:rounded-l-full last:rounded-r-full  text-sm px-4 py-1 w-24;
-}
-</style>

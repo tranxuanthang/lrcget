@@ -70,7 +70,7 @@ pub struct ResponseError {
   message: String
 }
 
-pub async fn request_raw(title: &str, album_name: &str, artist_name: &str, duration: f64) -> Result<RawResponse> {
+async fn make_request(title: &str, album_name: &str, artist_name: &str, duration: f64, lrclib_instance: &str) -> Result<reqwest::Response> {
   let params: Vec<(String, String)> = vec![
     ("artist_name".to_owned(), artist_name.to_owned()),
     ("track_name".to_owned(), title.to_owned()),
@@ -84,8 +84,13 @@ pub async fn request_raw(title: &str, album_name: &str, artist_name: &str, durat
     .timeout(Duration::from_secs(10))
     .user_agent(user_agent)
     .build()?;
-  let url = reqwest::Url::parse_with_params("https://lrclib.net/api/get", &params)?;
-  let res = client.get(url).send().await?;
+  let api_endpoint = format!("{}/api/get", lrclib_instance.trim_end_matches('/'));
+  let url = reqwest::Url::parse_with_params(&api_endpoint, &params)?;
+  Ok(client.get(url).send().await?)
+}
+
+pub async fn request_raw(title: &str, album_name: &str, artist_name: &str, duration: f64, lrclib_instance: &str) -> Result<RawResponse> {
+  let res = make_request(title, album_name, artist_name, duration, lrclib_instance).await?;
 
   match res.status() {
     reqwest::StatusCode::OK => {
@@ -125,22 +130,8 @@ pub async fn request_raw(title: &str, album_name: &str, artist_name: &str, durat
   }
 }
 
-pub async fn request(title: &str, album_name: &str, artist_name: &str, duration: f64) -> Result<Response> {
-  let params: Vec<(String, String)> = vec![
-    ("artist_name".to_owned(), artist_name.to_owned()),
-    ("track_name".to_owned(), title.to_owned()),
-    ("album_name".to_owned(), album_name.to_owned()),
-    ("duration".to_owned(), duration.round().to_string())
-  ];
-
-  let version = env!("CARGO_PKG_VERSION");
-  let user_agent = format!("LRCGET v{} (https://github.com/tranxuanthang/lrcget)", version);
-  let client = reqwest::Client::builder()
-    .timeout(Duration::from_secs(10))
-    .user_agent(user_agent)
-    .build()?;
-  let url = reqwest::Url::parse_with_params("https://lrclib.net/api/get", &params)?;
-  let res = client.get(url).send().await?;
+pub async fn request(title: &str, album_name: &str, artist_name: &str, duration: f64, lrclib_instance: &str) -> Result<Response> {
+  let res = make_request(title, album_name, artist_name, duration, lrclib_instance).await?;
 
   match res.status() {
     reqwest::StatusCode::OK => {

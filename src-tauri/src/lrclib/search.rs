@@ -30,7 +30,7 @@ pub struct ResponseError {
   message: String
 }
 
-pub async fn request(title: &str, album_name: &str, artist_name: &str, q: &str) -> Result<Response> {
+pub async fn request(title: &str, album_name: &str, artist_name: &str, q: &str, lrclib_instance: &str) -> Result<Response> {
   let params: Vec<(String, String)> = vec![
     ("track_name".to_owned(), title.to_owned()),
     ("artist_name".to_owned(), artist_name.to_owned()),
@@ -45,7 +45,8 @@ pub async fn request(title: &str, album_name: &str, artist_name: &str, q: &str) 
     .timeout(Duration::from_secs(10))
     .user_agent(user_agent)
     .build()?;
-  let url = reqwest::Url::parse_with_params("https://lrclib.net/api/search", &params)?;
+  let api_endpoint = format!("{}/api/search", lrclib_instance.trim_end_matches('/'));
+  let url = reqwest::Url::parse_with_params(&api_endpoint, &params)?;
   let res = client.get(url).send().await?;
 
   match res.status() {
