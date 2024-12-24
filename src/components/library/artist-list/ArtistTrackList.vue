@@ -73,7 +73,7 @@
 import { ArrowLeft, DownloadMultiple } from 'mdue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { ref, computed, watch, onMounted } from 'vue'
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/core'
 import TrackItem from '../track-list/TrackItem.vue'
 import { useDownloader } from '@/composables/downloader.js'
 

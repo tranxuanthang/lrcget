@@ -129,7 +129,7 @@
 </template>
 
 <script setup>
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/core'
 import { ref, onMounted, onUnmounted, shallowRef, watch } from 'vue'
 import { Loading, Equal, Play, Pause, MotionPlay, Minus, Plus, Check, AlertCircleOutline, AlertCircle, MagnifyPlus, MagnifyMinus, Music } from 'mdue'
 import EqualEnter from '@/components/icons/EqualEnter.vue'

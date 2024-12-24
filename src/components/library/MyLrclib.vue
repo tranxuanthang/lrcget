@@ -37,7 +37,7 @@
 import { ref, onMounted } from 'vue'
 import { Magnify } from 'mdue'
 import SearchResult from './my-lrclib/SearchResult.vue'
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/core'
 import { useGlobalState } from '../../composables/global-state'
 
 const { lrclibInstance } = useGlobalState()

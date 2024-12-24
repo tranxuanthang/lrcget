@@ -39,7 +39,7 @@
 import { DownloadMultiple } from 'mdue'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import ArtistItem from './artist-list/ArtistItem.vue'
 import ArtistTrackList from './artist-list/ArtistTrackList.vue'

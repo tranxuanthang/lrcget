@@ -91,7 +91,7 @@ import { ref, onMounted, onUnmounted } from 'vue'
 import { DownloadMultiple, Loading, Check, Cog, Information, Magnify } from 'mdue'
 import { useDownloader } from '@/composables/downloader.js'
 import MiniSearch from './MiniSearch.vue'
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/core'
 
 const props = defineProps(['activeTab'])
 defineEmits(['changeActiveTab', 'showConfig', 'showAbout', 'showDownloadViewer'])

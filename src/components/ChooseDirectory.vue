@@ -42,9 +42,9 @@
 </template>
 
 <script setup>
-import { open } from '@tauri-apps/api/dialog'
+import { open } from '@tauri-apps/plugin-dialog'
 import { audioDir } from '@tauri-apps/api/path'
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/core'
 import { ref, onMounted } from 'vue'
 import { Close, Plus } from 'mdue'
 

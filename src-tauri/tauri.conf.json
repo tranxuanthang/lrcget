@@ -2,81 +2,52 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
-    "devPath": "http://localhost:1420",
-    "distDir": "../dist",
-    "withGlobalTauri": false
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:1420"
   },
-  "package": {
-    "productName": "LRCGET"
-  },
-  "tauri": {
-    "allowlist": {
-      "os": {
-        "all": true
-      },
-      "window": {
-        "all": true
-      },
-      "dialog": {
-        "all": true
-      },
-      "globalShortcut": {
-        "all": true
-      },
-      "path": {
-        "all": true
-      },
-      "protocol": {
-        "all": true,
-        "asset": true,
-        "assetScope": ["**"]
-      },
-      "shell": {
-        "open": true
-      }
+  "bundle": {
+    "active": true,
+    "category": "Music",
+    "copyright": "",
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
     },
-    "bundle": {
-      "active": true,
-      "category": "Music",
-      "copyright": "",
+    "externalBin": [],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "linux": {
       "deb": {
         "depends": []
-      },
-      "externalBin": [],
-      "icon": [
-        "icons/32x32.png",
-        "icons/128x128.png",
-        "icons/128x128@2x.png",
-        "icons/icon.icns",
-        "icons/icon.ico"
-      ],
-      "identifier": "net.lrclib.lrcget",
-      "longDescription": "",
-      "macOS": {
-        "entitlements": null,
-        "exceptionDomain": "",
-        "frameworks": [],
-        "providerShortName": null,
-        "signingIdentity": null
-      },
-      "resources": [],
-      "shortDescription": "Utility for mass-downloading LRC synced lyrics for your offline music library.",
-      "targets": "all",
-      "windows": {
-        "certificateThumbprint": null,
-        "digestAlgorithm": "sha256",
-        "timestampUrl": ""
       },
       "appimage": {
         "bundleMediaFramework": false
       }
     },
-    "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost; media-src *; connect-src 'self' asset: *; style-src 'unsafe-inline' 'self'"
+    "longDescription": "",
+    "macOS": {
+      "entitlements": null,
+      "exceptionDomain": "",
+      "frameworks": [],
+      "providerShortName": null,
+      "signingIdentity": null
     },
-    "updater": {
-      "active": false
-    },
+    "resources": [],
+    "shortDescription": "Utility for mass-downloading LRC synced lyrics for your offline music library.",
+    "targets": "all"
+  },
+  "productName": "LRCGET",
+  "mainBinaryName": "LRCGET",
+  "identifier": "net.lrclib.lrcget",
+  "plugins": {},
+  "app": {
+    "withGlobalTauri": false,
     "windows": [
       {
         "fullscreen": false,
@@ -87,8 +58,18 @@
         "resizable": true,
         "title": "LRCGET",
         "decorations": true,
-        "transparent": false
+        "transparent": false,
+        "useHttpsScheme": true
       }
-    ]
+    ],
+    "security": {
+      "assetProtocol": {
+        "scope": [
+          "**"
+        ],
+        "enable": true
+      },
+      "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost; media-src *; connect-src ipc: http://ipc.localhost 'self' asset: *; style-src 'unsafe-inline' 'self'"
+    }
   }
 }

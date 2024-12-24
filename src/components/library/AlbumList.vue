@@ -41,7 +41,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import AlbumItem from './album-list/AlbumItem.vue'
 import AlbumTrackList from './album-list/AlbumTrackList.vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 
 const props = defineProps(['isActive'])

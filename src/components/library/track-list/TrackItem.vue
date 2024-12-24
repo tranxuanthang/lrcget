@@ -66,7 +66,7 @@ import { useSearchLyrics } from '../../../composables/search-lyrics.js'
 import { useEditLyrics } from '../../../composables/edit-lyrics.js'
 import Equalizer from '@/components/icons/Equalizer.vue'
 import { ref, onMounted, computed } from 'vue'
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { usePlayer } from '@/composables/player.js'
 

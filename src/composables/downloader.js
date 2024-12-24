@@ -1,5 +1,5 @@
 import { computed, ref } from 'vue'
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/core'
 
 const delay = (time) => new Promise((resolve, reject) => setTimeout(resolve, time))
 

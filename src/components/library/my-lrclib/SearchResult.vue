@@ -77,7 +77,7 @@
 <script setup>
 import { ArrowLeft, Loading, Eye, PlaylistEdit, Flag } from 'mdue'
 import { ref, onMounted } from 'vue'
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/core'
 import { humanDuration } from '@/utils/human-duration.js'
 import { useToast } from 'vue-toastification'
 import EditLyrics from './EditLyrics.vue'

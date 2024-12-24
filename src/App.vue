@@ -19,11 +19,12 @@ import { Bug, WindowMinimize, WindowMaximize, WindowClose } from 'mdue'
 import ChooseDirectory from "./components/ChooseDirectory.vue";
 import Library from "./components/Library.vue";
 import { ref, onMounted, watch } from 'vue'
-import { appWindow } from '@tauri-apps/api/window'
-import { invoke } from '@tauri-apps/api/tauri'
+import { getCurrentWebviewWindow } from '@tauri-apps/api/webviewWindow'
+import { invoke } from '@tauri-apps/api/core'
 import { ModalsContainer } from 'vue-final-modal'
 import { useGlobalState } from './composables/global-state'
 import { useDownloader } from '@/composables/downloader.js'
+const appWindow = getCurrentWebviewWindow()
 
 const { themeMode, setThemeMode, setLrclibInstance } = useGlobalState()
 const { downloadNext } = useDownloader()

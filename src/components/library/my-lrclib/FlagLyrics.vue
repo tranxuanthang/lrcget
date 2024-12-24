@@ -54,7 +54,7 @@
 </template>
 
 <script setup>
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/core'
 import { ref, onMounted, watch } from 'vue'
 import { Loading } from 'mdue'
 import { listen } from '@tauri-apps/api/event'

@@ -10,7 +10,11 @@
   },
   "dependencies": {
     "@tanstack/vue-virtual": "^3.1.2",
-    "@tauri-apps/api": "^1.6.0",
+    "@tauri-apps/api": "^2.1.1",
+    "@tauri-apps/plugin-dialog": "^2.2.0",
+    "@tauri-apps/plugin-global-shortcut": "^2.2.0",
+    "@tauri-apps/plugin-os": "^2.2.0",
+    "@tauri-apps/plugin-shell": "^2.2.0",
     "codemirror": "^6.0.1",
     "floating-vue": "^5.2.2",
     "lodash": "^4.17.21",
@@ -25,7 +29,7 @@
     "vue-toastification": "^2.0.0-rc.5"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^1.6.2",
+    "@tauri-apps/cli": "^2.1.0",
     "@vitejs/plugin-vue": "^3.0.1",
     "autoprefixer": "^10.4.12",
     "postcss": "^8.4.18",

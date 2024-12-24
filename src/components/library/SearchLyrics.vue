@@ -92,7 +92,7 @@
 </template>
 
 <script setup>
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/core'
 import { ref, onMounted, watch } from 'vue'
 import { Loading, Eye, ContentSave } from 'mdue'
 import { useToast } from 'vue-toastification'

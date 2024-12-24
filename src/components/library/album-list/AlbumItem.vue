@@ -23,7 +23,7 @@
 <script setup>
 import { DownloadMultiple } from 'mdue'
 import { ref, onMounted } from 'vue'
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/core'
 import { useDownloader } from '@/composables/downloader.js'
 
 const props = defineProps(['albumId'])

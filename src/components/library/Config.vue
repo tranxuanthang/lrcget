@@ -88,7 +88,7 @@
 </template>
 
 <script setup>
-import { invoke } from '@tauri-apps/api/tauri'
+import { invoke } from '@tauri-apps/api/core'
 import { ref } from 'vue'
 import { useGlobalState } from '../../composables/global-state'
 import RadioButton from '@/components/common/RadioButton.vue'
