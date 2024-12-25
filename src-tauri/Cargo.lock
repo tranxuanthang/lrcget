@@ -2370,7 +2370,7 @@ dependencies = [
 
 [[package]]
 name = "lrcget"
-version = "1.0.0-beta.1"
+version = "0.9.0"
 dependencies = [
  "anyhow",
  "collapse",
