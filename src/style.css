@@ -48,10 +48,6 @@ body {
   @apply bg-yellow-100 hover:bg-yellow-200 text-yellow-800 active:bg-yellow-300;
 }
 
-.border-normal {
-  @apply border-brave-25;
-}
-
 .button-primary {
   @apply bg-brave-30 hover:bg-brave-35 text-white active:bg-brave-25 dark:bg-brave-80 dark:hover:bg-brave-90 dark:active:bg-brave-90 dark:text-brave-20;
 }
@@ -85,18 +81,10 @@ body {
 }
 
 .group-label {
-  @apply font-bold text-xs uppercase text-brave-30 dark:text-brave-80 block;
+  @apply font-bold text-brave-30 dark:text-brave-90 block;
 }
 
 .child-label {
-  @apply text-sm text-brave-35 dark:text-brave-95;
-}
-
-.checkbox {
-  @apply w-4 h-4 text-brave-90 bg-brave-35 accent-brave-35 rounded border-brave-35;
-}
-
-.checkbox-label {
   @apply text-sm text-brave-35 dark:text-brave-95;
 }
 
@@ -123,7 +111,7 @@ body {
 }
 
 .modal-content {
-  @apply rounded-lg bg-white dark:bg-brave-5 flex flex-col m-2 select-none text-brave-5 dark:text-brave-95;
+  @apply rounded-lg bg-white dark:bg-brave-5 flex flex-col m-2 select-none text-brave-35 dark:text-brave-95;
   overscroll-behavior: contain;
 }
 
@@ -131,21 +119,8 @@ body {
   @apply bg-brave-98 box-border border border-brave-90 focus:border-brave-80 outline-none text-sm rounded-lg transition text-brave-35 placeholder:text-brave-70 resize-none;
 }
 
-.modal-title-bar {
-  @apply flex-none flex justify-between items-center px-6 py-2;
-}
-
-.modal-button {
-  @apply flex-none button text-brave-35 hover:text-brave-30 active:text-brave-25 rounded-full p-4;
-}
-
-.modal-title {
-  @apply text-lg grow line-clamp-1 overflow-hidden text-brave-30;
-}
-
 .modal-content {
   @apply rounded-lg bg-white flex flex-col m-2 select-none;
-  overscroll-behavior: contain;
 }
 
 .Vue-Toastification__toast.lrcget-toast {

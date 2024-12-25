@@ -22,7 +22,7 @@
         v-else
         class="w-6 h-6 text-brave-30 dark:text-brave-90"
       />
-      <span class="ml-1 text-sm text-brave-30 dark:text-brave-90">
+      <span class="ml-1 child-label">
         <slot></slot>
       </span>
     </label>

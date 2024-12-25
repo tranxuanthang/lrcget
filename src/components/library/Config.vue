@@ -69,7 +69,7 @@
           >
             <div class="flex flex-col">
               <span class="mb-0.5">Try to embed the lyrics to the track files when possible</span>
-              <span class="text-xs text-yellow-700">This option could corrupt your track files. Make sure to backup your library before enabling it.</span>
+              <span class="text-xs text-yellow-700 dark:text-yellow-400">This option could corrupt your track files. Make sure to backup your library before enabling it.</span>
             </div>
           </CheckboxButton>
         </div>
