@@ -8,19 +8,15 @@ LRCGET is the official client of [LRCLIB](https://lrclib.net) service.
 
 ## Download
 
-🎉 Latest version: v0.5.0
+🎉 Latest version: v0.9.0
 
 Visit the [release page](https://github.com/tranxuanthang/lrcget/releases) to download.
 
 OS Support:
 
 - [x] Windows 10
-- [x] Linux (Ubuntu 22.04 and AppImage build)
+- [x] Linux (Ubuntu and AppImage build)
 - [x] macOS
-
-Known issues:
-
-- The DEB build cannot be installed on Ubuntu 24.04. Please use the AppImage build instead for Ubuntu 24.04.
 
 ## Screenshots
 
@@ -83,18 +79,6 @@ The exact cause is still unknown, but it can be fixed by going to System Setting
 If you prefer to contact by email:
 
 [hoangtudevops@protonmail.com](mailto:hoangtudevops@protonmail.com)
-
-## TODO
-
-- [x] Choose multiple directories
-- [x] Support .ogg format
-- [x] Embedded lyrics option
-- [x] Optimize performance for loading large music library (https://github.com/tranxuanthang/lrcget/issues/19)
-- [ ] Playlist Filter feature
-- [ ] Playlist Sort feature
-- [x] Playlist Search feature
-- [x] Volume control
-- [x] Mark song as instrumental (https://github.com/tranxuanthang/lrcget/issues/36)
 
 ## Development
 
