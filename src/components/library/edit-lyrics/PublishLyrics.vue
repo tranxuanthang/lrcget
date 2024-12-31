@@ -34,10 +34,10 @@
 
       <div v-else class="flex flex-col items-center">
         <div v-if="!isPublishing" class="mb-4">
-          Do you want to publish your lyrics of the song <strong>{{ title }} - {{ artistName }}</strong> to your current LRCLIB instance?
+          Do you want to publish your synchronized lyrics of the song <strong>{{ title }} - {{ artistName }}</strong> to your current LRCLIB instance?
         </div>
         <div v-else class="mb-4">
-          Publishing your lyrics of the song <strong>{{ title }} - {{ artistName }}</strong>...
+          Publishing your synchronized lyrics of the song <strong>{{ title }} - {{ artistName }}</strong>...
         </div>
 
         <table v-if="isPublishing" class="text-xs table-auto font-mono uppercase">
