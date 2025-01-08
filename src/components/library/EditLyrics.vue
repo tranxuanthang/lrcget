@@ -135,7 +135,8 @@ import { Loading, Equal, Play, Pause, MotionPlay, Minus, Plus, Check, AlertCircl
 import EqualEnter from '@/components/icons/EqualEnter.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
 import { useToast } from 'vue-toastification'
-import { Lrc, Runner, timestampToString, parseLine } from 'lrc-kit'
+import { Lrc, Runner, parseLine } from 'lrc-kit'
+import { timestampToString, detectStandard } from '@/utils/lyrics.js'
 import { useEditLyrics } from '@/composables/edit-lyrics.js'
 import { usePlayer } from '@/composables/player.js'
 import { useGlobalState } from '@/composables/global-state.js'
@@ -305,8 +306,14 @@ const lyricsUpdated = (newLyrics) => {
 const syncLine = (moveNext = true) => {
   const currentLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
   const currentLineText = currentLine.text
-  const stringifiedTime = timestampToString(progress.value)
-  const replacedText = currentLineText.replace(/^(\s*\[(.*)\]\s*)*/g, `[${stringifiedTime}] `)
+
+  const standard = detectStandard(unifiedLyrics.value)
+
+  const stringifiedTime = timestampToString(progress.value, standard.msPrecision)
+  const replacedText = currentLineText.replace(
+    /^(\s*\[(.*)\]\s*)*/g,
+    `[${stringifiedTime}]${standard.space ? ' ': ''}`
+  )
 
   view.value.dispatch({
     changes: {
@@ -318,18 +325,29 @@ const syncLine = (moveNext = true) => {
 
   if (moveNext) {
     const newLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
+    let targetLineNumber = newLine.number
 
-    if (newLine.to + 1 < view.value.state.doc.length) {
-      view.value.dispatch({
-        selection: {
-          anchor: newLine.to + 1
-        }
-      })
+    // Keep checking subsequent lines until we find a non-empty one or reach the end
+    while (targetLineNumber + 1 <= view.value.state.doc.lines) {
+      const nextLine = view.value.state.doc.line(targetLineNumber + 1)
+      if (nextLine.text.trim() !== '') {
+        break
+      }
+      targetLineNumber++
     }
 
-    view.value.dispatch({
-      effects: EditorView.scrollIntoView(newLine.from, { y: 'center', behavior: 'smooth' })
-    })
+    // Move to target line if it exists
+    if (targetLineNumber + 1 <= view.value.state.doc.lines) {
+      const targetLine = view.value.state.doc.line(targetLineNumber + 1)
+      view.value.dispatch({
+        selection: {
+          anchor: targetLine.from
+        }
+      })
+      view.value.dispatch({
+        effects: EditorView.scrollIntoView(targetLine.from, { y: 'center', behavior: 'smooth' })
+      })
+    }
   }
 
   view.value.focus()

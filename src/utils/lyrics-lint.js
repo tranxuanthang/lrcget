@@ -1,9 +1,11 @@
 import { parseLine } from 'lrc-kit'
+import { detectStandard } from './lyrics.js'
 
 export const executeLint = (source) => {
   const lines = source.split('\n').map(line => line.trim())
   const problems = []
   let lastNonEmptyLine = null
+  const standard = detectStandard(source)
 
   lines.forEach((content, index) => {
     if (content) {
@@ -24,17 +26,17 @@ export const executeLint = (source) => {
         })
       }
 
-      if (parsed.type === 'TIME' && parsed.content && !content.match(/^\[(.*)\]\s/)) {
+      if (parsed.type === 'TIME' && parsed.content && !content.match(standard.regex)) {
         problems.push({
           line: index + 1,
           severity: 'error',
-          message: 'Expect a space between the time tag and the content'
+          message: `Expect the following format: ${standard.name}`
         })
       }
 
       lastNonEmptyLine = { content, lineIndex: index }
     } else {
-      if (index < lines.length - 1) {
+      if (index < lines.length - 1 && !lines[index + 1]) {
         problems.push({
           line: index + 1,
           severity: 'error',
