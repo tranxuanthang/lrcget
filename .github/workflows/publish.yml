@@ -34,7 +34,7 @@ jobs:
           # Those targets are only used on macos runners so it's in an `if` to slightly speed up windows and linux builds.
           targets: ${{ matrix.platform == 'macos-latest' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
       - name: install dependencies (ubuntu only)
-        if: matrix.platform == 'ubuntu-22.04'
+        if: matrix.platform == 'ubuntu-24.04'
         run: |
           sudo apt-get update
           sudo apt-get install -y libappindicator3-dev librsvg2-dev patchelf libasound2-dev \
