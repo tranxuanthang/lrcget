@@ -10,7 +10,7 @@ use rusqlite::{named_params, params, Connection};
 use std::fs;
 use tauri::{AppHandle, Manager};
 
-const CURRENT_DB_VERSION: u32 = 5;
+const CURRENT_DB_VERSION: u32 = 6;
 
 /// Initializes the database connection, creating the .sqlite file if needed, and upgrading the database
 /// if it's out of date.
@@ -52,51 +52,51 @@ pub fn upgrade_database_if_needed(
             tx.pragma_update(None, "user_version", 1)?;
 
             tx.execute_batch(indoc! {"
-      CREATE TABLE directories (
-        id INTEGER PRIMARY KEY,
-        path TEXT
-      );
+            CREATE TABLE directories (
+                id INTEGER PRIMARY KEY,
+                path TEXT
+            );
 
-      CREATE TABLE library_data (
-        id INTEGER PRIMARY KEY,
-        init BOOLEAN
-      );
+            CREATE TABLE library_data (
+                id INTEGER PRIMARY KEY,
+                init BOOLEAN
+            );
 
-      CREATE TABLE config_data (
-        id INTEGER PRIMARY KEY,
-        skip_not_needed_tracks BOOLEAN,
-        try_embed_lyrics BOOLEAN
-      );
+            CREATE TABLE config_data (
+                id INTEGER PRIMARY KEY,
+                skip_not_needed_tracks BOOLEAN,
+                try_embed_lyrics BOOLEAN
+            );
 
-      CREATE TABLE artists (
-        id INTEGER PRIMARY KEY,
-        name TEXT
-      );
+            CREATE TABLE artists (
+                id INTEGER PRIMARY KEY,
+                name TEXT
+            );
 
-      CREATE TABLE albums (
-        id INTEGER PRIMARY KEY,
-        name TEXT,
-        artist_id INTEGER,
-        image_path TEXT,
-        FOREIGN KEY(artist_id) REFERENCES artists(id)
-      );
+            CREATE TABLE albums (
+                id INTEGER PRIMARY KEY,
+                name TEXT,
+                artist_id INTEGER,
+                image_path TEXT,
+                FOREIGN KEY(artist_id) REFERENCES artists(id)
+            );
 
-      CREATE TABLE tracks (
-        id INTEGER PRIMARY KEY,
-        file_path TEXT,
-        file_name TEXT,
-        title TEXT,
-        album_id INTEGER,
-        artist_id INTEGER,
-        duration FLOAT,
-        lrc_lyrics TEXT,
-        FOREIGN KEY(artist_id) REFERENCES artists(id),
-        FOREIGN KEY(album_id) REFERENCES albums(id)
-      );
+            CREATE TABLE tracks (
+                id INTEGER PRIMARY KEY,
+                file_path TEXT,
+                file_name TEXT,
+                title TEXT,
+                album_id INTEGER,
+                artist_id INTEGER,
+                duration FLOAT,
+                lrc_lyrics TEXT,
+                FOREIGN KEY(artist_id) REFERENCES artists(id),
+                FOREIGN KEY(album_id) REFERENCES albums(id)
+            );
 
-      INSERT INTO library_data (init) VALUES (0);
-      INSERT INTO config_data (skip_not_needed_tracks, try_embed_lyrics) VALUES (1, 0);
-      "})?;
+            INSERT INTO library_data (init) VALUES (0);
+            INSERT INTO config_data (skip_not_needed_tracks, try_embed_lyrics) VALUES (1, 0);
+            "})?;
 
             tx.commit()?;
         }
@@ -110,11 +110,11 @@ pub fn upgrade_database_if_needed(
             tx.pragma_update(None, "user_version", 2)?;
 
             tx.execute_batch(indoc! {"
-      ALTER TABLE tracks ADD txt_lyrics TEXT;
-      CREATE INDEX idx_tracks_title ON tracks(title);
-      CREATE INDEX idx_albums_name ON albums(name);
-      CREATE INDEX idx_artists_name ON artists(name);
-      "})?;
+            ALTER TABLE tracks ADD txt_lyrics TEXT;
+            CREATE INDEX idx_tracks_title ON tracks(title);
+            CREATE INDEX idx_albums_name ON albums(name);
+            CREATE INDEX idx_artists_name ON artists(name);
+            "})?;
             tx.commit()?;
         }
 
@@ -125,8 +125,8 @@ pub fn upgrade_database_if_needed(
             tx.pragma_update(None, "user_version", 3)?;
 
             tx.execute_batch(indoc! {"
-      ALTER TABLE tracks ADD instrumental BOOLEAN;
-      "})?;
+            ALTER TABLE tracks ADD instrumental BOOLEAN;
+            "})?;
             tx.commit()?;
         }
 
@@ -137,13 +137,13 @@ pub fn upgrade_database_if_needed(
             tx.pragma_update(None, "user_version", 4)?;
 
             tx.execute_batch(indoc! {"
-      ALTER TABLE tracks ADD title_lower TEXT;
-      ALTER TABLE albums ADD name_lower TEXT;
-      ALTER TABLE artists ADD name_lower TEXT;
-      CREATE INDEX idx_tracks_title_lower ON tracks(title_lower);
-      CREATE INDEX idx_albums_name_lower ON albums(name_lower);
-      CREATE INDEX idx_artists_name_lower ON artists(name_lower);
-      "})?;
+            ALTER TABLE tracks ADD title_lower TEXT;
+            ALTER TABLE albums ADD name_lower TEXT;
+            ALTER TABLE artists ADD name_lower TEXT;
+            CREATE INDEX idx_tracks_title_lower ON tracks(title_lower);
+            CREATE INDEX idx_albums_name_lower ON albums(name_lower);
+            CREATE INDEX idx_artists_name_lower ON artists(name_lower);
+            "})?;
 
             tx.commit()?;
         }
@@ -155,19 +155,35 @@ pub fn upgrade_database_if_needed(
             tx.pragma_update(None, "user_version", 5)?;
 
             tx.execute_batch(indoc! {"
-      ALTER TABLE tracks ADD track_number INTEGER;
-      ALTER TABLE albums ADD album_artist_name TEXT;
-      ALTER TABLE albums ADD album_artist_name_lower TEXT;
-      ALTER TABLE config_data ADD theme_mode TEXT DEFAULT 'auto';
-      ALTER TABLE config_data ADD lrclib_instance TEXT DEFAULT 'https://lrclib.net';
-      CREATE INDEX idx_albums_album_artist_name_lower ON albums(album_artist_name_lower);
-      CREATE INDEX idx_tracks_track_number ON tracks(track_number);
+            ALTER TABLE tracks ADD track_number INTEGER;
+            ALTER TABLE albums ADD album_artist_name TEXT;
+            ALTER TABLE albums ADD album_artist_name_lower TEXT;
+            ALTER TABLE config_data ADD theme_mode TEXT DEFAULT 'auto';
+            ALTER TABLE config_data ADD lrclib_instance TEXT DEFAULT 'https://lrclib.net';
+            CREATE INDEX idx_albums_album_artist_name_lower ON albums(album_artist_name_lower);
+            CREATE INDEX idx_tracks_track_number ON tracks(track_number);
 
-      DELETE FROM tracks WHERE 1;
-      DELETE FROM albums WHERE 1;
-      DELETE FROM artists WHERE 1;
-      UPDATE library_data SET init = 0 WHERE 1;
-      "})?;
+            DELETE FROM tracks WHERE 1;
+            DELETE FROM albums WHERE 1;
+            DELETE FROM artists WHERE 1;
+            UPDATE library_data SET init = 0 WHERE 1;
+            "})?;
+
+            tx.commit()?;
+        }
+
+        if existing_version <= 5 {
+            println!("Mirgate database version 6...");
+            let tx = db.transaction()?;
+
+            tx.pragma_update(None, "user_version", 6)?;
+
+            tx.execute_batch(indoc! {"
+            ALTER TABLE config_data ADD skip_tracks_with_synced_lyrics BOOLEAN DEFAULT 0;
+            ALTER TABLE config_data ADD skip_tracks_with_plain_lyrics BOOLEAN DEFAULT 0;
+            UPDATE config_data SET skip_tracks_with_synced_lyrics = skip_not_needed_tracks;
+            ALTER TABLE config_data DROP COLUMN skip_not_needed_tracks;
+            "})?;
 
             tx.commit()?;
         }
@@ -212,10 +228,20 @@ pub fn set_init(init: bool, db: &Connection) -> Result<()> {
 }
 
 pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
-    let mut statement = db.prepare("SELECT skip_not_needed_tracks, try_embed_lyrics, theme_mode, lrclib_instance FROM config_data LIMIT 1")?;
+    let mut statement = db.prepare(indoc! {"
+      SELECT
+        skip_tracks_with_synced_lyrics,
+        skip_tracks_with_plain_lyrics,
+        try_embed_lyrics,
+        theme_mode,
+        lrclib_instance
+      FROM config_data
+      LIMIT 1
+    "})?;
     let row = statement.query_row([], |r| {
         Ok(PersistentConfig {
-            skip_not_needed_tracks: r.get("skip_not_needed_tracks")?,
+            skip_tracks_with_synced_lyrics: r.get("skip_tracks_with_synced_lyrics")?,
+            skip_tracks_with_plain_lyrics: r.get("skip_tracks_with_plain_lyrics")?,
             try_embed_lyrics: r.get("try_embed_lyrics")?,
             theme_mode: r.get("theme_mode")?,
             lrclib_instance: r.get("lrclib_instance")?,
@@ -225,15 +251,26 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
 }
 
 pub fn set_config(
-    skip_not_needed_tracks: bool,
+    skip_tracks_with_synced_lyrics: bool,
+    skip_tracks_with_plain_lyrics: bool,
     try_embed_lyrics: bool,
     theme_mode: &str,
     lrclib_instance: &str,
     db: &Connection,
 ) -> Result<()> {
-    let mut statement = db.prepare("UPDATE config_data SET skip_not_needed_tracks = ?, try_embed_lyrics = ?, theme_mode = ?, lrclib_instance = ? WHERE 1")?;
+    let mut statement = db.prepare(indoc! {"
+      UPDATE config_data
+      SET
+        skip_tracks_with_synced_lyrics = ?,
+        skip_tracks_with_plain_lyrics = ?,
+        try_embed_lyrics = ?,
+        theme_mode = ?,
+        lrclib_instance = ?
+      WHERE 1
+    "})?;
     statement.execute((
-        skip_not_needed_tracks,
+        skip_tracks_with_synced_lyrics,
+        skip_tracks_with_plain_lyrics,
         try_embed_lyrics,
         theme_mode,
         lrclib_instance,

@@ -6,6 +6,7 @@
       :name="name"
       :checked="modelValue"
       class="hidden"
+      :disabled="disabled"
       @change="$emit('update:modelValue', !modelValue)"
     >
     <label

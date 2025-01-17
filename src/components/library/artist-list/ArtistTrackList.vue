@@ -112,8 +112,8 @@ const downloadArtistLyrics = async () => {
   const config = await invoke('get_config')
   const downloadTrackIds = await invoke('get_artist_track_ids', {
     artistId: props.artist.id,
-    withoutPlainLyrics: false,
-    withoutSyncedLyrics: config.skip_not_needed_tracks
+    withoutPlainLyrics: config.skip_tracks_with_plain_lyrics,
+    withoutSyncedLyrics: config.skip_tracks_with_synced_lyrics
   })
   addToQueue(downloadTrackIds)
 }

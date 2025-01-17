@@ -37,8 +37,8 @@ const downloadLyricsMultiple = async () => {
   const config = await invoke('get_config')
   const trackIds = await invoke('get_album_track_ids', {
     albumId: album.value.id,
-    withoutPlainLyrics: false,
-    withoutSyncedLyrics: config.skip_not_needed_tracks
+    withoutPlainLyrics: config.skip_tracks_with_plain_lyrics,
+    withoutSyncedLyrics: config.skip_tracks_with_synced_lyrics
   })
   addToQueue(trackIds)
 }

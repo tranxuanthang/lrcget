@@ -3,24 +3,48 @@
     title="Configuration"
     @beforeOpen="beforeOpenHandler"
     @close="emit('close')"
-    body-class="flex flex-col h-full justify-between"
+    body-class="flex flex-col h-full justify-between overflow-y-auto"
   >
     <div class="flex flex-col gap-8">
       <div>
         <label class="group-label mb-4">Common</label>
 
-        <div class="flex items-center mb-4">
-          <CheckboxButton
-            v-model="skipNotNeededTracks"
-            name="skip-not-needed-tracks"
-            id="skip-not-needed-tracks"
-          >
-            Skip tracks that already have lyrics or are instrumental
-          </CheckboxButton>
+        <div class="flex flex-col mb-4">
+          <label class="block mb-2 child-label">Download lyrics for</label>
+
+          <RadioButton
+              class="mb-1"
+              v-model="downloadLyricsFor"
+              name="download-lyrics-for"
+              id="download-lyrics-for-all"
+              value="all"
+            >
+              Download lyrics for all songs
+            </RadioButton>
+
+            <RadioButton
+              class="mb-1"
+              v-model="downloadLyricsFor"
+              name="download-lyrics-for"
+              id="skip-synced"
+              value="skipSynced"
+            >
+              Download lyrics for songs without synced lyrics
+            </RadioButton>
+
+            <RadioButton
+              class="mb-1"
+              v-model="downloadLyricsFor"
+              name="download-lyrics-for"
+              id="skip-plain"
+              value="skipPlain"
+            >
+              Download lyrics for songs without plain or synced lyrics
+            </RadioButton>
         </div>
 
         <div class="flex flex-col mb-4">
-          <label class="block mb-1 child-label">Theme mode</label>
+          <label class="block mb-2 child-label">Theme mode</label>
 
           <div class="flex gap-4">
             <RadioButton
@@ -53,7 +77,7 @@
         </div>
 
         <div class="flex flex-col">
-          <label class="block mb-1 child-label" for="lrclib-instance">LRCLIB instance</label>
+          <label class="block mb-2 child-label" for="lrclib-instance">LRCLIB instance</label>
           <input id="lrclib-instance" type="text" v-model="editingLrclibInstance" placeholder="https://" class="input px-4 h-8">
         </div>
       </div>
@@ -74,11 +98,11 @@
           </CheckboxButton>
         </div>
       </div>
-    </div>
 
-    <div class="flex flex-col gap-1">
-      <a href="#" class="link" @click="refreshLibrary">Refresh my library for new changes...</a>
-      <a href="#" class="link" @click="uninitializeLibrary">Add and remove scanning directories...</a>
+      <div class="flex flex-col gap-1">
+        <a href="#" class="link" @click="refreshLibrary">Refresh my library for new changes...</a>
+        <a href="#" class="link" @click="uninitializeLibrary">Add and remove scanning directories...</a>
+      </div>
     </div>
 
     <template #footer>
@@ -89,7 +113,7 @@
 
 <script setup>
 import { invoke } from '@tauri-apps/api/core'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { useGlobalState } from '../../composables/global-state'
 import RadioButton from '@/components/common/RadioButton.vue'
 import CheckboxButton from '@/components/common/CheckboxButton.vue'
@@ -98,14 +122,17 @@ const { setThemeMode, setLrclibInstance } = useGlobalState()
 
 const emit = defineEmits(['close', 'refreshLibrary', 'uninitializeLibrary'])
 
-const skipNotNeededTracks = ref(true)
+const downloadLyricsFor = ref('all')
+const skipTracksWithSyncedLyrics = ref(true)
+const skipTracksWithPlainLyrics = ref(false)
 const tryEmbedLyrics = ref(false)
 const editingThemeMode = ref('auto')
 const editingLrclibInstance = ref('')
 
 const save = async () => {
   await invoke('set_config', {
-    skipNotNeededTracks: skipNotNeededTracks.value,
+    skipTracksWithSyncedLyrics: skipTracksWithSyncedLyrics.value,
+    skipTracksWithPlainLyrics: skipTracksWithPlainLyrics.value,
     tryEmbedLyrics: tryEmbedLyrics.value,
     themeMode: editingThemeMode.value,
     lrclibInstance: editingLrclibInstance.value
@@ -127,9 +154,34 @@ const uninitializeLibrary = () => {
 
 const beforeOpenHandler = async () => {
   const config = await invoke('get_config')
-  skipNotNeededTracks.value = config.skip_not_needed_tracks
+  skipTracksWithSyncedLyrics.value = config.skip_tracks_with_synced_lyrics
+  skipTracksWithPlainLyrics.value = config.skip_tracks_with_plain_lyrics
+
+  console.log(skipTracksWithSyncedLyrics.value, skipTracksWithPlainLyrics.value)
+
+  if (skipTracksWithSyncedLyrics.value && !skipTracksWithPlainLyrics.value) {
+    downloadLyricsFor.value = 'skipSynced'
+  } else if (skipTracksWithPlainLyrics.value) {
+    downloadLyricsFor.value = 'skipPlain'
+  } else {
+    downloadLyricsFor.value = 'all'
+  }
+
   tryEmbedLyrics.value = config.try_embed_lyrics
   editingThemeMode.value = config.theme_mode
   editingLrclibInstance.value = config.lrclib_instance
 }
+
+watch(downloadLyricsFor, (newVal) => {
+  if (newVal === 'skipSynced') {
+    skipTracksWithSyncedLyrics.value = true
+    skipTracksWithPlainLyrics.value = false
+  } else if (newVal === 'skipPlain') {
+    skipTracksWithSyncedLyrics.value = true
+    skipTracksWithPlainLyrics.value = true
+  } else {
+    skipTracksWithSyncedLyrics.value = false
+    skipTracksWithPlainLyrics.value = false
+  }
+})
 </script>

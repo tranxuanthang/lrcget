@@ -83,7 +83,8 @@ async fn get_config(app_state: State<'_, AppState>) -> Result<PersistentConfig, 
 
 #[tauri::command]
 async fn set_config(
-    skip_not_needed_tracks: bool,
+    skip_tracks_with_synced_lyrics: bool,
+    skip_tracks_with_plain_lyrics: bool,
     try_embed_lyrics: bool,
     theme_mode: &str,
     lrclib_instance: &str,
@@ -92,7 +93,8 @@ async fn set_config(
     let conn_guard = app_state.db.lock().unwrap();
     let conn = conn_guard.as_ref().unwrap();
     db::set_config(
-        skip_not_needed_tracks,
+        skip_tracks_with_synced_lyrics,
+        skip_tracks_with_plain_lyrics,
         try_embed_lyrics,
         theme_mode,
         lrclib_instance,
