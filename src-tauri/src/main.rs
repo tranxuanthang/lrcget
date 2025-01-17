@@ -151,21 +151,14 @@ async fn get_tracks(app_state: State<'_, AppState>) -> Result<Vec<PersistentTrac
 #[tauri::command]
 async fn get_track_ids(
     search_query: Option<String>,
+    without_plain_lyrics: Option<bool>,
+    without_synced_lyrics: Option<bool>,
     app_state: State<'_, AppState>,
 ) -> Result<Vec<i64>, String> {
     let conn_guard = app_state.db.lock().unwrap();
     let conn = conn_guard.as_ref().unwrap();
     let search_query = search_query.filter(|s| !s.is_empty());
-    let track_ids = library::get_track_ids(search_query, conn).map_err(|err| err.to_string())?;
-
-    Ok(track_ids)
-}
-
-#[tauri::command]
-async fn get_no_lyrics_track_ids(app_state: State<'_, AppState>) -> Result<Vec<i64>, String> {
-    let conn_guard = app_state.db.lock().unwrap();
-    let conn = conn_guard.as_ref().unwrap();
-    let track_ids = library::get_no_lyrics_track_ids(conn).map_err(|err| err.to_string())?;
+    let track_ids = library::get_track_ids(search_query, without_plain_lyrics.unwrap_or(false), without_synced_lyrics.unwrap_or(false), conn).map_err(|err| err.to_string())?;
 
     Ok(track_ids)
 }
@@ -269,11 +262,13 @@ async fn get_artist_tracks(
 #[tauri::command]
 async fn get_album_track_ids(
     album_id: i64,
+    without_plain_lyrics: Option<bool>,
+    without_synced_lyrics: Option<bool>,
     app_state: State<'_, AppState>,
 ) -> Result<Vec<i64>, String> {
     let conn_guard = app_state.db.lock().unwrap();
     let conn = conn_guard.as_ref().unwrap();
-    let track_ids = library::get_album_track_ids(album_id, conn).map_err(|err| err.to_string())?;
+    let track_ids = library::get_album_track_ids(album_id, without_plain_lyrics.unwrap_or(false), without_synced_lyrics.unwrap_or(false), conn).map_err(|err| err.to_string())?;
 
     Ok(track_ids)
 }
@@ -281,12 +276,14 @@ async fn get_album_track_ids(
 #[tauri::command]
 async fn get_artist_track_ids(
     artist_id: i64,
+    without_plain_lyrics: Option<bool>,
+    without_synced_lyrics: Option<bool>,
     app_state: State<'_, AppState>,
 ) -> Result<Vec<i64>, String> {
     let conn_guard = app_state.db.lock().unwrap();
     let conn = conn_guard.as_ref().unwrap();
     let track_ids =
-        library::get_artist_track_ids(artist_id, conn).map_err(|err| err.to_string())?;
+        library::get_artist_track_ids(artist_id, without_plain_lyrics.unwrap_or(false), without_synced_lyrics.unwrap_or(false), conn).map_err(|err| err.to_string())?;
 
     Ok(track_ids)
 }
@@ -752,7 +749,6 @@ async fn main() {
             refresh_library,
             get_tracks,
             get_track_ids,
-            get_no_lyrics_track_ids,
             get_track,
             get_albums,
             get_album_ids,

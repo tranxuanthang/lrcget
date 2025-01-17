@@ -72,7 +72,6 @@ const openArtist = async (artist) => {
 onMounted(async () => {
   if (props.isActive) {
     artistIds.value = await invoke('get_artist_ids')
-    console.log(artistIds.value)
   }
 })
 

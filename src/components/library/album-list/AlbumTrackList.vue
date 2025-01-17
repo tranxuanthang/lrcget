@@ -111,7 +111,13 @@ const downloadLyrics = (track) => {
 }
 
 const downloadAlbumLyrics = async () => {
-  addToQueue(trackIds.value)
+  const config = await invoke('get_config')
+  const downloadTrackIds = await invoke('get_album_track_ids', {
+    albumId: props.album.id,
+    withoutPlainLyrics: false,
+    withoutSyncedLyrics: config.skip_not_needed_tracks
+  })
+  addToQueue(downloadTrackIds)
 }
 
 onMounted(async () => {

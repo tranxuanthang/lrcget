@@ -72,7 +72,6 @@ const openAlbum = async (album) => {
 onMounted(async () => {
   if (props.isActive) {
     albumIds.value = await invoke('get_album_ids')
-    console.log(albumIds.value)
   }
 })
 

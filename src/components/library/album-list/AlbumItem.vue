@@ -34,7 +34,12 @@ const { addToQueue } = useDownloader()
 const album = ref(null)
 
 const downloadLyricsMultiple = async () => {
-  const trackIds = await invoke('get_album_track_ids', { albumId: album.value.id })
+  const config = await invoke('get_config')
+  const trackIds = await invoke('get_album_track_ids', {
+    albumId: album.value.id,
+    withoutPlainLyrics: false,
+    withoutSyncedLyrics: config.skip_not_needed_tracks
+  })
   addToQueue(trackIds)
 }
 

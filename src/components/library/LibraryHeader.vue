@@ -105,12 +105,10 @@ const downloadAllLyrics = async () => {
 
   try {
     const config = await invoke('get_config')
-    let downloadTrackIds
-    if (config.skip_not_needed_tracks) {
-      downloadTrackIds = await invoke('get_no_lyrics_track_ids')
-    } else {
-      downloadTrackIds = await invoke('get_track_ids')
-    }
+    let downloadTrackIds = await invoke('get_track_ids', {
+      withoutPlainLyrics: false,
+      withoutSyncedLyrics: config.skip_not_needed_tracks
+    })
     addToQueue(downloadTrackIds)
   } catch (error) {
     // TODO handle error by showing an error popup, etc...
