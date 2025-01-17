@@ -4,14 +4,6 @@ export const isSynchronizedLyrics = (lyrics) => {
 }
 
 export const detectStandard = (lyrics) => {
-  // Split into lines and find first line with timestamp
-  const lines = lyrics.split('\n')
-  const firstTimestampLine = lines.find(line => /^\[\d{2}:\d{2}[.:]\d{2,3}\]/.test(line))
-
-  if (!firstTimestampLine) {
-    return null
-  }
-
   // Define format patterns
   const formats = [
     {
@@ -39,6 +31,15 @@ export const detectStandard = (lyrics) => {
       regex: /^\[\d{2}:\d{2}\.\d{3}\](?=[^ ])/
     }
   ]
+
+  // Split into lines and find first line with timestamp
+  const lines = lyrics.split('\n')
+  const firstTimestampLine = lines.find(line => /^\[\d{2}:\d{2}[.:]\d{2,3}\]/.test(line))
+
+  // If no timestamp line is found (e.g. the lyrics are not synchronized), return the first format
+  if (!firstTimestampLine) {
+    return formats[0]
+  }
 
   // Find matching format
   return formats.find(format => format.regex.test(firstTimestampLine)) || formats[0]
