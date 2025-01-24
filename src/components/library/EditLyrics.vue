@@ -95,12 +95,13 @@
 
       <!-- NOTE: AsyncCodemirror component does not have @wheel event handler, so it has to be handled here (in the container) -->
       <div class="relative h-full w-full" id="cm-container" ref="cmContainer">
-        <div class="overflow-hidden absolute w-full" :style="{ height: `${cmHeight}px` }" @keydown="handleKeydown" @wheel="handleWheel">
+        <div class="overflow-hidden absolute w-full" :style="{ height: `${cmHeight}px` }" @wheel="handleWheel">
           <AsyncCodemirror
             v-if="shouldLoadCodeMirror"
             v-model="unifiedLyrics"
             placeholder="Lyrics is currently empty"
             class="codemirror-custom h-full outline-none"
+            :style="{ fontSize: `${codemirrorStyle.fontSize}em` }"
             :autofocus="true"
             :indent-with-tab="true"
             :tab-size="2"
@@ -165,15 +166,48 @@ const { editingTrack } = useEditLyrics()
 
 const unifiedLyrics = ref('')
 const shouldLoadCodeMirror = ref(false)
-const view = shallowRef()
-const keydownEvent = ref(null)
 const isDirty = ref(false)
 const lyricsLintResult = ref([])
 const plainTextLintResult = ref([])
 const cmContainer = ref(null)
 const cmHeight = ref(null)
-const runner = ref(null)
 const currentIndex = ref(null)
+
+let view = null
+let runner = null
+let keydownEvent = null
+
+const hotkeyConfig = [
+  { keys: 'Alt+Enter', handler: () => syncLine() },
+  { keys: 'Alt+X', handler: () => syncLine(false) },
+  { keys: 'Alt+Z', handler: () => repeatLine() },
+  { keys: 'Ctrl+S', handler: () => saveLyrics() },
+  { keys: 'Alt+ArrowLeft', handler: () => rewind100() },
+  { keys: 'Alt+ArrowRight', handler: () => fastForward100() },
+  { keys: 'Ctrl+Plus', handler: () => changeCodemirrorFontSizeBy(+1) },
+  { keys: 'Ctrl+=', handler: () => changeCodemirrorFontSizeBy(+1) },
+  { keys: 'Ctrl+-', handler: () => changeCodemirrorFontSizeBy(-1) },
+  { keys: 'Ctrl+_', handler: () => changeCodemirrorFontSizeBy(-1) }
+]
+
+const createHotkeyHandler = (config) => (event) => {
+  for (const { keys, handler } of config) {
+    const [modifier, key] = keys.split('+')
+    const expectedModifier = modifier.toLowerCase()
+    const expectedKey = key.toLowerCase()
+
+    const modifierMatch = {
+      alt: event.altKey,
+      ctrl: event.ctrlKey || event.metaKey
+    }[expectedModifier]
+
+    if (modifierMatch && event.key.toLowerCase() === expectedKey) {
+      event.preventDefault()
+      handler()
+      break
+    }
+  }
+}
 
 const { open: openPublishLyricsModal, close: closePublishLyricsModal, patchOptions: patchPublishLyricsModalOptions } = useModal({
   component: PublishLyrics,
@@ -254,23 +288,6 @@ const handleWheel = (payload) => {
   changeCodemirrorFontSizeBy(payload.deltaY > 0 ? -1 : +1)
 }
 
-const handleKeydown = (payload) => {
-  if (!payload.ctrlKey) return;
-
-  switch (payload.key) {
-    case '+':
-    case '=':
-      changeCodemirrorFontSizeBy(+1)
-      break;
-    case '-':
-    case '_':
-      changeCodemirrorFontSizeBy(-1)
-      break;
-    default:
-      break;
-  }
-}
-
 const changeCodemirrorFontSizeBy = (offset) => {
   if (!shouldLoadCodeMirror) return;
 
@@ -282,9 +299,9 @@ const changeCodemirrorFontSizeBy = (offset) => {
 }
 
 const handleReady = (payload) => {
-  view.value = payload.view
+  view = payload.view
 
-  view.value.dispatch({
+  view.dispatch({
     effects: EditorView.scrollIntoView(0)
   })
 }
@@ -297,14 +314,14 @@ const resetCodemirrorFontSize = () => {
 
 const lyricsUpdated = (newLyrics) => {
   const parsed = Lrc.parse(newLyrics)
-  runner.value = new Runner(parsed)
+  runner = new Runner(parsed)
   isDirty.value = true
   lyricsLintResult.value = executeLyricsLint(newLyrics)
   plainTextLintResult.value = executePlainTextLint(newLyrics)
 }
 
 const syncLine = (moveNext = true) => {
-  const currentLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
+  const currentLine = view.state.doc.lineAt(view.state.selection.main.head)
   const currentLineText = currentLine.text
 
   const standard = detectStandard(unifiedLyrics.value)
@@ -315,7 +332,7 @@ const syncLine = (moveNext = true) => {
     `[${stringifiedTime}]${standard.space ? ' ': ''}`
   )
 
-  view.value.dispatch({
+  view.dispatch({
     changes: {
       from: currentLine.from,
       to: currentLine.to,
@@ -324,12 +341,12 @@ const syncLine = (moveNext = true) => {
   })
 
   if (moveNext) {
-    const newLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
+    const newLine = view.state.doc.lineAt(view.state.selection.main.head)
     let targetLineNumber = newLine.number
 
     // Keep checking subsequent lines until we find a non-empty one or reach the end
-    while (targetLineNumber + 1 <= view.value.state.doc.lines) {
-      const nextLine = view.value.state.doc.line(targetLineNumber + 1)
+    while (targetLineNumber + 1 <= view.state.doc.lines) {
+      const nextLine = view.state.doc.line(targetLineNumber + 1)
       if (nextLine.text.trim() !== '') {
         break
       }
@@ -337,26 +354,26 @@ const syncLine = (moveNext = true) => {
     }
 
     // Move to target line if it exists
-    if (targetLineNumber + 1 <= view.value.state.doc.lines) {
-      const targetLine = view.value.state.doc.line(targetLineNumber + 1)
-      view.value.dispatch({
+    if (targetLineNumber + 1 <= view.state.doc.lines) {
+      const targetLine = view.state.doc.line(targetLineNumber + 1)
+      view.dispatch({
         selection: {
           anchor: targetLine.from
         }
       })
-      view.value.dispatch({
+      view.dispatch({
         effects: EditorView.scrollIntoView(targetLine.from, { y: 'center', behavior: 'smooth' })
       })
     }
   }
 
-  view.value.focus()
+  view.focus()
 
-  lyricsUpdated(view.value.state.doc.toString())
+  lyricsUpdated(view.state.doc.toString())
 }
 
 const repeatLine = () => {
-  const currentLine = view.value.state.doc.lineAt(view.value.state.selection.main.head)
+  const currentLine = view.state.doc.lineAt(view.state.selection.main.head)
   const currentLineText = currentLine.text
   const parsed = parseLine(currentLineText)
   if (parsed.type === 'TIME') {
@@ -365,15 +382,15 @@ const repeatLine = () => {
 }
 
 const rewind100 = () => {
-  const selection = view.value.state.selection
+  const selection = view.state.selection
   const changes = []
 
   for (let range of selection.ranges) {
-    const startLine = view.value.state.doc.lineAt(range.from)
-    const endLine = view.value.state.doc.lineAt(range.to)
+    const startLine = view.state.doc.lineAt(range.from)
+    const endLine = view.state.doc.lineAt(range.to)
 
     for (let lineNo = startLine.number; lineNo <= endLine.number; lineNo++) {
-      const currentLine = view.value.state.doc.line(lineNo)
+      const currentLine = view.state.doc.line(lineNo)
       const currentLineText = currentLine.text
       const parsed = parseLine(currentLineText)
 
@@ -393,12 +410,12 @@ const rewind100 = () => {
   }
 
   if (changes.length > 0) {
-    view.value.dispatch({ changes })
-    view.value.focus()
-    lyricsUpdated(view.value.state.doc.toString())
+    view.dispatch({ changes })
+    view.focus()
+    lyricsUpdated(view.state.doc.toString())
 
     // Seek to the timestamp of the first changed line
-    const firstChangedLine = view.value.state.doc.lineAt(changes[0].from)
+    const firstChangedLine = view.state.doc.lineAt(changes[0].from)
     const firstParsed = parseLine(firstChangedLine.text)
     if (firstParsed.type === 'TIME') {
       seek(firstParsed.timestamps[0])
@@ -407,15 +424,15 @@ const rewind100 = () => {
 }
 
 const fastForward100 = () => {
-  const selection = view.value.state.selection
+  const selection = view.state.selection
   const changes = []
 
   for (let range of selection.ranges) {
-    const startLine = view.value.state.doc.lineAt(range.from)
-    const endLine = view.value.state.doc.lineAt(range.to)
+    const startLine = view.state.doc.lineAt(range.from)
+    const endLine = view.state.doc.lineAt(range.to)
 
     for (let lineNo = startLine.number; lineNo <= endLine.number; lineNo++) {
-      const currentLine = view.value.state.doc.line(lineNo)
+      const currentLine = view.state.doc.line(lineNo)
       const currentLineText = currentLine.text
       const parsed = parseLine(currentLineText)
 
@@ -435,12 +452,12 @@ const fastForward100 = () => {
   }
 
   if (changes.length > 0) {
-    view.value.dispatch({ changes })
-    view.value.focus()
-    lyricsUpdated(view.value.state.doc.toString())
+    view.dispatch({ changes })
+    view.focus()
+    lyricsUpdated(view.state.doc.toString())
 
     // Seek to the timestamp of the first changed line
-    const firstChangedLine = view.value.state.doc.lineAt(changes[0].from)
+    const firstChangedLine = view.state.doc.lineAt(changes[0].from)
     const firstParsed = parseLine(firstChangedLine.text)
     if (firstParsed.type === 'TIME') {
       seek(firstParsed.timestamps[0])
@@ -449,21 +466,21 @@ const fastForward100 = () => {
 }
 
 const markAsInstrumental = () => {
-  if (!view.value) return
+  if (!view) return
 
   const newContent = '[au: instrumental]'
 
-  view.value.dispatch({
+  view.dispatch({
     changes: {
       from: 0,
-      to: view.value.state.doc.length,
+      to: view.state.doc.length,
       insert: newContent
     }
   })
 
-  view.value.focus()
+  view.focus()
 
-  lyricsUpdated(view.value.state.doc.toString())
+  lyricsUpdated(view.state.doc.toString())
 }
 
 const handleResize = () => {
@@ -514,16 +531,16 @@ const saveLyrics = async () => {
 }
 
 onUnmounted(async () => {
-  runner.value = null
+  runner = null
 
   enableHotkey()
-  if (keydownEvent.value) {
-    document.removeEventListener(keydownEvent.value)
+  if (keydownEvent) {
+    document.removeEventListener('keydown', keydownEvent)
   }
   window.removeEventListener('resize', handleResize)
 })
 
-onMounted(async () => {
+onMounted(() => {
   disableHotkey()
 
   if (!editingTrack.value) {
@@ -545,47 +562,26 @@ onMounted(async () => {
 
   const parsed = Lrc.parse(unifiedLyrics.value)
 
-  runner.value = new Runner(parsed)
+  runner = new Runner(parsed)
 
-  keydownEvent.value = document.addEventListener('keydown', (event) => {
-    if (event.altKey === true && event.key === 'Enter') {
-      event.preventDefault()
-      syncLine()
-    } else if (event.altKey === true && event.key === 'x') {
-      event.preventDefault()
-      syncLine(false)
-    } else if (event.altKey === true && event.key === 'z') {
-      event.preventDefault()
-      repeatLine()
-    } else if (event.ctrlKey === true && event.key === 's') {
-      event.preventDefault()
-      if (isDirty.value) {
-        saveLyrics()
-      }
-    } else if (event.altKey === true && event.key === 'ArrowLeft') {
-      event.preventDefault()
-      rewind100()
-    } else if (event.altKey === true && event.key === 'ArrowRight') {
-      event.preventDefault()
-      fastForward100()
-    }
-  })
+  keydownEvent = createHotkeyHandler(hotkeyConfig)
+  document.addEventListener('keydown', keydownEvent)
 
   lyricsLintResult.value = executeLyricsLint(unifiedLyrics.value)
   plainTextLintResult.value = executePlainTextLint(unifiedLyrics.value)
 })
 
 watch(progress, (newProgress) => {
-  if (!editingTrack.value || !view.value) {
+  if (!editingTrack.value || !view) {
     return
   }
 
-  if (!runner.value || !unifiedLyrics.value) {
+  if (!runner || !unifiedLyrics.value) {
     return
   }
 
-  runner.value.timeUpdate(newProgress)
-  let resultCurrentIndex = runner.value.curIndex()
+  runner.timeUpdate(newProgress)
+  let resultCurrentIndex = runner.curIndex()
 
   if (resultCurrentIndex === null) {
     resultCurrentIndex = -1
@@ -594,10 +590,10 @@ watch(progress, (newProgress) => {
   currentIndex.value = resultCurrentIndex
 
   if (currentIndex.value >= 0) {
-    const line = view.value.state.doc.line(currentIndex.value + 1)
-    view.value.dispatch({ effects: addLineHighlight.of(line.from) })
+    const line = view.state.doc.line(currentIndex.value + 1)
+    view.dispatch({ effects: addLineHighlight.of(line.from) })
   } else {
-    view.value.dispatch({ effects: addLineHighlight.of(null) })
+    view.dispatch({ effects: addLineHighlight.of(null) })
   }
 })
 
@@ -612,9 +608,3 @@ watch(cmContainer, () => {
   }
 })
 </script>
-
-<style scoped>
-.codemirror-custom {
-  font-size: calc(v-bind('codemirrorStyle.fontSize') * 1em);
-}
-</style>

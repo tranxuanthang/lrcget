@@ -24,8 +24,6 @@
       <MyLrclib
         :isActive="activeTab === 'my-lrclib'"
       />
-
-      <!-- <div class="absolute top-0 left-0 w-full h-[20px] bg-gradient-to-b from-white pointer-events-none"></div> -->
     </div>
 
     <NowPlaying class="flex-none" />
@@ -42,10 +40,6 @@
       <div>Loading library...</div>
     </div>
   </div>
-
-  <Teleport to="body">
-    <EditLyrics v-if="editingTrack" :is-show="!!editingTrack" />
-  </Teleport>
 </template>
 
 <script setup>
@@ -63,13 +57,10 @@ import MyLrclib from './library/MyLrclib.vue'
 import DownloadViewer from './library/DownloadViewer.vue'
 import Config from './library/Config.vue'
 import About from './About.vue'
-import EditLyrics from './library/EditLyrics.vue'
 import { useToast } from 'vue-toastification'
-import { useEditLyrics } from '../composables/edit-lyrics.js'
 import { useModal } from 'vue-final-modal'
 
 const toast = useToast()
-const { editingTrack } = useEditLyrics()
 const emit = defineEmits(['uninitializeLibrary'])
 
 const isLoading = ref(true)
