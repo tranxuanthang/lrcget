@@ -44,7 +44,7 @@ pub fn upgrade_database_if_needed(
 
     if existing_version < CURRENT_DB_VERSION {
         if existing_version <= 0 {
-            println!("Mirgate database version 1...");
+            println!("Migrate database version 1...");
             db.pragma_update(None, "journal_mode", "WAL")?;
 
             let tx = db.transaction()?;
@@ -102,7 +102,7 @@ pub fn upgrade_database_if_needed(
         }
 
         if existing_version <= 1 {
-            println!("Mirgate database version 2...");
+            println!("Migrate database version 2...");
             db.pragma_update(None, "journal_mode", "WAL")?;
 
             let tx = db.transaction()?;
@@ -119,7 +119,7 @@ pub fn upgrade_database_if_needed(
         }
 
         if existing_version <= 2 {
-            println!("Mirgate database version 3...");
+            println!("Migrate database version 3...");
             let tx = db.transaction()?;
 
             tx.pragma_update(None, "user_version", 3)?;
@@ -131,7 +131,7 @@ pub fn upgrade_database_if_needed(
         }
 
         if existing_version <= 3 {
-            println!("Mirgate database version 4...");
+            println!("Migrate database version 4...");
             let tx = db.transaction()?;
 
             tx.pragma_update(None, "user_version", 4)?;
@@ -149,7 +149,7 @@ pub fn upgrade_database_if_needed(
         }
 
         if existing_version <= 4 {
-            println!("Mirgate database version 5...");
+            println!("Migrate database version 5...");
             let tx = db.transaction()?;
 
             tx.pragma_update(None, "user_version", 5)?;
@@ -173,7 +173,7 @@ pub fn upgrade_database_if_needed(
         }
 
         if existing_version <= 5 {
-            println!("Mirgate database version 6...");
+            println!("Migrate database version 6...");
             let tx = db.transaction()?;
 
             tx.pragma_update(None, "user_version", 6)?;
