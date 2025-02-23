@@ -46,8 +46,10 @@
   "mainBinaryName": "LRCGET",
   "identifier": "net.lrclib.lrcget",
   "plugins": {},
-  "app": {
-    "withGlobalTauri": false,
+  "tauri": {
+    "allowlist": {
+      "all": true
+    },
     "windows": [
       {
         "fullscreen": false,
