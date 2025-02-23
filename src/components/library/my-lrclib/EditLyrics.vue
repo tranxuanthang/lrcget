@@ -221,7 +221,6 @@ const handleKeydown = (payload) => {
 const changeCodemirrorFontSizeBy = (offset) => {
   if (!shouldLoadCodeMirror) return;
 
-
   let newFontSize = codemirrorStyle.value.fontSize + offset * 0.1;
   if (newFontSize < 0.4) newFontSize = 0.4;
 
@@ -445,6 +444,6 @@ watch(() => props.editingTrack, () => {
 
 <style scoped>
 .codemirror-custom {
-  font-size: calc(v-bind('codemirrorStyle.fontSize') * 1em);
+  font-size: calc(var(--codemirror-font-size) * 1em);
 }
 </style>
