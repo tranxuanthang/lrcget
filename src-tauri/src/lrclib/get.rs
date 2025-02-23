@@ -11,15 +11,15 @@ use thiserror::Error;
 pub struct RawResponse {
     pub plain_lyrics: Option<String>,
     pub synced_lyrics: Option<String>,
-    instrumental: bool,
-    lang: Option<String>,
-    isrc: Option<String>,
-    spotify_id: Option<String>,
-    name: Option<String>,
-    album_name: Option<String>,
-    artist_name: Option<String>,
-    release_date: Option<String>,
-    duration: Option<f64>,
+    pub instrumental: bool,
+    pub lang: Option<String>,
+    pub isrc: Option<String>,
+    pub spotify_id: Option<String>,
+    pub name: Option<String>,
+    pub album_name: Option<String>,
+    pub artist_name: Option<String>,
+    pub release_date: Option<String>,
+    pub duration: Option<f64>,
 }
 
 #[derive(Serialize)]
@@ -152,7 +152,6 @@ pub async fn request(
     match res.status() {
         reqwest::StatusCode::OK => {
             let lrclib_response = res.json::<RawResponse>().await?;
-
             Ok(Response::from_raw_response(lrclib_response))
         }
 

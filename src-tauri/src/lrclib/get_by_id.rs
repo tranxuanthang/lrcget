@@ -11,15 +11,15 @@ use thiserror::Error;
 pub struct RawResponse {
     pub plain_lyrics: Option<String>,
     pub synced_lyrics: Option<String>,
-    instrumental: bool,
-    lang: Option<String>,
-    isrc: Option<String>,
-    spotify_id: Option<String>,
-    name: Option<String>,
-    album_name: Option<String>,
-    artist_name: Option<String>,
-    release_date: Option<String>,
-    duration: Option<f64>,
+    pub instrumental: bool,
+    pub lang: Option<String>,
+    pub isrc: Option<String>,
+    pub spotify_id: Option<String>,
+    pub name: Option<String>,
+    pub album_name: Option<String>,
+    pub artist_name: Option<String>,
+    pub release_date: Option<String>,
+    pub duration: Option<f64>,
 }
 
 #[derive(Serialize)]
@@ -94,7 +94,7 @@ pub async fn request_raw(id: i64, lrclib_instance: &str) -> Result<RawResponse> 
                 Err(ResponseError {
                     status_code: Some(404),
                     error: "NotFound".to_string(),
-                    message: "There is no lyrics for this track".to_string(),
+                    message: "There are no lyrics for this track".to_string(),
                 }
                 .into())
             }
@@ -103,7 +103,7 @@ pub async fn request_raw(id: i64, lrclib_instance: &str) -> Result<RawResponse> 
         reqwest::StatusCode::NOT_FOUND => Err(ResponseError {
             status_code: Some(404),
             error: "NotFound".to_string(),
-            message: "There is no lyrics for this track".to_string(),
+            message: "There are no lyrics for this track".to_string(),
         }
         .into()),
 
@@ -117,7 +117,7 @@ pub async fn request_raw(id: i64, lrclib_instance: &str) -> Result<RawResponse> 
         _ => Err(ResponseError {
             status_code: None,
             error: "UnknownError".to_string(),
-            message: "Unknown error happened".to_string(),
+            message: "An unknown error occurred".to_string(),
         }
         .into()),
     }
@@ -129,7 +129,6 @@ pub async fn request(id: i64, lrclib_instance: &str) -> Result<Response> {
     match res.status() {
         reqwest::StatusCode::OK => {
             let lrclib_response = res.json::<RawResponse>().await?;
-
             Ok(Response::from_raw_response(lrclib_response))
         }
 
@@ -145,7 +144,7 @@ pub async fn request(id: i64, lrclib_instance: &str) -> Result<Response> {
         _ => Err(ResponseError {
             status_code: None,
             error: "UnknownError".to_string(),
-            message: "Unknown error happened".to_string(),
+            message: "An unknown error occurred".to_string(),
         }
         .into()),
     }

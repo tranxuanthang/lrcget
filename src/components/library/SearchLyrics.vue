@@ -25,7 +25,7 @@
             <label for="albumName" class="group-label mb-1">Album</label>
             <input
               type="text"
-              id="artistName"
+              id="albumName"
               v-model="albumName"
               class="input w-full py-1.5 px-2"
               placeholder="Album"
@@ -39,7 +39,7 @@
               type="text"
               id="artistName"
               v-model="artistName"
-              class="input w-full py-1.5 p-2"
+              class="input w-full py-1.5 px-2"
               placeholder="Artist"
               :disabled="loading"
             >
@@ -93,7 +93,7 @@
 
 <script setup>
 import { invoke } from '@tauri-apps/api/core'
-import { ref, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Loading, Eye, ContentSave } from 'mdue'
 import { useToast } from 'vue-toastification'
 import Preview from './search-lyrics/Preview.vue'
@@ -137,7 +137,7 @@ const doSearchLyrics = async () => {
     searchResult.value = await invoke('search_lyrics', { title: title.value, albumName: albumName.value, artistName: artistName.value, q: '' })
   } catch (error) {
     console.error(error)
-    toast.error(error)
+    toast.error(error.message || 'An error occurred while searching for lyrics')
   } finally {
     loading.value = false
   }
@@ -155,7 +155,7 @@ const apply = async (lyricsItem) => {
     toast.success(result)
   } catch (error) {
     console.error(error)
-    toast.error(error)
+    toast.error(error.message || 'An error occurred while applying the lyrics')
   }
 }
 
@@ -170,10 +170,12 @@ const initialize = async () => {
   title.value = props.searchingTrack.title
   albumName.value = props.searchingTrack.album_name
   artistName.value = props.searchingTrack.artist_name
+
+  await doSearchLyrics()
 }
 
 onMounted(async () => {
   await initialize()
-  doSearchLyrics()
+doSearchLyrics()
 })
 </script>

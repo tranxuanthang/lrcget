@@ -15,8 +15,7 @@ use lofty::{
 };
 use lrc::Lyrics;
 use std::fs::{remove_file, write, OpenOptions};
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 #[derive(Error, Clone, Debug)]
@@ -52,7 +51,7 @@ pub async fn apply_string_lyrics_for_track(
     save_synced_lyrics(&track.file_path, synced_lyrics)?;
 
     if is_try_embed_lyrics {
-        embed_lyrics(&track.file_path, &plain_lyrics, &synced_lyrics);
+        embed_lyrics(&track.file_path, plain_lyrics, synced_lyrics)?;
     }
 
     Ok(())
@@ -65,16 +64,16 @@ pub async fn apply_lyrics_for_track(
 ) -> Result<Response> {
     match &lyrics {
         Response::SyncedLyrics(synced_lyrics, plain_lyrics) => {
-            save_synced_lyrics(&track.file_path, &synced_lyrics)?;
+            save_synced_lyrics(&track.file_path, synced_lyrics)?;
             if is_try_embed_lyrics {
-                embed_lyrics(&track.file_path, &plain_lyrics, &synced_lyrics);
+                embed_lyrics(&track.file_path, plain_lyrics, synced_lyrics)?;
             }
             Ok(lyrics)
         }
         Response::UnsyncedLyrics(plain_lyrics) => {
-            save_plain_lyrics(&track.file_path, &plain_lyrics)?;
+            save_plain_lyrics(&track.file_path, plain_lyrics)?;
             if is_try_embed_lyrics {
-                embed_lyrics(&track.file_path, &plain_lyrics, "");
+                embed_lyrics(&track.file_path, plain_lyrics, "")?;
             }
             Ok(lyrics)
         }
@@ -90,10 +89,10 @@ fn save_plain_lyrics(track_path: &str, lyrics: &str) -> Result<()> {
     let txt_path = build_txt_path(track_path)?;
     let lrc_path = build_lrc_path(track_path)?;
 
-    let _ = remove_file(lrc_path);
+    let _ = remove_file(&lrc_path);
 
     if lyrics.is_empty() {
-        let _ = remove_file(txt_path);
+        let _ = remove_file(&txt_path);
     } else {
         write(txt_path, lyrics)?;
     }
@@ -104,9 +103,9 @@ fn save_synced_lyrics(track_path: &str, lyrics: &str) -> Result<()> {
     let txt_path = build_txt_path(track_path)?;
     let lrc_path = build_lrc_path(track_path)?;
     if lyrics.is_empty() {
-        let _ = remove_file(lrc_path);
+        let _ = remove_file(&lrc_path);
     } else {
-        let _ = remove_file(txt_path);
+        let _ = remove_file(&txt_path);
         write(lrc_path, lyrics)?;
     }
     Ok(())
@@ -117,7 +116,7 @@ fn save_instrumental(track_path: &str) -> Result<()> {
     let lrc_path = build_lrc_path(track_path)?;
 
     let _ = remove_file(&lrc_path);
-    let _ = remove_file(txt_path);
+    let _ = remove_file(&txt_path);
 
     write(lrc_path, "[au: instrumental]")?;
 
@@ -144,7 +143,7 @@ fn build_lrc_path(track_path: &str) -> Result<PathBuf> {
     Ok(lrc_path)
 }
 
-fn embed_lyrics(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) {
+fn embed_lyrics(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) -> Result<()> {
     if track_path.to_lowercase().ends_with(".mp3") {
         match embed_lyrics_mp3(track_path, plain_lyrics, synced_lyrics) {
             Ok(_) => (),
@@ -156,6 +155,7 @@ fn embed_lyrics(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) {
             Err(e) => println!("Error embedding lyrics in FLAC: {}", e),
         }
     }
+    Ok(())
 }
 
 fn embed_lyrics_flac(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) -> Result<()> {

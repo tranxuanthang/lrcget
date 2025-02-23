@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
-const delay = (time) => new Promise((resolve, reject) => setTimeout(resolve, time))
+const delay = (time) => new Promise((reso, rejectlve, reject) => setTimeout(resolve, time))
 
 const downloadQueue = ref([])
 const downloadedItems = ref([])
@@ -11,6 +11,7 @@ const successCount = ref(0)
 const failureCount = ref(0)
 const isDownloading = ref(false)
 const totalCount = ref(0)
+let downloadLoop = null
 
 const downloadedCount = computed(() => {
   return downloadedItems.value.length

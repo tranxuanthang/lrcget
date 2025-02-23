@@ -34,15 +34,15 @@ Toss a coin to your developer?
 
 **GitHub Sponsors (Recommended - 100% of your support goes to the developer):**
 
-https://github.com/sponsors/tranxuanthang
+<https://github.com/sponsors/tranxuanthang>
 
 **Buy Me a Coffee:**
 
-https://www.buymeacoffee.com/thangtran
+<https://www.buymeacoffee.com/thangtran>
 
 **Paypal:**
 
-https://paypal.me/tranxuanthang98
+<https://paypal.me/tranxuanthang98>
 
 **Monero (XMR):**
 
@@ -68,11 +68,11 @@ sudo apt install pipewire-alsa
 
 **App won't open in Windows 10/11**
 
-If you are using Windows 10 LTSC, or have tried running some scripts to debloat Windows 10 (which will uninstall Microsoft Edge and its webview component), you might have issues as LRCGET depends on WebView2. Reinstalling Microsoft Edge might fix the problem (see issue https://github.com/tranxuanthang/lrcget/issues/45).
+If you are using Windows 10 LTSC, or have tried running some scripts to debloat Windows 10 (which will uninstall Microsoft Edge and its webview component), you might have issues as LRCGET depends on WebView2. Reinstalling Microsoft Edge might fix the problem (see issue <https://github.com/tranxuanthang/lrcget/issues/45>).
 
 **Scrollbar is invisible in Linux (KDE Plasma 5/6)**
 
-The exact cause is still unknown, but it can be fixed by going to System Settings > Appearance > Global Theme > Application Style > Configure GNOME/GTK Application Style... > Change to something other than breeze (Awaita or Default) > Apply (see comment https://github.com/tranxuanthang/lrcget/issues/44#issuecomment-1962998268)
+The exact cause is still unknown, but it can be fixed by going to System Settings > Appearance > Global Theme > Application Style > Configure GNOME/GTK Application Style... > Change to something other than breeze (Awaita or Default) > Apply (see comment <https://github.com/tranxuanthang/lrcget/issues/44#issuecomment-1962998268>)
 
 ## Contact
 
