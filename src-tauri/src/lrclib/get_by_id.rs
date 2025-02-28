@@ -164,15 +164,37 @@ async fn make_request(id: i64, lrclib_instance: &str) -> Result<reqwest::Respons
     let version = env!("CARGO_PKG_VERSION");
     let user_agent = format!("LRCGET/{}", version);
 
-    // Implementation would follow here
-    // This is just a placeholder structure
-    todo!("Implement make_request function for get_by_id")
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .user_agent(user_agent)
+        .build()?;
+    let api_endpoint = format!("{}/api/get/{}", lrclib_instance.trim_end_matches('/'), id);
+    Ok(client.get(&api_endpoint).send().await?)
 }
 
 pub async fn request_by_id(id: i64, lrclib_instance: &str) -> Result<Response> {
     let response = make_request(id, lrclib_instance).await?;
 
-    // Implementation would follow here based on other files
-    // This is just a placeholder structure
-    todo!("Implement request_by_id function")
+    match response.status() {
+        reqwest::StatusCode::OK => {
+            let lrclib_response = response.json::<RawResponse>().await?;
+            Ok(Response::from_raw_response(lrclib_response))
+        }
+
+        reqwest::StatusCode::NOT_FOUND => Ok(Response::None),
+
+        reqwest::StatusCode::BAD_REQUEST
+        | reqwest::StatusCode::SERVICE_UNAVAILABLE
+        | reqwest::StatusCode::INTERNAL_SERVER_ERROR => {
+            let error = response.json::<ResponseError>().await?;
+            Err(error.into())
+        }
+
+        _ => Err(ResponseError {
+            status_code: None,
+            error: "UnknownError".to_string(),
+            message: "An unknown error occurred".to_string(),
+        }
+        .into()),
+    }
 }

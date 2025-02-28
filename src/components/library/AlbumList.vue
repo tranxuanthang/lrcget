@@ -41,6 +41,7 @@ import AlbumItem from './album-list/AlbumItem.vue'
 import AlbumTrackList from './album-list/AlbumTrackList.vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { invoke } from '@tauri-apps/api/core'
+import { useDownloader } from '@/composables/downloader.js'
 
 const props = defineProps({
   isActive: {
@@ -83,6 +84,18 @@ const loadAlbums = async () => {
   } finally {
     loading.value = false
   }
+}
+
+const { addToQueue } = useDownloader()
+
+const downloadLyricsMultiple = async (albumId) => {
+  const config = await invoke('get_config')
+  const trackIds = await invoke('get_album_track_ids', {
+    albumId: albumId,
+    withoutPlainLyrics: config.skip_tracks_with_plain_lyrics,
+    withoutSyncedLyrics: config.skip_tracks_with_synced_lyrics
+  })
+  addToQueue(trackIds)
 }
 
 onMounted(async () => {

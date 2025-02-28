@@ -44,6 +44,18 @@
               :disabled="loading"
             >
           </div>
+
+          <div class="col-span-2">
+            <label for="trackId" class="group-label mb-1">Track ID</label>
+            <input
+              type="text"
+              id="trackId"
+              v-model="trackId"
+              class="input w-full py-1.5 px-2"
+              placeholder="Track ID"
+              :disabled="loading"
+            >
+          </div>
         </div>
 
         <div class="col-span-2 flex justify-center">
@@ -111,6 +123,7 @@ const previewingTrack = ref(null)
 const title = ref('')
 const albumName = ref('')
 const artistName = ref('')
+const trackId = ref('')
 
 const { open: openPreviewModal, close: closePreviewModal } = useModal({
   component: Preview,
@@ -134,7 +147,11 @@ const humanDuration = (seconds) => {
 const doSearchLyrics = async () => {
   loading.value = true
   try {
-    searchResult.value = await invoke('search_lyrics', { title: title.value, albumName: albumName.value, artistName: artistName.value, q: '' })
+    if (trackId.value) {
+      searchResult.value = [await invoke('request_by_id', { id: trackId.value })]
+    } else {
+      searchResult.value = await invoke('search_lyrics', { title: title.value, albumName: albumName.value, artistName: artistName.value, q: '' })
+    }
   } catch (error) {
     console.error(error)
     toast.error(error.message || 'An error occurred while searching for lyrics')

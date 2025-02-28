@@ -8,7 +8,7 @@ LRCGET is the official client of [LRCLIB](https://lrclib.net) service.
 
 ## Download
 
-🎉 Latest version: v0.9.0
+🎉 Latest version: v1.0.0
 
 Visit the [release page](https://github.com/tranxuanthang/lrcget/releases) to download.
 
@@ -17,6 +17,10 @@ OS Support:
 - [x] Windows 10
 - [x] Linux (Ubuntu and AppImage build)
 - [x] macOS
+
+## New Feature
+
+You can now download lyrics by track ID. This feature allows you to directly request lyrics for a specific track using its unique ID.
 
 ## Screenshots
 

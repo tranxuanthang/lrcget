@@ -79,6 +79,30 @@ const downloadLyrics = async (track) => {
   currentItem.value = null
 }
 
+const downloadLyricsById = async (trackId) => {
+  try {
+    const result = await invoke('download_lyrics_by_id', { trackId: trackId })
+
+    if (!isDownloading.value) {
+      return
+    }
+
+    addLog({ status: 'success', trackId: trackId, message: result })
+    successCount.value++
+    updateDownloadStats()
+  } catch (error) {
+    if (!isDownloading.value) {
+      return
+    }
+
+    addLog({ status: 'failure', trackId: trackId, message: error })
+    failureCount.value++
+  }
+
+  downloadedItems.value.push(currentItem.value)
+  currentItem.value = null
+}
+
 const downloadNext = async () => {
   downloadLoop = async () => {
     while (isDownloading.value) {

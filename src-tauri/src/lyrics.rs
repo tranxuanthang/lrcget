@@ -41,6 +41,16 @@ pub async fn download_lyrics_for_track(
     apply_lyrics_for_track(track, lyrics, is_try_embed_lyrics).await
 }
 
+pub async fn download_lyrics_by_id(
+    track_id: &str,
+    is_try_embed_lyrics: bool,
+    lrclib_instance: &str,
+) -> Result<Response> {
+    let lyrics = request_by_id(track_id, lrclib_instance).await?;
+
+    apply_lyrics_for_track_by_id(track_id, lyrics, is_try_embed_lyrics).await
+}
+
 pub async fn apply_string_lyrics_for_track(
     track: &PersistentTrack,
     plain_lyrics: &str,
@@ -85,6 +95,34 @@ pub async fn apply_lyrics_for_track(
     }
 }
 
+pub async fn apply_lyrics_for_track_by_id(
+    track_id: &str,
+    lyrics: Response,
+    is_try_embed_lyrics: bool,
+) -> Result<Response> {
+    match &lyrics {
+        Response::SyncedLyrics(synced_lyrics, plain_lyrics) => {
+            save_synced_lyrics_by_id(track_id, synced_lyrics)?;
+            if is_try_embed_lyrics {
+                embed_lyrics_by_id(track_id, plain_lyrics, synced_lyrics)?;
+            }
+            Ok(lyrics)
+        }
+        Response::UnsyncedLyrics(plain_lyrics) => {
+            save_plain_lyrics_by_id(track_id, plain_lyrics)?;
+            if is_try_embed_lyrics {
+                embed_lyrics_by_id(track_id, plain_lyrics, "")?;
+            }
+            Ok(lyrics)
+        }
+        Response::IsInstrumental => {
+            save_instrumental_by_id(track_id)?;
+            Ok(lyrics)
+        }
+        _ => Ok(lyrics),
+    }
+}
+
 fn save_plain_lyrics(track_path: &str, lyrics: &str) -> Result<()> {
     let txt_path = build_txt_path(track_path)?;
     let lrc_path = build_lrc_path(track_path)?;
@@ -123,6 +161,44 @@ fn save_instrumental(track_path: &str) -> Result<()> {
     Ok(())
 }
 
+fn save_plain_lyrics_by_id(track_id: &str, lyrics: &str) -> Result<()> {
+    let txt_path = build_txt_path_by_id(track_id)?;
+    let lrc_path = build_lrc_path_by_id(track_id)?;
+
+    let _ = remove_file(&lrc_path);
+
+    if lyrics.is_empty() {
+        let _ = remove_file(&txt_path);
+    } else {
+        write(txt_path, lyrics)?;
+    }
+    Ok(())
+}
+
+fn save_synced_lyrics_by_id(track_id: &str, lyrics: &str) -> Result<()> {
+    let txt_path = build_txt_path_by_id(track_id)?;
+    let lrc_path = build_lrc_path_by_id(track_id)?;
+    if lyrics.is_empty() {
+        let _ = remove_file(&lrc_path);
+    } else {
+        let _ = remove_file(&txt_path);
+        write(lrc_path, lyrics)?;
+    }
+    Ok(())
+}
+
+fn save_instrumental_by_id(track_id: &str) -> Result<()> {
+    let txt_path = build_txt_path_by_id(track_id)?;
+    let lrc_path = build_lrc_path_by_id(track_id)?;
+
+    let _ = remove_file(&lrc_path);
+    let _ = remove_file(&txt_path);
+
+    write(lrc_path, "[au: instrumental]")?;
+
+    Ok(())
+}
+
 fn build_txt_path(track_path: &str) -> Result<PathBuf> {
     let path = Path::new(track_path);
     let parent_path = path.parent().unwrap();
@@ -143,6 +219,16 @@ fn build_lrc_path(track_path: &str) -> Result<PathBuf> {
     Ok(lrc_path)
 }
 
+fn build_txt_path_by_id(track_id: &str) -> Result<PathBuf> {
+    let txt_path = Path::new("lyrics").join(format!("{}.{}", track_id, "txt"));
+    Ok(txt_path)
+}
+
+fn build_lrc_path_by_id(track_id: &str) -> Result<PathBuf> {
+    let lrc_path = Path::new("lyrics").join(format!("{}.{}", track_id, "lrc"));
+    Ok(lrc_path)
+}
+
 fn embed_lyrics(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) -> Result<()> {
     if track_path.to_lowercase().ends_with(".mp3") {
         match embed_lyrics_mp3(track_path, plain_lyrics, synced_lyrics) {
@@ -156,6 +242,11 @@ fn embed_lyrics(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) -> Re
         }
     }
     Ok(())
+}
+
+fn embed_lyrics_by_id(track_id: &str, plain_lyrics: &str, synced_lyrics: &str) -> Result<()> {
+    let track_path = format!("{}.mp3", track_id);
+    embed_lyrics(&track_path, plain_lyrics, synced_lyrics)
 }
 
 fn embed_lyrics_flac(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) -> Result<()> {
