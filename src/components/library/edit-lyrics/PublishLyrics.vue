@@ -23,7 +23,10 @@
               <tr v-for="(problem, index) in lintResult" :key="index">
                 <td class="p-1 text-right">{{ problem.line }}</td>
                 <td class="p-1 text-center">
-                  <span v-if="problem.severity === 'error'" class="bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-100 font-bold text-xs px-1 py-0.5 rounded">Error</span>
+                  <span :class="[
+                    problem.severity === 'error' ? 'bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-100' : 'bg-yellow-200 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100',
+                    'font-bold text-xs px-1 py-0.5 rounded'
+                  ]">{{ problem.severity.charAt(0).toUpperCase() + problem.severity.slice(1) }}</span>
                 </td>
                 <td class="p-1">{{ problem.message }}</td>
               </tr>
@@ -68,7 +71,7 @@
 
       <div v-else-if="!isPublishing" class="flex gap-2 justify-center w-full">
         <button class="button button-primary px-8 py-2 rounded-full" @click="publishLyrics">Publish Now</button>
-        <button class="button button-normal px-8 py-2 rounded-full" @click="close">Cancel</button>
+        <button class="button button-secondary px-8 py-2 rounded-full" @click="close">Cancel</button>
       </div>
 
       <div v-else class="flex gap-2 justify-center w-full">
@@ -83,7 +86,7 @@
 
 <script setup>
 import { invoke } from '@tauri-apps/api/core'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, onUnmounted } from 'vue'
 import { Loading } from 'mdue'
 import { listen } from '@tauri-apps/api/event'
 import { useToast } from 'vue-toastification'
@@ -112,7 +115,7 @@ const props = defineProps({
     required: true,
   },
   lyrics: {
-    type: Object,
+    type: String,
     required: true,
   }
 })
@@ -125,9 +128,22 @@ const progress = ref({
   publishLyrics: 'Pending'
 })
 
+let unlistenPublish = null
+
+// Extract plain text version of the lyrics by removing all timestamps
+const extractPlainText = (syncedLyrics) => {
+  // Handle both LRC format with [mm:ss.xx] timestamps and enhanced LRC with [mm:ss.xx:<word>] format
+  return syncedLyrics
+    .replace(/\[\d+:\d+\.\d+\]|\[\d+:\d+\.\d+:.*?\]/g, '')  // Remove timestamps
+    .split('\n')
+    .map(line => line.trim())
+    .filter(line => line && !line.startsWith('['))  // Remove empty lines and metadata lines
+    .join('\n');
+}
+
 const publishLyrics = async () => {
   isPublishing.value = true
-  const plainLyrics = props.lyrics.replace(/^\[(.*)\] */mg, '')
+  const plainLyrics = extractPlainText(props.lyrics)
   const syncedLyrics = props.lyrics
   try {
     await invoke('publish_lyrics', {
@@ -142,18 +158,23 @@ const publishLyrics = async () => {
   } catch (error) {
     isError.value = true
     console.error(error)
-    toast.error(error)
+    toast.error(typeof error === 'string' ? error : 'Failed to publish lyrics')
   } finally {
     isPublishing.value = false
     close()
   }
 }
 
-onMounted(() => {
-  console.log('lintResult', props.lintResult)
-  listen('publish-lyrics-progress', (event) => {
+onMounted(async () => {
+  unlistenPublish = await listen('publish-lyrics-progress', (event) => {
     progress.value = event.payload
   })
+})
+
+onUnmounted(() => {
+  if (unlistenPublish) {
+    unlistenPublish()
+  }
 })
 
 const close = () => {

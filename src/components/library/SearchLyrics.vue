@@ -176,6 +176,39 @@ const initialize = async () => {
 
 onMounted(async () => {
   await initialize()
-doSearchLyrics()
 })
+
+const isPublishing = ref(false)
+const isError = ref(false)
+const progress = ref({
+  requestChallenge: 'Pending',
+  solveChallenge: 'Pending',
+  publishLyrics: 'Pending'
+})
+
+const publishPlainText = async () => {
+  isPublishing.value = true
+  const plainLyrics = props.lyrics
+  const syncedLyrics = ''
+  try {
+    await invoke('publish_lyrics', {
+      title: props.title,
+      albumName: props.albumName,
+      artistName: props.artistName,
+      duration: props.duration,
+      plainLyrics: plainLyrics,
+      syncedLyrics: syncedLyrics
+    })
+    toast.success('Your unsynced lyrics has been published successfully! It might take up to 24 hours to be visible on the search results.')
+    emit('close')
+  } catch (error) {
+    console.error(error)
+    toast.error(error.message || 'An error occurred while publishing lyrics')
+    isPublishing.value = false
+  }
+}
+
+const close = () => {
+  emit('close')
+}
 </script>
