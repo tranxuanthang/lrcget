@@ -149,3 +149,30 @@ pub async fn request(id: i64, lrclib_instance: &str) -> Result<Response> {
         .into()),
     }
 }
+
+use crate::utils::strip_timestamp;
+use anyhow::Result;
+use reqwest;
+use serde::{Deserialize, Serialize};
+use thiserror::Error;
+use std::time::Duration;
+
+// Reusing similar structures from get.rs
+use super::get::{RawResponse, Response, ResponseError};
+
+async fn make_request(id: i64, lrclib_instance: &str) -> Result<reqwest::Response> {
+    let version = env!("CARGO_PKG_VERSION");
+    let user_agent = format!("LRCGET/{}", version);
+
+    // Implementation would follow here
+    // This is just a placeholder structure
+    todo!("Implement make_request function for get_by_id")
+}
+
+pub async fn request_by_id(id: i64, lrclib_instance: &str) -> Result<Response> {
+    let response = make_request(id, lrclib_instance).await?;
+
+    // Implementation would follow here based on other files
+    // This is just a placeholder structure
+    todo!("Implement request_by_id function")
+}

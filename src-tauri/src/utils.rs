@@ -9,7 +9,7 @@ pub fn prepare_input(input: &str) -> String {
         .expect("Invalid regex pattern for special characters");
     prepared_input = special_chars_re.replace_all(&prepared_input, " ").to_string();
 
-    let apostrophe_re = Regex::new(r#"['’]"#)
+    let apostrophe_re = Regex::new(r#"['']"#)
         .expect("Invalid regex pattern for apostrophes");
     prepared_input = apostrophe_re.replace_all(&prepared_input, "").to_string();
 
