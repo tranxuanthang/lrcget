@@ -1,10 +1,6 @@
 <template>
-  <BaseModal
-    title="Configuration"
-    @beforeOpen="beforeOpenHandler"
-    @close="emit('close')"
-    body-class="flex flex-col h-full justify-between overflow-y-auto"
-  >
+  <BaseModal title="Configuration" @beforeOpen="beforeOpenHandler" @close="emit('close')"
+    body-class="flex flex-col h-full justify-between overflow-y-auto">
     <div class="flex flex-col gap-8">
       <div>
         <label class="group-label mb-4">Common</label>
@@ -12,65 +8,35 @@
         <div class="flex flex-col mb-4">
           <label class="block mb-2 child-label">Download lyrics for</label>
 
-          <RadioButton
-              class="mb-1"
-              v-model="downloadLyricsFor"
-              name="download-lyrics-for"
-              id="download-lyrics-for-all"
-              value="all"
-            >
-              Download lyrics for all songs
-            </RadioButton>
+          <RadioButton class="mb-1" v-model="downloadLyricsFor" name="download-lyrics-for" id="download-lyrics-for-all"
+            value="all">
+            Download lyrics for all songs
+          </RadioButton>
 
-            <RadioButton
-              class="mb-1"
-              v-model="downloadLyricsFor"
-              name="download-lyrics-for"
-              id="skip-synced"
-              value="skipSynced"
-            >
-              Download lyrics for songs without synced lyrics
-            </RadioButton>
+          <RadioButton class="mb-1" v-model="downloadLyricsFor" name="download-lyrics-for" id="skip-synced"
+            value="skipSynced">
+            Download lyrics for songs without synced lyrics
+          </RadioButton>
 
-            <RadioButton
-              class="mb-1"
-              v-model="downloadLyricsFor"
-              name="download-lyrics-for"
-              id="skip-plain"
-              value="skipPlain"
-            >
-              Download lyrics for songs without plain or synced lyrics
-            </RadioButton>
+          <RadioButton class="mb-1" v-model="downloadLyricsFor" name="download-lyrics-for" id="skip-plain"
+            value="skipPlain">
+            Download lyrics for songs without plain or synced lyrics
+          </RadioButton>
         </div>
 
         <div class="flex flex-col mb-4">
           <label class="block mb-2 child-label">Theme mode</label>
 
           <div class="flex gap-4">
-            <RadioButton
-              v-model="editingThemeMode"
-              name="theme-mode"
-              id="theme-auto"
-              value="auto"
-            >
+            <RadioButton v-model="editingThemeMode" name="theme-mode" id="theme-auto" value="auto">
               Auto
             </RadioButton>
 
-            <RadioButton
-              v-model="editingThemeMode"
-              name="theme-mode"
-              id="theme-light"
-              value="light"
-            >
+            <RadioButton v-model="editingThemeMode" name="theme-mode" id="theme-light" value="light">
               Light
             </RadioButton>
 
-            <RadioButton
-              v-model="editingThemeMode"
-              name="theme-mode"
-              id="theme-dark"
-              value="dark"
-            >
+            <RadioButton v-model="editingThemeMode" name="theme-mode" id="theme-dark" value="dark">
               Dark
             </RadioButton>
           </div>
@@ -78,7 +44,8 @@
 
         <div class="flex flex-col">
           <label class="block mb-2 child-label" for="lrclib-instance">LRCLIB instance</label>
-          <input id="lrclib-instance" type="text" v-model="editingLrclibInstance" placeholder="https://" class="input px-4 h-8">
+          <input id="lrclib-instance" type="text" v-model="editingLrclibInstance" placeholder="https://"
+            class="input px-4 h-8">
         </div>
       </div>
 
@@ -86,14 +53,11 @@
         <label class="group-label mb-4">Experimental</label>
 
         <div class="flex items-start">
-          <CheckboxButton
-            v-model="tryEmbedLyrics"
-            name="try-embed-lyrics"
-            id="try-embed-lyrics"
-          >
+          <CheckboxButton v-model="tryEmbedLyrics" name="try-embed-lyrics" id="try-embed-lyrics">
             <div class="flex flex-col">
               <span class="mb-0.5">Try to embed the lyrics to the track files when possible</span>
-              <span class="text-xs text-yellow-700 dark:text-yellow-400">This option could corrupt your track files. Make sure to backup your library before enabling it.</span>
+              <span class="text-xs text-yellow-700 dark:text-yellow-400">This option could corrupt your track files.
+                Make sure to backup your library before enabling it.</span>
             </div>
           </CheckboxButton>
         </div>

@@ -1,8 +1,6 @@
 <template>
   <div ref="parentRef" class="p-4 overflow-y-auto h-full" v-show="props.isActive">
-    <div
-      :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }"
-    >
+    <div :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }">
       <div class="w-full">
         <div class="w-full flex">
           <div class="text-xs text-brave-30/70 font-bold flex w-full dark:text-brave-95">
@@ -13,24 +11,15 @@
           </div>
         </div>
         <div class="w-full flex flex-col">
-          <div
-            v-for="virtualRow in virtualRows"
-            :key="virtualRow.index"
-            class="group flex flex-col w-full"
-            :style="{
-              position: 'absolute',
-              top: 0,
-              left: 0,
-              width: '100%',
-              height: `${virtualRow.size}px`,
-              transform: `translateY(${virtualRow.start}px)`,
-              }"
-          >
-            <TrackItem
-              :trackId="virtualRow.key"
-              @play-track="playTrack"
-              @download-lyrics="downloadLyrics"
-            />
+          <div v-for="virtualRow in virtualRows" :key="virtualRow.index" class="group flex flex-col w-full" :style="{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: `${virtualRow.size}px`,
+            transform: `translateY(${virtualRow.start}px)`,
+          }">
+            <TrackItem :trackId="virtualRow.key" @play-track="playTrack" @download-lyrics="downloadLyrics" />
           </div>
         </div>
       </div>

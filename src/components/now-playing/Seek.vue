@@ -1,31 +1,18 @@
 <template>
-  <VueSlider
-    v-model="progressPercent"
-    :min="0"
-    :max="1"
-    :interval="0.001"
-    :duration="0"
-    :rail-style="{ backgroundColor: '#ffd9e2' }"
-    :dot-style="{ transition: 'initial' }"
-    :tooltip-style="{ zIndex: 200 }"
-    tooltip="hover"
-    @change="chooseProgress"
-  >
-    <template #dot="{pos, index, value, focus, disabled}">
-      <div
-        class="w-full h-full rounded-full bg-brave-30"
-      />
+  <VueSlider v-model="progressPercent" :min="0" :max="1" :interval="0.001" :duration="0"
+    :rail-style="{ backgroundColor: '#ffd9e2' }" :dot-style="{ transition: 'initial' }" :tooltip-style="{ zIndex: 200 }"
+    tooltip="hover" @change="chooseProgress">
+    <template #dot="{ pos, index, value, focus, disabled }">
+      <div class="w-full h-full rounded-full bg-brave-30" />
     </template>
 
     <template #process="{ start, end }">
-      <div
-        class="absolute h-full rounded-full bg-brave-30"
-        :style="'width: ' + end + '%;'"
-      />
+      <div class="absolute h-full rounded-full bg-brave-30" :style="'width: ' + end + '%;'" />
     </template>
 
-    <template #tooltip="{pos, index, value, focus, disabled}">
-      <div v-if="value !== null" class="text-brave-30 text-[0.6rem] font-bold rounded-lg px-1 py-0.5 bg-brave-90">{{ humanDuration(value * props.duration) }}</div>
+    <template #tooltip="{ pos, index, value, focus, disabled }">
+      <div v-if="value !== null" class="text-brave-30 text-[0.6rem] font-bold rounded-lg px-1 py-0.5 bg-brave-90">{{
+        humanDuration(value * props.duration) }}</div>
     </template>
   </VueSlider>
 </template>

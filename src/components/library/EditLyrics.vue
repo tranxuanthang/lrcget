@@ -1,20 +1,12 @@
 <template>
-  <BaseModal
-    :click-to-close="false"
-    :esc-to-close="false"
-    content-class="w-full h-[80vh] max-w-screen-lg"
-    @close="emit('close')"
-    :title="`${editingTrack.title} - ${editingTrack.artist_name}`"
-  >
+  <BaseModal :click-to-close="false" :esc-to-close="false" content-class="w-full h-[80vh] max-w-screen-lg"
+    @close="emit('close')" :title="`${editingTrack.title} - ${editingTrack.artist_name}`">
     <template #titleLeft>
       <div class="flex-none flex gap-1 items-center">
         <VTooltip theme="lrcget-tooltip">
-          <button
-            class="button text-sm px-5 py-1.5 h-8 w-24 rounded-full"
-            :class="{ 'button-primary': isDirty, 'button-disabled': !isDirty }"
-            :disabled="!isDirty"
-            @click="saveLyrics"
-          >
+          <button class="button text-sm px-5 py-1.5 h-8 w-24 rounded-full"
+            :class="{ 'button-primary': isDirty, 'button-disabled': !isDirty }" :disabled="!isDirty"
+            @click="saveLyrics">
             Save
           </button>
 
@@ -27,17 +19,15 @@
         </VTooltip>
 
         <VTooltip theme="lrcget-tooltip">
-          <button
-            class="button text-sm px-5 py-1.5 h-8 w-24 rounded-full"
-            :class="{ 'button-primary': !isDirty, 'button-disabled': isDirty }"
-            :disabled="isDirty"
-            @click="handlePublish"
-          >
+          <button class="button text-sm px-5 py-1.5 h-8 w-24 rounded-full"
+            :class="{ 'button-primary': !isDirty, 'button-disabled': isDirty }" :disabled="isDirty"
+            @click="handlePublish">
             Publish
           </button>
 
           <template #popper>
-            <div v-if="isSynchronizedLyrics(unifiedLyrics)" class="text-xs font-bold">Publish synchronized lyrics to LRCLIB service</div>
+            <div v-if="isSynchronizedLyrics(unifiedLyrics)" class="text-xs font-bold">Publish synchronized lyrics to
+              LRCLIB service</div>
             <div v-else class="text-xs font-bold">Publish plain text lyrics to LRCLIB service</div>
           </template>
         </VTooltip>
@@ -54,7 +44,8 @@
           <AlertCircleOutline class="text-orange-500 text-2xl block" />
 
           <template #popper>
-            <div class="text-xs font-bold">Lyrics not synchronized<br />You can still publish it, but consider synchronizing it to help others</div>
+            <div class="text-xs font-bold">Lyrics not synchronized<br />You can still publish it, but consider
+              synchronizing it to help others</div>
           </template>
         </VTooltip>
 
@@ -72,21 +63,44 @@
       <div class="toolbar flex flex-col bg-brave-95 dark:bg-brave-10 rounded-lg">
         <div class="px-4 py-2 flex justify-between items-stretch gap-1">
           <div class="flex gap-1">
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line & move next (Alt+Enter)" @click="syncLine"><EqualEnter /> <span class="text-xs">Sync Line & Move Next</span></button>
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line (Alt+X)" @click="syncLine(false)"><Equal /></button>
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms (Alt+LeftArrow)" @click="rewind100"><Minus /></button>
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Forward line 100ms (Alt+RightArrow)" @click="fastForward100"><Plus /></button>
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Replay line (Alt+Z)" @click="repeatLine"><MotionPlay /></button>
+            <button class="button button-normal px-3 py-1 text-lg rounded-full"
+              title="Sync line & move next (Alt+Enter)" @click="syncLine">
+              <EqualEnter /> <span class="text-xs">Sync Line & Move Next</span>
+            </button>
+            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line (Alt+X)"
+              @click="syncLine(false)">
+              <Equal />
+            </button>
+            <button class="button button-normal px-3 py-1 text-lg rounded-full"
+              title="Rewind line 100ms (Alt+LeftArrow)" @click="rewind100">
+              <Minus />
+            </button>
+            <button class="button button-normal px-3 py-1 text-lg rounded-full"
+              title="Forward line 100ms (Alt+RightArrow)" @click="fastForward100">
+              <Plus />
+            </button>
+            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Replay line (Alt+Z)"
+              @click="repeatLine">
+              <MotionPlay />
+            </button>
           </div>
 
           <div>
-            <button class="button button-warning px-3 py-1 text-lg rounded-full" title="Mark track as instrumental" @click="markAsInstrumental"><Music /> <span class="text-xs">Mark Instrumental</span></button>
+            <button class="button button-warning px-3 py-1 text-lg rounded-full" title="Mark track as instrumental"
+              @click="markAsInstrumental">
+              <Music /> <span class="text-xs">Mark Instrumental</span>
+            </button>
           </div>
         </div>
         <div class="w-full border-b border-brave-90 dark:border-brave-20"></div>
         <div class="flex gap-4 items-center px-4 py-2">
-          <button v-if="status !== 'playing'" @click.prevent="resumeOrPlay" class="button button-normal p-2 rounded-full text-xl"><Play /></button>
-          <button v-else @click.prevent="pause" class="button button-normal p-2 rounded-full text-xl"><Pause /></button>
+          <button v-if="status !== 'playing'" @click.prevent="resumeOrPlay"
+            class="button button-normal p-2 rounded-full text-xl">
+            <Play />
+          </button>
+          <button v-else @click.prevent="pause" class="button button-normal p-2 rounded-full text-xl">
+            <Pause />
+          </button>
           <div class="flex-none w-12 text-xs">{{ humanDuration(progress) }}</div>
           <Seek class="grow" :duration="duration" :progress="progress" @seek="seek" />
           <div class="flex-none w-12 text-xs">{{ humanDuration(duration) }}</div>
@@ -96,23 +110,15 @@
       <!-- NOTE: AsyncCodemirror component does not have @wheel event handler, so it has to be handled here (in the container) -->
       <div class="relative h-full w-full" id="cm-container" ref="cmContainer">
         <div class="overflow-hidden absolute w-full" :style="{ height: `${cmHeight}px` }" @wheel="handleWheel">
-          <AsyncCodemirror
-            v-if="shouldLoadCodeMirror"
-            v-model="unifiedLyrics"
-            placeholder="Lyrics is currently empty"
-            class="codemirror-custom h-full outline-none"
-            :style="{ fontSize: `${codemirrorStyle.fontSize}em` }"
-            :autofocus="true"
-            :indent-with-tab="true"
-            :tab-size="2"
-            :extensions="extensions"
-            :config="{ height: 'auto' }"
-            @ready="handleReady"
-            @change="lyricsUpdated"
-          />
+          <AsyncCodemirror v-if="shouldLoadCodeMirror" v-model="unifiedLyrics" placeholder="Lyrics is currently empty"
+            class="codemirror-custom h-full outline-none" :style="{ fontSize: `${codemirrorStyle.fontSize}em` }"
+            :autofocus="true" :indent-with-tab="true" :tab-size="2" :extensions="extensions"
+            :config="{ height: 'auto' }" @ready="handleReady" @change="lyricsUpdated" />
 
           <div v-else class="flex flex-col h-full items-center justify-center text-sm text-brave-40">
-            <div class="animate-spin text-xl text-brave-30"><Loading /></div>
+            <div class="animate-spin text-xl text-brave-30">
+              <Loading />
+            </div>
             <div>Loading editor...</div>
           </div>
         </div>
@@ -120,9 +126,16 @@
 
       <div class="flex flex-col w-fit self-end bg-brave-95 dark:bg-brave-10 rounded-lg">
         <div class="toolbar px-2 py-1 flex items-stretch gap-1">
-          <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom out" @click="changeCodemirrorFontSizeBy(-1)"><MagnifyMinus /></button>
-          <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full w-[4.5em]" title="Reset zoom level" @click="resetCodemirrorFontSize">{{ (codemirrorStyle.fontSize * 100).toFixed(0) }}%</button>
-          <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom in" @click="changeCodemirrorFontSizeBy(+1)"><MagnifyPlus /></button>
+          <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom out"
+            @click="changeCodemirrorFontSizeBy(-1)">
+            <MagnifyMinus />
+          </button>
+          <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full w-[4.5em]" title="Reset zoom level"
+            @click="resetCodemirrorFontSize">{{ (codemirrorStyle.fontSize * 100).toFixed(0) }}%</button>
+          <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom in"
+            @click="changeCodemirrorFontSizeBy(+1)">
+            <MagnifyPlus />
+          </button>
         </div>
       </div>
     </div>
@@ -250,7 +263,7 @@ const lineHighlightField = StateField.define({
         lines = Decoration.none
       } else if (e.is(addLineHighlight)) {
         lines = Decoration.none
-        lines = lines.update({add: [lineHighlightMark.range(e.value)]})
+        lines = lines.update({ add: [lineHighlightMark.range(e.value)] })
       }
     }
     return lines
@@ -329,7 +342,7 @@ const syncLine = (moveNext = true) => {
   const stringifiedTime = timestampToString(progress.value, standard.msPrecision)
   const replacedText = currentLineText.replace(
     /^(\s*\[(.*)\]\s*)*/g,
-    `[${stringifiedTime}]${standard.space ? ' ': ''}`
+    `[${stringifiedTime}]${standard.space ? ' ' : ''}`
   )
 
   view.dispatch({

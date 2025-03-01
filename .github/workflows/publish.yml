@@ -27,7 +27,7 @@ jobs:
       - name: setup node
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: 'lts/*'
       - name: install Rust stable
         uses: dtolnay/rust-toolchain@stable
         with:
@@ -50,7 +50,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tagName: __VERSION__ # the action automatically replaces \_\_VERSION\_\_ with the app version
+          tagName: __VERSION__ # the action automatically replaces __VERSION__ with the app version
           releaseName: '__VERSION__'
           releaseBody: 'See the assets to download this version and install.'
           releaseDraft: true

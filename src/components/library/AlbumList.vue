@@ -36,19 +36,24 @@
 </template>
 
 <script setup>
-import { DownloadMultiple } from 'mdue'
 import { ref, computed, onMounted, watch } from 'vue'
 import AlbumItem from './album-list/AlbumItem.vue'
 import AlbumTrackList from './album-list/AlbumTrackList.vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
+import { useDownloader } from '@/composables/downloader.js'
 
-const props = defineProps(['isActive'])
+const props = defineProps({
+  isActive: {
+    type: Boolean,
+    default: false
+  }
+})
 
 const albumIds = ref([])
 const parentRef = ref(null)
 const currentAlbum = ref(null)
+const loading = ref(false)
 
 const rowVirtualizer = useVirtualizer(
   computed(() => ({
@@ -62,22 +67,58 @@ const rowVirtualizer = useVirtualizer(
 )
 
 const virtualRows = computed(() => rowVirtualizer.value.getVirtualItems())
-
 const totalSize = computed(() => rowVirtualizer.value.getTotalSize())
 
 const openAlbum = async (album) => {
   currentAlbum.value = album
 }
 
+const loadAlbums = async () => {
+  if (loading.value) return
+  loading.value = true
+
+  try {
+    albumIds.value = await invoke('get_album_ids')
+  } catch (error) {
+    console.error('Failed to load albums:', error)
+  } finally {
+    loading.value = false
+  }
+}
+
+const { addToQueue } = useDownloader()
+
+const downloadLyricsMultiple = async (albumId) => {
+  const config = await invoke('get_config')
+  const trackIds = await invoke('get_album_track_ids', {
+    albumId: albumId,
+    withoutPlainLyrics: config.skip_tracks_with_plain_lyrics,
+    withoutSyncedLyrics: config.skip_tracks_with_synced_lyrics
+  })
+  addToQueue(trackIds)
+}
+
 onMounted(async () => {
   if (props.isActive) {
-    albumIds.value = await invoke('get_album_ids')
+    await loadAlbums()
   }
 })
 
-watch(() => props.isActive, async () => {
-  if (props.isActive) {
-    albumIds.value = await invoke('get_album_ids')
+watch(() => props.isActive, async (isActive) => {
+  if (isActive) {
+    await loadAlbums()
   }
 })
 </script>
+
+<style scoped>
+.slide-fade-enter-active,
+.slide-fade-leave-active {
+  transition: all 0.3s ease;
+}
+.slide-fade-enter-from,
+.slide-fade-leave-to {
+  transform: translateX(20px);
+  opacity: 0;
+}
+</style>
