@@ -1,65 +1,37 @@
 <template>
-  <BaseModal
-    title="Search Lyrics"
-    @close="emit('close')"
-    content-class="w-full h-[80vh] max-w-screen-sm"
-    background="non-interactive"
-    :lock-scroll="true"
-  >
+  <BaseModal title="Search Lyrics" @close="emit('close')" content-class="w-full h-[80vh] max-w-screen-sm"
+    background="non-interactive" :lock-scroll="true">
     <div class="grow overflow-hidden flex flex-col gap-6">
       <form @submit.prevent="doSearchLyrics" class="flex flex-col flex-none gap-4">
         <div class="grid grid-cols-2 gap-2">
           <div class="col-span-2">
             <label for="title" class="group-label mb-1">Title</label>
-            <input
-              type="text"
-              id="title"
-              v-model="title"
-              class="input w-full py-1.5 px-2"
-              placeholder="Title"
-              :disabled="loading"
-            >
+            <input type="text" id="title" v-model="title" class="input w-full py-1.5 px-2" placeholder="Title"
+              :disabled="loading">
           </div>
 
           <div>
             <label for="albumName" class="group-label mb-1">Album</label>
-            <input
-              type="text"
-              id="albumName"
-              v-model="albumName"
-              class="input w-full py-1.5 px-2"
-              placeholder="Album"
-              :disabled="loading"
-            >
+            <input type="text" id="albumName" v-model="albumName" class="input w-full py-1.5 px-2" placeholder="Album"
+              :disabled="loading">
           </div>
 
           <div>
             <label for="artistName" class="group-label mb-1">Artist</label>
-            <input
-              type="text"
-              id="artistName"
-              v-model="artistName"
-              class="input w-full py-1.5 px-2"
-              placeholder="Artist"
-              :disabled="loading"
-            >
+            <input type="text" id="artistName" v-model="artistName" class="input w-full py-1.5 px-2"
+              placeholder="Artist" :disabled="loading">
           </div>
 
           <div class="col-span-2">
             <label for="trackId" class="group-label mb-1">Track ID</label>
-            <input
-              type="text"
-              id="trackId"
-              v-model="trackId"
-              class="input w-full py-1.5 px-2"
-              placeholder="Track ID"
-              :disabled="loading"
-            >
+            <input type="text" id="trackId" v-model="trackId" class="input w-full py-1.5 px-2" placeholder="Track ID"
+              :disabled="loading">
           </div>
         </div>
 
         <div class="col-span-2 flex justify-center">
-          <button class="button rounded-full text-xs px-6 py-2" :class="{ 'button-disabled': loading,  'button-primary': !loading }" :disabled="loading">Search</button>
+          <button class="button rounded-full text-xs px-6 py-2"
+            :class="{ 'button-disabled': loading, 'button-primary': !loading }" :disabled="loading">Search</button>
         </div>
       </form>
 
@@ -70,26 +42,37 @@
 
         <div v-else class="flex flex-col h-full gap-2 overflow-auto">
           <div v-if="searchResult && searchResult.length" class="flex flex-col gap-1 overflow-auto">
-            <div v-for="item in searchResult" :key="item.id" class="rounded bg-brave-98 dark:bg-brave-10 hover:bg-brave-95 hover:dark:bg-brave-10 border border-transparent hover:dark:border-brave-30 transition px-2 py-1 flex gap-2">
+            <div v-for="item in searchResult" :key="item.id"
+              class="rounded bg-brave-98 dark:bg-brave-10 hover:bg-brave-95 hover:dark:bg-brave-10 border border-transparent hover:dark:border-brave-30 transition px-2 py-1 flex gap-2">
               <div class="h-full overflow-hidden grow">
                 <div class="text-sm font-bold">
                   <span class="mr-2 text-brave-30 dark:text-brave-95">{{ item.name }}</span>
-                  <span v-if="item.syncedLyrics" class="text-green-200 font-bold text-[0.65rem] bg-green-800 rounded px-1 py-0.5">Synced</span>
-                  <span v-else-if="item.plainLyrics" class="text-gray-200 font-bold text-[0.65rem] bg-gray-800 rounded px-1 py-0.5">Plain</span>
-                  <span v-else-if="item.instrumental" class="text-gray-200 font-bold text-[0.65rem] bg-gray-500 rounded px-1 py-0.5">Instrumental</span>
-                  <span v-if="Math.round(item.duration) - Math.round(searchingTrack.duration) > 2" class="ml-1 text-blue-800 text-[0.75rem]">
+                  <span v-if="item.syncedLyrics"
+                    class="text-green-200 font-bold text-[0.65rem] bg-green-800 rounded px-1 py-0.5">Synced</span>
+                  <span v-else-if="item.plainLyrics"
+                    class="text-gray-200 font-bold text-[0.65rem] bg-gray-800 rounded px-1 py-0.5">Plain</span>
+                  <span v-else-if="item.instrumental"
+                    class="text-gray-200 font-bold text-[0.65rem] bg-gray-500 rounded px-1 py-0.5">Instrumental</span>
+                  <span v-if="Math.round(item.duration) - Math.round(searchingTrack.duration) > 2"
+                    class="ml-1 text-blue-800 text-[0.75rem]">
                     +{{ humanDuration(Math.abs(item.duration - Math.round(searchingTrack.duration))) }}
                   </span>
-                  <span v-else-if="Math.round(item.duration) - Math.round(searchingTrack.duration) < -2" class="ml-1 text-blue-800 text-[0.75rem]">
+                  <span v-else-if="Math.round(item.duration) - Math.round(searchingTrack.duration) < -2"
+                    class="ml-1 text-blue-800 text-[0.75rem]">
                     -{{ humanDuration(Math.abs(item.duration - Math.round(searchingTrack.duration))) }}
                   </span>
                 </div>
-                <div class="text-sm text-brave-35 dark:text-brave-90 truncate"><span>{{ item.albumName }}</span> | <span>{{ item.artistName }}</span></div>
+                <div class="text-sm text-brave-35 dark:text-brave-90 truncate"><span>{{ item.albumName }}</span> |
+                  <span>{{ item.artistName }}</span></div>
               </div>
 
               <div class="flex gap-2 items-center">
-                <button class="button-tiny" title="Preview this lyrics" @click="preview(item)"><Eye /></button>
-                <button class="button-tiny" title="Apply this lyrics" @click="apply(item)"><ContentSave /></button>
+                <button class="button-tiny" title="Preview this lyrics" @click="preview(item)">
+                  <Eye />
+                </button>
+                <button class="button-tiny" title="Apply this lyrics" @click="apply(item)">
+                  <ContentSave />
+                </button>
               </div>
             </div>
           </div>

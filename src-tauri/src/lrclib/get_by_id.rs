@@ -154,8 +154,8 @@ use crate::utils::strip_timestamp;
 use anyhow::Result;
 use reqwest;
 use serde::{Deserialize, Serialize};
-use thiserror::Error;
 use std::time::Duration;
+use thiserror::Error;
 
 // Reusing similar structures from get.rs
 use super::get::{RawResponse, Response, ResponseError};

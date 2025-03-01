@@ -1,29 +1,45 @@
 <template>
   <div>
-    <LyricsViewer v-if="lyrics && !instrumental" :lyrics="lyrics" :duration="duration" :progress="progress" @lyrics-clicked="lyricsClicked" />
+    <LyricsViewer v-if="lyrics && !instrumental" :lyrics="lyrics" :duration="duration" :progress="progress"
+      @lyrics-clicked="lyricsClicked" />
     <PlainLyricsViewer v-else-if="plainLyrics && !instrumental" :lyrics="plainLyrics" />
     <div v-else class="border-b border-brave-90/50 dark:border-brave-30"></div>
-    <div class="bg-brave-95 backdrop-blur px-4 py-3 flex-none flex flex-col justify-center items-center gap-3 dark:bg-brave-10">
+    <div
+      class="bg-brave-95 backdrop-blur px-4 py-3 flex-none flex flex-col justify-center items-center gap-3 dark:bg-brave-10">
       <div class="w-full flex gap-1 justify-center items-center">
         <div class="flex-none w-12 text-xs text-brave-30 dark:text-brave-80">{{ humanDuration(progress) }}</div>
         <Seek class="grow" :duration="duration" :progress="progress" @seek="seek" />
-        <div class="flex-none text-right w-12 text-xs text-brave-30 dark:text-brave-80">{{ humanDuration(duration) }}</div>
+        <div class="flex-none text-right w-12 text-xs text-brave-30 dark:text-brave-80">{{ humanDuration(duration) }}
+        </div>
       </div>
 
       <div class="flex justify-between w-full">
         <div class="basis-1/3 flex-1 grow-0 flex flex-col justify-center items-start gap-0.5">
           <div v-if="playingTrack">
             <div class="text-xs font-bold text-brave-30 dark:text-brave-95 line-clamp-1">{{ playingTrack.title }}</div>
-            <div class="text-xs text-brave-40 dark:text-brave-90 line-clamp-1">{{ playingTrack.album_name }} - {{ playingTrack.artist_name }}</div>
+            <div class="text-xs text-brave-40 dark:text-brave-90 line-clamp-1">{{ playingTrack.album_name }} - {{
+              playingTrack.artist_name }}</div>
           </div>
         </div>
 
         <div class="basis-1/3 flex-1 flex justify-center items-center gap-2">
-          <button @click.prevent="seek(reverse10)" class="button button-secondary p-1 m-1 rounded-full text-lg"><Rewind_10 /></button>
-          <button v-if="status === 'playing'" @click.prevent="pause" class="button button-primary text-white p-2 rounded-full text-xl"><Pause /></button>
-          <button v-else-if="playingTrack && status === 'stopped'" @click.prevent="playTrack(playingTrack)" class="button button-primary text-white p-2 rounded-full text-xl"><Replay /></button>
-          <button v-else @click.prevent="resume" class="button button-primary text-white p-2 rounded-full text-xl"><Play /></button>
-          <button @click.prevent="seek(forward10)" class="button button-secondary p-1 m-1 rounded-full text-lg"><FastForward_10 /></button>
+          <button @click.prevent="seek(reverse10)" class="button button-secondary p-1 m-1 rounded-full text-lg">
+            <Rewind_10 />
+          </button>
+          <button v-if="status === 'playing'" @click.prevent="pause"
+            class="button button-primary text-white p-2 rounded-full text-xl">
+            <Pause />
+          </button>
+          <button v-else-if="playingTrack && status === 'stopped'" @click.prevent="playTrack(playingTrack)"
+            class="button button-primary text-white p-2 rounded-full text-xl">
+            <Replay />
+          </button>
+          <button v-else @click.prevent="resume" class="button button-primary text-white p-2 rounded-full text-xl">
+            <Play />
+          </button>
+          <button @click.prevent="seek(forward10)" class="button button-secondary p-1 m-1 rounded-full text-lg">
+            <FastForward_10 />
+          </button>
         </div>
 
         <div class="basis-1/3 flex-1 flex justify-end items-center">
@@ -121,9 +137,9 @@ onMounted(async () => {
       case 'Space':
       case 'Enter':
         event.preventDefault()
-        if (status.value==='playing') {
+        if (status.value === 'playing') {
           pause()
-        } else if (playingTrack.value && status.value==='stopped') {
+        } else if (playingTrack.value && status.value === 'stopped') {
           playTrack(playingTrack.value)
         } else {
           resume()

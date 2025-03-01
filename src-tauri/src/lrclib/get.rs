@@ -92,10 +92,7 @@ async fn make_request(
     Ok(client.get(url).send().await?)
 }
 
-async fn make_request_by_id(
-    id: i64,
-    lrclib_instance: &str,
-) -> Result<reqwest::Response> {
+async fn make_request_by_id(id: i64, lrclib_instance: &str) -> Result<reqwest::Response> {
     let version = env!("CARGO_PKG_VERSION");
     let user_agent = format!(
         "LRCGET v{} (https://github.com/tranxuanthang/lrcget)",
@@ -157,10 +154,7 @@ pub async fn request_raw(
     }
 }
 
-pub async fn request_raw_by_id(
-    id: i64,
-    lrclib_instance: &str,
-) -> Result<RawResponse> {
+pub async fn request_raw_by_id(id: i64, lrclib_instance: &str) -> Result<RawResponse> {
     let res = make_request_by_id(id, lrclib_instance).await?;
 
     match res.status() {

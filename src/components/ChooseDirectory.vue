@@ -6,35 +6,25 @@
 
     <div class="grow flex flex-col items-center justify-center gap-8 w-full max-w-screen-sm">
       <div class="flex flex-col gap-2 w-full justify-center items-center">
-        <div
-          v-for="(directory, index) in directories"
-          :key="directory"
-          class="w-full bg-brave-90 dark:bg-brave-10 text-brave-5 dark:text-brave-95 font-bold p-4 rounded-lg flex items-center"
-        >
+        <div v-for="(directory, index) in directories" :key="directory"
+          class="w-full bg-brave-90 dark:bg-brave-10 text-brave-5 dark:text-brave-95 font-bold p-4 rounded-lg flex items-center">
           <div class="grow">
             {{ directory }}
           </div>
-          <button
-            class="flex-none button button-normal p-2 rounded-full"
-            @click.prevent="removeDirectory(index)"
-          >
+          <button class="flex-none button button-normal p-2 rounded-full" @click.prevent="removeDirectory(index)">
             <Close />
           </button>
         </div>
 
         <button
           class="w-full bg-brave-95 dark:bg-brave-5 hover:bg-brave-90 hover:dark:bg-brave-10 active:bg-brave-80/50 transition text-brave-5 dark:text-brave-95 font-bold p-4 rounded-lg flex items-center border border-dashed border-brave-70 dark:border-brave-30"
-          @click.prevent="chooseDirectory"
-        >
+          @click.prevent="chooseDirectory">
           <Plus />
           <div>Add new directory</div>
         </button>
       </div>
 
-      <button
-        class="button button-primary w-full p-4 rounded-lg"
-        @click.prevent="progressStep"
-      >
+      <button class="button button-primary w-full p-4 rounded-lg" @click.prevent="progressStep">
         Continue
       </button>
     </div>

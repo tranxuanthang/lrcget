@@ -67,9 +67,7 @@
     ],
     "security": {
       "assetProtocol": {
-        "scope": [
-          "**"
-        ],
+        "scope": ["**"],
         "enable": true
       },
       "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost; media-src *; connect-src ipc: http://ipc.localhost 'self' asset: *; style-src 'unsafe-inline' 'self'"

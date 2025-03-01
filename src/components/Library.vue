@@ -1,39 +1,29 @@
 <template>
   <div v-if="!isLoading" class="flex flex-col w-full h-screen">
-    <LibraryHeader
-      :activeTab="activeTab"
-      @changeActiveTab="changeActiveTab"
-      @showConfig="openConfigModal"
-      @showAbout="openAboutModal"
-      @showDownloadViewer="openDownloadViewer"
-    />
+    <LibraryHeader :activeTab="activeTab" @changeActiveTab="changeActiveTab" @showConfig="openConfigModal"
+      @showAbout="openAboutModal" @showDownloadViewer="openDownloadViewer" />
 
     <div class="relative grow overflow-hidden">
-      <TrackList
-        :isActive="activeTab === 'tracks'"
-      />
+      <TrackList :isActive="activeTab === 'tracks'" />
 
-      <AlbumList
-        :isActive="activeTab === 'albums'"
-      />
+      <AlbumList :isActive="activeTab === 'albums'" />
 
-      <ArtistList
-        :isActive="activeTab === 'artists'"
-      />
+      <ArtistList :isActive="activeTab === 'artists'" />
 
-      <MyLrclib
-        :isActive="activeTab === 'my-lrclib'"
-      />
+      <MyLrclib :isActive="activeTab === 'my-lrclib'" />
     </div>
 
     <NowPlaying class="flex-none" />
   </div>
 
   <div v-else class="flex flex-col justify-center items-center w-full h-full">
-    <div class="animate-spin text-xl text-brave-30"><Loading /></div>
+    <div class="animate-spin text-xl text-brave-30">
+      <Loading />
+    </div>
     <div v-if="isInitializing" class="flex flex-col items-center justify-center text-sm text-brave-40">
       <div>Initializing library...</div>
-      <div v-if="initializeProgress">{{ initializeProgress.filesScanned }}/{{ initializeProgress.filesCount }} files scanned</div>
+      <div v-if="initializeProgress">{{ initializeProgress.filesScanned }}/{{ initializeProgress.filesCount }} files
+        scanned</div>
     </div>
 
     <div v-else class="flex flex-col items-center justify-center text-sm text-brave-40">
