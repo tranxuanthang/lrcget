@@ -42,7 +42,8 @@ tauri-plugin-dialog = "2"
 tauri-plugin-os = "2"
 tauri-plugin-shell = "2.2.1"
 thiserror = "1.0"
-tokio = { version = "1.43", features = ["full"] }
+
+tokio = { version = "1.44", features = ["full"] }
 
 [features]
 # by default Tauri runs in production mode
