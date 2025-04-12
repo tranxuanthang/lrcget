@@ -49,5 +49,5 @@ document.addEventListener(
     event.preventDefault();
     return false;
   },
-  { capture: true }
+  { capture: true },
 );

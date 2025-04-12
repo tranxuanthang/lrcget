@@ -35,7 +35,7 @@ export const detectStandard = (lyrics) => {
   // Split into lines and find first line with timestamp
   const lines = lyrics.split("\n");
   const firstTimestampLine = lines.find((line) =>
-    /^\[\d{2}:\d{2}[.:]\d{2,3}\]/.test(line)
+    /^\[\d{2}:\d{2}[.:]\d{2,3}\]/.test(line),
   );
 
   // If no timestamp line is found (e.g. the lyrics are not synchronized), return the first format
