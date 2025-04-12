@@ -34,7 +34,7 @@ symphonia = {version = "0.5.4", features = ["all"]}
 tauri = {version = "2", features = ["protocol-asset", "devtools"]}
 tauri-plugin-dialog = "2"
 tauri-plugin-os = "2"
-tauri-plugin-shell = "2"
+tauri-plugin-shell = "2.2.1"
 thiserror = "1.0"
 tokio = {version = "1.43", features = ["full"]}
 
