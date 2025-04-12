@@ -11,32 +11,38 @@ version = "0.9.3"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = {version = "2", features = []}
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
+rustls = "0.22.3" # Explicitly require patched version
 anyhow = "1.0.89"
 collapse = "0.1.2"
 data-encoding = "2.4.0"
 globwalk = "0.9.1"
 indoc = "2"
 kira = "0.9.5"
-lofty = "0.21.1"
+lofty = "0.22.0" # Updated from 0.21.1
 lrc = "0.1.8"
 rayon = "1.10.0"
 regex = "1.10.4"
-reqwest = {version = "0.12.7", features = ["json"]}
+reqwest = { version = "0.12.7", features = [
+    "rustls-tls",
+] } # Forces newer idna version
 ring = "0.17.12"
-rusqlite = {version = "0.32.1", features = ["bundled"]}
-secular = {version = "1.0.1", features = ["bmp", "normalization"]}
-serde = {version = "1.0", features = ["derive"]}
+rusqlite = { version = "0.32.1", features = ["bundled"] }
+secular = { version = "1.0.1", features = ["bmp", "normalization"] }
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-symphonia = {version = "0.5.4", features = ["all"]}
-tauri = {version = "2", features = ["protocol-asset", "devtools"]}
+symphonia = { version = "0.5.4", features = ["all"] }
+tauri = { version = "2.2.0", features = [
+    "protocol-asset",
+    "devtools",
+] } # Updated from 2.1.1
 tauri-plugin-dialog = "2"
 tauri-plugin-os = "2"
 tauri-plugin-shell = "2.2.1"
 thiserror = "1.0"
-tokio = {version = "1.43", features = ["full"]}
+tokio = { version = "1.43", features = ["full"] }
 
 [features]
 # by default Tauri runs in production mode
