@@ -127,7 +127,7 @@ const downloadNext = async () => {
           // All downloads completed
           const toast = useToast();
           toast.success(
-            `Download completed: ${successCount.value} succeeded, ${failureCount.value} failed`
+            `Download completed: ${successCount.value} succeeded, ${failureCount.value} failed`,
           );
           isDownloading.value = false;
           break;
@@ -256,7 +256,7 @@ const saveHistory = () => {
         successCount: successCount.value,
         failureCount: failureCount.value,
         timestamp: new Date().toISOString(),
-      })
+      }),
     );
   } catch (e) {
     console.error("Failed to save download history to local storage", e);
@@ -286,7 +286,7 @@ watch(
   () => {
     saveHistory();
   },
-  { deep: true }
+  { deep: true },
 );
 
 export function useDownloader() {

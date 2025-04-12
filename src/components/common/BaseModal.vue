@@ -1,7 +1,11 @@
 <template>
   <Teleport to="body">
     <Transition name="modal-fade">
-      <div v-if="modelValue || isOpen" class="modal-backdrop" @click.self="handleBackdropClick">
+      <div
+        v-if="modelValue || isOpen"
+        class="modal-backdrop"
+        @click.self="handleBackdropClick"
+      >
         <div class="modal-container">
           <div :class="['modal-content', contentClass]">
             <div class="modal-header">
@@ -10,8 +14,18 @@
               </slot>
               <button v-if="closeButton" class="modal-close" @click="close">
                 <span class="sr-only">Close</span>
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                <svg
+                  class="w-4 h-4"
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="2"
+                    d="M6 18L18 6M6 6l12 12"
+                  />
                 </svg>
               </button>
             </div>
@@ -29,38 +43,38 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, onUnmounted } from 'vue';
+import { ref, watch, onMounted, onUnmounted } from "vue";
 
 const isOpen = ref(false);
 
 const props = defineProps({
   modelValue: {
     type: Boolean,
-    default: undefined
+    default: undefined,
   },
   clickToClose: {
     type: Boolean,
-    default: true
+    default: true,
   },
   escToClose: {
     type: Boolean,
-    default: true
+    default: true,
   },
   closeButton: {
     type: Boolean,
-    default: true
+    default: true,
   },
   title: {
     type: String,
-    default: ''
+    default: "",
   },
   contentClass: {
     type: String,
-    default: ''
-  }
+    default: "",
+  },
 });
 
-const emit = defineEmits(['update:modelValue', 'close']);
+const emit = defineEmits(["update:modelValue", "close"]);
 
 const handleBackdropClick = () => {
   if (props.clickToClose) {
@@ -69,34 +83,41 @@ const handleBackdropClick = () => {
 };
 
 const handleEsc = (e) => {
-  if (e.key === 'Escape' && props.escToClose && (props.modelValue || isOpen.value)) {
+  if (
+    e.key === "Escape" &&
+    props.escToClose &&
+    (props.modelValue || isOpen.value)
+  ) {
     close();
   }
 };
 
 const close = () => {
   if (props.modelValue !== undefined) {
-    emit('update:modelValue', false);
+    emit("update:modelValue", false);
   } else {
     isOpen.value = false;
   }
-  emit('close');
+  emit("close");
 };
 
-watch(() => props.modelValue, (newVal) => {
-  if (newVal === undefined) return;
-  isOpen.value = newVal;
-});
+watch(
+  () => props.modelValue,
+  (newVal) => {
+    if (newVal === undefined) return;
+    isOpen.value = newVal;
+  },
+);
 
 onMounted(() => {
   if (props.modelValue === undefined) {
     isOpen.value = true;
   }
-  document.addEventListener('keydown', handleEsc);
+  document.addEventListener("keydown", handleEsc);
 });
 
 onUnmounted(() => {
-  document.removeEventListener('keydown', handleEsc);
+  document.removeEventListener("keydown", handleEsc);
 });
 </script>
 

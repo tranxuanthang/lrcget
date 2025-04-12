@@ -42,13 +42,25 @@
         </div>
       </div>
 
-      <div v-if="isDownloading || downloadedCount > 0" class="download-progress">
+      <div
+        v-if="isDownloading || downloadedCount > 0"
+        class="download-progress"
+      >
         <div class="flex items-center justify-between mb-1 text-sm">
-          <span>{{ downloadedCount }} of {{ totalCount }} tracks ({{ Math.floor(downloadProgress * 100) }}%)</span>
+          <span
+            >{{ downloadedCount }} of {{ totalCount }} tracks ({{
+              Math.floor(downloadProgress * 100)
+            }}%)</span
+          >
           <span v-if="isDownloading">{{ remainingTime }} remaining</span>
         </div>
-        <div class="h-2 w-full bg-brave-95 dark:bg-brave-20 rounded-full overflow-hidden">
-          <div class="h-full bg-brave-40 dark:bg-brave-60" :style="`width: ${downloadProgress * 100}%`"></div>
+        <div
+          class="h-2 w-full bg-brave-95 dark:bg-brave-20 rounded-full overflow-hidden"
+        >
+          <div
+            class="h-full bg-brave-40 dark:bg-brave-60"
+            :style="`width: ${downloadProgress * 100}%`"
+          ></div>
         </div>
       </div>
 
@@ -60,7 +72,8 @@
           <span class="font-bold">{{ failureCount }}</span> failed
         </div>
         <div v-if="isDownloading" class="text-blue-600">
-          <span class="font-bold">{{ downloadSpeed.toFixed(1) }}</span> tracks/min
+          <span class="font-bold">{{ downloadSpeed.toFixed(1) }}</span>
+          tracks/min
         </div>
       </div>
 
@@ -73,7 +86,9 @@
 
       <div v-if="log.length > 0" class="download-log mt-2">
         <h4 class="text-sm font-bold mb-1">Recent Activity</h4>
-        <div class="log-entries h-32 overflow-auto border border-brave-90 dark:border-brave-20 rounded p-1">
+        <div
+          class="log-entries h-32 overflow-auto border border-brave-90 dark:border-brave-20 rounded p-1"
+        >
           <div
             v-for="(entry, index) in log.slice(0, 50)"
             :key="index"
@@ -86,8 +101,10 @@
             }"
           >
             <div class="flex justify-between">
-              <span class="font-semibold">{{ entry.title || 'System' }}</span>
-              <span class="text-brave-40">{{ formatTime(entry.timestamp) }}</span>
+              <span class="font-semibold">{{ entry.title || "System" }}</span>
+              <span class="text-brave-40">{{
+                formatTime(entry.timestamp)
+              }}</span>
             </div>
             <div>{{ entry.message }}</div>
           </div>
@@ -98,8 +115,8 @@
 </template>
 
 <script setup>
-import { Pause, Play, Stop, Delete } from 'mdue'
-import { useDownloader } from '@/composables/downloader'
+import { Pause, Play, Stop, Delete } from "mdue";
+import { useDownloader } from "@/composables/downloader";
 
 const {
   isDownloading,
@@ -119,11 +136,15 @@ const {
   resumeDownloading,
   stopDownloading,
   startOver,
-} = useDownloader()
+} = useDownloader();
 
 const formatTime = (timestamp) => {
-  if (!timestamp) return '';
+  if (!timestamp) return "";
   const date = new Date(timestamp);
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-}
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
+};
 </script>

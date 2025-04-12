@@ -98,7 +98,7 @@ For example, you need the following components to start the development in Windo
 
 Start the development window with the following command:
 
-``` shell
+```shell
 cd lrcget
 npm install
 npm run tauri dev
@@ -108,7 +108,7 @@ npm run tauri dev
 
 Start the build process with the following command:
 
-``` shell
+```shell
 cd lrcget
 npm install
 npm run tauri build
