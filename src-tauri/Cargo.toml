@@ -25,7 +25,7 @@ lrc = "0.1.8"
 rayon = "1.10.0"
 regex = "1.10.4"
 reqwest = {version = "0.12.7", features = ["json"]}
-ring = "0.17.8"
+ring = "0.17.12"
 rusqlite = {version = "0.32.1", features = ["bundled"]}
 secular = {version = "1.0.1", features = ["bmp", "normalization"]}
 serde = {version = "1.0", features = ["derive"]}
