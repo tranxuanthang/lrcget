@@ -29,6 +29,7 @@
     "vue-toastification": "^2.0.0-rc.5"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.29.4",
     "@tauri-apps/cli": "^2.1.0",
     "@vitejs/plugin-vue": "^5.2.1",
     "autoprefixer": "^10.4.12",
