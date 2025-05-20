@@ -19,7 +19,7 @@ use regex::Regex;
 use rusqlite::Connection;
 use serde::Serialize;
 use state::{AppState, ServiceAccess};
-use tauri::{AppHandle, Manager, State, Emitter};
+use tauri::{AppHandle, Emitter, Manager, State};
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -160,7 +160,13 @@ async fn get_track_ids(
     let conn_guard = app_state.db.lock().unwrap();
     let conn = conn_guard.as_ref().unwrap();
     let search_query = search_query.filter(|s| !s.is_empty());
-    let track_ids = library::get_track_ids(search_query, without_plain_lyrics.unwrap_or(false), without_synced_lyrics.unwrap_or(false), conn).map_err(|err| err.to_string())?;
+    let track_ids = library::get_track_ids(
+        search_query,
+        without_plain_lyrics.unwrap_or(false),
+        without_synced_lyrics.unwrap_or(false),
+        conn,
+    )
+    .map_err(|err| err.to_string())?;
 
     Ok(track_ids)
 }
@@ -270,7 +276,13 @@ async fn get_album_track_ids(
 ) -> Result<Vec<i64>, String> {
     let conn_guard = app_state.db.lock().unwrap();
     let conn = conn_guard.as_ref().unwrap();
-    let track_ids = library::get_album_track_ids(album_id, without_plain_lyrics.unwrap_or(false), without_synced_lyrics.unwrap_or(false), conn).map_err(|err| err.to_string())?;
+    let track_ids = library::get_album_track_ids(
+        album_id,
+        without_plain_lyrics.unwrap_or(false),
+        without_synced_lyrics.unwrap_or(false),
+        conn,
+    )
+    .map_err(|err| err.to_string())?;
 
     Ok(track_ids)
 }
@@ -284,8 +296,13 @@ async fn get_artist_track_ids(
 ) -> Result<Vec<i64>, String> {
     let conn_guard = app_state.db.lock().unwrap();
     let conn = conn_guard.as_ref().unwrap();
-    let track_ids =
-        library::get_artist_track_ids(artist_id, without_plain_lyrics.unwrap_or(false), without_synced_lyrics.unwrap_or(false), conn).map_err(|err| err.to_string())?;
+    let track_ids = library::get_artist_track_ids(
+        artist_id,
+        without_plain_lyrics.unwrap_or(false),
+        without_synced_lyrics.unwrap_or(false),
+        conn,
+    )
+    .map_err(|err| err.to_string())?;
 
     Ok(track_ids)
 }
@@ -573,26 +590,20 @@ async fn flag_lyrics(
         flag_lyrics: "Pending".to_owned(),
     };
     progress.request_challenge = "In Progress".to_owned();
-    app_handle
-        .emit("flag-lyrics-progress", &progress)
-        .unwrap();
+    app_handle.emit("flag-lyrics-progress", &progress).unwrap();
     let challenge_response = lrclib::request_challenge::request(&config.lrclib_instance)
         .await
         .map_err(|err| err.to_string())?;
     progress.request_challenge = "Done".to_owned();
     progress.solve_challenge = "In Progress".to_owned();
-    app_handle
-        .emit("flag-lyrics-progress", &progress)
-        .unwrap();
+    app_handle.emit("flag-lyrics-progress", &progress).unwrap();
     let nonce = lrclib::challenge_solver::solve_challenge(
         &challenge_response.prefix,
         &challenge_response.target,
     );
     progress.solve_challenge = "Done".to_owned();
     progress.flag_lyrics = "In Progress".to_owned();
-    app_handle
-        .emit("flag-lyrics-progress", &progress)
-        .unwrap();
+    app_handle.emit("flag-lyrics-progress", &progress).unwrap();
     let publish_token = format!("{}:{}", challenge_response.prefix, nonce);
     lrclib::flag::request(
         track_id,
@@ -603,9 +614,7 @@ async fn flag_lyrics(
     .await
     .map_err(|err| err.to_string())?;
     progress.flag_lyrics = "Done".to_owned();
-    app_handle
-        .emit("flag-lyrics-progress", &progress)
-        .unwrap();
+    app_handle.emit("flag-lyrics-progress", &progress).unwrap();
     Ok(())
 }
 
@@ -685,7 +694,10 @@ fn set_volume(volume: f64, app_state: tauri::State<AppState>) -> Result<(), Stri
 
 #[tauri::command]
 fn open_devtools(app_handle: AppHandle) {
-    app_handle.get_webview_window("main").unwrap().open_devtools();
+    app_handle
+        .get_webview_window("main")
+        .unwrap()
+        .open_devtools();
 }
 
 #[tokio::main]

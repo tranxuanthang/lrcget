@@ -11,15 +11,15 @@ use thiserror::Error;
 pub struct RawResponse {
     pub plain_lyrics: Option<String>,
     pub synced_lyrics: Option<String>,
-    instrumental: bool,
-    lang: Option<String>,
-    isrc: Option<String>,
-    spotify_id: Option<String>,
-    name: Option<String>,
-    album_name: Option<String>,
-    artist_name: Option<String>,
-    release_date: Option<String>,
-    duration: Option<f64>,
+    pub instrumental: bool,
+    pub lang: Option<String>,
+    pub isrc: Option<String>,
+    pub spotify_id: Option<String>,
+    pub name: Option<String>,
+    pub album_name: Option<String>,
+    pub artist_name: Option<String>,
+    pub release_date: Option<String>,
+    pub duration: Option<f64>,
 }
 
 #[derive(Serialize)]
@@ -94,7 +94,7 @@ pub async fn request_raw(id: i64, lrclib_instance: &str) -> Result<RawResponse> 
                 Err(ResponseError {
                     status_code: Some(404),
                     error: "NotFound".to_string(),
-                    message: "There is no lyrics for this track".to_string(),
+                    message: "There are no lyrics for this track".to_string(),
                 }
                 .into())
             }
@@ -103,7 +103,7 @@ pub async fn request_raw(id: i64, lrclib_instance: &str) -> Result<RawResponse> 
         reqwest::StatusCode::NOT_FOUND => Err(ResponseError {
             status_code: Some(404),
             error: "NotFound".to_string(),
-            message: "There is no lyrics for this track".to_string(),
+            message: "There are no lyrics for this track".to_string(),
         }
         .into()),
 
@@ -117,7 +117,7 @@ pub async fn request_raw(id: i64, lrclib_instance: &str) -> Result<RawResponse> 
         _ => Err(ResponseError {
             status_code: None,
             error: "UnknownError".to_string(),
-            message: "Unknown error happened".to_string(),
+            message: "An unknown error occurred".to_string(),
         }
         .into()),
     }
@@ -129,7 +129,6 @@ pub async fn request(id: i64, lrclib_instance: &str) -> Result<Response> {
     match res.status() {
         reqwest::StatusCode::OK => {
             let lrclib_response = res.json::<RawResponse>().await?;
-
             Ok(Response::from_raw_response(lrclib_response))
         }
 
@@ -145,7 +144,56 @@ pub async fn request(id: i64, lrclib_instance: &str) -> Result<Response> {
         _ => Err(ResponseError {
             status_code: None,
             error: "UnknownError".to_string(),
-            message: "Unknown error happened".to_string(),
+            message: "An unknown error occurred".to_string(),
+        }
+        .into()),
+    }
+}
+
+use crate::utils::strip_timestamp;
+use anyhow::Result;
+use reqwest;
+use serde::{Deserialize, Serialize};
+use std::time::Duration;
+use thiserror::Error;
+
+// Reusing similar structures from get.rs
+use super::get::{RawResponse, Response, ResponseError};
+
+async fn make_request(id: i64, lrclib_instance: &str) -> Result<reqwest::Response> {
+    let version = env!("CARGO_PKG_VERSION");
+    let user_agent = format!("LRCGET/{}", version);
+
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(10))
+        .user_agent(user_agent)
+        .build()?;
+    let api_endpoint = format!("{}/api/get/{}", lrclib_instance.trim_end_matches('/'), id);
+    Ok(client.get(&api_endpoint).send().await?)
+}
+
+pub async fn request_by_id(id: i64, lrclib_instance: &str) -> Result<Response> {
+    let response = make_request(id, lrclib_instance).await?;
+
+    match response.status() {
+        reqwest::StatusCode::OK => {
+            let lrclib_response = response.json::<RawResponse>().await?;
+            Ok(Response::from_raw_response(lrclib_response))
+        }
+
+        reqwest::StatusCode::NOT_FOUND => Ok(Response::None),
+
+        reqwest::StatusCode::BAD_REQUEST
+        | reqwest::StatusCode::SERVICE_UNAVAILABLE
+        | reqwest::StatusCode::INTERNAL_SERVER_ERROR => {
+            let error = response.json::<ResponseError>().await?;
+            Err(error.into())
+        }
+
+        _ => Err(ResponseError {
+            status_code: None,
+            error: "UnknownError".to_string(),
+            message: "An unknown error occurred".to_string(),
         }
         .into()),
     }

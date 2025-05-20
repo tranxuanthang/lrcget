@@ -511,7 +511,11 @@ pub fn get_tracks(db: &Connection) -> Result<Vec<PersistentTrack>> {
     Ok(tracks)
 }
 
-pub fn get_track_ids(without_plain_lyrics: bool, without_synced_lyrics: bool, db: &Connection) -> Result<Vec<i64>> {
+pub fn get_track_ids(
+    without_plain_lyrics: bool,
+    without_synced_lyrics: bool,
+    db: &Connection,
+) -> Result<Vec<i64>> {
     let base_query = "SELECT id FROM tracks";
 
     let lyrics_conditions: &str = match (without_plain_lyrics, without_synced_lyrics) {
@@ -521,8 +525,10 @@ pub fn get_track_ids(without_plain_lyrics: bool, without_synced_lyrics: bool, db
         (false, false) => "",
     };
 
-    let full_query = format!("{}{} ORDER BY title_lower ASC",
-        base_query, lyrics_conditions);
+    let full_query = format!(
+        "{}{} ORDER BY title_lower ASC",
+        base_query, lyrics_conditions
+    );
 
     let mut statement = db.prepare(&full_query)?;
     let mut rows = statement.query([])?;
@@ -745,7 +751,12 @@ pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<Persistent
     Ok(tracks)
 }
 
-pub fn get_album_track_ids(album_id: i64, without_plain_lyrics: bool, without_synced_lyrics: bool, db: &Connection) -> Result<Vec<i64>> {
+pub fn get_album_track_ids(
+    album_id: i64,
+    without_plain_lyrics: bool,
+    without_synced_lyrics: bool,
+    db: &Connection,
+) -> Result<Vec<i64>> {
     let base_query = indoc! {"
       SELECT tracks.id
       FROM tracks
@@ -753,14 +764,18 @@ pub fn get_album_track_ids(album_id: i64, without_plain_lyrics: bool, without_sy
       WHERE tracks.album_id = ?"};
 
     let lyrics_conditions = match (without_plain_lyrics, without_synced_lyrics) {
-        (true, true) => " AND txt_lyrics IS NULL AND lrc_lyrics IS NULL AND tracks.instrumental = false",
+        (true, true) => {
+            " AND txt_lyrics IS NULL AND lrc_lyrics IS NULL AND tracks.instrumental = false"
+        }
         (true, false) => " AND txt_lyrics IS NULL AND tracks.instrumental = false",
         (false, true) => " AND lrc_lyrics IS NULL AND tracks.instrumental = false",
         (false, false) => "",
     };
 
-    let full_query = format!("{}{} ORDER BY tracks.track_number ASC",
-        base_query, lyrics_conditions);
+    let full_query = format!(
+        "{}{} ORDER BY tracks.track_number ASC",
+        base_query, lyrics_conditions
+    );
 
     let mut statement = db.prepare(&full_query)?;
     let mut rows = statement.query([album_id])?;
@@ -814,7 +829,12 @@ pub fn get_artist_tracks(artist_id: i64, db: &Connection) -> Result<Vec<Persiste
     Ok(tracks)
 }
 
-pub fn get_artist_track_ids(artist_id: i64, without_plain_lyrics: bool, without_synced_lyrics: bool, db: &Connection) -> Result<Vec<i64>> {
+pub fn get_artist_track_ids(
+    artist_id: i64,
+    without_plain_lyrics: bool,
+    without_synced_lyrics: bool,
+    db: &Connection,
+) -> Result<Vec<i64>> {
     let base_query = indoc! {"
       SELECT tracks.id
       FROM tracks
@@ -823,14 +843,18 @@ pub fn get_artist_track_ids(artist_id: i64, without_plain_lyrics: bool, without_
       WHERE tracks.artist_id = ?"};
 
     let lyrics_conditions = match (without_plain_lyrics, without_synced_lyrics) {
-        (true, true) => " AND txt_lyrics IS NULL AND lrc_lyrics IS NULL AND tracks.instrumental = false",
+        (true, true) => {
+            " AND txt_lyrics IS NULL AND lrc_lyrics IS NULL AND tracks.instrumental = false"
+        }
         (true, false) => " AND txt_lyrics IS NULL AND tracks.instrumental = false",
         (false, true) => " AND lrc_lyrics IS NULL AND tracks.instrumental = false",
         (false, false) => "",
     };
 
-    let full_query = format!("{}{} ORDER BY albums.name_lower ASC, tracks.track_number ASC",
-        base_query, lyrics_conditions);
+    let full_query = format!(
+        "{}{} ORDER BY albums.name_lower ASC, tracks.track_number ASC",
+        base_query, lyrics_conditions
+    );
 
     let mut statement = db.prepare(&full_query)?;
     let mut rows = statement.query([artist_id])?;

@@ -1,4 +1,5 @@
 {
+  "$schema": "https://raw.githubusercontent.com/tauri-apps/tauri/refs/heads/dev/crates/tauri-cli/tauri.config.schema.json",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -46,8 +47,10 @@
   "mainBinaryName": "LRCGET",
   "identifier": "net.lrclib.lrcget",
   "plugins": {},
-  "app": {
-    "withGlobalTauri": false,
+  "tauri": {
+    "allowlist": {
+      "all": true
+    },
     "windows": [
       {
         "fullscreen": false,
@@ -64,9 +67,7 @@
     ],
     "security": {
       "assetProtocol": {
-        "scope": [
-          "**"
-        ],
+        "scope": ["**"],
         "enable": true
       },
       "csp": "default-src 'self'; img-src 'self' asset: https://asset.localhost; media-src *; connect-src ipc: http://ipc.localhost 'self' asset: *; style-src 'unsafe-inline' 'self'"
