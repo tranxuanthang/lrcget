@@ -28,7 +28,7 @@ collapse = "0.1.2"
 rayon = "1.10.0"
 indoc = "2"
 tokio = { version = "1.40", features = ["full"] }
-ring = "0.17.8"
+ring = "0.17.13"
 data-encoding = "2.4.0"
 kira = "0.9.5"
 symphonia = { version = "0.5.4", features = ["all"] }
