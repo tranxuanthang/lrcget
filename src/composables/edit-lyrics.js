@@ -1,29 +1,29 @@
-import { ref } from 'vue'
-import { useModal } from 'vue-final-modal'
-import EditLyrics from '@/components/library/EditLyrics.vue'
+import { ref } from "vue";
+import { useModal } from "vue-final-modal";
+import EditLyrics from "@/components/library/EditLyrics.vue";
 
-const editingTrack = ref(null)
+const editingTrack = ref(null);
 
 export function useEditLyrics() {
   const editLyrics = (track) => {
-    editingTrack.value = track
-    openModal()
-  }
+    editingTrack.value = track;
+    openModal();
+  };
 
   const { open: openModal, close: closeModal } = useModal({
     component: EditLyrics,
     attrs: {
       onClose() {
-        closeModal()
+        closeModal();
       },
       onClosed() {
-        editingTrack.value = null
-      }
+        editingTrack.value = null;
+      },
     },
-  })
+  });
 
   return {
     editingTrack,
-    editLyrics
-  }
+    editLyrics,
+  };
 }

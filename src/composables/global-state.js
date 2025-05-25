@@ -1,30 +1,30 @@
-import { ref, computed } from 'vue'
+import { ref, computed } from "vue";
 
-const isHotkeyState = ref(true)
-const themeModeState = ref(true)
-const lrclibInstanceState = ref('')
+const isHotkeyState = ref(true);
+const themeModeState = ref(true);
+const lrclibInstanceState = ref("");
 
 export function useGlobalState() {
   const disableHotkey = () => {
-    console.log('disabled hotkey!')
-    isHotkeyState.value = false
-  }
+    console.log("disabled hotkey!");
+    isHotkeyState.value = false;
+  };
   const enableHotkey = () => {
-    console.log('enabled hotkey!')
-    isHotkeyState.value = true
-  }
-  const isHotkey = computed(() => isHotkeyState.value)
+    console.log("enabled hotkey!");
+    isHotkeyState.value = true;
+  };
+  const isHotkey = computed(() => isHotkeyState.value);
 
   const setThemeMode = (mode) => {
-    themeModeState.value = mode
-  }
+    themeModeState.value = mode;
+  };
   const setLrclibInstance = (instance) => {
-    lrclibInstanceState.value = instance
-  }
+    lrclibInstanceState.value = instance;
+  };
 
-  const lrclibInstance = computed(() => lrclibInstanceState.value)
+  const lrclibInstance = computed(() => lrclibInstanceState.value);
 
-  const themeMode = computed(() => themeModeState.value)
+  const themeMode = computed(() => themeModeState.value);
 
   return {
     isHotkey,
@@ -33,6 +33,6 @@ export function useGlobalState() {
     setThemeMode,
     themeMode,
     setLrclibInstance,
-    lrclibInstance
-  }
+    lrclibInstance,
+  };
 }
