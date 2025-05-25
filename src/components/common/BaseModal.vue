@@ -7,14 +7,17 @@
     content-transition="pop-fade"
     v-bind="$attrs"
   >
-    <div v-if="title || $slots.title" class="flex-none flex justify-between items-center relative">
+    <div
+      v-if="title || $slots.title"
+      class="flex-none flex justify-between items-center relative"
+    >
       <div class="flex-none" v-if="$slots.titleLeft">
         <slot name="titleLeft" />
       </div>
 
       <div
-       class="text-lg grow line-clamp-1 overflow-hidden text-brave-30 dark:text-brave-90"
-       :class="{ 'text-center': $slots.titleLeft }"
+        class="text-lg grow line-clamp-1 overflow-hidden text-brave-30 dark:text-brave-90"
+        :class="{ 'text-center': $slots.titleLeft }"
       >
         {{ title }}
       </div>
@@ -39,26 +42,26 @@
 </template>
 
 <script setup>
-import { Close } from 'mdue'
+import { Close } from "mdue";
 
 const props = defineProps({
   title: {
     type: String,
-    required: false
+    required: false,
   },
   contentClass: {
     type: String,
-    default: 'w-full h-[80vh] max-w-screen-sm'
+    default: "w-full h-[80vh] max-w-screen-sm",
   },
   bodyClass: {
     type: String,
-    default: 'grow overflow-auto'
+    default: "grow overflow-auto",
   },
   closeButton: {
     type: Boolean,
-    default: true
-  }
-})
+    default: true,
+  },
+});
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(["close"]);
 </script>

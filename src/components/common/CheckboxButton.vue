@@ -8,7 +8,7 @@
       class="hidden"
       :disabled="disabled"
       @change="$emit('update:modelValue', !modelValue)"
-    >
+    />
     <label
       :for="id"
       class="inline-flex items-center cursor-pointer select-none"
@@ -30,26 +30,26 @@
 </template>
 
 <script setup>
-import { CheckboxMarked, CheckboxBlankOutline } from 'mdue'
+import { CheckboxMarked, CheckboxBlankOutline } from "mdue";
 
 defineProps({
   modelValue: {
     type: Boolean,
-    required: true
+    required: true,
   },
   name: {
     type: String,
-    required: true
+    required: true,
   },
   id: {
     type: String,
-    required: true
+    required: true,
   },
   disabled: {
     type: Boolean,
-    default: false
-  }
-})
+    default: false,
+  },
+});
 
-defineEmits(['update:modelValue'])
+defineEmits(["update:modelValue"]);
 </script>
