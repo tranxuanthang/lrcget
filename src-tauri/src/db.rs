@@ -10,7 +10,7 @@ use rusqlite::{named_params, params, Connection};
 use std::fs;
 use tauri::{AppHandle, Manager};
 
-const CURRENT_DB_VERSION: u32 = 6;
+const CURRENT_DB_VERSION: u32 = 7;
 
 /// Initializes the database connection, creating the .sqlite file if needed, and upgrading the database
 /// if it's out of date.
@@ -187,6 +187,19 @@ pub fn upgrade_database_if_needed(
 
             tx.commit()?;
         }
+
+        if existing_version <= 6 {
+            println!("Migrate database version 7...");
+            let tx = db.transaction()?;
+
+            tx.pragma_update(None, "user_version", 7)?;
+
+            tx.execute_batch(indoc! {"
+            ALTER TABLE config_data ADD show_line_count BOOLEAN DEFAULT 1;
+            "})?;
+
+            tx.commit()?;
+        }
     }
 
     Ok(())
@@ -232,6 +245,7 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
       SELECT
         skip_tracks_with_synced_lyrics,
         skip_tracks_with_plain_lyrics,
+        show_line_count,
         try_embed_lyrics,
         theme_mode,
         lrclib_instance
@@ -242,6 +256,7 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
         Ok(PersistentConfig {
             skip_tracks_with_synced_lyrics: r.get("skip_tracks_with_synced_lyrics")?,
             skip_tracks_with_plain_lyrics: r.get("skip_tracks_with_plain_lyrics")?,
+            show_line_count: r.get("show_line_count")?,
             try_embed_lyrics: r.get("try_embed_lyrics")?,
             theme_mode: r.get("theme_mode")?,
             lrclib_instance: r.get("lrclib_instance")?,
@@ -253,6 +268,7 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
 pub fn set_config(
     skip_tracks_with_synced_lyrics: bool,
     skip_tracks_with_plain_lyrics: bool,
+    show_line_count: bool,
     try_embed_lyrics: bool,
     theme_mode: &str,
     lrclib_instance: &str,
@@ -263,6 +279,7 @@ pub fn set_config(
       SET
         skip_tracks_with_synced_lyrics = ?,
         skip_tracks_with_plain_lyrics = ?,
+        show_line_count = ?,
         try_embed_lyrics = ?,
         theme_mode = ?,
         lrclib_instance = ?
@@ -271,6 +288,7 @@ pub fn set_config(
     statement.execute((
         skip_tracks_with_synced_lyrics,
         skip_tracks_with_plain_lyrics,
+        show_line_count,
         try_embed_lyrics,
         theme_mode,
         lrclib_instance,

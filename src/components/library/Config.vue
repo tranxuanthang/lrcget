@@ -44,6 +44,18 @@
         </div>
 
         <div class="flex flex-col mb-4">
+          <label class="block mb-2 child-label">Search settings</label>
+
+          <CheckboxButton
+              v-model="showLineCount"
+              name="show-line-count"
+              id="show-line-count"
+            >
+              Show the number of lines a lyric file has in the search menu
+          </CheckboxButton>
+        </div>
+
+        <div class="flex flex-col mb-4">
           <label class="block mb-2 child-label">Theme mode</label>
 
           <div class="flex gap-4">
@@ -125,6 +137,7 @@ const emit = defineEmits(['close', 'refreshLibrary', 'uninitializeLibrary'])
 const downloadLyricsFor = ref('all')
 const skipTracksWithSyncedLyrics = ref(true)
 const skipTracksWithPlainLyrics = ref(false)
+const showLineCount = ref(false)
 const tryEmbedLyrics = ref(false)
 const editingThemeMode = ref('auto')
 const editingLrclibInstance = ref('')
@@ -133,6 +146,7 @@ const save = async () => {
   await invoke('set_config', {
     skipTracksWithSyncedLyrics: skipTracksWithSyncedLyrics.value,
     skipTracksWithPlainLyrics: skipTracksWithPlainLyrics.value,
+    showLineCount: showLineCount.value,
     tryEmbedLyrics: tryEmbedLyrics.value,
     themeMode: editingThemeMode.value,
     lrclibInstance: editingLrclibInstance.value
@@ -167,6 +181,7 @@ const beforeOpenHandler = async () => {
     downloadLyricsFor.value = 'all'
   }
 
+  showLineCount.value = config.show_line_count
   tryEmbedLyrics.value = config.try_embed_lyrics
   editingThemeMode.value = config.theme_mode
   editingLrclibInstance.value = config.lrclib_instance

@@ -41,6 +41,7 @@ pub struct PersistentArtist {
 pub struct PersistentConfig {
     pub skip_tracks_with_synced_lyrics: bool,
     pub skip_tracks_with_plain_lyrics: bool,
+    pub show_line_count: bool,
     pub try_embed_lyrics: bool,
     pub theme_mode: String,
     pub lrclib_instance: String,
