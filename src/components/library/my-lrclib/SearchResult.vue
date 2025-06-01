@@ -33,8 +33,8 @@
               <div class="text-[0.65rem] font-bold flex gap-1">
                 <span class="bg-brave-90 text-brave-30 px-1 py-0.5 rounded">{{ humanDuration(track.duration) }}</span>
                 <template v-if="showLineCount === true">
-                  <span v-if="!!track.syncedLyrics" class="text-blue-200 font-bold text-[0.65rem] bg-blue-800 rounded px-1 py-0.5">{{ countLines(track.syncedLyrics) }} Lines</span>
-                  <span v-else-if="!!track.plainLyrics" class="text-blue-200 font-bold text-[0.65rem] bg-blue-800 rounded px-1 py-0.5">{{ countLines(track.plainLyrics) }} Lines</span>
+                  <span v-if="!!track.syncedLyrics" class="bg-blue-800 text-blue-200 px-1 py-0.5 rounded">{{ countLines(track.syncedLyrics) }} Lines</span>
+                  <span v-else-if="!!track.plainLyrics" class="bg-blue-800 text-blue-200 px-1 py-0.5 rounded">{{ countLines(track.plainLyrics) }} Lines</span>
                 </template>
                 <span v-if="!!track.syncedLyrics" class="bg-green-800 text-green-200 px-1 py-0.5 rounded">Synced</span>
                 <span v-else-if="!!track.plainLyrics" class="bg-gray-800 text-gray-200 px-1 py-0.5 rounded">Plain</span>
