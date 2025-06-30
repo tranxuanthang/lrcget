@@ -85,6 +85,7 @@ async fn get_config(app_state: State<'_, AppState>) -> Result<PersistentConfig, 
 async fn set_config(
     skip_tracks_with_synced_lyrics: bool,
     skip_tracks_with_plain_lyrics: bool,
+    show_line_count: bool,
     try_embed_lyrics: bool,
     theme_mode: &str,
     lrclib_instance: &str,
@@ -95,6 +96,7 @@ async fn set_config(
     db::set_config(
         skip_tracks_with_synced_lyrics,
         skip_tracks_with_plain_lyrics,
+        show_line_count,
         try_embed_lyrics,
         theme_mode,
         lrclib_instance,

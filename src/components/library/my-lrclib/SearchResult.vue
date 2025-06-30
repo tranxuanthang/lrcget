@@ -32,6 +32,10 @@
               <div class="text-sm font-bold text-brave-30 dark:text-brave-95">{{ track.name }}</div>
               <div class="text-[0.65rem] font-bold flex gap-1">
                 <span class="bg-brave-90 text-brave-30 px-1 py-0.5 rounded">{{ humanDuration(track.duration) }}</span>
+                <template v-if="showLineCount === true">
+                  <span v-if="!!track.syncedLyrics" class="bg-blue-800 text-blue-200 px-1 py-0.5 rounded">{{ countLines(track.syncedLyrics) }} Lines</span>
+                  <span v-else-if="!!track.plainLyrics" class="bg-blue-800 text-blue-200 px-1 py-0.5 rounded">{{ countLines(track.plainLyrics) }} Lines</span>
+                </template>
                 <span v-if="!!track.syncedLyrics" class="bg-green-800 text-green-200 px-1 py-0.5 rounded">Synced</span>
                 <span v-else-if="!!track.plainLyrics" class="bg-gray-800 text-gray-200 px-1 py-0.5 rounded">Plain</span>
                 <span v-else-if="!!track.instrumental" class="bg-gray-300 text-gray-600 px-1 py-0.5 rounded">Instrumental</span>
@@ -78,6 +82,7 @@
 import { ArrowLeft, Loading, Eye, PlaylistEdit, Flag } from 'mdue'
 import { ref, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { countLines } from '@/utils/count-lines.js'
 import { humanDuration } from '@/utils/human-duration.js'
 import { useToast } from 'vue-toastification'
 import EditLyrics from './EditLyrics.vue'
@@ -100,6 +105,7 @@ const isOpeningTrack = ref(false)
 const showingTrack = ref(null)
 const editingTrack = ref(null)
 const flagLyricsTrack = ref(null)
+const showLineCount = ref(true)
 
 const { open: openPreviewModal, close: closePreviewModal } = useModal({
   component: PreviewLyrics,
@@ -138,6 +144,8 @@ const { open: openFlagLyricsModal, close: closeFlagLyricsModal } = useModal({
 })
 
 onMounted(async () => {
+  const config = await invoke('get_config')
+  showLineCount.value = config.show_line_count
   loading.value = true
   try {
     tracks.value = await invoke('search_lyrics', { title: '', albumName: '', artistName: '', q: props.keyword })
