@@ -1,156 +1,203 @@
 <template>
-  <BaseModal
-    :click-to-close="false"
-    :esc-to-close="false"
-    content-class="w-full h-[80vh] max-w-screen-lg"
-    @close="emit('close')"
-    :title="`${editingTrack.title} - ${editingTrack.artist_name}`"
-  >
-    <template #titleLeft>
-      <div class="flex-none flex gap-1 items-center">
-        <VTooltip theme="lrcget-tooltip">
-          <button
-            class="button text-sm px-5 py-1.5 h-8 w-24 rounded-full"
-            :class="{ 'button-primary': isDirty, 'button-disabled': !isDirty }"
-            :disabled="!isDirty"
-            @click="saveLyrics"
-          >
-            Save
-          </button>
+    <BaseModal
+      :click-to-close="false"
+      :esc-to-close="false"
+      content-class="w-full h-[80vh] max-w-screen-lg"
+      @close="emit('close')"
+      :title="`${editingTrack.title} - ${editingTrack.artist_name}`"
+    >
+      <template #titleLeft>
+        <div class="flex-none flex gap-1 items-center">
+          <VTooltip theme="lrcget-tooltip">
+            <button
+              class="button text-sm px-5 py-1.5 h-8 w-24 rounded-full"
+              :class="{ 'button-primary': isDirty, 'button-disabled': !isDirty }"
+              :disabled="!isDirty"
+              @click="saveLyrics"
+            >
+              Save
+            </button>
 
-          <template #popper>
-            <div class="text-xs font-bold">
-              Save lyrics
-              <span class="text-[0.65rem] text-brave-30 bg-brave-95 px-1 rounded-full">Ctrl+S</span>
+            <template #popper>
+              <div class="text-xs font-bold">
+                Save lyrics
+                <span class="text-[0.65rem] text-brave-30 bg-brave-95 px-1 rounded-full">Ctrl+S</span>
+              </div>
+            </template>
+          </VTooltip>
+
+          <VTooltip theme="lrcget-tooltip">
+            <button
+              class="button text-sm px-5 py-1.5 h-8 w-24 rounded-full"
+              :class="{ 'button-primary': !isDirty, 'button-disabled': isDirty }"
+              :disabled="isDirty"
+              @click="handlePublish"
+            >
+              Publish
+            </button>
+
+            <template #popper>
+              <div v-if="isSynchronizedLyrics(unifiedLyrics)" class="text-xs font-bold">Publish synchronized lyrics to LRCLIB service</div>
+              <div v-else class="text-xs font-bold">Publish plain text lyrics to LRCLIB service</div>
+            </template>
+          </VTooltip>
+
+          <VTooltip v-if="lyricsLintResult.length === 0" theme="lrcget-tooltip">
+            <Check class="text-lime-500 text-2xl block" />
+
+            <template #popper>
+              <div class="text-xs font-bold">No errors detected, you can publish it now</div>
+            </template>
+          </VTooltip>
+
+          <VTooltip v-else-if="plainTextLintResult.length === 0" theme="lrcget-tooltip">
+            <AlertCircleOutline class="text-orange-500 text-2xl block" />
+
+            <template #popper>
+              <div class="text-xs font-bold">Lyrics not synchronized<br />You can still publish it, but consider synchronizing it to help others</div>
+            </template>
+          </VTooltip>
+
+          <VTooltip v-else theme="lrcget-tooltip">
+            <AlertCircle class="text-red-500 text-2xl block" />
+
+            <template #popper>
+              <div class="text-xs font-bold">Lyrics error detected<br />Press the publish button for details</div>
+            </template>
+          </VTooltip>
+        </div>
+      </template>
+
+      <div class="grow overflow-hidden flex flex-col gap-2 h-full">
+        <div class="toolbar flex flex-col bg-brave-95 dark:bg-brave-10 rounded-lg">
+          <div class="px-4 py-2 flex justify-between items-stretch gap-1">
+            <div class="flex gap-1">
+              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line & move next (Alt+Enter)" @click="syncLine"><EqualEnter /> <span class="text-xs">Sync Line & Move Next</span></button>
+              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line (Alt+X)" @click="syncLine(false)"><Equal /></button>
+              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms (Alt+LeftArrow)" @click="rewind100"><Minus /></button>
+              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Forward line 100ms (Alt+RightArrow)" @click="fastForward100"><Plus /></button>
+              <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Replay line (Alt+Z)" @click="repeatLine"><MotionPlay /></button>
             </div>
-          </template>
-        </VTooltip>
 
-        <VTooltip theme="lrcget-tooltip">
-          <button
-            class="button text-sm px-5 py-1.5 h-8 w-24 rounded-full"
-            :class="{ 'button-primary': !isDirty, 'button-disabled': isDirty }"
-            :disabled="isDirty"
-            @click="handlePublish"
-          >
-            Publish
-          </button>
-
-          <template #popper>
-            <div v-if="isSynchronizedLyrics(unifiedLyrics)" class="text-xs font-bold">Publish synchronized lyrics to LRCLIB service</div>
-            <div v-else class="text-xs font-bold">Publish plain text lyrics to LRCLIB service</div>
-          </template>
-        </VTooltip>
-
-        <VTooltip v-if="lyricsLintResult.length === 0" theme="lrcget-tooltip">
-          <Check class="text-lime-500 text-2xl block" />
-
-          <template #popper>
-            <div class="text-xs font-bold">No errors detected, you can publish it now</div>
-          </template>
-        </VTooltip>
-
-        <VTooltip v-else-if="plainTextLintResult.length === 0" theme="lrcget-tooltip">
-          <AlertCircleOutline class="text-orange-500 text-2xl block" />
-
-          <template #popper>
-            <div class="text-xs font-bold">Lyrics not synchronized<br />You can still publish it, but consider synchronizing it to help others</div>
-          </template>
-        </VTooltip>
-
-        <VTooltip v-else theme="lrcget-tooltip">
-          <AlertCircle class="text-red-500 text-2xl block" />
-
-          <template #popper>
-            <div class="text-xs font-bold">Lyrics error detected<br />Press the publish button for details</div>
-          </template>
-        </VTooltip>
-      </div>
-    </template>
-
-    <div class="grow overflow-hidden flex flex-col gap-2 h-full">
-      <div class="toolbar flex flex-col bg-brave-95 dark:bg-brave-10 rounded-lg">
-        <div class="px-4 py-2 flex justify-between items-stretch gap-1">
-          <div class="flex gap-1">
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line & move next (Alt+Enter)" @click="syncLine"><EqualEnter /> <span class="text-xs">Sync Line & Move Next</span></button>
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line (Alt+X)" @click="syncLine(false)"><Equal /></button>
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms (Alt+LeftArrow)" @click="rewind100"><Minus /></button>
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Forward line 100ms (Alt+RightArrow)" @click="fastForward100"><Plus /></button>
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Replay line (Alt+Z)" @click="repeatLine"><MotionPlay /></button>
+            <div>
+              <button class="button button-warning px-3 py-1 text-lg rounded-full" title="Mark track as instrumental" @click="markAsInstrumental"><Music /> <span class="text-xs">Mark Instrumental</span></button>
+            </div>
           </div>
-
-          <div>
-            <button class="button button-warning px-3 py-1 text-lg rounded-full" title="Mark track as instrumental" @click="markAsInstrumental"><Music /> <span class="text-xs">Mark Instrumental</span></button>
+          <div class="w-full border-b border-brave-90 dark:border-brave-20"></div>
+          <div class="flex gap-4 items-center px-4 py-2">
+            <button v-if="status !== 'playing'" @click.prevent="resumeOrPlay" class="button button-normal p-2 rounded-full text-xl"><Play /></button>
+            <button v-else @click.prevent="pause" class="button button-normal p-2 rounded-full text-xl"><Pause /></button>
+            <div class="flex-none w-12 text-xs">{{ humanDuration(progress) }}</div>
+            <Seek class="grow" :duration="duration" :progress="progress" @seek="seek" />
+            <div class="flex-none w-12 text-xs">{{ humanDuration(duration) }}</div>
           </div>
         </div>
-        <div class="w-full border-b border-brave-90 dark:border-brave-20"></div>
-        <div class="flex gap-4 items-center px-4 py-2">
-          <button v-if="status !== 'playing'" @click.prevent="resumeOrPlay" class="button button-normal p-2 rounded-full text-xl"><Play /></button>
-          <button v-else @click.prevent="pause" class="button button-normal p-2 rounded-full text-xl"><Pause /></button>
-          <div class="flex-none w-12 text-xs">{{ humanDuration(progress) }}</div>
-          <Seek class="grow" :duration="duration" :progress="progress" @seek="seek" />
-          <div class="flex-none w-12 text-xs">{{ humanDuration(duration) }}</div>
+        <button @click="romanize">
+          Romanizar
+        </button>
+        <!-- NOTE: AsyncCodemirror component does not have @wheel event handler, so it has to be handled here (in the container) -->
+        <div class="relative h-full w-full" id="cm-container" ref="cmContainer">
+          <div class="flex flex-row">
+            <div class="overflow-hidden  w-full" :style="{ height: `${cmHeight}px` }" @wheel="handleWheel">
+              <AsyncCodemirror
+                v-if="shouldLoadCodeMirror"
+                v-model="unifiedLyrics"
+                placeholder="Lyrics is currently empty"
+                class="codemirror-custom h-full outline-none"
+                :style="{ fontSize: `${codemirrorStyle.fontSize}em` }"
+                :autofocus="true"
+                :indent-with-tab="true"
+                :tab-size="2"
+                :extensions="extensions"
+                :config="{ height: 'auto' }"
+                @ready="handleReady"
+                @change="lyricsUpdated"
+              />
+
+              <div v-else class="flex flex-col h-full items-center justify-center text-sm text-brave-40">
+                <div class="animate-spin text-xl text-brave-30"><Loading /></div>
+                <div>Loading editor...</div>
+              </div>
+            </div>
+            <div class="overflow-hidden  w-full" :style="{ height: `${cmHeight}px` }" @wheel="handleWheel">
+              <AsyncCodemirror
+                v-if="shouldLoadCodeMirror"
+                v-model="romanizedLyrics"
+                placeholder="Lyrics is currently empty"
+                class="codemirror-custom h-full outline-none"
+                :style="{ fontSize: `${codemirrorStyle.fontSize}em` }"
+                :indent-with-tab="true"
+                :tab-size="2"
+                :config="{ height: 'auto' }"
+                @ready="handleReady"
+
+              />
+
+              <div v-else class="flex flex-col h-full items-center justify-center text-sm text-brave-40">
+                <div class="animate-spin text-xl text-brave-30"><Loading /></div>
+                <div>Loading editor...</div>
+              </div>
+
+
+            </div>
+          </div>
         </div>
-      </div>
 
-      <!-- NOTE: AsyncCodemirror component does not have @wheel event handler, so it has to be handled here (in the container) -->
-      <div class="relative h-full w-full" id="cm-container" ref="cmContainer">
-        <div class="overflow-hidden absolute w-full" :style="{ height: `${cmHeight}px` }" @wheel="handleWheel">
-          <AsyncCodemirror
-            v-if="shouldLoadCodeMirror"
-            v-model="unifiedLyrics"
-            placeholder="Lyrics is currently empty"
-            class="codemirror-custom h-full outline-none"
-            :style="{ fontSize: `${codemirrorStyle.fontSize}em` }"
-            :autofocus="true"
-            :indent-with-tab="true"
-            :tab-size="2"
-            :extensions="extensions"
-            :config="{ height: 'auto' }"
-            @ready="handleReady"
-            @change="lyricsUpdated"
-          />
-
-          <div v-else class="flex flex-col h-full items-center justify-center text-sm text-brave-40">
-            <div class="animate-spin text-xl text-brave-30"><Loading /></div>
-            <div>Loading editor...</div>
+        <div class="flex flex-col w-fit self-end bg-brave-95 dark:bg-brave-10 rounded-lg">
+          <div class="toolbar px-2 py-1 flex items-stretch gap-1">
+            <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom out" @click="changeCodemirrorFontSizeBy(-1)"><MagnifyMinus /></button>
+            <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full w-[4.5em]" title="Reset zoom level" @click="resetCodemirrorFontSize">{{ (codemirrorStyle.fontSize * 100).toFixed(0) }}%</button>
+            <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom in" @click="changeCodemirrorFontSizeBy(+1)"><MagnifyPlus /></button>
           </div>
         </div>
       </div>
+    </BaseModal>
 
-      <div class="flex flex-col w-fit self-end bg-brave-95 dark:bg-brave-10 rounded-lg">
-        <div class="toolbar px-2 py-1 flex items-stretch gap-1">
-          <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom out" @click="changeCodemirrorFontSizeBy(-1)"><MagnifyMinus /></button>
-          <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full w-[4.5em]" title="Reset zoom level" @click="resetCodemirrorFontSize">{{ (codemirrorStyle.fontSize * 100).toFixed(0) }}%</button>
-          <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom in" @click="changeCodemirrorFontSizeBy(+1)"><MagnifyPlus /></button>
-        </div>
-      </div>
-    </div>
-  </BaseModal>
 </template>
 
-<script setup>
-import { invoke } from '@tauri-apps/api/core'
-import { ref, onMounted, onUnmounted, shallowRef, watch } from 'vue'
-import { Loading, Equal, Play, Pause, MotionPlay, Minus, Plus, Check, AlertCircleOutline, AlertCircle, MagnifyPlus, MagnifyMinus, Music } from 'mdue'
+<script setup lang="ts">
+import {invoke} from '@tauri-apps/api/core'
+import {defineAsyncComponent, onMounted, onUnmounted, ref, watch} from 'vue'
+import {
+  AlertCircle,
+  AlertCircleOutline,
+  Check,
+  Equal,
+  Loading,
+  MagnifyMinus,
+  MagnifyPlus,
+  Minus,
+  MotionPlay,
+  Music,
+  Pause,
+  Play,
+  Plus
+} from 'mdue'
 import EqualEnter from '@/components/icons/EqualEnter.vue'
 import BaseModal from '@/components/common/BaseModal.vue'
-import { useToast } from 'vue-toastification'
-import { Lrc, Runner, parseLine } from 'lrc-kit'
-import { timestampToString, detectStandard } from '@/utils/lyrics.js'
-import { useEditLyrics } from '@/composables/edit-lyrics.js'
-import { usePlayer } from '@/composables/player.js'
-import { useGlobalState } from '@/composables/global-state.js'
+import {useToast} from 'vue-toastification'
+import {Lrc, parseLine, Runner} from 'lrc-kit'
+import {detectStandard, isSynchronizedLyrics, timestampToString} from '@/utils/lyrics.js'
+import {useEditLyrics} from '@/composables/edit-lyrics.js'
+import {usePlayer} from '@/composables/player.js'
+import {useGlobalState} from '@/composables/global-state.js'
 import Seek from '@/components/now-playing/Seek.vue'
 import PublishLyrics from './edit-lyrics/PublishLyrics.vue'
 import PublishPlainText from './edit-lyrics/PublishPlainText.vue'
-import { Decoration, EditorView } from '@codemirror/view'
-import { StateField, StateEffect } from '@codemirror/state'
-import { defineAsyncComponent } from 'vue'
-import { executeLint as executeLyricsLint } from '@/utils/lyrics-lint.js'
-import { executeLint as executePlainTextLint } from '@/utils/plain-text-lint.js'
-import { useModal } from 'vue-final-modal'
-import { isSynchronizedLyrics } from '@/utils/lyrics.js'
+import {Decoration, EditorView} from '@codemirror/view'
+import {StateEffect, StateField} from '@codemirror/state'
+import {executeLint as executeLyricsLint} from '@/utils/lyrics-lint.js'
+import {executeLint as executePlainTextLint} from '@/utils/plain-text-lint.js'
+import {useModal} from 'vue-final-modal'
+
+import {canonicalize, romanizeJapanese} from "@/ts-utils/utils";
+
+const romanizedLyrics = ref('')
+const romanize = async ()=>{
+    romanizedLyrics.value='kiwi'
+  // await romanizeJapaneseOrHangul(lines[i])
+  romanizedLyrics.value=await romanizeJapanese('辞書内での単語ID')
+}
 
 const AsyncCodemirror = defineAsyncComponent(async () => {
   const { Codemirror } = await import('vue-codemirror')
@@ -312,11 +359,24 @@ const resetCodemirrorFontSize = () => {
   codemirrorStyle.value.fontSize = 1.0
 }
 
-const lyricsUpdated = (newLyrics) => {
+const lyricsUpdated =  async (newLyrics) => {
+  debugger
   const parsed = Lrc.parse(newLyrics)
   runner = new Runner(parsed)
   isDirty.value = true
   lyricsLintResult.value = executeLyricsLint(newLyrics)
+
+
+  let romanized: string = ''
+  for (const lyric of parsed.lyrics) {
+
+    let ro = canonicalize(lyric.content);
+    ro = await romanizeJapanese(ro)
+    romanized += canonicalize(ro) + '\n';
+  }
+  romanizedLyrics.value = romanized
+
+  // romanizedLyrics.value = await romanizeJapanese(parsed.lyrics[0].content)
   plainTextLintResult.value = executePlainTextLint(newLyrics)
 }
 
