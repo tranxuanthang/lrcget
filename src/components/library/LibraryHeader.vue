@@ -1,27 +1,52 @@
 <template>
-  <div class="px-4 py-2 h-12 flex justify-between gap-4 flex-none items-stretch">
+  <div
+    class="px-4 py-2 h-12 flex justify-between gap-4 flex-none items-stretch"
+  >
     <div class="flex-1 ml-2">
       <MiniSearch v-if="props.activeTab === 'tracks'" />
+    </div>
+
+    <!-- Filter checkbox for tracks -->
+    <div v-if="props.activeTab === 'tracks'" class="flex items-center gap-2">
+      <label
+        class="flex items-center gap-2 text-sm text-brave-30 dark:text-brave-90 cursor-pointer"
+      >
+        <input
+          type="checkbox"
+          v-model="hideTracksWithLyrics"
+          class="w-4 h-4 text-brave-30 bg-white border-brave-30 rounded focus:ring-brave-30 focus:ring-2 dark:bg-brave-10 dark:border-brave-90 dark:focus:ring-brave-90"
+        />
+        <span>Hide tracks with lyrics</span>
+      </label>
     </div>
 
     <div class="flex-1 flex gap-4 justify-center items-center text-sm">
       <button
         class="tab"
-        :class="{'active-tab': props.activeTab === 'tracks', 'inactive-tab': activeTab !== 'tracks'}"
+        :class="{
+          'active-tab': props.activeTab === 'tracks',
+          'inactive-tab': activeTab !== 'tracks',
+        }"
         @click.prevent="$emit('changeActiveTab', 'tracks')"
       >
         Tracks
       </button>
       <button
         class="tab"
-        :class="{'active-tab': props.activeTab === 'albums', 'inactive-tab': activeTab !== 'albums'}"
+        :class="{
+          'active-tab': props.activeTab === 'albums',
+          'inactive-tab': activeTab !== 'albums',
+        }"
         @click.prevent="$emit('changeActiveTab', 'albums')"
       >
         Albums
       </button>
       <button
         class="tab"
-        :class="{'active-tab': props.activeTab === 'artists', 'inactive-tab': activeTab !== 'artists'}"
+        :class="{
+          'active-tab': props.activeTab === 'artists',
+          'inactive-tab': activeTab !== 'artists',
+        }"
         @click.prevent="$emit('changeActiveTab', 'artists')"
       >
         Artists
@@ -32,7 +57,10 @@
 
       <button
         class="tab"
-        :class="{'active-tab': props.activeTab === 'my-lrclib', 'inactive-tab': activeTab !== 'my-lrclib'}"
+        :class="{
+          'active-tab': props.activeTab === 'my-lrclib',
+          'inactive-tab': activeTab !== 'my-lrclib',
+        }"
         @click.prevent="$emit('changeActiveTab', 'my-lrclib')"
       >
         LRCLIB
@@ -54,14 +82,23 @@
         <Cog />
       </button>
 
-      <button v-if="isBuildingQueue" class="button button-disabled px-4 py-1.5 h-full min-w-[12rem] text-xs rounded-full" @click.prevent="$emit('showDownloadViewer')" disabled>
+      <button
+        v-if="isBuildingQueue"
+        class="button button-disabled px-4 py-1.5 h-full min-w-[12rem] text-xs rounded-full"
+        @click.prevent="$emit('showDownloadViewer')"
+        disabled
+      >
         <div class="animate-spin text-sm"><Loading /></div>
         <div class="flex gap-1">
           <div>Preparing</div>
         </div>
       </button>
 
-      <button v-else-if="isDownloading && downloadedCount !== totalCount" class="button button-working h-full min-w-[12rem] px-4 py-1.5 text-xs rounded-full" @click.prevent="$emit('showDownloadViewer')">
+      <button
+        v-else-if="isDownloading && downloadedCount !== totalCount"
+        class="button button-working h-full min-w-[12rem] px-4 py-1.5 text-xs rounded-full"
+        @click.prevent="$emit('showDownloadViewer')"
+      >
         <div class="animate-spin text-sm"><Loading /></div>
         <div class="flex gap-1">
           <div>Downloading</div>
@@ -69,54 +106,78 @@
         </div>
       </button>
 
-      <button v-else-if="isDownloading" class="button button-done h-full min-w-[12rem] px-4 py-1.5 text-xs rounded-full" @click.prevent="$emit('showDownloadViewer')">
+      <button
+        v-else-if="isDownloading"
+        class="button button-done h-full min-w-[12rem] px-4 py-1.5 text-xs rounded-full"
+        @click.prevent="$emit('showDownloadViewer')"
+      >
         <div class="text-sm"><Check /></div>
-        <span>
-          Downloaded {{ downloadedCount }}/{{ totalCount }}
-        </span>
+        <span> Downloaded {{ downloadedCount }}/{{ totalCount }} </span>
       </button>
 
-      <button v-else class="button button-primary px-4 py-1.5 h-full min-w-[12rem] text-xs rounded-full" @click.prevent="downloadAllLyrics">
+      <button
+        v-else
+        class="button button-primary px-4 py-1.5 h-full min-w-[12rem] text-xs rounded-full"
+        @click.prevent="downloadAllLyrics"
+      >
         <div class="text-sm"><DownloadMultiple /></div>
-        <span>
-          Download all lyrics
-        </span>
+        <span> Download all lyrics </span>
       </button>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
-import { DownloadMultiple, Loading, Check, Cog, Information, Magnify } from 'mdue'
-import { useDownloader } from '@/composables/downloader.js'
-import MiniSearch from './MiniSearch.vue'
-import { invoke } from '@tauri-apps/api/core'
+import { ref, onMounted, onUnmounted, watch } from "vue";
+import {
+  DownloadMultiple,
+  Loading,
+  Check,
+  Cog,
+  Information,
+  Magnify,
+} from "mdue";
+import { useDownloader } from "@/composables/downloader.js";
+import { useSearchLibrary } from "@/composables/search-library.js";
+import MiniSearch from "./MiniSearch.vue";
+import { invoke } from "@tauri-apps/api/core";
 
-const props = defineProps(['activeTab'])
-defineEmits(['changeActiveTab', 'showConfig', 'showAbout', 'showDownloadViewer'])
+const props = defineProps(["activeTab"]);
+const emit = defineEmits([
+  "changeActiveTab",
+  "showConfig",
+  "showAbout",
+  "showDownloadViewer",
+]);
 
-const { isDownloading, totalCount, downloadedCount, addToQueue } = useDownloader()
+const { isDownloading, totalCount, downloadedCount, addToQueue } =
+  useDownloader();
+const { hideTracksWithLyrics, setHideTracksWithLyrics } = useSearchLibrary();
 
-const isBuildingQueue = ref(false)
+const isBuildingQueue = ref(false);
+
+// Watch for changes in the checkbox and emit the change
+watch(hideTracksWithLyrics, (newValue) => {
+  setHideTracksWithLyrics(newValue);
+});
 
 const downloadAllLyrics = async () => {
-  isBuildingQueue.value = true
+  isBuildingQueue.value = true;
 
   try {
-    const config = await invoke('get_config')
-    let downloadTrackIds = await invoke('get_track_ids', {
+    const config = await invoke("get_config");
+    let downloadTrackIds = await invoke("get_track_ids", {
       withoutPlainLyrics: config.skip_tracks_with_plain_lyrics,
-      withoutSyncedLyrics: config.skip_tracks_with_synced_lyrics
-    })
-    addToQueue(downloadTrackIds)
+      withoutSyncedLyrics: config.skip_tracks_with_synced_lyrics,
+    });
+    addToQueue(downloadTrackIds);
   } catch (error) {
     // TODO handle error by showing an error popup, etc...
-    console.error(error)
+    console.error(error);
   } finally {
-    isBuildingQueue.value = false
+    isBuildingQueue.value = false;
   }
-}
+};
 </script>
 
 <style scoped>
