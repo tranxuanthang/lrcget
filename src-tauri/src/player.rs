@@ -1,11 +1,14 @@
 use anyhow::Result;
 use kira::{
-    manager::{backend::DefaultBackend, AudioManager, AudioManagerSettings},
+    AudioManager,
+    AudioManagerSettings,
+    Decibels,
+    DefaultBackend,
     sound::{
         streaming::{StreamingSoundData, StreamingSoundHandle},
         FromFileError, PlaybackState,
     },
-    tween::Tween,
+    Tween,
 };
 
 use crate::persistent_entities::PersistentTrack;
@@ -54,6 +57,8 @@ impl Player {
                 PlaybackState::Playing => self.status = PlayerStatus::Playing,
                 PlaybackState::Pausing => self.status = PlayerStatus::Playing,
                 PlaybackState::Stopping => self.status = PlayerStatus::Playing,
+                PlaybackState::WaitingToResume => self.status = PlayerStatus::Playing,
+                PlaybackState::Resuming => self.status = PlayerStatus::Playing,
                 PlaybackState::Paused => self.status = PlayerStatus::Paused,
                 PlaybackState::Stopped => self.status = PlayerStatus::Stopped,
             }
@@ -81,7 +86,7 @@ impl Player {
             self.sound_handle
                 .as_mut()
                 .unwrap()
-                .set_volume(self.volume, Tween::default());
+                .set_volume(Self::volume_as_decibels(self.volume), Tween::default());
         }
 
         Ok(())
@@ -122,10 +127,50 @@ impl Player {
         }
     }
 
+    /// Kira doesn't provide a way to create Decibels from an amplitude.
+    /// Invert the formula in Decibels::as_amplitude():
+    /// original:                         amp = 10 ^ (db / 20)
+    /// take log() of both sides:         log(amp) = log(10 ^ (db / 20))
+    /// identity log(a^b) = b*log(a):     log(amp) = (db / 20) * log(10)
+    /// divide both sides by log(10):     log(amp) / log(10) = db / 20
+    /// divide by log(10) is log base 10: log10(amp) = db / 20
+    /// multiple both sides by 20:        20 * log10(amp) = db
+    pub(crate) fn volume_as_decibels(volume: f64) -> Decibels {
+        if volume <= 0.0 {
+            Decibels::SILENCE
+        } else if volume == 1.0 {
+            Decibels::IDENTITY
+        } else {
+            Decibels((20.0 * volume.log10()) as f32)
+        }
+    }
+
     pub fn set_volume(&mut self, volume: f64) {
         if let Some(ref mut sound_handle) = self.sound_handle {
-            sound_handle.set_volume(volume, Tween::default());
+            sound_handle.set_volume(Self::volume_as_decibels(volume), Tween::default());
         }
         self.volume = volume;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use kira::Decibels;
+    use super::Player;
+
+    #[test]
+    fn test_volume_as_decibels() {
+        let decibels = [
+            Decibels::IDENTITY,
+            Decibels(3.0),
+            Decibels(12.0),
+            Decibels(-3.0),
+            Decibels(-12.0),
+            Decibels::SILENCE,
+        ];
+        for db_expected in decibels {
+            let db_actual = Player::volume_as_decibels(db_expected.as_amplitude() as f64);
+            assert!((db_expected.0 - db_actual.0) < 1e-5, "{} != {}", db_expected.0, db_actual.0);
+        }
     }
 }
