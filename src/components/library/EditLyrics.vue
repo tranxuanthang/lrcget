@@ -95,13 +95,12 @@
 
       <!-- NOTE: AsyncCodemirror component does not have @wheel event handler, so it has to be handled here (in the container) -->
       <div class="relative h-full w-full" id="cm-container" ref="cmContainer">
-        <div class="overflow-hidden absolute w-full" :style="{ height: `${cmHeight}px` }" @wheel="handleWheel">
+        <div class="overflow-hidden absolute w-full" :style="{ height: `${cmHeight}px`, fontSize: `${codemirrorStyle.fontSize}em` }" @wheel="handleWheel">
           <AsyncCodemirror
             v-if="shouldLoadCodeMirror"
             v-model="unifiedLyrics"
             placeholder="Lyrics is currently empty"
             class="codemirror-custom h-full outline-none"
-            :style="{ fontSize: `${codemirrorStyle.fontSize}em` }"
             :autofocus="true"
             :indent-with-tab="true"
             :tab-size="2"
