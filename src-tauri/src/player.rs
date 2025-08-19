@@ -134,7 +134,7 @@ impl Player {
     /// identity log(a^b) = b*log(a):     log(amp) = (db / 20) * log(10)
     /// divide both sides by log(10):     log(amp) / log(10) = db / 20
     /// divide by log(10) is log base 10: log10(amp) = db / 20
-    /// multiple both sides by 20:        20 * log10(amp) = db
+    /// multiply both sides by 20:        20 * log10(amp) = db
     pub(crate) fn volume_as_decibels(volume: f64) -> Decibels {
         if volume <= 0.0 {
             Decibels::SILENCE
