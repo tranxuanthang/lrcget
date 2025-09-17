@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=LRCGET
+Comment=Download synced LRC lyrics
+Categories=AudioVideo;Audio;Music;
+Exec=LRCGET
+Icon=LRCGET
+StartupWMClass=LRCGET
