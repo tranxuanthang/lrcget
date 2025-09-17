@@ -38,6 +38,11 @@ app.use(FloatingVue, {
         hide: 50,
       }
     },
+    "lrcget-dropdown": {
+      triggers: ["click"],
+      autoHide: true,
+      placement: "bottom",
+    },
   },
 })
 app.use(vfm)

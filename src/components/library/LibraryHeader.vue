@@ -106,8 +106,11 @@ const downloadAllLyrics = async () => {
   try {
     const config = await invoke('get_config')
     let downloadTrackIds = await invoke('get_track_ids', {
-      withoutPlainLyrics: config.skip_tracks_with_plain_lyrics,
-      withoutSyncedLyrics: config.skip_tracks_with_synced_lyrics
+      searchQuery: '',
+      syncedLyricsTracks: !config.skip_tracks_with_synced_lyrics,
+      plainLyricsTracks: !config.skip_tracks_with_plain_lyrics,
+      instrumentalTracks: true,
+      noLyricsTracks: true,
     })
     addToQueue(downloadTrackIds)
   } catch (error) {
