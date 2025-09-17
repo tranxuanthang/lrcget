@@ -40,20 +40,6 @@
     </div>
 
     <div class="flex-1 flex justify-end items-center gap-1">
-      <button
-        class="button button-normal px-4 py-1.5 rounded-full h-full"
-        @click="$emit('showAbout')"
-      >
-        <Information />
-      </button>
-
-      <button
-        class="button button-normal px-4 py-1.5 rounded-full h-full"
-        @click="$emit('showConfig')"
-      >
-        <Cog />
-      </button>
-
       <button v-if="isBuildingQueue" class="button button-disabled px-4 py-1.5 h-full min-w-[12rem] text-xs rounded-full" @click.prevent="$emit('showDownloadViewer')" disabled>
         <div class="animate-spin text-sm"><Loading /></div>
         <div class="flex gap-1">
@@ -82,19 +68,47 @@
           Download all lyrics
         </span>
       </button>
+
+      <VDropdown theme="lrcget-dropdown" placement="top-end" class="h-full aspect-square">
+        <button
+          class="button button-normal h-full aspect-square rounded-full"
+        >
+          <DotsVertical />
+        </button>
+        <template #popper>
+          <div class="dropdown-container">
+            <button class="dropdown-item" @click="$emit('refreshLibrary')" v-close-popper>
+              <Refresh class="text-brave-20 dark:text-brave-90" />
+              <span class="text-brave-20 dark:text-brave-90 text-sm font-bold">Refresh library</span>
+            </button>
+            <button class="dropdown-item" @click="$emit('uninitializeLibrary')" v-close-popper>
+              <FolderMultiple class="text-brave-20 dark:text-brave-90" />
+              <span class="text-brave-20 dark:text-brave-90 text-sm font-bold">Manage directories</span>
+            </button>
+            <button class="dropdown-item" @click="$emit('showConfig')" v-close-popper>
+              <Cog class="text-brave-20 dark:text-brave-90" />
+              <span class="text-brave-20 dark:text-brave-90 text-sm font-bold">Settings</span>
+            </button>
+            <button class="dropdown-item" @click="$emit('showAbout')" v-close-popper>
+              <Information class="text-brave-20 dark:text-brave-90" />
+              <span class="text-brave-20 dark:text-brave-90 text-sm font-bold">About</span>
+            </button>
+          </div>
+        </template>
+      </VDropdown>
     </div>
   </div>
 </template>
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
-import { DownloadMultiple, Loading, Check, Cog, Information, Magnify } from 'mdue'
+import { DownloadMultiple, Loading, Check, Cog, Information, DotsVertical, Refresh, FolderMultiple } from 'mdue'
 import { useDownloader } from '@/composables/downloader.js'
 import MiniSearch from './MiniSearch.vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const props = defineProps(['activeTab'])
-defineEmits(['changeActiveTab', 'showConfig', 'showAbout', 'showDownloadViewer'])
+defineEmits(['changeActiveTab', 'showConfig', 'showAbout', 'showDownloadViewer', 'refreshLibrary', 'uninitializeLibrary'])
 
 const { isDownloading, totalCount, downloadedCount, addToQueue } = useDownloader()
 
@@ -133,5 +147,13 @@ const downloadAllLyrics = async () => {
 
 .tab {
   @apply transition font-extrabold border-b-2 outline-none py-1;
+}
+
+.dropdown-container {
+  @apply p-1 min-w-[10rem];
+}
+
+.dropdown-item {
+  @apply flex items-center px-2 py-1 hover:bg-brave-95 dark:hover:bg-brave-15 rounded cursor-pointer h-8 gap-1 w-full;
 }
 </style>

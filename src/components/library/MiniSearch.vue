@@ -102,7 +102,7 @@ watch(searchInput, debouncedSearch)
 }
 
 .dropdown-label {
-  @apply text-brave-20 dark:text-brave-90 text-xs font-bold;
+  @apply text-brave-20 dark:text-brave-90 text-sm font-bold;
 }
 
 .dropdown-checkbox {

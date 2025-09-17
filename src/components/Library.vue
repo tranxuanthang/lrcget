@@ -6,6 +6,8 @@
       @showConfig="openConfigModal"
       @showAbout="openAboutModal"
       @showDownloadViewer="openDownloadViewer"
+      @refreshLibrary="refreshLibrary"
+      @uninitializeLibrary="$emit('uninitializeLibrary')"
     />
 
     <div class="relative grow overflow-hidden">
