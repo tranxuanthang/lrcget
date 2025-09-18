@@ -154,6 +154,6 @@ const downloadAllLyrics = async () => {
 }
 
 .dropdown-item {
-  @apply flex items-center px-2 py-1 hover:bg-brave-95 dark:hover:bg-brave-15 rounded cursor-pointer h-8 gap-1 w-full;
+  @apply flex items-center px-2 py-1 hover:bg-brave-90 dark:hover:bg-brave-15 rounded cursor-pointer h-8 gap-1 w-full;
 }
 </style>

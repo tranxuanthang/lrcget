@@ -33,7 +33,7 @@
                 name="synced-lyrics"
                 id="synced-lyrics"
               >
-                <span class="dropdown-label">Synced Lyrics Tracks</span>
+                <span class="dropdown-label">Synced lyrics tracks</span>
               </CheckboxButton>
             </label>
             <label class="dropdown-item">
@@ -42,7 +42,7 @@
                 name="plain-lyrics"
                 id="plain-lyrics"
               >
-                <span class="dropdown-label">Plain Lyrics Tracks</span>
+                <span class="dropdown-label">Plain lyrics tracks</span>
               </CheckboxButton>
             </label>
             <label class="dropdown-item">
@@ -51,7 +51,7 @@
                 name="instrumental"
                 id="instrumental"
               >
-                <span class="dropdown-label">Instrumental Tracks</span>
+                <span class="dropdown-label">Instrumental tracks</span>
               </CheckboxButton>
             </label>
             <label class="dropdown-item">
@@ -60,7 +60,7 @@
                 name="no-lyrics"
                 id="no-lyrics"
               >
-                <span class="dropdown-label">No Lyrics Tracks</span>
+                <span class="dropdown-label">No lyrics tracks</span>
               </CheckboxButton>
             </label>
           </div>
@@ -98,7 +98,7 @@ watch(searchInput, debouncedSearch)
 }
 
 .dropdown-item {
-  @apply flex items-center px-2 py-1 hover:bg-brave-95 dark:hover:bg-brave-15 rounded cursor-pointer;
+  @apply flex items-center px-2 py-1 hover:bg-brave-90 dark:hover:bg-brave-15 rounded cursor-pointer;
 }
 
 .dropdown-label {
