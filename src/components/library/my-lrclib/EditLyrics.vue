@@ -245,9 +245,23 @@ const resetCodemirrorFontSize = () => {
 const lyricsUpdated = (newLyrics) => {
   const parsed = Lrc.parse(newLyrics)
   runner.value = new Runner(parsed)
-  isDirty.value = true
   lyricsLintResult.value = executeLyricsLint(newLyrics)
   plainTextLintResult.value = executePlainTextLint(newLyrics)
+
+  const isLyricsSynced = /^\[.*\]/m.test(unifiedLyrics.value) // Can be a little finnicky when switching between synced/plain lyrics but it's better than using 'editingTrack.value.syncedLyrics'
+  if (isLyricsSynced) {
+    if (lyricsLintResult.value.length > 0) {
+      isDirty.value = true
+    } else {
+      isDirty.value = false
+    }
+  } else {
+    if (plainTextLintResult.value.length > 0) {
+      isDirty.value = true
+    } else {
+      isDirty.value = false
+    }
+  }
 }
 
 const rewind100 = () => {
