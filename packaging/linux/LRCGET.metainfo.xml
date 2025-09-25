@@ -39,6 +39,18 @@
   <url type="bugtracker">https://github.com/tranxuanthang/lrcget/issues</url>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.0.0" date="2025-09-25">
+      <description>
+        <ul>
+          <li>Added library filtering feature</li>
+          <li>Added lyrics copy buttons to various places</li>
+          <li>Added a convienient dropdown menu in the header to refresh or manage directories</li>
+          <li>Added lyrics line count information when searching for lyrics</li>
+          <li>Changed rewind/fast forward hotkeys in lyrics editor to Alt+J and Alt+K (was Alt+Right and Alt+Left)</li>
+          <li>Fixed publishing lyrics issue in LRCLIB browser tab</li>
+        </ul>
+      </description>
+    </release>
     <release version="0.9.3" date="2025-01-24">
       <description>
         <ul>
