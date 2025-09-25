@@ -57,22 +57,26 @@ const chooseProgress = _throttle((value) => {
   }, 500)
 }, 200)
 
+const roundThousandths = (num) => {
+  return Math.round(num * 1000.0) / 1000.0
+}
+
 onMounted(() => {
   if (!props.duration || !props.progress) return
 
-  progressPercent.value = props.progress / props.duration
+  progressPercent.value = roundThousandths(props.progress / props.duration)
 })
 
 watch(() => props.progress, (newProgress) => {
   if (!props.duration || !newProgress) return
   if (isGracePeriod.value) return
 
-  progressPercent.value = newProgress / props.duration
+  progressPercent.value = roundThousandths(newProgress / props.duration)
 })
 
 watch(() => props.duration, (newDuration) => {
   if (!props.progress || !newDuration) return
 
-  progressPercent.value = props.progress / newDuration
+  progressPercent.value = roundThousandths(props.progress / newDuration)
 })
 </script>
