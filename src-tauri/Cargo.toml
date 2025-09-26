@@ -30,7 +30,7 @@ indoc = "2"
 tokio = { version = "1.40", features = ["full"] }
 ring = "0.17.8"
 data-encoding = "2.4.0"
-kira = "0.9.5"
+kira = "0.10.8"
 symphonia = { version = "0.5.4", features = ["all"] }
 regex = "1.10.4"
 lrc = "0.1.8"
