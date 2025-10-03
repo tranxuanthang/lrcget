@@ -39,6 +39,14 @@
   <url type="bugtracker">https://github.com/tranxuanthang/lrcget/issues</url>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.0.1" date="2025-10-03">
+      <description>
+        <ul>
+          <li>Update cargo dependencies</li>
+          <li>Prevent crashes when there is no audio output device</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2025-09-25">
       <description>
         <ul>
