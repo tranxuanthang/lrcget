@@ -18,7 +18,7 @@ use player::Player;
 use regex::Regex;
 use rusqlite::Connection;
 use serde::Serialize;
-use state::{AppState, ServiceAccess};
+use state::{AppState, ServiceAccess, Notify, NotifyType};
 use tauri::{AppHandle, Manager, State, Emitter};
 
 #[derive(Clone, Serialize)]
@@ -700,6 +700,13 @@ fn open_devtools(app_handle: AppHandle) {
     app_handle.get_webview_window("main").unwrap().open_devtools();
 }
 
+#[tauri::command]
+fn drain_notifications(app_state: tauri::State<AppState>) -> Vec<Notify> {
+    let mut queued_notifications = app_state.queued_notifications.lock().unwrap();
+    let notifications = queued_notifications.drain(..).collect();
+    notifications
+}
+
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
@@ -710,6 +717,7 @@ async fn main() {
         .manage(AppState {
             db: Default::default(),
             player: Default::default(),
+            queued_notifications: std::sync::Mutex::new(Vec::new()),
         })
         .setup(|app| {
             let handle = app.handle();
@@ -718,8 +726,20 @@ async fn main() {
             let db = db::initialize_database(&handle).expect("Database initialize should succeed");
             *app_state.db.lock().unwrap() = Some(db);
 
-            let player = Player::new().expect("Failed to initialize audio player");
-            *app_state.player.lock().unwrap() = Some(player);
+            let maybe_player = Player::new();
+            match maybe_player {
+                Ok(player) => {
+                    *app_state.player.lock().unwrap() = Some(player);
+                }
+                Err(e) => {
+                    eprintln!("Failed to initialize audio player: {}", e);
+                    let mut buf = app_state.queued_notifications.lock().unwrap();
+                    buf.push(Notify {
+                        message: format!("Failed to initialize audio player: {}", e),
+                        notify_type: NotifyType::Error,
+                    });
+                }
+            }
 
             let handle_clone = handle.clone();
 
@@ -788,7 +808,8 @@ async fn main() {
             seek_track,
             stop_track,
             set_volume,
-            open_devtools
+            open_devtools,
+            drain_notifications,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

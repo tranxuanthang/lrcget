@@ -24,8 +24,10 @@ import { invoke } from '@tauri-apps/api/core'
 import { ModalsContainer } from 'vue-final-modal'
 import { useGlobalState } from './composables/global-state'
 import { useDownloader } from '@/composables/downloader.js'
-const appWindow = getCurrentWebviewWindow()
+import { useToast } from 'vue-toastification'
 
+const appWindow = getCurrentWebviewWindow()
+const toast = useToast()
 const { themeMode, setThemeMode, setLrclibInstance } = useGlobalState()
 const { downloadNext } = useDownloader()
 
@@ -46,12 +48,24 @@ onMounted(async () => {
   await loadGlobalState()
   darkModeHandle()
   downloadNext()
+  drainNotifications()
 })
 
 const loadGlobalState = async () => {
   const config = await invoke('get_config')
   setThemeMode(config.theme_mode)
   setLrclibInstance(config.lrclib_instance)
+}
+
+const drainNotifications = async () => {
+  setInterval(async () => {
+    const notifications = await invoke('drain_notifications')
+    notifications.forEach((notification) => {
+      toast(notification.message, {
+        type: notification.type,
+      })
+    })
+  }, 100)
 }
 
 const darkModeHandle = async () => {
