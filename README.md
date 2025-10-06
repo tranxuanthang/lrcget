@@ -8,7 +8,7 @@ LRCGET is the official client of [LRCLIB](https://lrclib.net) service.
 
 ## Download
 
-🎉 Latest version: v0.9.0
+🎉 Latest version: v1.0.1
 
 Visit the [release page](https://github.com/tranxuanthang/lrcget/releases) to download.
 
