@@ -1,0 +1,8 @@
+{
+  "identifier": "net.lrclib.lrcget",
+    "bundle": {
+        "icon": [
+            "icons/macos/icon.icns"
+        ]
+    }
+}
