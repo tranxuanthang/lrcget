@@ -46,7 +46,7 @@ onMounted(async () => {
   init.value = await invoke('get_init')
   loading.value = false
   await loadGlobalState()
-  darkModeHandle()
+  darkModeHandle(themeMode.value)
   downloadNext()
   drainNotifications()
 })
@@ -68,9 +68,12 @@ const drainNotifications = async () => {
   }, 100)
 }
 
-const darkModeHandle = async () => {
+const darkModeHandle = async (themeMode) => {
+  if (themeMode !== 'dark' && themeMode !== 'light') {
+    themeMode = await appWindow.theme()
+  }
   // check and insert the `dark` class to html tag
-  if (themeMode.value === 'dark') {
+  if (themeMode === 'dark') {
     document.documentElement.classList.add('dark')
   } else {
     document.documentElement.classList.remove('dark')
@@ -93,8 +96,14 @@ const closeWindow = () => {
   appWindow.close()
 }
 
+appWindow.onThemeChanged(({ payload: theme }) => {
+  if (themeMode.value === "auto") {
+    darkModeHandle(theme)
+  }
+})
+
 watch(themeMode, () => {
-  darkModeHandle()
+  darkModeHandle(themeMode.value)
 })
 </script>
 
