@@ -9,5 +9,5 @@ jobs:
       - uses: vedantmgoyal9/winget-releaser@latest
         with:
           identifier: LRCLIB.LRCGET
-          installers-regex: 'x64_en-US\.msi '
+          installers-regex: 'x64_en-US\.msi'
           token: ${{ secrets.WINGET_ACC_TOKEN }}
