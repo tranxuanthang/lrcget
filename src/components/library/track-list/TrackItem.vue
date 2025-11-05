@@ -20,7 +20,7 @@
     <div class="flex-none flex p-1" :class="{ 'w-[65%]': !isShowTrackNumber, 'w-[60%]': isShowTrackNumber }" @click="playTrack(track)">
       <div v-if="track">
         <div class="font-bold text-sm text-brave-20 flex items-center dark:text-brave-95">
-          <Equalizer v-if="isPlaying && status === 'playing'" class="mr-1" />
+          <Equalizer v-if="isPlaying && status === 'playing' && !editingTrack" class="mr-1" />
           <span>{{ track.title }}</span>
         </div>
 
@@ -73,7 +73,7 @@ import { usePlayer } from '@/composables/player.js'
 const { playTrack, playingTrack, status, pause, resume } = usePlayer()
 
 const { searchLyrics } = useSearchLyrics()
-const { editLyrics } = useEditLyrics()
+const { editLyrics, editingTrack } = useEditLyrics()
 const props = defineProps(['trackId', 'isShowTrackNumber'])
 const track = ref(null)
 
