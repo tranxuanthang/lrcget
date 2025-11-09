@@ -15,6 +15,7 @@ use lofty::{
 };
 use lrc::Lyrics;
 use std::fs::{remove_file, write, OpenOptions};
+use std::io::Seek;
 use std::path::Path;
 use std::path::PathBuf;
 use thiserror::Error;
@@ -175,7 +176,8 @@ fn embed_lyrics_flac(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) 
             let _ = vorbis_comments.remove("LYRICS");
         }
 
-        flac_file.save_to_path(track_path, WriteOptions::default())?;
+        file_content.seek(std::io::SeekFrom::Start(0))?;
+        flac_file.save_to(&mut file_content, WriteOptions::default())?;
     }
 
     Ok(())
@@ -189,7 +191,8 @@ fn embed_lyrics_mp3(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) -
         insert_id3v2_uslt_frame(id3v2, plain_lyrics)?;
         insert_id3v2_sylt_frame(id3v2, synced_lyrics)?;
 
-        mp3_file.save_to_path(track_path, WriteOptions::default())?;
+        file_content.seek(std::io::SeekFrom::Start(0))?;
+        mp3_file.save_to(&mut file_content, WriteOptions::default())?;
     }
 
     Ok(())
