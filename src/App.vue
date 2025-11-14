@@ -24,8 +24,10 @@ import { invoke } from '@tauri-apps/api/core'
 import { ModalsContainer } from 'vue-final-modal'
 import { useGlobalState } from './composables/global-state'
 import { useDownloader } from '@/composables/downloader.js'
-const appWindow = getCurrentWebviewWindow()
+import { useToast } from 'vue-toastification'
 
+const appWindow = getCurrentWebviewWindow()
+const toast = useToast()
 const { themeMode, setThemeMode, setLrclibInstance } = useGlobalState()
 const { downloadNext } = useDownloader()
 
@@ -44,8 +46,9 @@ onMounted(async () => {
   init.value = await invoke('get_init')
   loading.value = false
   await loadGlobalState()
-  darkModeHandle()
+  darkModeHandle(themeMode.value)
   downloadNext()
+  drainNotifications()
 })
 
 const loadGlobalState = async () => {
@@ -54,9 +57,23 @@ const loadGlobalState = async () => {
   setLrclibInstance(config.lrclib_instance)
 }
 
-const darkModeHandle = async () => {
+const drainNotifications = async () => {
+  setInterval(async () => {
+    const notifications = await invoke('drain_notifications')
+    notifications.forEach((notification) => {
+      toast(notification.message, {
+        type: notification.type,
+      })
+    })
+  }, 100)
+}
+
+const darkModeHandle = async (themeMode) => {
+  if (themeMode !== 'dark' && themeMode !== 'light') {
+    themeMode = await appWindow.theme()
+  }
   // check and insert the `dark` class to html tag
-  if (themeMode.value === 'dark') {
+  if (themeMode === 'dark') {
     document.documentElement.classList.add('dark')
   } else {
     document.documentElement.classList.remove('dark')
@@ -79,8 +96,14 @@ const closeWindow = () => {
   appWindow.close()
 }
 
+appWindow.onThemeChanged(({ payload: theme }) => {
+  if (themeMode.value === "auto") {
+    darkModeHandle(theme)
+  }
+})
+
 watch(themeMode, () => {
-  darkModeHandle()
+  darkModeHandle(themeMode.value)
 })
 </script>
 

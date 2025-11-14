@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2025 tranxuanthang -->
+<component type="desktop-application">
+  <id>net.lrclib.lrcget</id>
+  <launchable type="desktop-id">LRCGET.desktop</launchable>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT</project_license>
+  <name>LRCGET</name>
+  <developer id="net.lrclib">
+    <name>tranxuanthang</name>
+  </developer>
+  <update_contact>thang.dovah_AT_gmail.com</update_contact>
+  <summary>Download synced LRC lyrics</summary>
+  <description>
+    <p>Mass-download LRC synced lyrics for your offline music library.</p>
+    <p>LRCGET will scan all files in your chosen directory for music files, download lyrics as LRC files with matching names, and save them alongside your music files.</p>
+    <p>LRCGET is the official client of the LRCLIB service.</p>
+  </description>
+  <screenshots>
+    <screenshot type="default">
+      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/10ad5770672a2b078019bf9844872a875ba7026f/screenshots/02.png</image>
+      <caption>Music playing with synced lyrics</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/10ad5770672a2b078019bf9844872a875ba7026f/screenshots/03.png</image>
+      <caption>Searching for lyrics</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/10ad5770672a2b078019bf9844872a875ba7026f/screenshots/04.png</image>
+      <caption>Downloading lyrics</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/10ad5770672a2b078019bf9844872a875ba7026f/screenshots/04.png</image>
+      <caption>Editing lyrics</caption>
+    </screenshot>
+  </screenshots>
+  <url type="homepage">https://lrclib.net/</url>
+  <url type="vcs-browser">https://github.com/tranxuanthang/lrcget</url>
+  <url type="bugtracker">https://github.com/tranxuanthang/lrcget/issues</url>
+  <content_rating type="oars-1.1"/>
+  <releases>
+    <release version="1.0.1" date="2025-10-03">
+      <description>
+        <ul>
+          <li>Update cargo dependencies</li>
+          <li>Prevent crashes when there is no audio output device</li>
+        </ul>
+      </description>
+    </release>
+    <release version="1.0.0" date="2025-09-25">
+      <description>
+        <ul>
+          <li>Added library filtering feature</li>
+          <li>Added lyrics copy buttons to various places</li>
+          <li>Added a convienient dropdown menu in the header to refresh or manage directories</li>
+          <li>Added lyrics line count information when searching for lyrics</li>
+          <li>Changed rewind/fast forward hotkeys in lyrics editor to Alt+J and Alt+K (was Alt+Right and Alt+Left)</li>
+          <li>Fixed publishing lyrics issue in LRCLIB browser tab</li>
+        </ul>
+      </description>
+    </release>
+    <release version="0.9.3" date="2025-01-24">
+      <description>
+        <ul>
+          <li>Fix an issue that caused random lyrics to be overwritten and other unexpected behaviors when using the "Edit Lyrics" feature (fixes #181)</li>
+          <li>Fix the zoom-in/zoom-out text functionality in the "Edit Lyrics" feature</li>
+          <li>Refactor the hotkeys code in the "Edit Lyrics" component</li>
+          <li>Attempt to fix the "LRCGET is damaged and can’t be opened" issue in the macOS build by self-signing the package (fixes #86)</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+  <provides>
+    <binary>LRCGET</binary>
+  </provides>
+</component>

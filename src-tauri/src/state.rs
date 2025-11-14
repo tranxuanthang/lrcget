@@ -3,9 +3,33 @@ use tauri::{AppHandle, Manager, State};
 
 use crate::player::Player;
 
+use serde::Serialize;
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum NotifyType {
+    #[serde(rename = "success")]
+    Success,
+    #[serde(rename = "error")]
+    Error,
+    #[serde(rename = "info")]
+    Info,
+    #[serde(rename = "warning")]
+    Warning,
+}
+
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Notify {
+    pub message: String,
+    #[serde(rename = "type")]
+    pub notify_type: NotifyType,
+}
+
 pub struct AppState {
     pub db: std::sync::Mutex<Option<Connection>>,
     pub player: std::sync::Mutex<Option<Player>>,
+    pub queued_notifications: std::sync::Mutex<Vec<Notify>>,
 }
 
 pub trait ServiceAccess {

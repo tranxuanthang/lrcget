@@ -74,8 +74,8 @@
           <div class="flex gap-1">
             <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line & move next (Alt+Enter)" @click="syncLine"><EqualEnter /> <span class="text-xs">Sync Line & Move Next</span></button>
             <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Sync line (Alt+X)" @click="syncLine(false)"><Equal /></button>
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms (Alt+LeftArrow)" @click="rewind100"><Minus /></button>
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Forward line 100ms (Alt+RightArrow)" @click="fastForward100"><Plus /></button>
+            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms (Alt+K)" @click="rewind100"><Minus /></button>
+            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Forward line 100ms (Alt+J)" @click="fastForward100"><Plus /></button>
             <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Replay line (Alt+Z)" @click="repeatLine"><MotionPlay /></button>
           </div>
 
@@ -95,13 +95,12 @@
 
       <!-- NOTE: AsyncCodemirror component does not have @wheel event handler, so it has to be handled here (in the container) -->
       <div class="relative h-full w-full" id="cm-container" ref="cmContainer">
-        <div class="overflow-hidden absolute w-full" :style="{ height: `${cmHeight}px` }" @wheel="handleWheel">
+        <div class="overflow-hidden absolute w-full" :style="{ height: `${cmHeight}px`, fontSize: `${codemirrorStyle.fontSize}em` }" @wheel="handleWheel">
           <AsyncCodemirror
             v-if="shouldLoadCodeMirror"
             v-model="unifiedLyrics"
             placeholder="Lyrics is currently empty"
             class="codemirror-custom h-full outline-none"
-            :style="{ fontSize: `${codemirrorStyle.fontSize}em` }"
             :autofocus="true"
             :indent-with-tab="true"
             :tab-size="2"
@@ -182,8 +181,8 @@ const hotkeyConfig = [
   { keys: 'Alt+X', handler: () => syncLine(false) },
   { keys: 'Alt+Z', handler: () => repeatLine() },
   { keys: 'Ctrl+S', handler: () => saveLyrics() },
-  { keys: 'Alt+ArrowLeft', handler: () => rewind100() },
-  { keys: 'Alt+ArrowRight', handler: () => fastForward100() },
+  { keys: 'Alt+K', handler: () => rewind100() },
+  { keys: 'Alt+J', handler: () => fastForward100() },
   { keys: 'Ctrl+Plus', handler: () => changeCodemirrorFontSizeBy(+1) },
   { keys: 'Ctrl+=', handler: () => changeCodemirrorFontSizeBy(+1) },
   { keys: 'Ctrl+-', handler: () => changeCodemirrorFontSizeBy(-1) },

@@ -62,7 +62,7 @@ const rowVirtualizer = useVirtualizer(
   }))
 )
 
-const { searchValue } = useSearchLibrary()
+const { searchValue, filters } = useSearchLibrary()
 
 const virtualRows = computed(() => rowVirtualizer.value.getVirtualItems())
 
@@ -79,7 +79,16 @@ const downloadLyrics = (track) => {
 const getTrackIds = async () => {
   trackIds.value = [];
   try {
-    trackIds.value = await invoke('get_track_ids', { searchQuery: searchValue.value })
+    trackIds.value = await invoke(
+      'get_track_ids',
+      {
+        searchQuery: searchValue.value,
+        syncedLyricsTracks: filters.value.syncedLyricsTracks,
+        plainLyricsTracks: filters.value.plainLyricsTracks,
+        instrumentalTracks: filters.value.instrumentalTracks,
+        noLyricsTracks: filters.value.noLyricsTracks,
+      }
+    )
   } catch (error) {
     console.error(error)
   }
@@ -104,4 +113,12 @@ watch(searchValue, async () => {
     console.error(error)
   }
 })
+
+watch(filters, async () => {
+  try {
+    await getTrackIds()
+  } catch (error) {
+    console.error(error)
+  }
+}, { deep: true })
 </script>

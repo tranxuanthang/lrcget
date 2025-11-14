@@ -11,8 +11,8 @@
         <VTooltip theme="lrcget-tooltip">
           <button
             class="button text-sm px-5 py-1.5 h-8 w-24 rounded-full"
-            :class="{ 'button-primary': !isDirty, 'button-disabled': isDirty }"
-            :disabled="isDirty"
+            :class="{ 'button-primary': isDirty, 'button-disabled': !isDirty }"
+            :disabled="!isDirty"
             @click="handlePublish"
           >
             Publish

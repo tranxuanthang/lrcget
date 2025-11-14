@@ -10,6 +10,16 @@
             <div class="grow p-4 h-full overflow-y-auto">
               {{ props.lyrics }}
             </div>
+
+            <button
+              class="absolute bottom-2 right-2 flex items-center gap-1 px-3 py-1 rounded text-xs font-bold bg-brave-90 text-brave-20 dark:bg-brave-10 dark:text-brave-95 hover:bg-brave-80 dark:hover:bg-brave-20 shadow"
+              type="button"
+              @click.stop="onCopy"
+              :aria-label="copied ? 'Copied' : 'Copy'"
+            >
+              <ContentCopy class="w-4 h-4" />
+              <span>{{ copied ? 'Copied' : 'Copy' }}</span>
+            </button>
           </div>
         </div>
       </transition>
@@ -30,16 +40,29 @@
 </template>
 
 <script setup>
-import { DragHorizontal } from 'mdue'
+import { DragHorizontal, ContentCopy } from 'mdue'
 import { ref } from 'vue'
 import { computed } from '@vue/reactivity'
 
 const props = defineProps(['lyrics'])
 
 const expanded = ref(false)
+const copied = ref(false)
 
 const expand = () => {
   expanded.value = !expanded.value
+}
+
+const onCopy = async () => {
+  try {
+    const text = props.lyrics || ''
+    if (!text) return
+    await navigator.clipboard.writeText(text)
+    copied.value = true
+    setTimeout(() => (copied.value = false), 1500)
+  } catch (e) {
+    // swallow
+  }
 }
 </script>
 

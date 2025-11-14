@@ -529,18 +529,37 @@ pub fn get_tracks(db: &Connection) -> Result<Vec<PersistentTrack>> {
     Ok(tracks)
 }
 
-pub fn get_track_ids(without_plain_lyrics: bool, without_synced_lyrics: bool, db: &Connection) -> Result<Vec<i64>> {
+pub fn get_track_ids(
+    synced_lyrics: bool,
+    plain_lyrics: bool,
+    instrumental: bool,
+    no_lyrics: bool,
+    db: &Connection
+) -> Result<Vec<i64>> {
     let base_query = "SELECT id FROM tracks";
 
-    let lyrics_conditions: &str = match (without_plain_lyrics, without_synced_lyrics) {
-        (true, true) => " WHERE txt_lyrics IS NULL AND lrc_lyrics IS NULL AND instrumental = false",
-        (true, false) => " WHERE txt_lyrics IS NULL AND instrumental = false",
-        (false, true) => " WHERE lrc_lyrics IS NULL AND instrumental = false",
-        (false, false) => "",
+    let mut conditions = Vec::new();
+
+    if !synced_lyrics {
+        conditions.push("(lrc_lyrics IS NULL OR lrc_lyrics = '[au: instrumental]')");
+    }
+    if !plain_lyrics {
+        conditions.push("(txt_lyrics IS NULL OR lrc_lyrics IS NOT NULL)");
+    }
+    if !instrumental {
+        conditions.push("instrumental = false");
+    }
+    if !no_lyrics {
+        conditions.push("(txt_lyrics IS NOT NULL OR lrc_lyrics IS NOT NULL OR instrumental = true)");
+    }
+
+    let where_clause = if !conditions.is_empty() {
+        format!(" WHERE {}", conditions.join(" AND "))
+    } else {
+        String::new()
     };
 
-    let full_query = format!("{}{} ORDER BY title_lower ASC",
-        base_query, lyrics_conditions);
+    let full_query = format!("{}{} ORDER BY title_lower ASC", base_query, where_clause);
 
     let mut statement = db.prepare(&full_query)?;
     let mut rows = statement.query([])?;
@@ -553,19 +572,48 @@ pub fn get_track_ids(without_plain_lyrics: bool, without_synced_lyrics: bool, db
     Ok(track_ids)
 }
 
-pub fn get_search_track_ids(query_str: &String, db: &Connection) -> Result<Vec<i64>> {
-    let query = indoc! {"
+pub fn get_search_track_ids(
+    query_str: &String,
+    synced_lyrics: bool,
+    plain_lyrics: bool,
+    instrumental: bool,
+    no_lyrics: bool,
+    db: &Connection
+) -> Result<Vec<i64>> {
+    let base_query = indoc! {"
       SELECT tracks.id
       FROM tracks
       JOIN artists ON tracks.artist_id = artists.id
       JOIN albums ON tracks.album_id = albums.id
-      WHERE artists.name_lower LIKE ?
+      WHERE (artists.name_lower LIKE ?
       OR albums.name_lower LIKE ?
-      OR tracks.title_lower LIKE ?
-      ORDER BY title_lower ASC
-  "};
+      OR tracks.title_lower LIKE ?)
+    "};
 
-    let mut statement = db.prepare(query)?;
+    let mut conditions = Vec::new();
+
+    if !synced_lyrics {
+        conditions.push("(lrc_lyrics IS NULL OR lrc_lyrics = '[au: instrumental]')");
+    }
+    if !plain_lyrics {
+        conditions.push("(txt_lyrics IS NULL OR lrc_lyrics IS NOT NULL)");
+    }
+    if !instrumental {
+        conditions.push("instrumental = false");
+    }
+    if !no_lyrics {
+        conditions.push("(txt_lyrics IS NOT NULL OR lrc_lyrics IS NOT NULL OR instrumental = true)");
+    }
+
+    let where_clause = if !conditions.is_empty() {
+        format!(" AND {}", conditions.join(" AND "))
+    } else {
+        String::new()
+    };
+
+    let full_query = format!("{}{} ORDER BY title_lower ASC", base_query, where_clause);
+
+    let mut statement = db.prepare(&full_query)?;
     let formatted_query_str = format!("%{}%", prepare_input(query_str));
     let mut rows = statement.query(params![
         formatted_query_str,

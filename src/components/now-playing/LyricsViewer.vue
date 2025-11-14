@@ -21,6 +21,16 @@
               >{{ line.content }}</p>
             </div>
 
+            <button
+              class="z-10 absolute bottom-2 right-2 flex items-center gap-1 px-3 py-1 rounded text-xs font-bold bg-brave-90 text-brave-20 dark:bg-brave-15 dark:text-brave-95 hover:bg-brave-80 dark:hover:bg-brave-20 shadow"
+              type="button"
+              @click.stop="onCopy"
+              :aria-label="copied ? 'Copied' : 'Copy'"
+            >
+              <ContentCopy class="w-4 h-4" />
+              <span>{{ copied ? 'Copied' : 'Copy' }}</span>
+            </button>
+
             <div class="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-brave-95 dark:from-brave-10 pointer-events-none"></div>
             <div class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-brave-95 dark:from-brave-10 pointer-events-none"></div>
           </div>
@@ -45,7 +55,7 @@
 </template>
 
 <script setup>
-import { DragHorizontal } from 'mdue'
+import { DragHorizontal, ContentCopy } from 'mdue'
 import { Lrc, Runner } from 'lrc-kit'
 import { ref, onMounted, watch, nextTick } from 'vue'
 import { computed } from '@vue/reactivity'
@@ -59,6 +69,7 @@ const currentIndex = ref(null)
 const currentLyrics = ref(null)
 const expanded = ref(false)
 const currentLineElementOffset = ref(null)
+const copied = ref(false)
 const expand = () => {
   expanded.value = !expanded.value
   nextTick(() => {
@@ -93,6 +104,18 @@ const fullViewTransform = computed(() => {
 
 const onLineClick = (line) => {
   emit('lyricsClicked', line)
+}
+
+const onCopy = async () => {
+  try {
+    const text = (parsedLyrics.value || []).map(l => l.content).join('\n')
+    if (!text) return
+    await navigator.clipboard.writeText(text)
+    copied.value = true
+    setTimeout(() => (copied.value = false), 1500)
+  } catch (e) {
+    // swallow
+  }
 }
 
 onMounted(() => {

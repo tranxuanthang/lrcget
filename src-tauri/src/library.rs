@@ -51,10 +51,17 @@ pub fn get_tracks(conn: &Connection) -> Result<Vec<PersistentTrack>> {
     db::get_tracks(conn)
 }
 
-pub fn get_track_ids(search_query: Option<String>, without_plain_lyrics: bool, without_synced_lyrics: bool, conn: &Connection) -> Result<Vec<i64>> {
+pub fn get_track_ids(
+    search_query: Option<String>,
+    synced_lyrics: bool,
+    plain_lyrics: bool,
+    instrumental: bool,
+    no_lyrics: bool,
+    conn: &Connection
+) -> Result<Vec<i64>> {
     match search_query {
-        Some(search_query) => db::get_search_track_ids(&search_query, conn),
-        None => db::get_track_ids(without_plain_lyrics, without_synced_lyrics, conn),
+        Some(query) => db::get_search_track_ids(&query, synced_lyrics, plain_lyrics, instrumental, no_lyrics, conn),
+        None => db::get_track_ids(synced_lyrics, plain_lyrics, instrumental, no_lyrics, conn),
     }
 }
 

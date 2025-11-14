@@ -24,10 +24,24 @@
     ],
     "linux": {
       "deb": {
+        "desktopTemplate": "../packaging/linux/LRCGET.desktop",
+        "files": {
+          "/usr/share/metainfo/LRCGET.metainfo.xml": "../packaging/linux/LRCGET.metainfo.xml"
+        },
         "depends": []
       },
       "appimage": {
+        "files": {
+          "/usr/share/metainfo/LRCGET.metainfo.xml": "../packaging/linux/LRCGET.metainfo.xml"
+        },
         "bundleMediaFramework": false
+      },
+      "rpm": {
+        "desktopTemplate": "../packaging/linux/LRCGET.desktop",
+        "files": {
+          "/usr/share/metainfo/LRCGET.metainfo.xml": "../packaging/linux/LRCGET.metainfo.xml"
+        },
+        "depends": []
       }
     },
     "longDescription": "",
