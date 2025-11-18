@@ -39,6 +39,18 @@
   <url type="bugtracker">https://github.com/tranxuanthang/lrcget/issues</url>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="1.0.2" date="2025-11-18">
+      <description>
+        <ul>
+          <li>Skipping synced lyrics tracks also skips instrumental tracks</li>
+          <li>Auto switch light/dark mode based on system theme</li>
+          <li>Use existing file handle for embedding lyrics</li>
+          <li>Improve performance when editing lyrics</li>
+          <li>Improve macOS icon by adding padding</li>
+          <li>Update cargo dependencies</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.1" date="2025-10-03">
       <description>
         <ul>
