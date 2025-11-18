@@ -101,7 +101,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref } from 'vue'
 import { DownloadMultiple, Loading, Check, Cog, Information, DotsVertical, Refresh, FolderMultiple } from 'mdue'
 import { useDownloader } from '@/composables/downloader.js'
 import MiniSearch from './MiniSearch.vue'
@@ -123,7 +123,7 @@ const downloadAllLyrics = async () => {
       searchQuery: '',
       syncedLyricsTracks: !config.skip_tracks_with_synced_lyrics,
       plainLyricsTracks: !config.skip_tracks_with_plain_lyrics,
-      instrumentalTracks: true,
+      instrumentalTracks: !config.skip_tracks_with_synced_lyrics && !config.skip_tracks_with_plain_lyrics, // Treat instrumental tracks as either synced or plain lyrics tracks
       noLyricsTracks: true,
     })
     addToQueue(downloadTrackIds)
