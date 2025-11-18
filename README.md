@@ -8,15 +8,15 @@ LRCGET is the official client of [LRCLIB](https://lrclib.net) service.
 
 ## Download
 
-🎉 Latest version: v1.0.1
+🎉 Latest version: v1.0.2
 
 Visit the [release page](https://github.com/tranxuanthang/lrcget/releases) to download.
 
 ### Windows
 
-EXE installer (recommended): [LRCGET_1.0.1_x64-setup.exe](https://github.com/tranxuanthang/lrcget/releases/download/1.0.1/LRCGET_1.0.1_x64-setup.exe)
+EXE installer (recommended): [LRCGET_1.0.2_x64-setup.exe](https://github.com/tranxuanthang/lrcget/releases/download/1.0.2/LRCGET_1.0.2_x64-setup.exe)
 
-MSI installer: [LRCGET_1.0.1_x64_en-US.msi](https://github.com/tranxuanthang/lrcget/releases/download/1.0.1/LRCGET_1.0.1_x64_en-US.msi)
+MSI installer: [LRCGET_1.0.2_x64_en-US.msi](https://github.com/tranxuanthang/lrcget/releases/download/1.0.2/LRCGET_1.0.2_x64_en-US.msi)
 
 ### Linux
 
@@ -24,15 +24,15 @@ Flatpak build (recommended, for most Linux distros):
 
 <a href='https://flathub.org/en/apps/net.lrclib.lrcget'><img width='120' alt='Get LRCGET on Flathub' src='https://flathub.org/api/badge?locale=en'/></a>
 
-Deb packages (for Ubuntu 24.04+ and Linux Mint 22+): [LRCGET_1.0.1_amd64.deb](https://github.com/tranxuanthang/lrcget/releases/download/1.0.1/LRCGET_1.0.1_amd64.deb)
+Deb packages (for Ubuntu 24.04+ and Linux Mint 22+): [LRCGET_1.0.2_amd64.deb](https://github.com/tranxuanthang/lrcget/releases/download/1.0.2/LRCGET_1.0.2_amd64.deb)
 
-AppImage (for most Linux distros): [LRCGET_1.0.1_amd64.AppImage](https://github.com/tranxuanthang/lrcget/releases/download/1.0.1/LRCGET_1.0.1_amd64.AppImage)
+AppImage (for most Linux distros): [LRCGET_1.0.2_amd64.AppImage](https://github.com/tranxuanthang/lrcget/releases/download/1.0.2/LRCGET_1.0.2_amd64.AppImage)
 
 ### macOS
 
-Mac x64 (Intel): [LRCGET_1.0.1_x64.dmg](https://github.com/tranxuanthang/lrcget/releases/download/1.0.1/LRCGET_1.0.1_x64.dmg)
+Mac x64 (Intel): [LRCGET_1.0.2_x64.dmg](https://github.com/tranxuanthang/lrcget/releases/download/1.0.2/LRCGET_1.0.2_x64.dmg)
 
-Mac Apple Silicon: [LRCGET_1.0.1_aarch64.dmg](https://github.com/tranxuanthang/lrcget/releases/download/1.0.1/LRCGET_1.0.1_aarch64.dmg)
+Mac Apple Silicon: [LRCGET_1.0.2_aarch64.dmg](https://github.com/tranxuanthang/lrcget/releases/download/1.0.2/LRCGET_1.0.2_aarch64.dmg)
 
 ## Screenshots
 
