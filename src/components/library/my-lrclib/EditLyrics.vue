@@ -70,7 +70,7 @@
           <AsyncCodemirror
             v-if="shouldLoadCodeMirror"
             v-model="unifiedLyrics"
-            placeholder="Lyrics is currently empty"
+            placeholder="Lyrics are currently empty"
             class="codemirror-custom h-full outline-none"
             :autofocus="true"
             :indent-with-tab="true"
