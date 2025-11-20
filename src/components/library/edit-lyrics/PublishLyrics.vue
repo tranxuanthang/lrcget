@@ -138,7 +138,7 @@ const publishLyrics = async () => {
       plainLyrics,
       syncedLyrics
     })
-    toast.success('Your lyrics has been published successfully! It might take up to 24 hours to be visible on the search results.')
+    toast.success('Your lyrics have been published successfully! It might take up to 24 hours to be visible on the search results.')
   } catch (error) {
     isError.value = true
     console.error(error)
