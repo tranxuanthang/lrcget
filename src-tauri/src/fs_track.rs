@@ -27,6 +27,9 @@ pub struct FsTrack {
     txt_lyrics: Option<String>,
     lrc_lyrics: Option<String>,
     track_number: Option<u32>,
+    file_mtime: Option<i64>,
+    lrc_mtime: Option<i64>,
+    txt_mtime: Option<i64>,
 }
 
 #[derive(Error, Debug)]
@@ -63,6 +66,9 @@ impl FsTrack {
         txt_lyrics: Option<String>,
         lrc_lyrics: Option<String>,
         track_number: Option<u32>,
+        file_mtime: Option<i64>,
+        lrc_mtime: Option<i64>,
+        txt_mtime: Option<i64>,
     ) -> FsTrack {
         FsTrack {
             file_path,
@@ -75,10 +81,13 @@ impl FsTrack {
             txt_lyrics,
             lrc_lyrics,
             track_number,
+            file_mtime,
+            lrc_mtime,
+            txt_mtime,
         }
     }
 
-    fn new_from_path(path: &Path) -> Result<FsTrack> {
+    pub fn new_from_path(path: &Path) -> Result<FsTrack> {
         let file_path = path.display().to_string();
         let file_name = path.file_name().unwrap().to_str().unwrap().to_owned();
         let tagged_file = read_from_path(&file_path)
@@ -107,6 +116,13 @@ impl FsTrack {
         let duration = properties.duration().as_secs_f64();
         let track_number = tag.track();
 
+        // Get file mtime
+        let file_mtime = std::fs::metadata(path)
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs() as i64);
+
         let mut track = FsTrack::new(
             file_path,
             file_name,
@@ -118,9 +134,13 @@ impl FsTrack {
             None,
             None,
             track_number,
+            file_mtime,
+            None,
+            None,
         );
         track.txt_lyrics = track.get_txt_lyrics();
         track.lrc_lyrics = track.get_lrc_lyrics();
+        track.update_lyrics_mtimes();
 
         Ok(track)
     }
@@ -163,6 +183,36 @@ impl FsTrack {
 
     pub fn track_number(&self) -> Option<u32> {
         self.track_number
+    }
+
+    pub fn file_mtime(&self) -> Option<i64> {
+        self.file_mtime
+    }
+
+    pub fn lrc_mtime(&self) -> Option<i64> {
+        self.lrc_mtime
+    }
+
+    pub fn txt_mtime(&self) -> Option<i64> {
+        self.txt_mtime
+    }
+
+    fn update_lyrics_mtimes(&mut self) {
+        // Get mtime for .lrc file if it exists
+        let lrc_path = self.get_lrc_path();
+        self.lrc_mtime = std::fs::metadata(&lrc_path)
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs() as i64);
+
+        // Get mtime for .txt file if it exists
+        let txt_path = self.get_txt_path();
+        self.txt_mtime = std::fs::metadata(&txt_path)
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs() as i64);
     }
 
     fn get_txt_path(&self) -> String {

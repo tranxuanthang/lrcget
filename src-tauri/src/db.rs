@@ -10,7 +10,7 @@ use rusqlite::{named_params, params, Connection};
 use std::fs;
 use tauri::{AppHandle, Manager};
 
-const CURRENT_DB_VERSION: u32 = 7;
+const CURRENT_DB_VERSION: u32 = 8;
 
 /// Initializes the database connection, creating the .sqlite file if needed, and upgrading the database
 /// if it's out of date.
@@ -200,6 +200,26 @@ pub fn upgrade_database_if_needed(
 
             tx.commit()?;
         }
+
+        if existing_version <= 7 {
+            println!("Migrate database version 8...");
+            let tx = db.transaction()?;
+
+            tx.pragma_update(None, "user_version", 8)?;
+
+            tx.execute_batch(indoc! {"
+            ALTER TABLE tracks ADD file_mtime INTEGER;
+            ALTER TABLE tracks ADD lrc_mtime INTEGER;
+            ALTER TABLE tracks ADD txt_mtime INTEGER;
+
+            DELETE FROM tracks WHERE 1;
+            DELETE FROM albums WHERE 1;
+            DELETE FROM artists WHERE 1;
+            UPDATE library_data SET init = 0 WHERE 1;
+            "})?;
+
+            tx.commit()?;
+        }
     }
 
     Ok(())
@@ -380,12 +400,13 @@ pub fn update_track_synced_lyrics(
     id: i64,
     synced_lyrics: &str,
     plain_lyrics: &str,
+    lrc_mtime: i64,
     db: &Connection,
 ) -> Result<PersistentTrack> {
     let mut statement = db.prepare(
-        "UPDATE tracks SET lrc_lyrics = ?, txt_lyrics = ?, instrumental = false WHERE id = ?",
+        "UPDATE tracks SET lrc_lyrics = ?, txt_lyrics = ?, instrumental = false, lrc_mtime = ?, txt_mtime = NULL WHERE id = ?",
     )?;
-    statement.execute((synced_lyrics, plain_lyrics, id))?;
+    statement.execute((synced_lyrics, plain_lyrics, lrc_mtime, id))?;
 
     Ok(get_track_by_id(id, db)?)
 }
@@ -393,19 +414,20 @@ pub fn update_track_synced_lyrics(
 pub fn update_track_plain_lyrics(
     id: i64,
     plain_lyrics: &str,
+    txt_mtime: i64,
     db: &Connection,
 ) -> Result<PersistentTrack> {
     let mut statement = db.prepare(
-        "UPDATE tracks SET txt_lyrics = ?, lrc_lyrics = null, instrumental = false WHERE id = ?",
+        "UPDATE tracks SET txt_lyrics = ?, lrc_lyrics = null, instrumental = false, txt_mtime = ?, lrc_mtime = NULL WHERE id = ?",
     )?;
-    statement.execute((plain_lyrics, id))?;
+    statement.execute((plain_lyrics, txt_mtime, id))?;
 
     Ok(get_track_by_id(id, db)?)
 }
 
 pub fn update_track_null_lyrics(id: i64, db: &Connection) -> Result<PersistentTrack> {
     let mut statement = db.prepare(
-        "UPDATE tracks SET txt_lyrics = null, lrc_lyrics = null, instrumental = false WHERE id = ?",
+        "UPDATE tracks SET txt_lyrics = null, lrc_lyrics = null, instrumental = false, lrc_mtime = NULL, txt_mtime = NULL WHERE id = ?",
     )?;
     statement.execute([id])?;
 
@@ -465,8 +487,11 @@ pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
         track_number,
         txt_lyrics,
         lrc_lyrics,
-        instrumental
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        instrumental,
+        file_mtime,
+        lrc_mtime,
+        txt_mtime
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   "};
     let mut statement = db.prepare(query)?;
     statement.execute((
@@ -481,6 +506,9 @@ pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
         track.txt_lyrics(),
         track.lrc_lyrics(),
         is_instrumental,
+        track.file_mtime(),
+        track.lrc_mtime(),
+        track.txt_mtime(),
     ))?;
 
     Ok(())
@@ -631,11 +659,11 @@ pub fn get_search_track_ids(
 
 pub fn get_albums(db: &Connection) -> Result<Vec<PersistentAlbum>> {
     let mut statement = db.prepare(indoc! {"
-      SELECT albums.id, albums.name, albums.album_artist_name AS album_artist_name, albums.album_artist_name,
+      SELECT albums.id, albums.name, albums.image_path, albums.album_artist_name AS album_artist_name, albums.album_artist_name,
           COUNT(tracks.id) AS tracks_count
       FROM albums
       JOIN tracks ON tracks.album_id = albums.id
-      GROUP BY albums.id, albums.name, albums.album_artist_name
+      GROUP BY albums.id, albums.name, albums.image_path, albums.album_artist_name
       ORDER BY albums.name_lower ASC
   "})?;
     let mut rows = statement.query([])?;
@@ -907,6 +935,44 @@ pub fn get_artist_track_ids(artist_id: i64, without_plain_lyrics: bool, without_
     }
 
     Ok(tracks)
+}
+
+pub fn get_track_metadata_map(db: &Connection) -> Result<std::collections::HashMap<String, (i64, Option<i64>, Option<i64>, Option<i64>)>> {
+    let mut statement = db.prepare("SELECT id, file_path, file_mtime, lrc_mtime, txt_mtime FROM tracks")?;
+    let mut rows = statement.query([])?;
+    let mut map = std::collections::HashMap::new();
+
+    while let Some(row) = rows.next()? {
+        let file_path: String = row.get("file_path")?;
+        let id: i64 = row.get("id")?;
+        let file_mtime: Option<i64> = row.get("file_mtime")?;
+        let lrc_mtime: Option<i64> = row.get("lrc_mtime")?;
+        let txt_mtime: Option<i64> = row.get("txt_mtime")?;
+        map.insert(file_path, (id, file_mtime, lrc_mtime, txt_mtime));
+    }
+
+    Ok(map)
+}
+
+pub fn remove_track_by_id(id: i64, db: &Connection) -> Result<()> {
+    db.execute("DELETE FROM tracks WHERE id = ?", [id])?;
+    Ok(())
+}
+
+pub fn clean_orphaned_entities(db: &Connection) -> Result<()> {
+    // Delete albums with no tracks
+    db.execute(
+        "DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks)",
+        (),
+    )?;
+    
+    // Delete artists with no tracks
+    db.execute(
+        "DELETE FROM artists WHERE id NOT IN (SELECT DISTINCT artist_id FROM tracks)",
+        (),
+    )?;
+    
+    Ok(())
 }
 
 pub fn clean_library(db: &Connection) -> Result<()> {

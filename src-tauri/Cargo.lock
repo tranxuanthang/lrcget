@@ -2408,6 +2408,7 @@ dependencies = [
  "tauri-plugin-global-shortcut",
  "tauri-plugin-os",
  "tauri-plugin-shell",
+ "tempfile",
  "thiserror 1.0.69",
  "tokio",
 ]
