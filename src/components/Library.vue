@@ -250,9 +250,7 @@ onMounted(async () => {
       }
     } finally {
       showSkipButton.value = false
-      if (scanAborted.value) {
-        isInitializing.value = false
-      }
+      isInitializing.value = false
     }
   }
 })
