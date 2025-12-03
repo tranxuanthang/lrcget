@@ -10,7 +10,7 @@ use rusqlite::{named_params, params, Connection};
 use std::fs;
 use tauri::{AppHandle, Manager};
 
-const CURRENT_DB_VERSION: u32 = 8;
+const CURRENT_DB_VERSION: u32 = 9;
 
 /// Initializes the database connection, creating the .sqlite file if needed, and upgrading the database
 /// if it's out of date.
@@ -216,6 +216,27 @@ pub fn upgrade_database_if_needed(
             DELETE FROM albums WHERE 1;
             DELETE FROM artists WHERE 1;
             UPDATE library_data SET init = 0 WHERE 1;
+            "})?;
+
+            tx.commit()?;
+        }
+
+        if existing_version <= 8 {
+            println!("Migrate database version 9...");
+            let tx = db.transaction()?;
+
+            tx.pragma_update(None, "user_version", 9)?;
+
+            tx.execute_batch(indoc! {"
+            CREATE TABLE failed_files (
+                id INTEGER PRIMARY KEY,
+                file_path TEXT UNIQUE NOT NULL,
+                file_name TEXT NOT NULL,
+                file_mtime INTEGER NOT NULL,
+                error_type TEXT NOT NULL
+            );
+
+            CREATE INDEX idx_failed_files_path ON failed_files(file_path);
             "})?;
 
             tx.commit()?;
@@ -975,9 +996,50 @@ pub fn clean_orphaned_entities(db: &Connection) -> Result<()> {
     Ok(())
 }
 
+pub fn get_failed_files_map(db: &Connection) -> Result<std::collections::HashMap<String, (i64, i64, String)>> {
+    let mut statement = db.prepare("SELECT id, file_path, file_mtime, error_type FROM failed_files")?;
+    let mut rows = statement.query([])?;
+    let mut map = std::collections::HashMap::new();
+
+    while let Some(row) = rows.next()? {
+        let file_path: String = row.get("file_path")?;
+        let id: i64 = row.get("id")?;
+        let file_mtime: i64 = row.get("file_mtime")?;
+        let error_type: String = row.get("error_type")?;
+        map.insert(file_path, (id, file_mtime, error_type));
+    }
+
+    Ok(map)
+}
+
+pub fn add_failed_file(
+    file_path: &str,
+    file_name: &str,
+    file_mtime: i64,
+    error_type: &str,
+    db: &Connection
+) -> Result<()> {
+    db.execute(
+        "INSERT OR REPLACE INTO failed_files (file_path, file_name, file_mtime, error_type) VALUES (?, ?, ?, ?)",
+        (file_path, file_name, file_mtime, error_type)
+    )?;
+    Ok(())
+}
+
+pub fn remove_failed_file_by_id(id: i64, db: &Connection) -> Result<()> {
+    db.execute("DELETE FROM failed_files WHERE id = ?", [id])?;
+    Ok(())
+}
+
+pub fn remove_failed_file_by_path(path: &str, db: &Connection) -> Result<()> {
+    db.execute("DELETE FROM failed_files WHERE file_path = ?", [path])?;
+    Ok(())
+}
+
 pub fn clean_library(db: &Connection) -> Result<()> {
     db.execute("DELETE FROM tracks WHERE 1", ())?;
     db.execute("DELETE FROM albums WHERE 1", ())?;
     db.execute("DELETE FROM artists WHERE 1", ())?;
+    db.execute("DELETE FROM failed_files WHERE 1", ())?;
     Ok(())
 }

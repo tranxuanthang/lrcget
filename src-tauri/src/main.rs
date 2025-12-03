@@ -140,7 +140,7 @@ async fn refresh_library(
     let mut conn_guard = app_state.db.lock().unwrap();
     let conn = conn_guard.as_mut().unwrap();
 
-    library::incremental_scan(conn, app_handle, app_state.scan_cancel_flag.clone())
+    let _metrics = library::incremental_scan(conn, app_handle, app_state.scan_cancel_flag.clone())
         .map_err(|err| err.to_string())?;
 
     Ok(())

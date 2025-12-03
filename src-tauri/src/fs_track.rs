@@ -9,8 +9,7 @@ use lofty::tag::Accessor;
 use rayon::prelude::*;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
-use std::path::Path;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::Instant;
 use tauri::{AppHandle, Emitter};
 use thiserror::Error;
@@ -44,6 +43,18 @@ pub enum FsTrackError {
     ArtistNotFound(String),
     #[error("No primary tag was found from track: `{0}`")]
     PrimaryTagNotFound(String),
+}
+
+impl FsTrackError {
+    pub fn variant_name(&self) -> &'static str {
+        match self {
+            FsTrackError::ParseFailed(_, _) => "ParseFailed",
+            FsTrackError::TitleNotFound(_) => "TitleNotFound",
+            FsTrackError::AlbumNotFound(_) => "AlbumNotFound",
+            FsTrackError::ArtistNotFound(_) => "ArtistNotFound",
+            FsTrackError::PrimaryTagNotFound(_) => "PrimaryTagNotFound",
+        }
+    }
 }
 
 #[derive(Clone, Serialize)]
@@ -272,32 +283,66 @@ impl FsTrack {
     }
 }
 
-fn load_tracks_from_entry_batch(entry_batch: &Vec<DirEntry>) -> Result<Vec<FsTrack>> {
-    let track_results: Vec<Result<FsTrack>> = entry_batch
+pub struct FailedFile {
+    pub file_path: String,
+    pub file_name: String,
+    pub file_mtime: i64,
+    pub error_type: String,
+}
+
+fn load_tracks_from_entry_batch(entry_batch: &Vec<DirEntry>) -> Result<(Vec<FsTrack>, Vec<FailedFile>)> {
+    let track_results: Vec<(PathBuf, Result<FsTrack>)> = entry_batch
         .par_iter()
-        .map(|file| FsTrack::new_from_path(file.path()))
+        .map(|file| {
+            let path = file.path().to_path_buf();
+            let result = FsTrack::new_from_path(&path);
+            (path, result)
+        })
         .collect();
 
     let mut tracks: Vec<FsTrack> = vec![];
+    let mut failed_files: Vec<FailedFile> = vec![];
 
-    for track_result in track_results {
+    for (path, track_result) in track_results {
         match track_result {
             Ok(track) => {
                 tracks.push(track);
             }
             Err(error) => {
-                println!("{}", error);
+                // Check if this is an FsTrackError which indicates modification of the file must happen before retrying
+                if let Some(fs_error) = error.downcast_ref::<FsTrackError>() {
+                    let file_name = path.file_name().unwrap().to_str().unwrap().to_string();
+                    let file_mtime = std::fs::metadata(&path)
+                        .and_then(|m| m.modified())
+                        .ok()
+                        .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                        .map(|d| d.as_secs() as i64)
+                        .unwrap_or(0);
+                    
+                    failed_files.push(FailedFile {
+                        file_path: path.display().to_string(),
+                        file_name,
+                        file_mtime,
+                        error_type: fs_error.variant_name().to_string(),
+                    });
+                    
+                    eprintln!("Failed to process file ({}): {}. Error: {}", 
+                             fs_error.variant_name(), path.display(), error);
+                } else {
+                    // Other errors may be caused by network or other transient issues, so we should not exclude from retrying based on unchanged mtime
+                    eprintln!("Error reading file: {}. Error: {}", path.display(), error);
+                }
             }
         }
     }
 
-    Ok(tracks)
+    Ok((tracks, failed_files))
 }
 
-pub fn load_tracks_from_directories(
+pub fn load_tracks_from_directories<R: tauri::Runtime>(
     directories: &Vec<String>,
     conn: &mut Connection,
-    app_handle: AppHandle,
+    app_handle: AppHandle<R>,
 ) -> Result<()> {
     let now = Instant::now();
     let files_count = count_files_from_directories(directories)?;
@@ -313,9 +358,14 @@ pub fn load_tracks_from_directories(
             let entry = item?;
             entry_batch.push(entry);
             if entry_batch.len() == 100 {
-                let tracks = load_tracks_from_entry_batch(&entry_batch)?;
+                let (tracks, failed_files) = load_tracks_from_entry_batch(&entry_batch)?;
 
                 db::add_tracks(&tracks, conn)?;
+                
+                for failed in &failed_files {
+                    db::add_failed_file(&failed.file_path, &failed.file_name, failed.file_mtime, &failed.error_type, conn)?;
+                }
+                
                 files_scanned += entry_batch.len();
                 app_handle
                     .emit(
@@ -330,8 +380,14 @@ pub fn load_tracks_from_directories(
                 entry_batch.clear();
             }
         }
-        let tracks = load_tracks_from_entry_batch(&entry_batch)?;
+        let (tracks, failed_files) = load_tracks_from_entry_batch(&entry_batch)?;
         db::add_tracks(&tracks, conn)?;
+        
+        // Add failed files to failed_files table
+        for failed in &failed_files {
+            db::add_failed_file(&failed.file_path, &failed.file_name, failed.file_mtime, &failed.error_type, conn)?;
+        }
+        
         files_scanned += entry_batch.len();
         app_handle
             .emit(

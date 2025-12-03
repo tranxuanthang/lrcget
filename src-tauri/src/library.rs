@@ -3,13 +3,28 @@ use crate::fs_track::{self, FsTrack};
 use crate::persistent_entities::{PersistentAlbum, PersistentArtist, PersistentTrack};
 use anyhow::Result;
 use rusqlite::Connection;
-use tauri::{AppHandle, Emitter, State, Manager};
+use tauri::{AppHandle, Emitter, Manager};
 use globwalk::glob;
 use std::path::Path;
 use std::collections::HashSet;
 use rayon::prelude::*;
+use serde::Serialize;
 
-pub fn initialize_library(conn: &mut Connection, app_handle: AppHandle) -> Result<()> {
+#[derive(Debug, Clone, Serialize)]
+pub struct ScanMetrics {
+    pub files_on_disk: usize,
+    pub new_files_found: usize,
+    pub existing_files_found: usize,
+    pub failed_files_to_retry: usize,
+    pub files_processed: usize,
+    pub files_skipped: usize,
+    pub tracks_added: usize,
+    pub tracks_modified: usize,
+    pub tracks_deleted: usize,
+    pub tracks_failed: usize,
+}
+
+pub fn initialize_library<R: tauri::Runtime>(conn: &mut Connection, app_handle: AppHandle<R>) -> Result<()> {
     let init = db::get_init(conn)?;
     if init {
         return Ok(());
@@ -38,12 +53,11 @@ pub fn initialize_library(conn: &mut Connection, app_handle: AppHandle) -> Resul
     }
 }
 
-pub fn incremental_scan(
+pub fn incremental_scan<R: tauri::Runtime>(
     conn: &mut Connection, 
-    app_handle: AppHandle,
+    app_handle: AppHandle<R>,
     cancel_flag: std::sync::Arc<std::sync::atomic::AtomicBool>
-) -> Result<()> {
-    use serde::Serialize;
+) -> Result<ScanMetrics> {
     use std::time::Instant;
 
     #[derive(Clone, Serialize)]
@@ -56,6 +70,20 @@ pub fn incremental_scan(
     println!("Starting incremental library scan...");
     let now = Instant::now();
     
+    // Initialize metrics
+    let mut metrics = ScanMetrics {
+        files_on_disk: 0,
+        new_files_found: 0,
+        existing_files_found: 0,
+        failed_files_to_retry: 0,
+        files_processed: 0,
+        files_skipped: 0,
+        tracks_added: 0,
+        tracks_modified: 0,
+        tracks_deleted: 0,
+        tracks_failed: 0,
+    };
+    
     // Start a transaction for all database operations
     let tx = conn.transaction()?;
     
@@ -63,8 +91,9 @@ pub fn incremental_scan(
     
     // Get current database state
     let db_tracks = db::get_track_metadata_map(&tx)?;
+    let failed_files = db::get_failed_files_map(&tx)?;
     
-    // First pass: collect all file paths and categorize into new vs existing
+    // First pass: collect all file paths and categorize into new/existing/failed
     #[derive(Debug)]
     struct ExistingFile {
         path: std::path::PathBuf,
@@ -75,6 +104,7 @@ pub fn incremental_scan(
     let mut disk_files = HashSet::new();
     let mut new_files = Vec::new();
     let mut existing_files = Vec::new();
+    let mut failed_files_to_retry = Vec::new();
 
     for directory in &directories {
         let globwalker = glob(format!(
@@ -87,7 +117,7 @@ pub fn incremental_scan(
             if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
                 println!("Scan cancelled by user");
                 drop(tx); 
-                return Ok(());
+                return Ok(metrics);
             }
             
             let entry = item?;
@@ -102,22 +132,42 @@ pub fn incremental_scan(
                     id: *id,
                     db_mtime: *db_file_mtime,
                 });
+            } else if let Some((_failed_id, failed_mtime, _error_type)) = failed_files.get(&file_path_string) {
+                // File in failed_files table - check if mtime changed to retry
+                if let Ok(metadata) = std::fs::metadata(&path) {
+                    if let Ok(modified) = metadata.modified() {
+                        if let Ok(duration) = modified.duration_since(std::time::UNIX_EPOCH) {
+                            let disk_mtime = duration.as_secs() as i64;
+                            
+                            if disk_mtime != *failed_mtime {
+                                failed_files_to_retry.push(path);
+                            }
+                            // else: same mtime, still broken, skip
+                        }
+                    }
+                }
             } else {
-                // New file - no stat needed, will process fully later
-                new_files.push((None, path));
+                // Completely new file - no stat needed, will process fully later
+                new_files.push(path);
             }
         }
     }
+
+    // Populate discovery metrics
+    metrics.files_on_disk = disk_files.len();
+    metrics.new_files_found = new_files.len();
+    metrics.existing_files_found = existing_files.len();
+    metrics.failed_files_to_retry = failed_files_to_retry.len();
 
     // Check for cancellation after file discovery
     if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
         println!("Scan cancelled by user");
         drop(tx);  
-        return Ok(());
+        return Ok(metrics);
     }
 
-    println!("Found {} files on disk ({} new, {} existing), checking existing files for modifications...", 
-             disk_files.len(), new_files.len(), existing_files.len());
+    println!("Found {} files on disk ({} new, {} existing, {} to retry), checking existing files for modifications...", 
+             metrics.files_on_disk, metrics.new_files_found, metrics.existing_files_found, metrics.failed_files_to_retry);
 
     // Second pass: check metadata in parallel ONLY for existing files (to detect modifications)
     let modified_files: Vec<(Option<i64>, std::path::PathBuf)> = existing_files
@@ -149,54 +199,57 @@ pub fn incremental_scan(
     if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
         println!("Scan cancelled by user");
         drop(tx);  
-        return Ok(());
+        return Ok(metrics);
     }
 
     // Check for cancellation before deletion phase
     if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
         println!("Scan cancelled by user");
         drop(tx);  
-        return Ok(());
+        return Ok(metrics);
     }
     
     // Find and remove files that are in DB but not on disk
-    let mut deleted_count = 0;
     for (file_path, (id, _, _, _)) in &db_tracks {
         if !disk_files.contains(file_path) {
             println!("File removed from disk, removing from DB: {}", file_path);
             db::remove_track_by_id(*id, &tx)?;
-            deleted_count += 1;
+            metrics.tracks_deleted += 1;
+        }
+    }
+    
+    // Also clean up failed_files for files that no longer exist
+    for (file_path, (failed_id, _, _)) in &failed_files {
+        if !disk_files.contains(file_path) {
+            db::remove_failed_file_by_id(*failed_id, &tx)?;
         }
     }
     
     // Combine all changed files for processing
-    let mut all_changed = Vec::new();
-    all_changed.extend(new_files.clone());
-    all_changed.extend(modified_files.clone());
+    let mut all_to_process = Vec::new();
     
-    let total_changed = all_changed.len();
-    let potential_added = new_files.len();
-    let potential_modified = modified_files.len();
+    all_to_process.extend(new_files.iter().cloned());
+    all_to_process.extend(modified_files.iter().map(|(_, path)| path.clone()));
+    all_to_process.extend(failed_files_to_retry.iter().cloned());
     
-    println!("Found {} changed files (potential added: {}, potential modified: {}, deleted: {})", 
-             total_changed, potential_added, potential_modified, deleted_count);
+    let total_to_process = all_to_process.len();
+    metrics.files_skipped = metrics.existing_files_found - modified_files.len(); // Existing files we didn't need to check
+    
+    println!("Found {} files to process (new: {}, modified: {}, retry: {}, deleted: {})", 
+             total_to_process, metrics.new_files_found, modified_files.len(), metrics.failed_files_to_retry, metrics.tracks_deleted);
 
-    // Track actual successes
-    let mut actual_added = 0;
-    let mut actual_modified = 0;
-
-    if total_changed > 0 {
+    if total_to_process > 0 {
         // Process files in parallel using rayon
-        let track_results: Vec<(Option<i64>, Result<FsTrack>)> = all_changed
+        let processing_results: Vec<(std::path::PathBuf, Result<fs_track::FsTrack>)> = all_to_process
             .par_iter()
-            .filter_map(|(maybe_id, path)| {
+            .filter_map(|path| {
                 // Check for cancellation before starting expensive file read
                 if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
                     return None;
                 }
                 
                 let result = fs_track::FsTrack::new_from_path(path);
-                Some((*maybe_id, result))
+                Some((path.clone(), result))
             })
             .collect();
 
@@ -204,41 +257,74 @@ pub fn incremental_scan(
         if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
             println!("Scan cancelled by user");
             drop(tx);  
-            return Ok(());
+            return Ok(metrics);
         }
 
         // Write results to database sequentially and count successes
-        for (idx, (maybe_id, track_result)) in track_results.iter().enumerate() {
+        for (idx, (path, track_result)) in processing_results.iter().enumerate() {
             // Check for cancellation each iteration
             if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
                 println!("Scan cancelled by user");
                 drop(tx);  
-                return Ok(());
+                return Ok(metrics);
             }
+            
+            let path_string = path.display().to_string();
             
             match track_result {
                 Ok(track) => {
-                    if let Some(id) = maybe_id {
-                        // Update existing track by removing old entry
-                        db::remove_track_by_id(*id, &tx)?;
-                        actual_modified += 1;
+                    if let Some((failed_id, _, _)) = failed_files.get(&path_string) {
+                        // Was in failed_files but now works
+                        db::remove_failed_file_by_id(*failed_id, &tx)?;
+                        metrics.tracks_added += 1;
+                        metrics.files_processed += 1;
+                    } else if let Some((track_id, _, _, _)) = db_tracks.get(&path_string) {
+                        // Update an existing track
+                        db::remove_track_by_id(*track_id, &tx)?;
+                        metrics.tracks_modified += 1;
+                        metrics.files_processed += 1;
                     } else {
                         // New track
-                        actual_added += 1;
+                        metrics.tracks_added += 1;
+                        metrics.files_processed += 1;
                     }
                     db::add_track(track, &tx)?;
                     
                     app_handle.emit("scan-progress", ScanProgress {
-                        files_changed: total_changed,
+                        files_changed: total_to_process,
                         files_processed: idx + 1,
                     }).unwrap();
                 }
                 Err(error) => {
-                    let path = &all_changed[idx].1;
-                    eprintln!("Failed to read file during incremental scan: {}. Error: {}", 
-                             path.display(), error);
-                    if let Some(id) = maybe_id {
-                        db::remove_track_by_id(*id, &tx)?;
+                    // Check if this is an FsTrackError we should cache
+                    if let Some(fs_error) = error.downcast_ref::<fs_track::FsTrackError>() {
+                        // FsTrackError - cache in failed_files
+                        let error_type = fs_error.variant_name();
+                        let file_name = path.file_name().unwrap().to_str().unwrap();
+                        
+                        // Get disk mtime
+                        let disk_mtime = std::fs::metadata(path)
+                            .and_then(|m| m.modified())
+                            .ok()
+                            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                            .map(|d| d.as_secs() as i64)
+                            .unwrap_or(0);
+                        
+                        db::add_failed_file(&path_string, file_name, disk_mtime, error_type, &tx)?;
+                        metrics.tracks_failed += 1;
+                        
+                        eprintln!("Failed to process file ({}): {}. Error: {}", 
+                                 error_type, path.display(), error);
+                    } else {
+                        // non-FSTrackError errors could include network, io errors that we should not skip over retrying on next scan
+                        // so don't put them in our failed_files table
+                        eprintln!("Error reading file: {}. Error: {}", 
+                                 path.display(), error);
+                    }
+                    
+                    // If this was a modification attempt, remove old track entry
+                    if let Some((track_id, _, _, _)) = db_tracks.get(&path_string) {
+                        db::remove_track_by_id(*track_id, &tx)?;
                     }
                 }
             }
@@ -249,11 +335,11 @@ pub fn incremental_scan(
     if cancel_flag.load(std::sync::atomic::Ordering::Relaxed) {
         println!("Scan cancelled by user");
         drop(tx);  
-        return Ok(());
+        return Ok(metrics);
     }
 
     // Clean up orphaned artists and albums if any tracks were deleted or modified
-    if deleted_count > 0 || total_changed > 0 {
+    if metrics.tracks_deleted > 0 || total_to_process > 0 {
         db::clean_orphaned_entities(&tx)?;
     }
 
@@ -262,34 +348,38 @@ pub fn incremental_scan(
     
     println!("==> Incremental scan took: {}ms", now.elapsed().as_millis());
 
-    // Queue notification for display after reload
-    use crate::state::{AppState, Notify, NotifyType};
-    let app_state: State<AppState> = app_handle.state();
-    let mut notifications = app_state.queued_notifications.lock().unwrap();
-    
-    let mut parts = Vec::new();
-    if actual_added > 0 {
-        parts.push(format!("{} added", actual_added));
+    // Queue notification for display after reload (skip in tests)
+    if let Some(app_state) = app_handle.try_state::<crate::state::AppState>() {
+        use crate::state::{Notify, NotifyType};
+        let mut notifications = app_state.queued_notifications.lock().unwrap();
+        
+        let mut parts = Vec::new();
+        if metrics.tracks_added > 0 {
+            parts.push(format!("{} added", metrics.tracks_added));
+        }
+        if metrics.tracks_modified > 0 {
+            parts.push(format!("{} modified", metrics.tracks_modified));
+        }
+        if metrics.tracks_deleted > 0 {
+            parts.push(format!("{} deleted", metrics.tracks_deleted));
+        }
+        if metrics.tracks_failed > 0 {
+            parts.push(format!("{} failed", metrics.tracks_failed));
+        }
+        
+        let message = if parts.is_empty() {
+            "Library refreshed: no changes detected".to_string()
+        } else {
+            format!("Library refreshed: {}", parts.join(", "))
+        };
+        
+        notifications.push(Notify {
+            message,
+            notify_type: NotifyType::Success,
+        });
     }
-    if actual_modified > 0 {
-        parts.push(format!("{} modified", actual_modified));
-    }
-    if deleted_count > 0 {
-        parts.push(format!("{} deleted", deleted_count));
-    }
-    
-    let message = if parts.is_empty() {
-        "Library refreshed: no changes detected".to_string()
-    } else {
-        format!("Library refreshed: {}", parts.join(", "))
-    };
-    
-    notifications.push(Notify {
-        message,
-        notify_type: NotifyType::Success,
-    });
 
-    Ok(())
+    Ok(metrics)
 }
 
 pub fn uninitialize_library(conn: &Connection) -> Result<()> {
@@ -756,6 +846,159 @@ mod tests {
         let album_ids_after = db::get_album_ids(&conn)?;
         assert_eq!(artist_ids_after.len(), 1, "Should have 1 artist ID after cleanup");
         assert_eq!(album_ids_after.len(), 1, "Should have 1 album ID after cleanup");
+        
+        Ok(())
+    }
+
+    fn create_incomplete_audio_file(path: &Path, title: &str, artist: &str, album: Option<&str>) -> Result<()> {
+        use lofty::file::{TaggedFileExt, AudioFile};
+        use lofty::tag::{Accessor, Tag, TagType};
+        use lofty::config::WriteOptions;
+        
+        // Copy the minimal MP3 file from test assets
+        let minimal_mp3 = include_bytes!("../tests/assets/minimal.mp3");
+        fs::write(path, minimal_mp3)?;
+        
+        // Open and modify the tags
+        let mut tagged_file = lofty::read_from_path(path)?;
+        
+        // Create or get ID3v2 tag
+        let tag = match tagged_file.primary_tag_mut() {
+            Some(primary_tag) => primary_tag,
+            None => {
+                tagged_file.insert_tag(Tag::new(TagType::Id3v2));
+                tagged_file.primary_tag_mut().unwrap()
+            }
+        };
+        
+        // Set the metadata
+        tag.set_title(title.to_string());
+        tag.set_artist(artist.to_string());
+        
+        if let Some(album_name) = album {
+            tag.set_album(album_name.to_string());
+        }
+        // If album is None, don't set it - will cause AlbumNotFound error
+        
+        // Write back to file
+        tagged_file.save_to_path(path, WriteOptions::default())?;
+        
+        Ok(())
+    }
+
+    #[test]
+    fn test_failed_file_retry_on_mtime_change() -> Result<()> {
+        let (mut conn, _temp_db) = setup_test_db()?;
+        let temp_music = TempDir::new()?;
+        let music_path = temp_music.path().to_str().unwrap().to_string();
+        
+        db::set_directories(vec![music_path.clone()], &conn)?;
+        
+        // Create file WITHOUT album tag (will fail AlbumNotFound)
+        let file_path = temp_music.path().join("song.mp3");
+        create_incomplete_audio_file(&file_path, "Test Title", "Test Artist", None)?;
+        
+        // Run initial full scan - should detect the file fails and add to failed_files
+        db::set_init(false, &conn)?;
+        let app = tauri::test::mock_app();
+        initialize_library(&mut conn, app.handle().clone())?;
+        db::set_init(true, &conn)?;
+        
+        // Verify file is in failed_files
+        let failed = db::get_failed_files_map(&conn)?;
+        let file_path_str = file_path.to_str().unwrap();
+        assert!(failed.contains_key(file_path_str), "File should be in failed_files after initial scan");
+        let (_failed_id, failed_mtime, error_type) = failed.get(file_path_str).unwrap();
+        assert_eq!(error_type, "AlbumNotFound");
+        
+        // Verify NOT in tracks
+        let tracks = db::get_tracks(&conn)?;
+        assert_eq!(tracks.len(), 0, "Failed file should not be in tracks");
+        
+        // Wait for mtime to change
+        std::thread::sleep(std::time::Duration::from_millis(1100));
+        
+        // Fix the file - add album tag
+        create_test_audio_file(&file_path, "Test Title", "Test Artist", "Test Album")?;
+        
+        // Verify mtime changed
+        let new_mtime = std::fs::metadata(&file_path)?
+            .modified()?
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_secs() as i64;
+        assert_ne!(new_mtime, *failed_mtime, "mtime should have changed");
+        
+        // Run incremental scan - should detect mtime change and retry
+        let cancel_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let metrics = incremental_scan(&mut conn, app.handle().clone(), cancel_flag)?;
+        
+        // VERIFY: Scan detected and processed the retry
+        assert_eq!(metrics.failed_files_to_retry, 1, "Should have found 1 file to retry");
+        assert_eq!(metrics.files_processed, 1, "Should have processed 1 file");
+        assert_eq!(metrics.tracks_added, 1, "Should have added 1 track (recovered)");
+        assert_eq!(metrics.tracks_failed, 0, "Should have 0 failures (file was fixed)");
+        
+        // Verify NOW in tracks
+        let tracks = db::get_tracks(&conn)?;
+        assert_eq!(tracks.len(), 1, "Recovered file should be in tracks");
+        assert_eq!(tracks[0].title, "Test Title");
+        assert_eq!(tracks[0].album_name, "Test Album");
+        
+        // Verify REMOVED from failed_files
+        let failed = db::get_failed_files_map(&conn)?;
+        assert!(!failed.contains_key(file_path_str), "File should be removed from failed_files after recovery");
+        
+        Ok(())
+    }
+
+    #[test]
+    fn test_failed_file_not_retried_if_mtime_unchanged() -> Result<()> {
+        let (mut conn, _temp_db) = setup_test_db()?;
+        let temp_music = TempDir::new()?;
+        let music_path = temp_music.path().to_str().unwrap().to_string();
+        
+        db::set_directories(vec![music_path.clone()], &conn)?;
+        
+        // Create file WITHOUT album tag
+        let file_path = temp_music.path().join("song.mp3");
+        create_incomplete_audio_file(&file_path, "Test Title", "Test Artist", None)?;
+        
+        // Run initial full scan - should fail and add to failed_files
+        db::set_init(false, &conn)?;
+        let app = tauri::test::mock_app();
+        initialize_library(&mut conn, app.handle().clone())?;
+        db::set_init(true, &conn)?;
+        
+        // Verify in failed_files
+        let failed_before = db::get_failed_files_map(&conn)?;
+        let file_path_str = file_path.to_str().unwrap();
+        assert!(failed_before.contains_key(file_path_str));
+        let (_, mtime_before, _) = failed_before.get(file_path_str).unwrap();
+        
+        // check that the current mtime for the file on disk has remained the same
+        let current_mtime = std::fs::metadata(&file_path)?
+            .modified()?
+            .duration_since(std::time::UNIX_EPOCH)?
+            .as_secs() as i64;
+        assert_eq!(current_mtime, *mtime_before, "mtime should be unchanged");
+        
+        // Run incremental scan - should skip retry since mtime unchanged
+        let cancel_flag = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+        let metrics = incremental_scan(&mut conn, app.handle().clone(), cancel_flag)?;
+        
+        // VERIFY: Scan actually skipped the file (didn't process it)
+        assert_eq!(metrics.files_processed, 0, "Scan should not have processed any files");
+        assert_eq!(metrics.failed_files_to_retry, 0, "Should have found 0 files to retry");
+        
+        // Verify still in failed_files (scan skipped it)
+        let failed_after = db::get_failed_files_map(&conn)?;
+        assert!(failed_after.contains_key(file_path_str), "File should still be in failed_files");
+        let (_, mtime_after, _) = failed_after.get(file_path_str).unwrap();
+        assert_eq!(*mtime_after, *mtime_before, "mtime in failed_files should be unchanged");
+        
+        // Verify still NOT in tracks
+        let tracks = db::get_tracks(&conn)?;
+        assert_eq!(tracks.len(), 0, "Failed file should still not be in tracks");
         
         Ok(())
     }
