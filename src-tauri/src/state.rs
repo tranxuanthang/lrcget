@@ -30,6 +30,7 @@ pub struct AppState {
     pub db: std::sync::Mutex<Option<Connection>>,
     pub player: std::sync::Mutex<Option<Player>>,
     pub queued_notifications: std::sync::Mutex<Vec<Notify>>,
+    pub scan_cancel_flag: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 pub trait ServiceAccess {

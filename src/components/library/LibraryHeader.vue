@@ -69,6 +69,15 @@
         </span>
       </button>
 
+      <button 
+        class="button h-full aspect-square rounded-full"
+        :class="isDownloading ? 'button-disabled' : 'button-primary'"
+        :disabled="isDownloading"
+        @click.prevent="$emit('refreshLibrary')"
+      >
+        <div class="text-base"><Refresh /></div>
+      </button>
+
       <VDropdown theme="lrcget-dropdown" placement="top-end" class="h-full aspect-square">
         <button
           class="button button-normal h-full aspect-square rounded-full"
@@ -77,9 +86,9 @@
         </button>
         <template #popper>
           <div class="dropdown-container">
-            <button class="dropdown-item" @click="$emit('refreshLibrary')" v-close-popper>
+            <button class="dropdown-item" @click="$emit('rebuildLibrary')" v-close-popper>
               <Refresh class="text-brave-20 dark:text-brave-90" />
-              <span class="text-brave-20 dark:text-brave-90 text-sm font-bold">Refresh library</span>
+              <span class="text-brave-20 dark:text-brave-90 text-sm font-bold">Rebuild library</span>
             </button>
             <button class="dropdown-item" @click="$emit('uninitializeLibrary')" v-close-popper>
               <FolderMultiple class="text-brave-20 dark:text-brave-90" />
@@ -108,7 +117,7 @@ import MiniSearch from './MiniSearch.vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const props = defineProps(['activeTab'])
-defineEmits(['changeActiveTab', 'showConfig', 'showAbout', 'showDownloadViewer', 'refreshLibrary', 'uninitializeLibrary'])
+defineEmits(['changeActiveTab', 'showConfig', 'showAbout', 'showDownloadViewer', 'refreshLibrary', 'rebuildLibrary', 'uninitializeLibrary'])
 
 const { isDownloading, totalCount, downloadedCount, addToQueue } = useDownloader()
 

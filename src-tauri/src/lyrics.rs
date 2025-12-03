@@ -30,7 +30,7 @@ pub async fn download_lyrics_for_track(
     track: PersistentTrack,
     is_try_embed_lyrics: bool,
     lrclib_instance: &str,
-) -> Result<Response> {
+) -> Result<(Response, i64, i64)> {
     let lyrics = request(
         &track.title,
         &track.album_name,
@@ -48,69 +48,89 @@ pub async fn apply_string_lyrics_for_track(
     plain_lyrics: &str,
     synced_lyrics: &str,
     is_try_embed_lyrics: bool,
-) -> Result<()> {
-    save_plain_lyrics(&track.file_path, plain_lyrics)?;
-    save_synced_lyrics(&track.file_path, synced_lyrics)?;
+) -> Result<(i64, i64)> {
+    let txt_mtime = save_plain_lyrics(&track.file_path, plain_lyrics)?;
+    let lrc_mtime = save_synced_lyrics(&track.file_path, synced_lyrics)?;
 
     if is_try_embed_lyrics {
         embed_lyrics(&track.file_path, &plain_lyrics, &synced_lyrics);
     }
 
-    Ok(())
+    Ok((lrc_mtime, txt_mtime))
 }
 
 pub async fn apply_lyrics_for_track(
     track: PersistentTrack,
     lyrics: Response,
     is_try_embed_lyrics: bool,
-) -> Result<Response> {
+) -> Result<(Response, i64, i64)> {
     match &lyrics {
         Response::SyncedLyrics(synced_lyrics, plain_lyrics) => {
-            save_synced_lyrics(&track.file_path, &synced_lyrics)?;
+            let lrc_mtime = save_synced_lyrics(&track.file_path, &synced_lyrics)?;
             if is_try_embed_lyrics {
                 embed_lyrics(&track.file_path, &plain_lyrics, &synced_lyrics);
             }
-            Ok(lyrics)
+            Ok((lyrics, lrc_mtime, 0))
         }
         Response::UnsyncedLyrics(plain_lyrics) => {
-            save_plain_lyrics(&track.file_path, &plain_lyrics)?;
+            let txt_mtime = save_plain_lyrics(&track.file_path, &plain_lyrics)?;
             if is_try_embed_lyrics {
                 embed_lyrics(&track.file_path, &plain_lyrics, "");
             }
-            Ok(lyrics)
+            Ok((lyrics, 0, txt_mtime))
         }
         Response::IsInstrumental => {
             save_instrumental(&track.file_path)?;
-            Ok(lyrics)
+            Ok((lyrics, 0, 0))
         }
-        _ => Ok(lyrics),
+        _ => Ok((lyrics, 0, 0)),
     }
 }
 
-fn save_plain_lyrics(track_path: &str, lyrics: &str) -> Result<()> {
+fn save_plain_lyrics(track_path: &str, lyrics: &str) -> Result<i64> {
     let txt_path = build_txt_path(track_path)?;
     let lrc_path = build_lrc_path(track_path)?;
 
     let _ = remove_file(lrc_path);
 
     if lyrics.is_empty() {
-        let _ = remove_file(txt_path);
+        let _ = remove_file(&txt_path);
+        Ok(0)
     } else {
-        write(txt_path, lyrics)?;
+        write(&txt_path, lyrics)?;
+        
+        // Get mtime of the file we just wrote
+        let mtime = std::fs::metadata(&txt_path)
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+        
+        Ok(mtime)
     }
-    Ok(())
 }
 
-fn save_synced_lyrics(track_path: &str, lyrics: &str) -> Result<()> {
+fn save_synced_lyrics(track_path: &str, lyrics: &str) -> Result<i64> {
     let txt_path = build_txt_path(track_path)?;
     let lrc_path = build_lrc_path(track_path)?;
     if lyrics.is_empty() {
-        let _ = remove_file(lrc_path);
+        let _ = remove_file(&lrc_path);
+        Ok(0)
     } else {
         let _ = remove_file(txt_path);
-        write(lrc_path, lyrics)?;
+        write(&lrc_path, lyrics)?;
+        
+        // Get mtime of the file we just wrote
+        let mtime = std::fs::metadata(&lrc_path)
+            .and_then(|m| m.modified())
+            .ok()
+            .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+            .map(|d| d.as_secs() as i64)
+            .unwrap_or(0);
+        
+        Ok(mtime)
     }
-    Ok(())
 }
 
 fn save_instrumental(track_path: &str) -> Result<()> {

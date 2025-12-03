@@ -134,6 +134,26 @@ async fn refresh_library(
     app_state: State<'_, AppState>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
+    // Reset cancel flag before starting
+    app_state.scan_cancel_flag.store(false, std::sync::atomic::Ordering::Relaxed);
+    
+    let mut conn_guard = app_state.db.lock().unwrap();
+    let conn = conn_guard.as_mut().unwrap();
+
+    let _metrics = library::incremental_scan(conn, app_handle, app_state.scan_cancel_flag.clone())
+        .map_err(|err| err.to_string())?;
+
+    Ok(())
+}
+
+#[tauri::command]
+async fn rebuild_library(
+    app_state: State<'_, AppState>,
+    app_handle: AppHandle,
+) -> Result<(), String> {
+    // Reset cancel flag before starting
+    app_state.scan_cancel_flag.store(false, std::sync::atomic::Ordering::Relaxed);
+    
     let mut conn_guard = app_state.db.lock().unwrap();
     let conn = conn_guard.as_mut().unwrap();
 
@@ -310,7 +330,7 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
     let config = app_handle
         .db(|db| db::get_config(db))
         .map_err(|err| err.to_string())?;
-    let lyrics =
+    let (lyrics, lrc_mtime, txt_mtime) =
         lyrics::download_lyrics_for_track(track, config.try_embed_lyrics, &config.lrclib_instance)
             .await
             .map_err(|err| err.to_string())?;
@@ -318,7 +338,7 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
         lrclib::get::Response::SyncedLyrics(synced_lyrics, plain_lyrics) => {
             app_handle
                 .db(|db: &Connection| {
-                    db::update_track_synced_lyrics(track_id, &synced_lyrics, &plain_lyrics, db)
+                    db::update_track_synced_lyrics(track_id, &synced_lyrics, &plain_lyrics, lrc_mtime, db)
                 })
                 .map_err(|err| err.to_string())?;
             app_handle.emit("reload-track-id", track_id).unwrap();
@@ -326,7 +346,7 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
         }
         lrclib::get::Response::UnsyncedLyrics(plain_lyrics) => {
             app_handle
-                .db(|db: &Connection| db::update_track_plain_lyrics(track_id, &plain_lyrics, db))
+                .db(|db: &Connection| db::update_track_plain_lyrics(track_id, &plain_lyrics, txt_mtime, db))
                 .map_err(|err| err.to_string())?;
             app_handle.emit("reload-track-id", track_id).unwrap();
             Ok("Plain lyrics downloaded".to_owned())
@@ -356,7 +376,7 @@ async fn apply_lyrics(
         .try_embed_lyrics;
 
     let lyrics = lrclib::get::Response::from_raw_response(lrclib_response);
-    let lyrics = lyrics::apply_lyrics_for_track(track, lyrics, is_try_embed_lyrics)
+    let (lyrics, lrc_mtime, txt_mtime) = lyrics::apply_lyrics_for_track(track, lyrics, is_try_embed_lyrics)
         .await
         .map_err(|err| err.to_string())?;
 
@@ -364,7 +384,7 @@ async fn apply_lyrics(
         lrclib::get::Response::SyncedLyrics(synced_lyrics, plain_lyrics) => {
             app_handle
                 .db(|db: &Connection| {
-                    db::update_track_synced_lyrics(track_id, &synced_lyrics, &plain_lyrics, db)
+                    db::update_track_synced_lyrics(track_id, &synced_lyrics, &plain_lyrics, lrc_mtime, db)
                 })
                 .map_err(|err| err.to_string())?;
             std::thread::spawn(move || {
@@ -374,7 +394,7 @@ async fn apply_lyrics(
         }
         lrclib::get::Response::UnsyncedLyrics(plain_lyrics) => {
             app_handle
-                .db(|db: &Connection| db::update_track_plain_lyrics(track_id, &plain_lyrics, db))
+                .db(|db: &Connection| db::update_track_plain_lyrics(track_id, &plain_lyrics, txt_mtime, db))
                 .map_err(|err| err.to_string())?;
             std::thread::spawn(move || {
                 app_handle.emit("reload-track-id", track_id).unwrap();
@@ -475,7 +495,7 @@ async fn save_lyrics(
     let re = Regex::new(r"\[au:\s*instrumental\]").expect("Invalid regex");
     let is_instrumental = re.is_match(&synced_lyrics);
 
-    lyrics::apply_string_lyrics_for_track(
+    let (lrc_mtime, txt_mtime) = lyrics::apply_string_lyrics_for_track(
         &track,
         &plain_lyrics,
         &synced_lyrics,
@@ -483,20 +503,20 @@ async fn save_lyrics(
     )
     .await
     .map_err(|err| err.to_string())?;
-
+    
     if is_instrumental {
         app_handle
             .db(|db: &Connection| db::update_track_instrumental(track.id, db))
             .map_err(|err| err.to_string())?;
     } else if !synced_lyrics.is_empty() {
         app_handle
-            .db(|db: &Connection| {
-                db::update_track_synced_lyrics(track.id, &synced_lyrics, &plain_lyrics, db)
+            .db(move |db: &Connection| {
+                db::update_track_synced_lyrics(track.id, &synced_lyrics, &plain_lyrics, lrc_mtime, db)
             })
             .map_err(|err| err.to_string())?;
     } else if !plain_lyrics.is_empty() {
         app_handle
-            .db(|db: &Connection| db::update_track_plain_lyrics(track.id, &plain_lyrics, db))
+            .db(move |db: &Connection| db::update_track_plain_lyrics(track.id, &plain_lyrics, txt_mtime, db))
             .map_err(|err| err.to_string())?;
     } else {
         app_handle
@@ -707,6 +727,12 @@ fn drain_notifications(app_state: tauri::State<AppState>) -> Vec<Notify> {
     notifications
 }
 
+#[tauri::command]
+fn cancel_scan(app_state: tauri::State<AppState>) -> Result<(), String> {
+    app_state.scan_cancel_flag.store(true, std::sync::atomic::Ordering::Relaxed);
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
@@ -718,6 +744,7 @@ async fn main() {
             db: Default::default(),
             player: Default::default(),
             queued_notifications: std::sync::Mutex::new(Vec::new()),
+            scan_cancel_flag: std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false)),
         })
         .setup(|app| {
             let handle = app.handle();
@@ -781,6 +808,7 @@ async fn main() {
             initialize_library,
             uninitialize_library,
             refresh_library,
+            rebuild_library,
             get_tracks,
             get_track_ids,
             get_track,
@@ -810,6 +838,7 @@ async fn main() {
             set_volume,
             open_devtools,
             drain_notifications,
+            cancel_scan,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
