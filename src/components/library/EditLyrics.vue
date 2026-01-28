@@ -318,8 +318,6 @@ const lyricsUpdated = (newLyrics) => {
   isDirty.value = true
   lyricsLintResult.value = executeLyricsLint(newLyrics)
   plainTextLintResult.value = executePlainTextLint(newLyrics)
-  
-  // Clear line mapping cache on document change
   indexToLineCache.value.clear()
 }
 
@@ -337,15 +335,14 @@ const findDocumentLineForLyricIndex = (targetLyricIndex) => {
   const searchFrom = startLineNumber ? startLineNumber + 1 : 1
   let currentLyricIndex = startLineNumber ? startLyricIndex + 1 : 0
   
-  // Search through document lines starting from searchFrom
   for (let lineNum = searchFrom; lineNum <= view.state.doc.lines; lineNum++) {
     const line = view.state.doc.line(lineNum)
     const parsed = parseLine(line.text)
     
-    // Only count TIME lines (skip INFO and INVALID lines)
+    // Only count TIME lines
     if (parsed.type === 'TIME') {
       if (currentLyricIndex === targetLyricIndex) {
-        // Found it! Cache and return the document line number
+        // Cache the document line number before returning
         indexToLineCache.value.set(targetLyricIndex, lineNum)
         return lineNum
       }
@@ -353,7 +350,6 @@ const findDocumentLineForLyricIndex = (targetLyricIndex) => {
     }
   }
   
-  // Not found
   return null
 }
 
@@ -627,7 +623,6 @@ watch(progress, (newProgress) => {
   currentIndex.value = resultCurrentIndex
 
   if (currentIndex.value >= 0) {
-    // Use memoized search to find the actual document line for this lyric index
     const documentLineNum = findDocumentLineForLyricIndex(currentIndex.value)
     if (documentLineNum && documentLineNum <= view.state.doc.lines) {
       const line = view.state.doc.line(documentLineNum)
