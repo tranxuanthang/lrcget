@@ -326,7 +326,12 @@ const lyricsUpdated = (newLyrics) => {
 const findDocumentLineForLyricIndex = (targetLyricIndex) => {
   // Check if we have a cached position for the previous lyric index
   const startLyricIndex = targetLyricIndex - 1
-  const startLineNumber = indexToLineCache.value.get(startLyricIndex)
+  const cachedLineNumber = indexToLineCache.value.get(startLyricIndex)
+  
+  // Validate cached line number is still within document bounds
+  const startLineNumber = (cachedLineNumber && cachedLineNumber <= view.state.doc.lines) 
+    ? cachedLineNumber 
+    : null
   
   // Start search from cached position + 1, or from beginning if no cache
   const searchFrom = startLineNumber ? startLineNumber + 1 : 1
@@ -624,7 +629,7 @@ watch(progress, (newProgress) => {
   if (currentIndex.value >= 0) {
     // Use memoized search to find the actual document line for this lyric index
     const documentLineNum = findDocumentLineForLyricIndex(currentIndex.value)
-    if (documentLineNum) {
+    if (documentLineNum && documentLineNum <= view.state.doc.lines) {
       const line = view.state.doc.line(documentLineNum)
       view.dispatch({ effects: addLineHighlight.of(line.from) })
     }
