@@ -171,6 +171,7 @@ const plainTextLintResult = ref([])
 const cmContainer = ref(null)
 const cmHeight = ref(null)
 const currentIndex = ref(null)
+const indexToLineCache = ref(new Map())
 
 let view = null
 let runner = null
@@ -317,6 +318,38 @@ const lyricsUpdated = (newLyrics) => {
   isDirty.value = true
   lyricsLintResult.value = executeLyricsLint(newLyrics)
   plainTextLintResult.value = executePlainTextLint(newLyrics)
+  
+  // Clear line mapping cache on document change
+  indexToLineCache.value.clear()
+}
+
+const findDocumentLineForLyricIndex = (targetLyricIndex) => {
+  // Check if we have a cached position for the previous lyric index
+  const startLyricIndex = targetLyricIndex - 1
+  const startLineNumber = indexToLineCache.value.get(startLyricIndex)
+  
+  // Start search from cached position + 1, or from beginning if no cache
+  const searchFrom = startLineNumber ? startLineNumber + 1 : 1
+  let currentLyricIndex = startLineNumber ? startLyricIndex + 1 : 0
+  
+  // Search through document lines starting from searchFrom
+  for (let lineNum = searchFrom; lineNum <= view.state.doc.lines; lineNum++) {
+    const line = view.state.doc.line(lineNum)
+    const parsed = parseLine(line.text)
+    
+    // Only count TIME lines (skip INFO and INVALID lines)
+    if (parsed.type === 'TIME') {
+      if (currentLyricIndex === targetLyricIndex) {
+        // Found it! Cache and return the document line number
+        indexToLineCache.value.set(targetLyricIndex, lineNum)
+        return lineNum
+      }
+      currentLyricIndex++
+    }
+  }
+  
+  // Not found
+  return null
 }
 
 const syncLine = (moveNext = true) => {
@@ -589,8 +622,12 @@ watch(progress, (newProgress) => {
   currentIndex.value = resultCurrentIndex
 
   if (currentIndex.value >= 0) {
-    const line = view.state.doc.line(currentIndex.value + 1)
-    view.dispatch({ effects: addLineHighlight.of(line.from) })
+    // Use memoized search to find the actual document line for this lyric index
+    const documentLineNum = findDocumentLineForLyricIndex(currentIndex.value)
+    if (documentLineNum) {
+      const line = view.state.doc.line(documentLineNum)
+      view.dispatch({ effects: addLineHighlight.of(line.from) })
+    }
   } else {
     view.dispatch({ effects: addLineHighlight.of(null) })
   }
