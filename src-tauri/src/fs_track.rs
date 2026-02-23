@@ -1,3 +1,6 @@
+//! DEPRECATED: This module is deprecated and will be removed in a future version.
+//! Use `crate::scanner::metadata` and `crate::scanner::scan` instead.
+
 use crate::db;
 use anyhow::Result;
 use globwalk::{glob, DirEntry};
@@ -78,7 +81,7 @@ impl FsTrack {
         }
     }
 
-    fn new_from_path(path: &Path) -> Result<FsTrack> {
+    pub fn new_from_path(path: &Path) -> Result<FsTrack> {
         let file_path = path.display().to_string();
         let file_name = path.file_name().unwrap().to_str().unwrap().to_owned();
         let tagged_file = read_from_path(&file_path)
@@ -244,6 +247,11 @@ fn load_tracks_from_entry_batch(entry_batch: &Vec<DirEntry>) -> Result<Vec<FsTra
     Ok(tracks)
 }
 
+/// DEPRECATED: Use `crate::scanner::scan::scan_library_streamlined` instead
+#[deprecated(
+    since = "1.1.0",
+    note = "Use `crate::scanner::scan::scan_library_streamlined` instead"
+)]
 pub fn load_tracks_from_directories(
     directories: &Vec<String>,
     conn: &mut Connection,

@@ -48,27 +48,33 @@ import { invoke } from '@tauri-apps/api/core'
 import { ref, onMounted } from 'vue'
 import { Close, Plus } from 'mdue'
 
-const emit = defineEmits(['progressStep'])
+const emit = defineEmits(['progressStep', 'directoriesChanged'])
 
 const directories = ref([])
+const originalDirectories = ref([])
 
 const progressStep = async () => {
   await invoke('set_directories', { directories: directories.value })
+
+  // Check if directories actually changed
+  const hasChanged = JSON.stringify(originalDirectories.value.sort()) !== JSON.stringify(directories.value.sort())
+
+  if (hasChanged) {
+    emit('directoriesChanged')
+  }
+
   emit('progressStep')
 }
 
 onMounted(async () => {
-  const init = await invoke('get_init')
-  if (init) {
-    emit('progressStep')
-  }
-
   const directoriesFromDB = await invoke('get_directories')
-  if (directoriesFromDB) {
-    directories.value = directoriesFromDB
+  if (directoriesFromDB && directoriesFromDB.length > 0) {
+    directories.value = [...directoriesFromDB]
+    originalDirectories.value = [...directoriesFromDB]
   } else {
     const dirPath = await audioDir();
     directories.value.push(dirPath)
+    originalDirectories.value = [dirPath]
   }
 })
 

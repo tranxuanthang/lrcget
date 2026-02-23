@@ -81,7 +81,7 @@
               <Refresh class="text-brave-20 dark:text-brave-90" />
               <span class="text-brave-20 dark:text-brave-90 text-sm font-bold">Refresh library</span>
             </button>
-            <button class="dropdown-item" @click="$emit('uninitializeLibrary')" v-close-popper>
+            <button class="dropdown-item" @click="$emit('manageDirectories')" v-close-popper>
               <FolderMultiple class="text-brave-20 dark:text-brave-90" />
               <span class="text-brave-20 dark:text-brave-90 text-sm font-bold">Manage directories</span>
             </button>
@@ -108,7 +108,7 @@ import MiniSearch from './MiniSearch.vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const props = defineProps(['activeTab'])
-defineEmits(['changeActiveTab', 'showConfig', 'showAbout', 'showDownloadViewer', 'refreshLibrary', 'uninitializeLibrary'])
+defineEmits(['changeActiveTab', 'showConfig', 'showAbout', 'showDownloadViewer', 'refreshLibrary', 'manageDirectories'])
 
 const { isDownloading, totalCount, downloadedCount, addToQueue } = useDownloader()
 

@@ -4,6 +4,7 @@
 )]
 
 pub mod db;
+pub mod scanner;
 pub mod fs_track;
 pub mod library;
 pub mod lrclib;
@@ -141,6 +142,51 @@ async fn refresh_library(
     library::initialize_library(conn, app_handle).map_err(|err| err.to_string())?;
 
     Ok(())
+}
+
+#[tauri::command]
+async fn scan_library(
+    app_state: State<'_, AppState>,
+    app_handle: AppHandle,
+    use_hash_detection: Option<bool>,
+) -> Result<scanner::models::ScanResult, String> {
+    // Get directories first (requires immutable access)
+    let directories = {
+        let conn_guard = app_state.db.lock().unwrap();
+        let conn = conn_guard.as_ref().unwrap();
+        db::get_directories(conn).map_err(|err| err.to_string())?
+    };
+
+    // Determine detection method (default to Hash for reliability)
+    let detection_method = if use_hash_detection.unwrap_or(true) {
+        scanner::scan::DetectionMethod::Hash
+    } else {
+        scanner::scan::DetectionMethod::Metadata
+    };
+
+    // Clone app_handle for use in the closure
+    let app_handle_clone = app_handle.clone();
+
+    // Run scan synchronously but use block_in_place to not block the runtime
+    let scan_result = tokio::task::block_in_place(|| {
+        let mut conn_guard = app_state.db.lock().unwrap();
+        let conn = conn_guard.as_mut().unwrap();
+
+        scanner::scan_library(
+            &directories,
+            conn,
+            &|progress| {
+                // Emit progress directly (synchronous)
+                let _ = app_handle_clone.emit("scan-progress", progress);
+            },
+            detection_method,
+        )
+    }).map_err(|err| err.to_string())?;
+
+    // Emit completion event
+    let _ = app_handle.emit("scan-complete", &scan_result);
+
+    Ok(scan_result)
 }
 
 #[tauri::command]
@@ -781,6 +827,7 @@ async fn main() {
             initialize_library,
             uninitialize_library,
             refresh_library,
+            scan_library,
             get_tracks,
             get_track_ids,
             get_track,

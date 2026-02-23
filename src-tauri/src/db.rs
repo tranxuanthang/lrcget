@@ -2,15 +2,16 @@ use crate::fs_track;
 use crate::persistent_entities::{
     PersistentAlbum, PersistentArtist, PersistentConfig, PersistentTrack,
 };
+use crate::scanner::models::DbTrack;
 use crate::utils::prepare_input;
 use anyhow::Result;
 use indoc::indoc;
 use regex::Regex;
-use rusqlite::{named_params, params, Connection};
+use rusqlite::{named_params, params, Connection, OptionalExtension};
 use std::fs;
 use tauri::{AppHandle, Manager};
 
-const CURRENT_DB_VERSION: u32 = 7;
+const CURRENT_DB_VERSION: u32 = 8;
 
 /// Initializes the database connection, creating the .sqlite file if needed, and upgrading the database
 /// if it's out of date.
@@ -196,6 +197,27 @@ pub fn upgrade_database_if_needed(
 
             tx.execute_batch(indoc! {"
             ALTER TABLE config_data ADD show_line_count BOOLEAN DEFAULT 1;
+            "})?;
+
+            tx.commit()?;
+        }
+
+        if existing_version <= 7 {
+            println!("Migrate database version 8...");
+            let tx = db.transaction()?;
+
+            tx.pragma_update(None, "user_version", 8)?;
+
+            tx.execute_batch(indoc! {"
+            ALTER TABLE tracks ADD COLUMN file_size INTEGER;
+            ALTER TABLE tracks ADD COLUMN modified_time INTEGER;
+            ALTER TABLE tracks ADD COLUMN content_hash TEXT;
+            ALTER TABLE tracks ADD COLUMN scan_status INTEGER DEFAULT 1;
+
+            CREATE INDEX idx_tracks_file_path ON tracks(file_path);
+            CREATE INDEX idx_tracks_content_hash ON tracks(content_hash);
+            CREATE INDEX idx_tracks_scan_status ON tracks(scan_status);
+            CREATE INDEX idx_tracks_fingerprint ON tracks(modified_time, file_size);
             "})?;
 
             tx.commit()?;
@@ -914,4 +936,288 @@ pub fn clean_library(db: &Connection) -> Result<()> {
     db.execute("DELETE FROM albums WHERE 1", ())?;
     db.execute("DELETE FROM artists WHERE 1", ())?;
     Ok(())
+}
+
+/// Get all tracks with their fingerprint data for comparison
+pub fn get_tracks_with_fingerprints(db: &Connection) -> Result<Vec<DbTrack>> {
+    let mut statement =
+        db.prepare("SELECT id, file_path, file_size, modified_time, content_hash FROM tracks")?;
+    let mut rows = statement.query([])?;
+    let mut tracks = Vec::new();
+
+    while let Some(row) = rows.next()? {
+        tracks.push(DbTrack {
+            id: row.get("id")?,
+            file_path: row.get("file_path")?,
+            file_size: row.get("file_size")?,
+            modified_time: row.get("modified_time")?,
+            content_hash: row.get("content_hash")?,
+        });
+    }
+
+    Ok(tracks)
+}
+
+/// Delete tracks by their IDs (batch operation)
+pub fn delete_tracks_by_ids(ids: &[i64], conn: &Connection) -> Result<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+
+    // Create placeholders for the IN clause
+    let placeholders: Vec<String> = (0..ids.len()).map(|i| format!("?{}", i + 1)).collect();
+    let query = format!(
+        "DELETE FROM tracks WHERE id IN ({})",
+        placeholders.join(", ")
+    );
+
+    let mut statement = conn.prepare(&query)?;
+    let params: Vec<rusqlite::types::Value> = ids.iter().map(|&id| id.into()).collect();
+    statement.execute(rusqlite::params_from_iter(params.iter()))?;
+
+    Ok(())
+}
+
+/// Update a track's file path (for move/rename detection)
+pub fn update_track_path(
+    track_id: i64,
+    new_path: &std::path::Path,
+    conn: &Connection,
+) -> Result<()> {
+    let new_path_str = new_path.to_string_lossy().to_string();
+    let file_name = new_path
+        .file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .unwrap_or_default();
+
+    conn.execute(
+        "UPDATE tracks SET file_path = ?, file_name = ? WHERE id = ?",
+        (new_path_str, file_name, track_id),
+    )?;
+
+    Ok(())
+}
+
+// ============================================================================
+// Scan-related database operations (transaction-based)
+// ============================================================================
+
+const SCAN_STATUS_PENDING: i32 = 0;
+const SCAN_STATUS_PROCESSED: i32 = 1;
+
+/// Track info for scan operations
+#[derive(Debug)]
+pub struct ScanTrackInfo {
+    pub id: i64,
+    pub file_path: String,
+}
+
+/// Find track by fingerprint (mtime + size) - for scan operations
+pub fn find_track_by_fingerprint_tx(
+    modified_time: i64,
+    file_size: i64,
+    tx: &rusqlite::Transaction,
+) -> Result<Option<ScanTrackInfo>> {
+    let mut stmt = tx.prepare(
+        "SELECT id, file_path FROM tracks WHERE modified_time = ? AND file_size = ? LIMIT 1",
+    )?;
+
+    let result = stmt
+        .query_row([modified_time, file_size], |row| {
+            Ok(ScanTrackInfo {
+                id: row.get(0)?,
+                file_path: row.get(1)?,
+            })
+        })
+        .optional()?;
+
+    Ok(result)
+}
+
+/// Find track by content hash - for scan operations
+pub fn find_track_by_hash_tx(
+    hash: &str,
+    tx: &rusqlite::Transaction,
+) -> Result<Option<ScanTrackInfo>> {
+    let mut stmt = tx.prepare("SELECT id, file_path FROM tracks WHERE content_hash = ? LIMIT 1")?;
+
+    let result = stmt
+        .query_row([hash], |row| {
+            Ok(ScanTrackInfo {
+                id: row.get(0)?,
+                file_path: row.get(1)?,
+            })
+        })
+        .optional()?;
+
+    Ok(result)
+}
+
+/// Mark track as processed during scan
+pub fn mark_track_processed_tx(track_id: i64, tx: &rusqlite::Transaction) -> Result<()> {
+    tx.execute(
+        "UPDATE tracks SET scan_status = ? WHERE id = ?",
+        [SCAN_STATUS_PROCESSED, track_id as i32],
+    )?;
+    Ok(())
+}
+
+/// Update track path after move (fingerprint already matches)
+pub fn update_track_path_tx(
+    track_id: i64,
+    new_path: &str,
+    tx: &rusqlite::Transaction,
+) -> Result<()> {
+    let file_name = std::path::Path::new(new_path)
+        .file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .unwrap_or_default();
+
+    tx.execute(
+        "UPDATE tracks SET file_path = ?, file_name = ?, scan_status = ? WHERE id = ?",
+        (new_path, file_name, SCAN_STATUS_PROCESSED, track_id),
+    )?;
+
+    Ok(())
+}
+
+/// Update track path and fingerprint after move
+pub fn update_track_path_and_fingerprint_tx(
+    track_id: i64,
+    new_path: &str,
+    file_size: i64,
+    modified_time: i64,
+    content_hash: &str,
+    tx: &rusqlite::Transaction,
+) -> Result<()> {
+    let file_name = std::path::Path::new(new_path)
+        .file_name()
+        .map(|f| f.to_string_lossy().to_string())
+        .unwrap_or_default();
+
+    tx.execute(
+        "UPDATE tracks SET file_path = ?, file_name = ?, file_size = ?, modified_time = ?, content_hash = ?, scan_status = ? WHERE id = ?",
+        (new_path, file_name, file_size, modified_time, content_hash, SCAN_STATUS_PROCESSED, track_id),
+    )?;
+
+    Ok(())
+}
+
+/// Insert a new track from metadata during scan
+pub fn insert_track_from_metadata_tx(
+    metadata: &crate::scanner::metadata::TrackMetadata,
+    lyrics: &crate::scanner::metadata::LyricsInfo,
+    file_size: i64,
+    modified_time: i64,
+    content_hash: &str,
+    artist_id: i64,
+    album_id: i64,
+    tx: &rusqlite::Transaction,
+) -> Result<()> {
+    use crate::utils::prepare_input;
+
+    // Check if instrumental
+    let instrumental = lyrics
+        .lrc_lyrics
+        .as_ref()
+        .map_or(false, |l| l.contains("[au:") && l.contains("instrumental"));
+
+    tx.execute(
+        "INSERT INTO tracks (file_path, file_name, title, title_lower, album_id, artist_id, duration, track_number, file_size, modified_time, content_hash, scan_status, txt_lyrics, lrc_lyrics, instrumental) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        (
+            &metadata.file_path,
+            &metadata.file_name,
+            &metadata.title,
+            prepare_input(&metadata.title),
+            album_id,
+            artist_id,
+            metadata.duration,
+            metadata.track_number,
+            file_size,
+            modified_time,
+            content_hash,
+            SCAN_STATUS_PROCESSED,
+            lyrics.txt_lyrics.as_ref(),
+            lyrics.lrc_lyrics.as_ref(),
+            instrumental,
+        ),
+    )?;
+
+    Ok(())
+}
+
+/// Delete tracks that weren't processed during scan and clean up orphaned albums/artists
+pub fn delete_unprocessed_tracks(conn: &mut Connection) -> Result<usize> {
+    let tx = conn.transaction()?;
+
+    // Delete tracks that weren't seen during this scan
+    let deleted_count = tx.execute(
+        "DELETE FROM tracks WHERE scan_status = ?",
+        [SCAN_STATUS_PENDING],
+    )?;
+
+    // Clean up orphaned albums and artists
+    tx.execute(
+        "DELETE FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks)",
+        [],
+    )?;
+
+    tx.execute(
+        "DELETE FROM artists WHERE id NOT IN (SELECT DISTINCT artist_id FROM tracks)",
+        [],
+    )?;
+
+    tx.commit()?;
+
+    Ok(deleted_count)
+}
+
+/// Mark all tracks as pending before scan
+pub fn mark_all_tracks_pending(conn: &mut Connection) -> Result<()> {
+    conn.execute("UPDATE tracks SET scan_status = ?", [SCAN_STATUS_PENDING])?;
+    Ok(())
+}
+
+// Transaction-based versions of artist/album functions for scan operations
+
+/// Find artist by name (transaction version)
+pub fn find_artist_tx(name: &str, tx: &rusqlite::Transaction) -> Result<i64> {
+    let mut statement = tx.prepare("SELECT id FROM artists WHERE name = ?")?;
+    let id: i64 = statement.query_row([name], |r| r.get(0))?;
+    Ok(id)
+}
+
+/// Add new artist (transaction version)
+pub fn add_artist_tx(name: &str, tx: &rusqlite::Transaction) -> Result<i64> {
+    let mut statement = tx.prepare("INSERT INTO artists (name, name_lower) VALUES (?, ?)")?;
+    let row_id = statement.insert((name, prepare_input(name)))?;
+    Ok(row_id)
+}
+
+/// Find album by name and artist (transaction version)
+pub fn find_album_tx(
+    name: &str,
+    album_artist_name: &str,
+    tx: &rusqlite::Transaction,
+) -> Result<i64> {
+    let mut statement =
+        tx.prepare("SELECT id FROM albums WHERE name = ? AND album_artist_name = ?")?;
+    let id: i64 = statement.query_row((name, album_artist_name), |r| r.get(0))?;
+    Ok(id)
+}
+
+/// Add new album (transaction version)
+pub fn add_album_tx(
+    name: &str,
+    album_artist_name: &str,
+    tx: &rusqlite::Transaction,
+) -> Result<i64> {
+    let mut statement = tx.prepare("INSERT INTO albums (name, name_lower, album_artist_name, album_artist_name_lower) VALUES (?, ?, ?, ?)")?;
+    let row_id = statement.insert((
+        name,
+        prepare_input(name),
+        album_artist_name,
+        prepare_input(album_artist_name),
+    ))?;
+    Ok(row_id)
 }

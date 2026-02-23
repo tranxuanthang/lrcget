@@ -113,7 +113,7 @@
 
       <div class="flex flex-col gap-1">
         <a href="#" class="link" @click="refreshLibrary">Refresh my library for new changes...</a>
-        <a href="#" class="link" @click="uninitializeLibrary">Add and remove scanning directories...</a>
+        <a href="#" class="link" @click="manageDirectories">Add and remove scanning directories...</a>
       </div>
     </div>
 
@@ -132,7 +132,7 @@ import CheckboxButton from '@/components/common/CheckboxButton.vue'
 
 const { setThemeMode, setLrclibInstance } = useGlobalState()
 
-const emit = defineEmits(['close', 'refreshLibrary', 'uninitializeLibrary'])
+const emit = defineEmits(['close', 'refreshLibrary', 'manageDirectories'])
 
 const downloadLyricsFor = ref('all')
 const skipTracksWithSyncedLyrics = ref(true)
@@ -161,8 +161,8 @@ const refreshLibrary = () => {
   emit('close')
 }
 
-const uninitializeLibrary = () => {
-  emit('uninitializeLibrary')
+const manageDirectories = () => {
+  emit('manageDirectories')
   emit('close')
 }
 

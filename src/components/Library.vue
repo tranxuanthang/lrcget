@@ -8,6 +8,7 @@
       @showDownloadViewer="openDownloadViewer"
       @refreshLibrary="refreshLibrary"
       @uninitializeLibrary="$emit('uninitializeLibrary')"
+      @manageDirectories="$emit('manageDirectories')"
     />
 
     <div class="relative grow overflow-hidden">
@@ -33,9 +34,9 @@
 
   <div v-else class="flex flex-col justify-center items-center w-full h-full">
     <div class="animate-spin text-xl text-brave-30"><Loading /></div>
-    <div v-if="isInitializing" class="flex flex-col items-center justify-center text-sm text-brave-40">
-      <div>Initializing library...</div>
-      <div v-if="initializeProgress">{{ initializeProgress.filesScanned }}/{{ initializeProgress.filesCount }} files scanned</div>
+    <div v-if="isScanning" class="flex flex-col items-center justify-center text-sm text-brave-40">
+      <div>Scanning library...</div>
+      <div v-if="scanProgress" class="mt-1 font-medium">{{ scanProgress.message }}</div>
     </div>
 
     <div v-else class="flex flex-col items-center justify-center text-sm text-brave-40">
@@ -45,7 +46,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { Loading } from 'mdue'
@@ -62,13 +63,24 @@ import About from './About.vue'
 import { useToast } from 'vue-toastification'
 import { useModal } from 'vue-final-modal'
 
+const props = defineProps({
+  shouldScan: {
+    type: Boolean,
+    default: false
+  }
+})
+
+const emit = defineEmits(['uninitializeLibrary', 'scanComplete', 'manageDirectories'])
+
 const toast = useToast()
-const emit = defineEmits(['uninitializeLibrary'])
 
 const isLoading = ref(true)
-const isInitializing = ref(false)
-const initializeProgress = ref(null)
+const isScanning = ref(false)
+const scanProgress = ref(null)
+const scanResult = ref(null)
 const activeTab = ref('tracks')
+let unlistenScanProgress = null
+let unlistenScanComplete = null
 
 const { open: openAboutModal, close: closeAboutModal } = useModal({
   component: About,
@@ -88,8 +100,8 @@ const { open: openConfigModal, close: closeConfigModal } = useModal({
     onRefreshLibrary() {
       refreshLibrary()
     },
-    onUninitializeLibrary() {
-      emit('uninitializeLibrary')
+    onManageDirectories() {
+      emit('manageDirectories')
     }
   },
 })
@@ -107,50 +119,81 @@ const changeActiveTab = (tab) => {
   activeTab.value = tab
 }
 
-const refreshLibrary = async () => {
+const setupScanListeners = async () => {
+  // Clean up any existing listeners
+  if (unlistenScanProgress) {
+    await unlistenScanProgress()
+  }
+  if (unlistenScanComplete) {
+    await unlistenScanComplete()
+  }
+
+  // Listen for scan progress updates
+  unlistenScanProgress = await listen('scan-progress', (event) => {
+    scanProgress.value = event.payload
+  })
+
+  // Listen for scan completion
+  unlistenScanComplete = await listen('scan-complete', (event) => {
+    scanResult.value = event.payload
+    isScanning.value = false
+    isLoading.value = false
+    emit('scanComplete')
+  })
+}
+
+const cleanupScanListeners = async () => {
+  if (unlistenScanProgress) {
+    await unlistenScanProgress()
+    unlistenScanProgress = null
+  }
+  if (unlistenScanComplete) {
+    await unlistenScanComplete()
+    unlistenScanComplete = null
+  }
+}
+
+const scanLibrary = async (isRefresh = false) => {
   isLoading.value = true
-  isInitializing.value = true
+  isScanning.value = true
+  scanProgress.value = null
+  scanResult.value = null
 
   try {
-    listen('initialize-progress', async (event) => {
-      initializeProgress.value = event.payload
-    })
-    await invoke('refresh_library')
-    isInitializing.value = false
+    await setupScanListeners()
+    // Use hash detection by default for accuracy
+    await invoke('scan_library', { useHashDetection: false })
   } catch (error) {
     console.error(error)
-    toast.error(`Unknown error happened when initializing the library. Error: ${error}`)
-  } finally {
+    toast.error(`Unknown error happened when scanning the library. Error: ${error}`)
+    isScanning.value = false
     isLoading.value = false
-    isInitializing.value = false
+    emit('scanComplete')
   }
+}
+
+const refreshLibrary = async () => {
+  await scanLibrary(true)
 }
 
 onMounted(async () => {
   const init = await invoke('get_init')
-  if (!init) {
-    isLoading.value = true
-    isInitializing.value = true
-
-    try {
-      listen('initialize-progress', async (event) => {
-        initializeProgress.value = event.payload
-      })
-      await invoke('initialize_library')
-      isInitializing.value = false
-    } catch (error) {
-      console.error(error)
-      toast.error(`Unknown error happened when initializing the library. Error: ${error}`)
-    } finally {
-      isLoading.value = false
-      isInitializing.value = false
-    }
+  if (!init || props.shouldScan) {
+    // First time initialization or directories changed - run a full scan
+    await scanLibrary(false)
   } else {
     isLoading.value = false
   }
 })
 
-onUnmounted(() => {
-  stop()
+// Watch for changes to shouldScan prop
+watch(() => props.shouldScan, (newValue) => {
+  if (newValue && !isScanning.value) {
+    scanLibrary(false)
+  }
+})
+
+onUnmounted(async () => {
+  await cleanupScanListeners()
 })
 </script>

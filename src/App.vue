@@ -6,8 +6,18 @@
       </div>
     </div>
     <div v-if="!loading" class="grow overflow-hidden bg-white dark:bg-brave-background-dark">
-      <ChooseDirectory v-if="!init" @progressStep="init = true" />
-      <Library v-else @uninitialize-library="uninitializeLibrary" />
+      <ChooseDirectory 
+        v-if="!init" 
+        @progressStep="onProgressStep" 
+        @directoriesChanged="onDirectoriesChanged" 
+      />
+      <Library 
+        v-else 
+        :shouldScan="shouldScan"
+        @uninitialize-library="uninitializeLibrary"
+        @manage-directories="manageDirectories"
+        @scanComplete="onScanComplete"
+      />
     </div>
   </div>
 
@@ -33,6 +43,7 @@ const { downloadNext } = useDownloader()
 
 const loading = ref(true)
 const init = ref(false)
+const shouldScan = ref(false)
 const isProd = ref(import.meta.env.PROD)
 
 const uninitializeLibrary = async () => {
@@ -40,6 +51,26 @@ const uninitializeLibrary = async () => {
   await invoke('uninitialize_library')
   init.value = await invoke('get_init')
   loading.value = false
+}
+
+const manageDirectories = () => {
+  // Just show the directory chooser without clearing the database
+  // The incremental scan will handle any directory changes
+  init.value = false
+}
+
+const onProgressStep = () => {
+  init.value = true
+}
+
+const onDirectoriesChanged = () => {
+  // Directories were changed, trigger a scan in Library
+  shouldScan.value = true
+}
+
+const onScanComplete = () => {
+  // Reset the scan flag after completion
+  shouldScan.value = false
 }
 
 onMounted(async () => {
