@@ -23,6 +23,8 @@ lofty = "0.21.1"
 anyhow = "1.0.89"
 thiserror = "1.0"
 rusqlite = { version = "0.32.1", features = ["bundled"] }
+rusqlite_migration = { version = "1.3.1", features = ["from-directory"] }
+include_dir = "0.7.4"
 secular = { version="1.0.1", features= ["bmp", "normalization"] }
 collapse = "0.1.2"
 rayon = "1.10.0"

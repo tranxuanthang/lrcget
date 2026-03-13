@@ -5,16 +5,18 @@ use crate::persistent_entities::{
 use crate::scanner::models::DbTrack;
 use crate::utils::prepare_input;
 use anyhow::Result;
+use include_dir::{include_dir, Dir};
 use indoc::indoc;
 use regex::Regex;
 use rusqlite::{named_params, params, Connection, OptionalExtension};
+use rusqlite_migration::Migrations;
 use std::fs;
 use tauri::{AppHandle, Manager};
 
-const CURRENT_DB_VERSION: u32 = 8;
+static MIGRATIONS_DIR: Dir = include_dir!("$CARGO_MANIFEST_DIR/migrations");
 
-/// Initializes the database connection, creating the .sqlite file if needed, and upgrading the database
-/// if it's out of date.
+/// Initializes the database connection, creating the .sqlite file if needed, and upgrading the
+/// database if it's out of date.
 pub fn initialize_database(app_handle: &AppHandle) -> Result<Connection, rusqlite::Error> {
     let app_dir = app_handle
         .path()
@@ -27,204 +29,15 @@ pub fn initialize_database(app_handle: &AppHandle) -> Result<Connection, rusqlit
 
     let mut db = Connection::open(sqlite_path)?;
 
-    let mut user_pragma = db.prepare("PRAGMA user_version")?;
-    let existing_user_version: u32 = user_pragma.query_row([], |row| Ok(row.get(0)?))?;
-    drop(user_pragma);
+    db.pragma_update(None, "journal_mode", "WAL")?;
 
-    upgrade_database_if_needed(&mut db, existing_user_version)?;
+    let migrations = Migrations::from_directory(&MIGRATIONS_DIR)
+        .expect("Failed to load migrations from directory");
+    migrations
+        .to_latest(&mut db)
+        .expect("Failed to run database migrations");
 
     Ok(db)
-}
-
-/// Upgrades the database to the current version.
-pub fn upgrade_database_if_needed(
-    db: &mut Connection,
-    existing_version: u32,
-) -> Result<(), rusqlite::Error> {
-    println!("Existing database version: {}", existing_version);
-
-    if existing_version < CURRENT_DB_VERSION {
-        if existing_version <= 0 {
-            println!("Migrate database version 1...");
-            db.pragma_update(None, "journal_mode", "WAL")?;
-
-            let tx = db.transaction()?;
-
-            tx.pragma_update(None, "user_version", 1)?;
-
-            tx.execute_batch(indoc! {"
-            CREATE TABLE directories (
-                id INTEGER PRIMARY KEY,
-                path TEXT
-            );
-
-            CREATE TABLE library_data (
-                id INTEGER PRIMARY KEY,
-                init BOOLEAN
-            );
-
-            CREATE TABLE config_data (
-                id INTEGER PRIMARY KEY,
-                skip_not_needed_tracks BOOLEAN,
-                try_embed_lyrics BOOLEAN
-            );
-
-            CREATE TABLE artists (
-                id INTEGER PRIMARY KEY,
-                name TEXT
-            );
-
-            CREATE TABLE albums (
-                id INTEGER PRIMARY KEY,
-                name TEXT,
-                artist_id INTEGER,
-                image_path TEXT,
-                FOREIGN KEY(artist_id) REFERENCES artists(id)
-            );
-
-            CREATE TABLE tracks (
-                id INTEGER PRIMARY KEY,
-                file_path TEXT,
-                file_name TEXT,
-                title TEXT,
-                album_id INTEGER,
-                artist_id INTEGER,
-                duration FLOAT,
-                lrc_lyrics TEXT,
-                FOREIGN KEY(artist_id) REFERENCES artists(id),
-                FOREIGN KEY(album_id) REFERENCES albums(id)
-            );
-
-            INSERT INTO library_data (init) VALUES (0);
-            INSERT INTO config_data (skip_not_needed_tracks, try_embed_lyrics) VALUES (1, 0);
-            "})?;
-
-            tx.commit()?;
-        }
-
-        if existing_version <= 1 {
-            println!("Migrate database version 2...");
-            db.pragma_update(None, "journal_mode", "WAL")?;
-
-            let tx = db.transaction()?;
-
-            tx.pragma_update(None, "user_version", 2)?;
-
-            tx.execute_batch(indoc! {"
-            ALTER TABLE tracks ADD txt_lyrics TEXT;
-            CREATE INDEX idx_tracks_title ON tracks(title);
-            CREATE INDEX idx_albums_name ON albums(name);
-            CREATE INDEX idx_artists_name ON artists(name);
-            "})?;
-            tx.commit()?;
-        }
-
-        if existing_version <= 2 {
-            println!("Migrate database version 3...");
-            let tx = db.transaction()?;
-
-            tx.pragma_update(None, "user_version", 3)?;
-
-            tx.execute_batch(indoc! {"
-            ALTER TABLE tracks ADD instrumental BOOLEAN;
-            "})?;
-            tx.commit()?;
-        }
-
-        if existing_version <= 3 {
-            println!("Migrate database version 4...");
-            let tx = db.transaction()?;
-
-            tx.pragma_update(None, "user_version", 4)?;
-
-            tx.execute_batch(indoc! {"
-            ALTER TABLE tracks ADD title_lower TEXT;
-            ALTER TABLE albums ADD name_lower TEXT;
-            ALTER TABLE artists ADD name_lower TEXT;
-            CREATE INDEX idx_tracks_title_lower ON tracks(title_lower);
-            CREATE INDEX idx_albums_name_lower ON albums(name_lower);
-            CREATE INDEX idx_artists_name_lower ON artists(name_lower);
-            "})?;
-
-            tx.commit()?;
-        }
-
-        if existing_version <= 4 {
-            println!("Migrate database version 5...");
-            let tx = db.transaction()?;
-
-            tx.pragma_update(None, "user_version", 5)?;
-
-            tx.execute_batch(indoc! {"
-            ALTER TABLE tracks ADD track_number INTEGER;
-            ALTER TABLE albums ADD album_artist_name TEXT;
-            ALTER TABLE albums ADD album_artist_name_lower TEXT;
-            ALTER TABLE config_data ADD theme_mode TEXT DEFAULT 'auto';
-            ALTER TABLE config_data ADD lrclib_instance TEXT DEFAULT 'https://lrclib.net';
-            CREATE INDEX idx_albums_album_artist_name_lower ON albums(album_artist_name_lower);
-            CREATE INDEX idx_tracks_track_number ON tracks(track_number);
-
-            DELETE FROM tracks WHERE 1;
-            DELETE FROM albums WHERE 1;
-            DELETE FROM artists WHERE 1;
-            UPDATE library_data SET init = 0 WHERE 1;
-            "})?;
-
-            tx.commit()?;
-        }
-
-        if existing_version <= 5 {
-            println!("Migrate database version 6...");
-            let tx = db.transaction()?;
-
-            tx.pragma_update(None, "user_version", 6)?;
-
-            tx.execute_batch(indoc! {"
-            ALTER TABLE config_data ADD skip_tracks_with_synced_lyrics BOOLEAN DEFAULT 0;
-            ALTER TABLE config_data ADD skip_tracks_with_plain_lyrics BOOLEAN DEFAULT 0;
-            UPDATE config_data SET skip_tracks_with_synced_lyrics = skip_not_needed_tracks;
-            ALTER TABLE config_data DROP COLUMN skip_not_needed_tracks;
-            "})?;
-
-            tx.commit()?;
-        }
-
-        if existing_version <= 6 {
-            println!("Migrate database version 7...");
-            let tx = db.transaction()?;
-
-            tx.pragma_update(None, "user_version", 7)?;
-
-            tx.execute_batch(indoc! {"
-            ALTER TABLE config_data ADD show_line_count BOOLEAN DEFAULT 1;
-            "})?;
-
-            tx.commit()?;
-        }
-
-        if existing_version <= 7 {
-            println!("Migrate database version 8...");
-            let tx = db.transaction()?;
-
-            tx.pragma_update(None, "user_version", 8)?;
-
-            tx.execute_batch(indoc! {"
-            ALTER TABLE tracks ADD COLUMN file_size INTEGER;
-            ALTER TABLE tracks ADD COLUMN modified_time INTEGER;
-            ALTER TABLE tracks ADD COLUMN content_hash TEXT;
-            ALTER TABLE tracks ADD COLUMN scan_status INTEGER DEFAULT 1;
-
-            CREATE INDEX idx_tracks_file_path ON tracks(file_path);
-            CREATE INDEX idx_tracks_content_hash ON tracks(content_hash);
-            CREATE INDEX idx_tracks_scan_status ON tracks(scan_status);
-            CREATE INDEX idx_tracks_fingerprint ON tracks(modified_time, file_size);
-            "})?;
-
-            tx.commit()?;
-        }
-    }
-
-    Ok(())
 }
 
 pub fn get_directories(db: &Connection) -> Result<Vec<String>> {
@@ -556,7 +369,7 @@ pub fn get_track_ids(
     plain_lyrics: bool,
     instrumental: bool,
     no_lyrics: bool,
-    db: &Connection
+    db: &Connection,
 ) -> Result<Vec<i64>> {
     let base_query = "SELECT id FROM tracks";
 
@@ -572,7 +385,8 @@ pub fn get_track_ids(
         conditions.push("instrumental = false");
     }
     if !no_lyrics {
-        conditions.push("(txt_lyrics IS NOT NULL OR lrc_lyrics IS NOT NULL OR instrumental = true)");
+        conditions
+            .push("(txt_lyrics IS NOT NULL OR lrc_lyrics IS NOT NULL OR instrumental = true)");
     }
 
     let where_clause = if !conditions.is_empty() {
@@ -600,7 +414,7 @@ pub fn get_search_track_ids(
     plain_lyrics: bool,
     instrumental: bool,
     no_lyrics: bool,
-    db: &Connection
+    db: &Connection,
 ) -> Result<Vec<i64>> {
     let base_query = indoc! {"
       SELECT tracks.id
@@ -624,7 +438,8 @@ pub fn get_search_track_ids(
         conditions.push("instrumental = false");
     }
     if !no_lyrics {
-        conditions.push("(txt_lyrics IS NOT NULL OR lrc_lyrics IS NOT NULL OR instrumental = true)");
+        conditions
+            .push("(txt_lyrics IS NOT NULL OR lrc_lyrics IS NOT NULL OR instrumental = true)");
     }
 
     let where_clause = if !conditions.is_empty() {
@@ -833,7 +648,12 @@ pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<Persistent
     Ok(tracks)
 }
 
-pub fn get_album_track_ids(album_id: i64, without_plain_lyrics: bool, without_synced_lyrics: bool, db: &Connection) -> Result<Vec<i64>> {
+pub fn get_album_track_ids(
+    album_id: i64,
+    without_plain_lyrics: bool,
+    without_synced_lyrics: bool,
+    db: &Connection,
+) -> Result<Vec<i64>> {
     let base_query = indoc! {"
       SELECT tracks.id
       FROM tracks
@@ -841,14 +661,18 @@ pub fn get_album_track_ids(album_id: i64, without_plain_lyrics: bool, without_sy
       WHERE tracks.album_id = ?"};
 
     let lyrics_conditions = match (without_plain_lyrics, without_synced_lyrics) {
-        (true, true) => " AND txt_lyrics IS NULL AND lrc_lyrics IS NULL AND tracks.instrumental = false",
+        (true, true) => {
+            " AND txt_lyrics IS NULL AND lrc_lyrics IS NULL AND tracks.instrumental = false"
+        }
         (true, false) => " AND txt_lyrics IS NULL AND tracks.instrumental = false",
         (false, true) => " AND lrc_lyrics IS NULL AND tracks.instrumental = false",
         (false, false) => "",
     };
 
-    let full_query = format!("{}{} ORDER BY tracks.track_number ASC",
-        base_query, lyrics_conditions);
+    let full_query = format!(
+        "{}{} ORDER BY tracks.track_number ASC",
+        base_query, lyrics_conditions
+    );
 
     let mut statement = db.prepare(&full_query)?;
     let mut rows = statement.query([album_id])?;
@@ -902,7 +726,12 @@ pub fn get_artist_tracks(artist_id: i64, db: &Connection) -> Result<Vec<Persiste
     Ok(tracks)
 }
 
-pub fn get_artist_track_ids(artist_id: i64, without_plain_lyrics: bool, without_synced_lyrics: bool, db: &Connection) -> Result<Vec<i64>> {
+pub fn get_artist_track_ids(
+    artist_id: i64,
+    without_plain_lyrics: bool,
+    without_synced_lyrics: bool,
+    db: &Connection,
+) -> Result<Vec<i64>> {
     let base_query = indoc! {"
       SELECT tracks.id
       FROM tracks
@@ -911,14 +740,18 @@ pub fn get_artist_track_ids(artist_id: i64, without_plain_lyrics: bool, without_
       WHERE tracks.artist_id = ?"};
 
     let lyrics_conditions = match (without_plain_lyrics, without_synced_lyrics) {
-        (true, true) => " AND txt_lyrics IS NULL AND lrc_lyrics IS NULL AND tracks.instrumental = false",
+        (true, true) => {
+            " AND txt_lyrics IS NULL AND lrc_lyrics IS NULL AND tracks.instrumental = false"
+        }
         (true, false) => " AND txt_lyrics IS NULL AND tracks.instrumental = false",
         (false, true) => " AND lrc_lyrics IS NULL AND tracks.instrumental = false",
         (false, false) => "",
     };
 
-    let full_query = format!("{}{} ORDER BY albums.name_lower ASC, tracks.track_number ASC",
-        base_query, lyrics_conditions);
+    let full_query = format!(
+        "{}{} ORDER BY albums.name_lower ASC, tracks.track_number ASC",
+        base_query, lyrics_conditions
+    );
 
     let mut statement = db.prepare(&full_query)?;
     let mut rows = statement.query([artist_id])?;

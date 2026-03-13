@@ -40,6 +40,15 @@ src-tauri/
 │       ├── flag.rs             # Flag incorrect lyrics
 │       ├── request_challenge.rs # Request proof-of-work challenge
 │       └── challenge_solver.rs # Proof-of-work challenge solver
+├── migrations/                 # Database migration SQL files (rusqlite_migration)
+│   ├── 01-initial/up.sql
+│   ├── 02-add_lyrics_and_indexes/up.sql
+│   ├── 03-add_instrumental/up.sql
+│   ├── 04-add_lower_columns/up.sql
+│   ├── 05-add_track_number_and_config/up.sql
+│   ├── 06-update_lyrics_skip_config/up.sql
+│   ├── 07-add_show_line_count/up.sql
+│   └── 08-add_scan_fields/up.sql
 ├── Cargo.toml                  # Rust dependencies
 ├── tauri.conf.json            # Tauri configuration
 ├── build.rs                   # Build script
@@ -63,30 +72,104 @@ fn db_mut<F, TResult>(&self, operation: F) -> TResult  // Mutable access
 
 ### 2. Database Layer (`db.rs`)
 
-SQLite database with automatic migrations (current version: 7).
-
-**Key Tables:**
-- `directories` - Watched music directories
-- `library_data` - Library initialization status
-- `config_data` - Application settings
-- `artists` - Music artists
-- `albums` - Music albums
-- `tracks` - Individual music tracks with lyrics
-
-**Migration History:**
-- v1: Initial schema (artists, albums, tracks)
-- v2: Added txt_lyrics, indexes
-- v3: Added instrumental flag
-- v4: Added lowercase columns for searching
-- v5: Added track_number, album_artist_name, theme_mode, lrclib_instance
-- v6: Split skip_not_needed_tracks into synced/plain variants
-- v7: Added show_line_count setting
-- v8: Added incremental scanning columns (file_size, modified_time, content_hash, scan_status)
+SQLite database with automatic migrations (current version: 8).
 
 **Key Functions:**
-- `initialize_database()` - Creates/opens DB file in app_data_dir
-- `upgrade_database_if_needed()` - Runs migrations
+- `initialize_database()` - Creates/opens DB file in app_data_dir, runs migrations via `rusqlite_migration`
 - CRUD operations for all entities
+
+**Migrations:**
+Migration SQL files live in `src-tauri/migrations/`, one subdirectory per version (e.g. `01-initial/up.sql`). They are embedded into the binary at compile time via `include_dir!` and applied automatically by `rusqlite_migration::Migrations::to_latest()` on startup. To add a future migration, create a new `NN-description/up.sql` directory.
+
+**Migration History:**
+- v1: Initial schema
+- v2: Added `txt_lyrics`, full-text indexes on title/name
+- v3: Added `instrumental` flag to tracks
+- v4: Added `*_lower` columns for case-insensitive search
+- v5: Added `track_number`, `album_artist_name`, `theme_mode`, `lrclib_instance`; reset library data
+- v6: Replaced `skip_not_needed_tracks` with `skip_tracks_with_synced_lyrics` / `skip_tracks_with_plain_lyrics`
+- v7: Added `show_line_count` to config
+- v8: Added incremental scan columns (`file_size`, `modified_time`, `content_hash`, `scan_status`) and related indexes
+
+**Current Schema (v8):**
+
+```sql
+-- Watched music directories
+CREATE TABLE directories (
+    id   INTEGER PRIMARY KEY,
+    path TEXT
+);
+
+-- Library initialisation flag (single row)
+CREATE TABLE library_data (
+    id   INTEGER PRIMARY KEY,
+    init BOOLEAN
+);
+
+-- Application settings (single row)
+CREATE TABLE config_data (
+    id                              INTEGER PRIMARY KEY,
+    try_embed_lyrics                BOOLEAN,
+    skip_tracks_with_synced_lyrics  BOOLEAN DEFAULT 0,
+    skip_tracks_with_plain_lyrics   BOOLEAN DEFAULT 0,
+    show_line_count                 BOOLEAN DEFAULT 1,
+    theme_mode                      TEXT    DEFAULT 'auto',
+    lrclib_instance                 TEXT    DEFAULT 'https://lrclib.net'
+);
+
+CREATE TABLE artists (
+    id         INTEGER PRIMARY KEY,
+    name       TEXT,
+    name_lower TEXT   -- normalised for case-insensitive search
+);
+
+CREATE TABLE albums (
+    id                      INTEGER PRIMARY KEY,
+    name                    TEXT,
+    name_lower              TEXT,   -- normalised for search
+    artist_id               INTEGER,
+    image_path              TEXT,
+    album_artist_name       TEXT,
+    album_artist_name_lower TEXT,   -- normalised for search
+    FOREIGN KEY(artist_id) REFERENCES artists(id)
+);
+
+CREATE TABLE tracks (
+    id            INTEGER PRIMARY KEY,
+    file_path     TEXT,
+    file_name     TEXT,
+    title         TEXT,
+    title_lower   TEXT,    -- normalised for search
+    album_id      INTEGER,
+    artist_id     INTEGER,
+    duration      FLOAT,
+    track_number  INTEGER,
+    lrc_lyrics    TEXT,    -- synced LRC format; '[au: instrumental]' marks instrumental tracks
+    txt_lyrics    TEXT,    -- plain-text lyrics
+    instrumental  BOOLEAN,
+    -- incremental scan fields (added v8)
+    file_size     INTEGER,
+    modified_time INTEGER,
+    content_hash  TEXT,
+    scan_status   INTEGER DEFAULT 1,  -- 0 = pending, 1 = processed
+    FOREIGN KEY(artist_id) REFERENCES artists(id),
+    FOREIGN KEY(album_id)  REFERENCES albums(id)
+);
+
+-- Indexes
+CREATE INDEX idx_tracks_title             ON tracks(title);
+CREATE INDEX idx_tracks_title_lower       ON tracks(title_lower);
+CREATE INDEX idx_tracks_track_number      ON tracks(track_number);
+CREATE INDEX idx_tracks_file_path         ON tracks(file_path);
+CREATE INDEX idx_tracks_content_hash      ON tracks(content_hash);
+CREATE INDEX idx_tracks_scan_status       ON tracks(scan_status);
+CREATE INDEX idx_tracks_fingerprint       ON tracks(modified_time, file_size);
+CREATE INDEX idx_albums_name              ON albums(name);
+CREATE INDEX idx_albums_name_lower        ON albums(name_lower);
+CREATE INDEX idx_albums_album_artist_name_lower ON albums(album_artist_name_lower);
+CREATE INDEX idx_artists_name             ON artists(name);
+CREATE INDEX idx_artists_name_lower       ON artists(name_lower);
+```
 
 ### 3. File System Scanning (NEW: `scanner/` module)
 
@@ -370,6 +453,8 @@ Emitted by backend, listened by frontend:
 |-------|---------|
 | `tauri` | Desktop framework |
 | `rusqlite` | SQLite database |
+| `rusqlite_migration` | Schema migrations via `user_version` |
+| `include_dir` | Embed migration SQL files at compile time |
 | `lofty` | Audio metadata reading/writing |
 | `kira` | Audio playback |
 | `reqwest` | HTTP client for LRCLIB API |
