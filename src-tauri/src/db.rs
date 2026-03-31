@@ -10,7 +10,7 @@ use rusqlite::{named_params, params, Connection};
 use std::fs;
 use tauri::{AppHandle, Manager};
 
-const CURRENT_DB_VERSION: u32 = 7;
+const CURRENT_DB_VERSION: u32 = 8;
 
 /// Initializes the database connection, creating the .sqlite file if needed, and upgrading the database
 /// if it's out of date.
@@ -200,6 +200,21 @@ pub fn upgrade_database_if_needed(
 
             tx.commit()?;
         }
+
+        if existing_version <= 8 {
+            println!("Migrate database version 8...");
+            let tx = db.transaction()?;
+
+            tx.pragma_update(None, "user_version", 8)?;
+
+            tx.execute_batch(indoc! {"
+            ALTER TABLE config_data ADD lyrics_type_instrumental BOOLEAN DEFAULT 1;
+            ALTER TABLE config_data ADD lyrics_type_plain BOOLEAN DEFAULT 1;
+            ALTER TABLE config_data ADD lyrics_type_synced BOOLEAN DEFAULT 1;
+            "})?;
+
+            tx.commit()?;
+        }
     }
 
     Ok(())
@@ -245,6 +260,9 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
       SELECT
         skip_tracks_with_synced_lyrics,
         skip_tracks_with_plain_lyrics,
+        lyrics_type_instrumental,
+        lyrics_type_plain,
+        lyrics_type_synced,
         show_line_count,
         try_embed_lyrics,
         theme_mode,
@@ -256,6 +274,9 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
         Ok(PersistentConfig {
             skip_tracks_with_synced_lyrics: r.get("skip_tracks_with_synced_lyrics")?,
             skip_tracks_with_plain_lyrics: r.get("skip_tracks_with_plain_lyrics")?,
+            lyrics_type_instrumental: r.get("lyrics_type_instrumental")?,
+            lyrics_type_plain: r.get("lyrics_type_plain")?,
+            lyrics_type_synced: r.get("lyrics_type_synced")?,
             show_line_count: r.get("show_line_count")?,
             try_embed_lyrics: r.get("try_embed_lyrics")?,
             theme_mode: r.get("theme_mode")?,
@@ -268,6 +289,9 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
 pub fn set_config(
     skip_tracks_with_synced_lyrics: bool,
     skip_tracks_with_plain_lyrics: bool,
+    lyrics_type_instrumental: bool,
+    lyrics_type_plain: bool,
+    lyrics_type_synced: bool,
     show_line_count: bool,
     try_embed_lyrics: bool,
     theme_mode: &str,
@@ -279,6 +303,9 @@ pub fn set_config(
       SET
         skip_tracks_with_synced_lyrics = ?,
         skip_tracks_with_plain_lyrics = ?,
+        lyrics_type_instrumental = ?,
+        lyrics_type_plain = ?,
+        lyrics_type_synced = ?,
         show_line_count = ?,
         try_embed_lyrics = ?,
         theme_mode = ?,
@@ -288,6 +315,9 @@ pub fn set_config(
     statement.execute((
         skip_tracks_with_synced_lyrics,
         skip_tracks_with_plain_lyrics,
+        lyrics_type_instrumental,
+        lyrics_type_plain,
+        lyrics_type_synced,
         show_line_count,
         try_embed_lyrics,
         theme_mode,

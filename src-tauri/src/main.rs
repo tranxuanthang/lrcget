@@ -85,6 +85,9 @@ async fn get_config(app_state: State<'_, AppState>) -> Result<PersistentConfig, 
 async fn set_config(
     skip_tracks_with_synced_lyrics: bool,
     skip_tracks_with_plain_lyrics: bool,
+    lyrics_type_instrumental: bool,
+    lyrics_type_plain: bool,
+    lyrics_type_synced: bool,
     show_line_count: bool,
     try_embed_lyrics: bool,
     theme_mode: &str,
@@ -96,6 +99,9 @@ async fn set_config(
     db::set_config(
         skip_tracks_with_synced_lyrics,
         skip_tracks_with_plain_lyrics,
+        lyrics_type_instrumental,
+        lyrics_type_plain,
+        lyrics_type_synced,
         show_line_count,
         try_embed_lyrics,
         theme_mode,
@@ -311,11 +317,11 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
         .db(|db| db::get_config(db))
         .map_err(|err| err.to_string())?;
     let lyrics =
-        lyrics::download_lyrics_for_track(track, config.try_embed_lyrics, &config.lrclib_instance)
+        lyrics::download_lyrics_for_track(track, config.try_embed_lyrics, config.lyrics_type_instrumental, config.lyrics_type_plain, config.lyrics_type_synced, &config.lrclib_instance)
             .await
             .map_err(|err| err.to_string())?;
     match lyrics {
-        lrclib::get::Response::SyncedLyrics(synced_lyrics, plain_lyrics) => {
+        lrclib::get::Response::SyncedLyrics(synced_lyrics, plain_lyrics) if config.lyrics_type_synced => {
             app_handle
                 .db(|db: &Connection| {
                     db::update_track_synced_lyrics(track_id, &synced_lyrics, &plain_lyrics, db)
@@ -324,19 +330,26 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
             app_handle.emit("reload-track-id", track_id).unwrap();
             Ok("Synced lyrics downloaded".to_owned())
         }
-        lrclib::get::Response::UnsyncedLyrics(plain_lyrics) => {
+        lrclib::get::Response::SyncedLyrics(_, plain_lyrics)
+        | lrclib::get::Response::UnsyncedLyrics(plain_lyrics) if config.lyrics_type_plain => {
             app_handle
                 .db(|db: &Connection| db::update_track_plain_lyrics(track_id, &plain_lyrics, db))
                 .map_err(|err| err.to_string())?;
             app_handle.emit("reload-track-id", track_id).unwrap();
             Ok("Plain lyrics downloaded".to_owned())
         }
-        lrclib::get::Response::IsInstrumental => {
+        lrclib::get::Response::IsInstrumental if config.lyrics_type_instrumental => {
             app_handle
                 .db(|db: &Connection| db::update_track_instrumental(track_id, db))
                 .map_err(|err| err.to_string())?;
             Ok("Marked track as instrumental".to_owned())
         }
+        lrclib::get::Response::UnsyncedLyrics(_)
+        | lrclib::get::Response::SyncedLyrics(_, _)
+        | lrclib::get::Response::IsInstrumental => {
+            Err("Skipping, your preferences doesn't match the type of lyrics available".to_owned())
+        }
+
         lrclib::get::Response::None => Err(lyrics::GetLyricsError::NotFound.to_string()),
     }
 }
@@ -356,7 +369,7 @@ async fn apply_lyrics(
         .try_embed_lyrics;
 
     let lyrics = lrclib::get::Response::from_raw_response(lrclib_response);
-    let lyrics = lyrics::apply_lyrics_for_track(track, lyrics, is_try_embed_lyrics)
+    let lyrics = lyrics::apply_lyrics_for_track(track, lyrics, is_try_embed_lyrics, true, true, true)
         .await
         .map_err(|err| err.to_string())?;
 
