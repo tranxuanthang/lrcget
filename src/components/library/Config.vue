@@ -44,6 +44,39 @@
         </div>
 
         <div class="flex flex-col mb-4">
+          <label class="block mb-2 child-label">Lyrics preferences</label>
+
+          <div class="flex gap-4">
+            <CheckboxButton
+              v-model="lyricsTypeInstrumental"
+              name="lyrics-type-instrumental"
+              id="lyrics-type-instrumental"
+              value="instrumental"
+            >
+              Instrumental
+            </CheckboxButton>
+
+            <CheckboxButton
+              v-model="lyricsTypePlain"
+              name="lyrics-type-plain"
+              id="lyrics-type-plain"
+              value="plain"
+            >
+              Plain
+            </CheckboxButton>
+
+            <CheckboxButton
+              v-model="lyricsTypeSynced"
+              name="lyrics-type-synced"
+              id="lyrics-type-synced"
+              value="synced"
+            >
+              Synced
+            </CheckboxButton>
+          </div>
+        </div>
+
+        <div class="flex flex-col mb-4">
           <label class="block mb-2 child-label">Search settings</label>
 
           <CheckboxButton
@@ -137,6 +170,9 @@ const emit = defineEmits(['close', 'refreshLibrary', 'uninitializeLibrary'])
 const downloadLyricsFor = ref('all')
 const skipTracksWithSyncedLyrics = ref(true)
 const skipTracksWithPlainLyrics = ref(false)
+const lyricsTypeInstrumental = ref(false)
+const lyricsTypePlain = ref(false)
+const lyricsTypeSynced = ref(false)
 const showLineCount = ref(true)
 const tryEmbedLyrics = ref(false)
 const editingThemeMode = ref('auto')
@@ -146,6 +182,9 @@ const save = async () => {
   await invoke('set_config', {
     skipTracksWithSyncedLyrics: skipTracksWithSyncedLyrics.value,
     skipTracksWithPlainLyrics: skipTracksWithPlainLyrics.value,
+    lyricsTypeInstrumental: lyricsTypeInstrumental.value,
+    lyricsTypePlain: lyricsTypePlain.value,
+    lyricsTypeSynced: lyricsTypeSynced.value,
     showLineCount: showLineCount.value,
     tryEmbedLyrics: tryEmbedLyrics.value,
     themeMode: editingThemeMode.value,
@@ -180,6 +219,10 @@ const beforeOpenHandler = async () => {
   } else {
     downloadLyricsFor.value = 'all'
   }
+
+  lyricsTypeInstrumental.value = config.lyrics_type_instrumental ?? false
+  lyricsTypePlain.value = config.lyrics_type_plain ?? false
+  lyricsTypeSynced.value = config.lyrics_type_synced ?? false
 
   showLineCount.value = config.show_line_count
   tryEmbedLyrics.value = config.try_embed_lyrics

@@ -29,6 +29,9 @@ pub enum GetLyricsError {
 pub async fn download_lyrics_for_track(
     track: PersistentTrack,
     is_try_embed_lyrics: bool,
+    lyrics_type_instrumental: bool,
+    lyrics_type_plain: bool,
+    lyrics_type_synced: bool,
     lrclib_instance: &str,
 ) -> Result<Response> {
     let lyrics = request(
@@ -40,7 +43,7 @@ pub async fn download_lyrics_for_track(
     )
     .await?;
 
-    apply_lyrics_for_track(track, lyrics, is_try_embed_lyrics).await
+    apply_lyrics_for_track(track, lyrics, is_try_embed_lyrics, lyrics_type_instrumental, lyrics_type_plain, lyrics_type_synced).await
 }
 
 pub async fn apply_string_lyrics_for_track(
@@ -63,23 +66,28 @@ pub async fn apply_lyrics_for_track(
     track: PersistentTrack,
     lyrics: Response,
     is_try_embed_lyrics: bool,
+    lyrics_type_instrumental: bool,
+    lyrics_type_plain: bool,
+    lyrics_type_synced: bool,
 ) -> Result<Response> {
     match &lyrics {
-        Response::SyncedLyrics(synced_lyrics, plain_lyrics) => {
+        Response::SyncedLyrics(synced_lyrics, plain_lyrics) if lyrics_type_synced => {
             save_synced_lyrics(&track.file_path, &synced_lyrics)?;
             if is_try_embed_lyrics {
                 embed_lyrics(&track.file_path, &plain_lyrics, &synced_lyrics);
             }
             Ok(lyrics)
         }
-        Response::UnsyncedLyrics(plain_lyrics) => {
+        Response::SyncedLyrics(_, plain_lyrics)
+        | Response::UnsyncedLyrics(plain_lyrics) if lyrics_type_plain =>
+        {
             save_plain_lyrics(&track.file_path, &plain_lyrics)?;
             if is_try_embed_lyrics {
                 embed_lyrics(&track.file_path, &plain_lyrics, "");
             }
             Ok(lyrics)
         }
-        Response::IsInstrumental => {
+        Response::IsInstrumental if lyrics_type_instrumental => {
             save_instrumental(&track.file_path)?;
             Ok(lyrics)
         }
