@@ -63,7 +63,7 @@
 import { Play, Pause, TextSearch, PlaylistEdit, Replay } from 'mdue'
 import { humanDuration } from '../../../utils/human-duration.js'
 import { useSearchLyrics } from '../../../composables/search-lyrics.js'
-import { useEditLyrics } from '../../../composables/edit-lyrics.js'
+import { useEditLyricsV2 } from '../../../composables/edit-lyrics-v2.js'
 import Equalizer from '@/components/icons/Equalizer.vue'
 import { ref, onMounted, computed } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
@@ -73,7 +73,7 @@ import { usePlayer } from '@/composables/player.js'
 const { playTrack, playingTrack, status, pause, resume } = usePlayer()
 
 const { searchLyrics } = useSearchLyrics()
-const { editLyrics, editingTrack } = useEditLyrics()
+const { editLyricsV2: editLyrics, editingTrack } = useEditLyricsV2()
 const props = defineProps(['trackId', 'isShowTrackNumber'])
 const track = ref(null)
 

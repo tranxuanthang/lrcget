@@ -32,14 +32,16 @@ src/
 │   ├── library/                     # Library browsing, search, config, and lyric workflows
 │   │   ├── album-list/              # Album-specific list and item components
 │   │   ├── artist-list/             # Artist-specific list and item components
-│   │   ├── edit-lyrics/             # Edit modal subcomponents, publish flows, and CodeMirror helpers
+│   │   ├── edit-lyrics/             # Legacy edit modal subcomponents, publish flows, and CodeMirror helpers
+│   │   ├── edit-lyrics-v2/          # V2 edit modal pieces (tabbed plain/synced UI scaffold)
 │   │   ├── my-lrclib/               # User-contributed LRCLIB views and actions
 │   │   ├── search-lyrics/           # Preview UI for remote lyric search results
 │   │   └── track-list/              # Virtualized track rows and row actions
 │   └── now-playing/                 # Seek bar, volume, synced/plain lyric viewers
 ├── composables/
 │   ├── downloader.js                # Shared download queue and progress state
-│   ├── edit-lyrics.js               # Opens the edit-lyrics modal flow
+│   ├── edit-lyrics.js               # Opens the legacy edit-lyrics modal flow
+│   ├── edit-lyrics-v2.js            # Opens the EditLyricsV2 modal flow
 │   ├── edit-lyrics/                 # Edit modal document, hotkey, publish, and playback-sync composables
 │   ├── global-state.js              # Shared theme/hotkey/LRCLIB instance state
 │   ├── player.js                    # Shared playback state backed by Tauri events
@@ -176,6 +178,7 @@ State includes:
 - `useSearchLibrary()` stores the active search text and track filters used by library panes
 - `useSearchLyrics()` opens `SearchLyrics.vue` as a modal for a selected track
 - `useEditLyrics()` opens `EditLyrics.vue` as a modal for a selected track
+- `useEditLyricsV2()` opens `EditLyricsV2.vue` (tabbed plain/synced editor scaffold)
 
 ## Library Browsing Architecture
 
@@ -230,7 +233,7 @@ The synced viewer can emit `lyrics-clicked`, which maps directly to `seek()` so 
 
 ### 3. Edit, Save, and Publish
 
-`EditLyrics.vue` now acts as a thin modal shell. Most of the feature logic is split between `components/library/edit-lyrics/` child components and `composables/edit-lyrics/` composables:
+`EditLyrics.vue` acts as the current full-featured editor modal. Most of the feature logic is split between `components/library/edit-lyrics/` child components and `composables/edit-lyrics/` composables:
 
 - `useLyricsDocument()` owns the editable lyric text, dirty tracking, lint state, and save flow
 - `useLyricsEditorCommands()` owns sync/repeat/timestamp-shift/editor mutation commands
@@ -239,6 +242,12 @@ The synced viewer can emit `lyrics-clicked`, which maps directly to `seek()` so 
 - `useLyricsEditorHotkeys()` binds the modal-specific keyboard shortcuts
 
 This split keeps `EditLyrics.vue` focused on wiring together the modal, child toolbar/editor components, and shared player state.
+
+`EditLyricsV2.vue` is a parallel editing flow that keeps the playback control bar, removes the legacy sync-command toolbar, and introduces tabbed editing with:
+
+- a plain-lyrics CodeMirror tab
+- a synced-lyrics interactive line list UI (hover actions + inline single-line editing)
+- a guard that disables the synced tab while plain lyrics are empty
 
 ## Playback Architecture
 
@@ -301,6 +310,7 @@ The `src/utils/` folder contains presentation and lyric-specific helpers, includ
 - line-count helpers used by search results
 - linting helpers for plain text and LRC lyrics
 - lyric parsing/normalization helpers reused by editing and preview components
+- Lyricsfile YAML parsing/serialization helpers for the V2 editing flow
 
 ## Architectural Patterns
 
