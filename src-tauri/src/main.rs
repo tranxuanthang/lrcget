@@ -9,6 +9,7 @@ pub mod fs_track;
 pub mod library;
 pub mod lrclib;
 pub mod lyrics;
+pub mod lyricsfile;
 pub mod persistent_entities;
 pub mod player;
 pub mod state;
@@ -16,7 +17,6 @@ pub mod utils;
 
 use persistent_entities::{PersistentAlbum, PersistentArtist, PersistentConfig, PersistentTrack};
 use player::Player;
-use regex::Regex;
 use rusqlite::Connection;
 use serde::Serialize;
 use state::{AppState, ServiceAccess, Notify, NotifyType};
@@ -36,6 +36,38 @@ struct FlagLyricsProgress {
     request_challenge: String,
     solve_challenge: String,
     flag_lyrics: String,
+}
+
+fn persist_lyricsfile_for_track(
+    app_handle: &AppHandle,
+    track: &PersistentTrack,
+    plain_lyrics: Option<&str>,
+    synced_lyrics: Option<&str>,
+) -> Result<(), String> {
+    let metadata = lyricsfile::LyricsfileTrackMetadata::from_persistent_track(track);
+    let converted = lyricsfile::build_lyricsfile(&metadata, plain_lyrics, synced_lyrics);
+
+    if let Some(lyricsfile_content) = converted {
+        app_handle
+            .db(|db: &Connection| {
+                db::upsert_lyricsfile_for_track(
+                    track.id,
+                    &track.title,
+                    &track.album_name,
+                    &track.artist_name,
+                    track.duration,
+                    &lyricsfile_content,
+                    db,
+                )
+            })
+            .map_err(|err| err.to_string())?;
+    } else {
+        app_handle
+            .db(|db: &Connection| db::delete_lyricsfile_by_track_id(track.id, db))
+            .map_err(|err| err.to_string())?;
+    }
+
+    Ok(())
 }
 
 #[tauri::command]
@@ -356,10 +388,9 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
     let config = app_handle
         .db(|db| db::get_config(db))
         .map_err(|err| err.to_string())?;
-    let lyrics =
-        lyrics::download_lyrics_for_track(track, config.try_embed_lyrics, &config.lrclib_instance)
-            .await
-            .map_err(|err| err.to_string())?;
+    let lyrics = lyrics::download_lyrics_for_track(&track, config.try_embed_lyrics, &config.lrclib_instance)
+        .await
+        .map_err(|err| err.to_string())?;
     match lyrics {
         lrclib::get::Response::SyncedLyrics(synced_lyrics, plain_lyrics) => {
             app_handle
@@ -367,6 +398,12 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
                     db::update_track_synced_lyrics(track_id, &synced_lyrics, &plain_lyrics, db)
                 })
                 .map_err(|err| err.to_string())?;
+            persist_lyricsfile_for_track(
+                &app_handle,
+                &track,
+                Some(plain_lyrics.as_str()),
+                Some(synced_lyrics.as_str()),
+            )?;
             app_handle.emit("reload-track-id", track_id).unwrap();
             Ok("Synced lyrics downloaded".to_owned())
         }
@@ -374,6 +411,7 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
             app_handle
                 .db(|db: &Connection| db::update_track_plain_lyrics(track_id, &plain_lyrics, db))
                 .map_err(|err| err.to_string())?;
+            persist_lyricsfile_for_track(&app_handle, &track, Some(plain_lyrics.as_str()), None)?;
             app_handle.emit("reload-track-id", track_id).unwrap();
             Ok("Plain lyrics downloaded".to_owned())
         }
@@ -381,6 +419,12 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
             app_handle
                 .db(|db: &Connection| db::update_track_instrumental(track_id, db))
                 .map_err(|err| err.to_string())?;
+            persist_lyricsfile_for_track(
+                &app_handle,
+                &track,
+                None,
+                Some(lyricsfile::INSTRUMENTAL_LRC),
+            )?;
             Ok("Marked track as instrumental".to_owned())
         }
         lrclib::get::Response::None => Err(lyrics::GetLyricsError::NotFound.to_string()),
@@ -402,7 +446,7 @@ async fn apply_lyrics(
         .try_embed_lyrics;
 
     let lyrics = lrclib::get::Response::from_raw_response(lrclib_response);
-    let lyrics = lyrics::apply_lyrics_for_track(track, lyrics, is_try_embed_lyrics)
+    let lyrics = lyrics::apply_lyrics_for_track(&track, lyrics, is_try_embed_lyrics)
         .await
         .map_err(|err| err.to_string())?;
 
@@ -413,6 +457,12 @@ async fn apply_lyrics(
                     db::update_track_synced_lyrics(track_id, &synced_lyrics, &plain_lyrics, db)
                 })
                 .map_err(|err| err.to_string())?;
+            persist_lyricsfile_for_track(
+                &app_handle,
+                &track,
+                Some(plain_lyrics.as_str()),
+                Some(synced_lyrics.as_str()),
+            )?;
             std::thread::spawn(move || {
                 app_handle.emit("reload-track-id", track_id).unwrap();
             });
@@ -422,6 +472,7 @@ async fn apply_lyrics(
             app_handle
                 .db(|db: &Connection| db::update_track_plain_lyrics(track_id, &plain_lyrics, db))
                 .map_err(|err| err.to_string())?;
+            persist_lyricsfile_for_track(&app_handle, &track, Some(plain_lyrics.as_str()), None)?;
             std::thread::spawn(move || {
                 app_handle.emit("reload-track-id", track_id).unwrap();
             });
@@ -431,6 +482,12 @@ async fn apply_lyrics(
             app_handle
                 .db(|db: &Connection| db::update_track_instrumental(track_id, db))
                 .map_err(|err| err.to_string())?;
+            persist_lyricsfile_for_track(
+                &app_handle,
+                &track,
+                None,
+                Some(lyricsfile::INSTRUMENTAL_LRC),
+            )?;
             Ok("Marked track as instrumental".to_owned())
         }
         lrclib::get::Response::None => Err(lyrics::GetLyricsError::NotFound.to_string()),
@@ -505,8 +562,9 @@ async fn search_lyrics(
 #[tauri::command]
 async fn save_lyrics(
     track_id: i64,
-    plain_lyrics: String,
-    synced_lyrics: String,
+    plain_lyrics: Option<String>,
+    synced_lyrics: Option<String>,
+    lyricsfile: Option<String>,
     app_handle: AppHandle,
 ) -> Result<String, String> {
     let track = app_handle
@@ -517,9 +575,28 @@ async fn save_lyrics(
         .map_err(|err| err.to_string())?
         .try_embed_lyrics;
 
-    // Create a regex to match "[au: instrumental]" or "[au:instrumental]"
-    let re = Regex::new(r"\[au:\s*instrumental\]").expect("Invalid regex");
-    let is_instrumental = re.is_match(&synced_lyrics);
+    let provided_lyricsfile = lyricsfile.filter(|content| !content.trim().is_empty());
+
+    let (plain_lyrics, synced_lyrics, is_instrumental) = if let Some(lyricsfile_content) =
+        provided_lyricsfile.as_deref()
+    {
+        let parsed = lyricsfile::parse_lyricsfile(lyricsfile_content).map_err(|err| err.to_string())?;
+        (
+            parsed.plain_lyrics.unwrap_or_default(),
+            parsed.synced_lyrics.unwrap_or_default(),
+            parsed.is_instrumental,
+        )
+    } else {
+        let resolved_plain_lyrics = plain_lyrics.unwrap_or_default();
+        let resolved_synced_lyrics = synced_lyrics.unwrap_or_default();
+        let resolved_is_instrumental = lyricsfile::is_instrumental_lyrics(&resolved_synced_lyrics);
+
+        (
+            resolved_plain_lyrics,
+            resolved_synced_lyrics,
+            resolved_is_instrumental,
+        )
+    };
 
     lyrics::apply_string_lyrics_for_track(
         &track,
@@ -548,6 +625,29 @@ async fn save_lyrics(
         app_handle
             .db(|db: &Connection| db::update_track_null_lyrics(track.id, db))
             .map_err(|err| err.to_string())?;
+    }
+
+    if let Some(lyricsfile_content) = provided_lyricsfile {
+        app_handle
+            .db(|db: &Connection| {
+                db::upsert_lyricsfile_for_track(
+                    track.id,
+                    &track.title,
+                    &track.album_name,
+                    &track.artist_name,
+                    track.duration,
+                    &lyricsfile_content,
+                    db,
+                )
+            })
+            .map_err(|err| err.to_string())?;
+    } else {
+        persist_lyricsfile_for_track(
+            &app_handle,
+            &track,
+            Some(plain_lyrics.as_str()),
+            Some(synced_lyrics.as_str()),
+        )?;
     }
 
     app_handle.emit("reload-track-id", track_id).unwrap();

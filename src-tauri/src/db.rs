@@ -1,4 +1,5 @@
 use crate::fs_track;
+use crate::lyricsfile::{build_lyricsfile, LyricsfileTrackMetadata};
 use crate::persistent_entities::{
     PersistentAlbum, PersistentArtist, PersistentConfig, PersistentTrack,
 };
@@ -178,10 +179,12 @@ pub fn get_track_by_id(id: i64, db: &Connection) -> Result<PersistentTrack> {
       albums.image_path,
       txt_lyrics,
       lrc_lyrics,
+      lyricsfiles.lyricsfile,
       instrumental
     FROM tracks
     JOIN albums ON tracks.album_id = albums.id
     JOIN artists ON tracks.artist_id = artists.id
+    LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
     WHERE tracks.id = ?
     LIMIT 1
   "};
@@ -204,6 +207,7 @@ pub fn get_track_by_id(id: i64, db: &Connection) -> Result<PersistentTrack> {
             track_number: row.get("track_number")?,
             txt_lyrics: row.get("txt_lyrics")?,
             lrc_lyrics: row.get("lrc_lyrics")?,
+            lyricsfile: row.get("lyricsfile")?,
             image_path: row.get("image_path")?,
             instrumental: is_instrumental.unwrap_or(false),
         })
@@ -256,6 +260,115 @@ pub fn update_track_instrumental(id: i64, db: &Connection) -> Result<PersistentT
     Ok(get_track_by_id(id, db)?)
 }
 
+pub fn upsert_lyricsfile_for_track(
+    track_id: i64,
+    track_title: &str,
+    track_album_name: &str,
+    track_artist_name: &str,
+    track_duration: f64,
+    lyricsfile: &str,
+    db: &Connection,
+) -> Result<()> {
+    db.execute(
+        indoc! {"
+        INSERT INTO lyricsfiles (
+            track_id,
+            track_title,
+            track_title_lower,
+            track_album_name,
+            track_album_name_lower,
+            track_artist_name,
+            track_artist_name_lower,
+            track_duration,
+            lyricsfile,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT(track_id) DO UPDATE SET
+            track_title = excluded.track_title,
+            track_title_lower = excluded.track_title_lower,
+            track_album_name = excluded.track_album_name,
+            track_album_name_lower = excluded.track_album_name_lower,
+            track_artist_name = excluded.track_artist_name,
+            track_artist_name_lower = excluded.track_artist_name_lower,
+            track_duration = excluded.track_duration,
+            lyricsfile = excluded.lyricsfile,
+            updated_at = CURRENT_TIMESTAMP
+    "},
+        (
+            track_id,
+            track_title,
+            prepare_input(track_title),
+            track_album_name,
+            prepare_input(track_album_name),
+            track_artist_name,
+            prepare_input(track_artist_name),
+            track_duration,
+            lyricsfile,
+        ),
+    )?;
+
+    Ok(())
+}
+
+pub fn upsert_lyricsfile_for_track_tx(
+    track_id: i64,
+    track_title: &str,
+    track_album_name: &str,
+    track_artist_name: &str,
+    track_duration: f64,
+    lyricsfile: &str,
+    tx: &rusqlite::Transaction,
+) -> Result<()> {
+    tx.execute(
+        indoc! {"
+        INSERT INTO lyricsfiles (
+            track_id,
+            track_title,
+            track_title_lower,
+            track_album_name,
+            track_album_name_lower,
+            track_artist_name,
+            track_artist_name_lower,
+            track_duration,
+            lyricsfile,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT(track_id) DO UPDATE SET
+            track_title = excluded.track_title,
+            track_title_lower = excluded.track_title_lower,
+            track_album_name = excluded.track_album_name,
+            track_album_name_lower = excluded.track_album_name_lower,
+            track_artist_name = excluded.track_artist_name,
+            track_artist_name_lower = excluded.track_artist_name_lower,
+            track_duration = excluded.track_duration,
+            lyricsfile = excluded.lyricsfile,
+            updated_at = CURRENT_TIMESTAMP
+    "},
+        (
+            track_id,
+            track_title,
+            prepare_input(track_title),
+            track_album_name,
+            prepare_input(track_album_name),
+            track_artist_name,
+            prepare_input(track_artist_name),
+            track_duration,
+            lyricsfile,
+        ),
+    )?;
+
+    Ok(())
+}
+
+pub fn delete_lyricsfile_by_track_id(track_id: i64, db: &Connection) -> Result<()> {
+    db.execute("DELETE FROM lyricsfiles WHERE track_id = ?", [track_id])?;
+    Ok(())
+}
+
 pub fn add_tracks(tracks: &Vec<fs_track::FsTrack>, db: &mut Connection) -> Result<()> {
     let tx = db.transaction()?;
 
@@ -288,6 +401,9 @@ pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
         .as_ref()
         .map_or(false, |lyrics| re.is_match(lyrics));
 
+    let txt_lyrics = track.txt_lyrics();
+    let lrc_lyrics = track.lrc_lyrics();
+
     let query = indoc! {"
     INSERT INTO tracks (
         file_path,
@@ -304,7 +420,7 @@ pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
     ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   "};
     let mut statement = db.prepare(query)?;
-    statement.execute((
+    let track_id = statement.insert((
         track.file_path(),
         track.file_name(),
         track.title(),
@@ -313,10 +429,33 @@ pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
         artist_id,
         track.duration(),
         track.track_number(),
-        track.txt_lyrics(),
-        track.lrc_lyrics(),
+        txt_lyrics.clone(),
+        lrc_lyrics.clone(),
         is_instrumental,
     ))?;
+
+    let lyricsfile_track_metadata = LyricsfileTrackMetadata::new(
+        &track.title(),
+        &track.album(),
+        &track.artist(),
+        track.duration(),
+    );
+
+    if let Some(lyricsfile) = build_lyricsfile(
+        &lyricsfile_track_metadata,
+        txt_lyrics.as_deref(),
+        lrc_lyrics.as_deref(),
+    ) {
+        upsert_lyricsfile_for_track(
+            track_id,
+            &track.title(),
+            &track.album(),
+            &track.artist(),
+            track.duration(),
+            &lyricsfile,
+            db,
+        )?;
+    }
 
     Ok(())
 }
@@ -327,10 +466,11 @@ pub fn get_tracks(db: &Connection) -> Result<Vec<PersistentTrack>> {
           tracks.id, file_path, file_name, title,
           artists.name AS artist_name, tracks.artist_id,
           albums.name AS album_name, albums.album_artist_name, album_id, duration, track_number,
-          albums.image_path, txt_lyrics, lrc_lyrics, instrumental
+          albums.image_path, txt_lyrics, lrc_lyrics, lyricsfiles.lyricsfile, instrumental
       FROM tracks
       JOIN albums ON tracks.album_id = albums.id
       JOIN artists ON tracks.artist_id = artists.id
+      LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
       ORDER BY title_lower ASC
   "};
     let mut statement = db.prepare(query)?;
@@ -354,6 +494,7 @@ pub fn get_tracks(db: &Connection) -> Result<Vec<PersistentTrack>> {
             track_number: row.get("track_number")?,
             txt_lyrics: row.get("txt_lyrics")?,
             lrc_lyrics: row.get("lrc_lyrics")?,
+            lyricsfile: row.get("lyricsfile")?,
             image_path: row.get("image_path")?,
             instrumental: is_instrumental.unwrap_or(false),
         };
@@ -611,10 +752,12 @@ pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<Persistent
       albums.image_path,
       txt_lyrics,
       lrc_lyrics,
+      lyricsfiles.lyricsfile,
       instrumental
     FROM tracks
     JOIN albums ON tracks.album_id = albums.id
     JOIN artists ON tracks.artist_id = artists.id
+    LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
     WHERE tracks.album_id = ?
     ORDER BY track_number ASC
   "})?;
@@ -638,6 +781,7 @@ pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<Persistent
             track_number: row.get("track_number")?,
             txt_lyrics: row.get("txt_lyrics")?,
             lrc_lyrics: row.get("lrc_lyrics")?,
+            lyricsfile: row.get("lyricsfile")?,
             image_path: row.get("image_path")?,
             instrumental: is_instrumental.unwrap_or(false),
         };
@@ -689,10 +833,11 @@ pub fn get_artist_tracks(artist_id: i64, db: &Connection) -> Result<Vec<Persiste
     let mut statement = db.prepare(indoc! {"
       SELECT tracks.id, file_path, file_name, title, artists.name AS artist_name,
         tracks.artist_id, albums.name AS album_name, albums.album_artist_name, album_id, duration, track_number,
-        albums.image_path, txt_lyrics, lrc_lyrics, instrumental
+        albums.image_path, txt_lyrics, lrc_lyrics, lyricsfiles.lyricsfile, instrumental
       FROM tracks
       JOIN albums ON tracks.album_id = albums.id
       JOIN artists ON tracks.artist_id = artists.id
+      LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
       WHERE tracks.artist_id = ?
       ORDER BY album_name_lower ASC, track_number ASC
   "})?;
@@ -716,6 +861,7 @@ pub fn get_artist_tracks(artist_id: i64, db: &Connection) -> Result<Vec<Persiste
             track_number: row.get("track_number")?,
             txt_lyrics: row.get("txt_lyrics")?,
             lrc_lyrics: row.get("lrc_lyrics")?,
+            lyricsfile: row.get("lyricsfile")?,
             image_path: row.get("image_path")?,
             instrumental: is_instrumental.unwrap_or(false),
         };
@@ -946,7 +1092,7 @@ pub fn insert_track_from_metadata_tx(
     artist_id: i64,
     album_id: i64,
     tx: &rusqlite::Transaction,
-) -> Result<()> {
+) -> Result<i64> {
     use crate::utils::prepare_input;
 
     // Check if instrumental
@@ -976,7 +1122,7 @@ pub fn insert_track_from_metadata_tx(
         ),
     )?;
 
-    Ok(())
+    Ok(tx.last_insert_rowid())
 }
 
 /// Delete tracks that weren't processed during scan and clean up orphaned albums/artists

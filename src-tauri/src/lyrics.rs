@@ -27,7 +27,7 @@ pub enum GetLyricsError {
 }
 
 pub async fn download_lyrics_for_track(
-    track: PersistentTrack,
+    track: &PersistentTrack,
     is_try_embed_lyrics: bool,
     lrclib_instance: &str,
 ) -> Result<Response> {
@@ -60,7 +60,7 @@ pub async fn apply_string_lyrics_for_track(
 }
 
 pub async fn apply_lyrics_for_track(
-    track: PersistentTrack,
+    track: &PersistentTrack,
     lyrics: Response,
     is_try_embed_lyrics: bool,
 ) -> Result<Response> {

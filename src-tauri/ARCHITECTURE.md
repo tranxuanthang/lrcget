@@ -28,6 +28,7 @@ src-tauri/
 │   │   └── models.rs           # ScanResult, ScanProgress types
 │   ├── fs_track.rs             # DEPRECATED: Old file system scanning
 │   ├── lyrics.rs               # Lyrics download, save, and embedding
+│   ├── lyricsfile.rs           # Lyricsfile conversion/parsing helpers
 │   ├── player.rs               # Audio playback using Kira
 │   ├── persistent_entities.rs  # Data structures for DB entities
 │   ├── utils.rs                # Utility functions (text processing)
@@ -48,7 +49,8 @@ src-tauri/
 │   ├── 05-add_track_number_and_config/up.sql
 │   ├── 06-update_lyrics_skip_config/up.sql
 │   ├── 07-add_show_line_count/up.sql
-│   └── 08-add_scan_fields/up.sql
+│   ├── 08-add_scan_fields/up.sql
+│   └── 09-add_lyricsfiles/up.sql
 ├── Cargo.toml                  # Rust dependencies
 ├── tauri.conf.json            # Tauri configuration
 ├── build.rs                   # Build script
@@ -72,7 +74,7 @@ fn db_mut<F, TResult>(&self, operation: F) -> TResult  // Mutable access
 
 ### 2. Database Layer (`db.rs`)
 
-SQLite database with automatic migrations (current version: 8).
+SQLite database with automatic migrations (current version: 9).
 
 **Key Functions:**
 - `initialize_database()` - Creates/opens DB file in app_data_dir, runs migrations via `rusqlite_migration`
@@ -90,8 +92,9 @@ Migration SQL files live in `src-tauri/migrations/`, one subdirectory per versio
 - v6: Replaced `skip_not_needed_tracks` with `skip_tracks_with_synced_lyrics` / `skip_tracks_with_plain_lyrics`
 - v7: Added `show_line_count` to config
 - v8: Added incremental scan columns (`file_size`, `modified_time`, `content_hash`, `scan_status`) and related indexes
+- v9: Added `lyricsfiles` table for persisted Lyricsfile content decoupled from `tracks`
 
-**Current Schema (v8):**
+**Current Schema (v9):**
 
 ```sql
 -- Watched music directories
@@ -156,6 +159,23 @@ CREATE TABLE tracks (
     FOREIGN KEY(album_id)  REFERENCES albums(id)
 );
 
+-- Persisted Lyricsfile entries (store denormalized track metadata so lyrics survive track deletion)
+CREATE TABLE lyricsfiles (
+    id                      INTEGER PRIMARY KEY,
+    track_id                INTEGER UNIQUE,
+    track_title             TEXT,
+    track_title_lower       TEXT,
+    track_album_name        TEXT,
+    track_album_name_lower  TEXT,
+    track_artist_name       TEXT,
+    track_artist_name_lower TEXT,
+    track_duration          FLOAT,
+    lyricsfile              TEXT,
+    created_at              TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at              TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY(track_id) REFERENCES tracks(id) ON DELETE SET NULL
+);
+
 -- Indexes
 CREATE INDEX idx_tracks_title             ON tracks(title);
 CREATE INDEX idx_tracks_title_lower       ON tracks(title_lower);
@@ -164,6 +184,9 @@ CREATE INDEX idx_tracks_file_path         ON tracks(file_path);
 CREATE INDEX idx_tracks_content_hash      ON tracks(content_hash);
 CREATE INDEX idx_tracks_scan_status       ON tracks(scan_status);
 CREATE INDEX idx_tracks_fingerprint       ON tracks(modified_time, file_size);
+CREATE INDEX idx_lyricsfiles_track_title_lower       ON lyricsfiles(track_title_lower);
+CREATE INDEX idx_lyricsfiles_track_album_name_lower  ON lyricsfiles(track_album_name_lower);
+CREATE INDEX idx_lyricsfiles_track_artist_name_lower ON lyricsfiles(track_artist_name_lower);
 CREATE INDEX idx_albums_name              ON albums(name);
 CREATE INDEX idx_albums_name_lower        ON albums(name_lower);
 CREATE INDEX idx_albums_album_artist_name_lower ON albums(album_artist_name_lower);
@@ -281,6 +304,7 @@ High-level API for music library operations:
 **Lyrics Storage Options:**
 1. **Sidecar files** (default): Creates `trackname.txt` and `trackname.lrc`
 2. **Embedded** (optional): Embeds in MP3 (ID3v2 SYLT/USLT) or FLAC (Vorbis comments)
+3. **Lyricsfile rows**: Stores normalized YAML lyrics documents in `lyricsfiles` for persistence independent of track deletion
 
 **Lyrics Types:**
 - Plain text (.txt files)
@@ -347,6 +371,7 @@ struct PersistentTrack {
     track_number: Option<i64>,
     txt_lyrics: Option<String>,
     lrc_lyrics: Option<String>,
+    lyricsfile: Option<String>,
     duration: f64,
     instrumental: bool,
 }
@@ -384,6 +409,7 @@ All commands defined in `main.rs` and exposed to frontend:
 
 ### Data Queries
 - `get_tracks()`, `get_track_ids()`, `get_track()` - Track retrieval
+  - `PersistentTrack` responses include `lyricsfile` (joined from `lyricsfiles`) alongside legacy `txt_lyrics`/`lrc_lyrics`
 - `get_albums()`, `get_album_ids()`, `get_album()` - Album retrieval
 - `get_artists()`, `get_artist_ids()`, `get_artist()` - Artist retrieval
 - `get_album_tracks()`, `get_artist_tracks()` - Track lists
@@ -395,7 +421,7 @@ All commands defined in `main.rs` and exposed to frontend:
 - `retrieve_lyrics_by_id()` - Get by track ID
 - `search_lyrics()` - Search LRCLIB database
 - `apply_lyrics()` - Apply specific LRCLIB result
-- `save_lyrics()` - Save manually edited lyrics
+- `save_lyrics(track_id, plain_lyrics?, synced_lyrics?, lyricsfile?)` - Save manually edited lyrics; prefers `lyricsfile` when provided
 - `publish_lyrics()` - Upload to LRCLIB (with PoW)
 - `flag_lyrics()` - Report to LRCLIB (with PoW)
 

@@ -15,6 +15,7 @@ pub struct PersistentTrack {
     pub track_number: Option<i64>,
     pub txt_lyrics: Option<String>,
     pub lrc_lyrics: Option<String>,
+    pub lyricsfile: Option<String>,
     pub duration: f64,
     pub instrumental: bool,
 }

@@ -1,5 +1,6 @@
 use crate::db;
 use crate::db::ScanTrackInfo;
+use crate::lyricsfile::{build_lyricsfile, LyricsfileTrackMetadata};
 use crate::scanner::hasher::compute_quick_hash;
 use crate::scanner::metadata::extract_track_info;
 use crate::scanner::models::{ScanProgress, ScanResult};
@@ -258,7 +259,7 @@ fn insert_new_track(
     };
 
     // Insert track
-    db::insert_track_from_metadata_tx(
+    let track_id = db::insert_track_from_metadata_tx(
         &metadata,
         &lyrics,
         file_size,
@@ -268,6 +269,29 @@ fn insert_new_track(
         album_id,
         tx,
     )?;
+
+    let lyricsfile_track_metadata = LyricsfileTrackMetadata::new(
+        &metadata.title,
+        &metadata.album,
+        &metadata.artist,
+        metadata.duration,
+    );
+
+    if let Some(lyricsfile) = build_lyricsfile(
+        &lyricsfile_track_metadata,
+        lyrics.txt_lyrics.as_deref(),
+        lyrics.lrc_lyrics.as_deref(),
+    ) {
+        db::upsert_lyricsfile_for_track_tx(
+            track_id,
+            &metadata.title,
+            &metadata.album,
+            &metadata.artist,
+            metadata.duration,
+            &lyricsfile,
+            tx,
+        )?;
+    }
 
     Ok(())
 }
