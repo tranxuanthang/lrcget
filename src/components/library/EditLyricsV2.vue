@@ -23,11 +23,7 @@
             </button>
             <button
               class="button text-sm px-3 py-1 h-8 rounded-full"
-              :class="[
-                activeTab === 'synced' ? 'button-primary' : 'button-normal',
-                hasPlainLyrics ? '' : 'button-disabled'
-              ]"
-              :disabled="!hasPlainLyrics"
+              :class="activeTab === 'synced' ? 'button-primary' : 'button-normal'"
               @click="activeTab = 'synced'"
             >
               Synced lyrics
@@ -57,6 +53,7 @@
       <SyncedLyricsEditor
         v-else
         :model-value="syncedLines"
+        :can-import-from-plain="hasPlainLyrics"
         :selected-line-index="selectedSyncedLineIndex"
         :playing-line-index="currentPlayingSyncedLineIndex"
         @update:model-value="updateSyncedLines"
@@ -66,6 +63,9 @@
         @sync-line="syncLineToCurrentProgress"
         @rewind-line="rewindLineBy100"
         @forward-line="forwardLineBy100"
+        @delete-line="deleteSyncedLine"
+        @add-line-at="addSyncedLineAt"
+        @import-lines-from-plain="importSyncedLinesFromPlain"
       />
     </div>
   </BaseModal>
@@ -160,6 +160,50 @@ const updatePlainLyrics = (lyrics) => {
 
 const updateSyncedLines = (lines) => {
   syncedLines.value = lines
+  isDirty.value = true
+  ensureSelectedSyncedLine()
+}
+
+const createEmptySyncedLine = () => ({
+  text: '',
+  words: []
+})
+
+const addSyncedLineAt = (lineIndex) => {
+  if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex > syncedLines.value.length) {
+    return
+  }
+
+  const nextLines = [...syncedLines.value]
+  nextLines.splice(lineIndex, 0, createEmptySyncedLine())
+
+  syncedLines.value = nextLines
+  selectedSyncedLineIndex.value = lineIndex
+  isDirty.value = true
+}
+
+const deleteSyncedLine = (lineIndex) => {
+  if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+    return
+  }
+
+  syncedLines.value = syncedLines.value.filter((_, index) => index !== lineIndex)
+  isDirty.value = true
+
+  if (syncedLines.value.length === 0) {
+    selectedSyncedLineIndex.value = -1
+    return
+  }
+
+  selectedSyncedLineIndex.value = Math.min(lineIndex, syncedLines.value.length - 1)
+}
+
+const importSyncedLinesFromPlain = () => {
+  if (!hasPlainLyrics.value) {
+    return
+  }
+
+  syncedLines.value = createSyncedLinesFromPlain(plainLyrics.value, [])
   isDirty.value = true
   ensureSelectedSyncedLine()
 }
@@ -273,12 +317,6 @@ const currentPlayingSyncedLineIndex = computed(() => {
   }
 
   return -1
-})
-
-watch(hasPlainLyrics, (value) => {
-  if (!value && activeTab.value === 'synced') {
-    activeTab.value = 'plain'
-  }
 })
 
 watch(syncedLines, () => {
