@@ -73,7 +73,6 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
-import { invoke } from '@tauri-apps/api/core'
 import { useToast } from 'vue-toastification'
 import BaseModal from '@/components/common/BaseModal.vue'
 import EditLyricsV2HeaderActions from '@/components/library/edit-lyrics-v2/EditLyricsV2HeaderActions.vue'
@@ -81,10 +80,12 @@ import EditLyricsV2PlayerBar from '@/components/library/edit-lyrics-v2/EditLyric
 import PlainLyricsCodeEditor from '@/components/library/edit-lyrics-v2/PlainLyricsCodeEditor.vue'
 import SyncedLyricsEditor from '@/components/library/edit-lyrics-v2/SyncedLyricsEditor.vue'
 import { useEditLyricsV2 } from '@/composables/edit-lyrics-v2.js'
+import { useEditLyricsV2Document } from '@/composables/edit-lyrics-v2/useEditLyricsV2Document.js'
+import { useEditLyricsV2Hotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2Hotkeys.js'
+import { useEditLyricsV2Playback } from '@/composables/edit-lyrics-v2/useEditLyricsV2Playback.js'
+import { useEditLyricsV2SyncedHotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedHotkeys.js'
 import { useGlobalState } from '@/composables/global-state.js'
 import { usePlayer } from '@/composables/player.js'
-import { useLyricsEditorHotkeys } from '@/composables/edit-lyrics/useLyricsEditorHotkeys.js'
-import { createSyncedLinesFromPlain, parseLyricsfile, serializeLyricsfile } from '@/utils/lyricsfile.js'
 
 const emit = defineEmits(['close'])
 
@@ -94,234 +95,54 @@ const { editingTrack } = useEditLyricsV2()
 const toast = useToast()
 
 const activeTab = ref('plain')
-const plainLyrics = ref('')
-const syncedLines = ref([])
-const lyricsfileDocument = ref(null)
-const isDirty = ref(false)
-const selectedSyncedLineIndex = ref(-1)
-const isSyncedLineEditing = ref(false)
+const {
+  plainLyrics,
+  syncedLines,
+  isDirty,
+  selectedSyncedLineIndex,
+  isSyncedLineEditing,
+  hasPlainLyrics,
+  selectedLineExists,
+  currentPlayingSyncedLineIndex,
+  initializeLyrics,
+  updatePlainLyrics,
+  updateSyncedLines,
+  selectSyncedLine,
+  setSyncedLineEditingState,
+  addSyncedLineAt,
+  deleteSyncedLine,
+  importSyncedLinesFromPlain,
+  syncLineToCurrentProgress,
+  rewindLineBy100: rewindLineTimestampBy100,
+  forwardLineBy100: forwardLineTimestampBy100,
+  saveLyrics,
+  ensureSelectedSyncedLine
+} = useEditLyricsV2Document({ editingTrack, progress, toast })
+
 const codemirrorStyle = ref({
   fontSize: 1.0
 })
 
-const ensureSelectedSyncedLine = () => {
-  if (syncedLines.value.length === 0) {
-    selectedSyncedLineIndex.value = -1
-    return
-  }
-
-  if (
-    !Number.isInteger(selectedSyncedLineIndex.value)
-    || selectedSyncedLineIndex.value < 0
-    || selectedSyncedLineIndex.value >= syncedLines.value.length
-  ) {
-    selectedSyncedLineIndex.value = 0
-  }
-}
-
-const selectSyncedLine = (lineIndex) => {
-  if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
-    return
-  }
-
-  selectedSyncedLineIndex.value = lineIndex
-}
-
-const setSyncedLineEditingState = (value) => {
-  isSyncedLineEditing.value = value
-}
-
-const initializeLyrics = () => {
-  const track = editingTrack.value
-  if (!track) {
-    plainLyrics.value = ''
-    syncedLines.value = []
-    lyricsfileDocument.value = null
-    isDirty.value = false
-    return
-  }
-
-  const parsed = parseLyricsfile(track.lyricsfile)
-
-  plainLyrics.value = parsed.plainLyrics
-  syncedLines.value = createSyncedLinesFromPlain(parsed.plainLyrics, parsed.syncedLines)
-  lyricsfileDocument.value = parsed.document
-  isDirty.value = false
-  isSyncedLineEditing.value = false
-  ensureSelectedSyncedLine()
-}
-
-const updatePlainLyrics = (lyrics) => {
-  plainLyrics.value = lyrics
-  syncedLines.value = createSyncedLinesFromPlain(lyrics, syncedLines.value)
-  isDirty.value = true
-  ensureSelectedSyncedLine()
-}
-
-const updateSyncedLines = (lines) => {
-  syncedLines.value = lines
-  isDirty.value = true
-  ensureSelectedSyncedLine()
-}
-
-const createEmptySyncedLine = () => ({
-  text: '',
-  words: []
+const { playLine, resumeOrPlay } = useEditLyricsV2Playback({
+  editingTrack,
+  syncedLines,
+  progress,
+  playingTrack,
+  status,
+  playTrack,
+  resume,
+  seek
 })
 
-const addSyncedLineAt = (lineIndex) => {
-  if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex > syncedLines.value.length) {
-    return
-  }
-
-  const nextLines = [...syncedLines.value]
-  nextLines.splice(lineIndex, 0, createEmptySyncedLine())
-
-  syncedLines.value = nextLines
-  selectedSyncedLineIndex.value = lineIndex
-  isDirty.value = true
-}
-
-const deleteSyncedLine = (lineIndex) => {
-  if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
-    return
-  }
-
-  syncedLines.value = syncedLines.value.filter((_, index) => index !== lineIndex)
-  isDirty.value = true
-
-  if (syncedLines.value.length === 0) {
-    selectedSyncedLineIndex.value = -1
-    return
-  }
-
-  selectedSyncedLineIndex.value = Math.min(lineIndex, syncedLines.value.length - 1)
-}
-
-const importSyncedLinesFromPlain = () => {
-  if (!hasPlainLyrics.value) {
-    return
-  }
-
-  syncedLines.value = createSyncedLinesFromPlain(plainLyrics.value, [])
-  isDirty.value = true
-  ensureSelectedSyncedLine()
-}
-
-const withUpdatedLine = (lineIndex, updater) => {
-  if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
-    return
-  }
-
-  const nextLines = syncedLines.value.map((line, index) => {
-    if (index !== lineIndex) {
-      return line
-    }
-
-    return updater(line)
-  })
-
-  syncedLines.value = nextLines
-  isDirty.value = true
-}
-
-const playLine = async (lineIndex) => {
-  if (!editingTrack.value) {
-    return
-  }
-
-  const lineStartMs = syncedLines.value[lineIndex]?.start_ms
-  const seekTo = Number.isFinite(lineStartMs) ? lineStartMs / 1000 : progress.value
-
-  if (!playingTrack.value || playingTrack.value.id !== editingTrack.value.id) {
-    await playTrack(editingTrack.value)
-  } else if (status.value === 'paused') {
-    resume()
-  }
-
-  seek(seekTo)
-}
-
-const syncLineToCurrentProgress = (lineIndex) => {
-  withUpdatedLine(lineIndex, (line) => ({
-    ...line,
-    start_ms: Math.max(0, Math.round(progress.value * 1000))
-  }))
-}
-
-const shiftLineTimestampBy = (lineIndex, offsetMs) => {
-  withUpdatedLine(lineIndex, (line) => ({
-    ...line,
-    start_ms: Math.max(0, Math.round((line.start_ms || 0) + offsetMs))
-  }))
-}
-
 const rewindLineBy100 = (lineIndex) => {
-  shiftLineTimestampBy(lineIndex, -100)
+  rewindLineTimestampBy100(lineIndex)
   void playLine(lineIndex)
 }
 
 const forwardLineBy100 = (lineIndex) => {
-  shiftLineTimestampBy(lineIndex, 100)
+  forwardLineTimestampBy100(lineIndex)
   void playLine(lineIndex)
 }
-
-const saveLyrics = async () => {
-  if (!editingTrack.value || !isDirty.value) {
-    return
-  }
-
-  try {
-    const lyricsfile = serializeLyricsfile({
-      track: editingTrack.value,
-      plainLyrics: plainLyrics.value,
-      syncedLines: syncedLines.value,
-      baseDocument: lyricsfileDocument.value
-    })
-
-    await invoke('save_lyrics', {
-      trackId: editingTrack.value.id,
-      lyricsfile
-    })
-
-    const parsed = parseLyricsfile(lyricsfile)
-    syncedLines.value = createSyncedLinesFromPlain(parsed.plainLyrics, parsed.syncedLines)
-    lyricsfileDocument.value = parsed.document
-    isDirty.value = false
-  } catch (error) {
-    console.error(error)
-    toast.error(error)
-  }
-}
-
-const hasPlainLyrics = computed(() => plainLyrics.value.trim().length > 0)
-
-const selectedLineExists = computed(() => (
-  Number.isInteger(selectedSyncedLineIndex.value)
-  && selectedSyncedLineIndex.value >= 0
-  && selectedSyncedLineIndex.value < syncedLines.value.length
-))
-
-const currentPlayingSyncedLineIndex = computed(() => {
-  if (!Number.isFinite(progress.value) || syncedLines.value.length === 0) {
-    return -1
-  }
-
-  const progressMs = Math.max(0, Math.round(progress.value * 1000))
-
-  for (let index = syncedLines.value.length - 1; index >= 0; index -= 1) {
-    const startMs = syncedLines.value[index]?.start_ms
-    if (Number.isFinite(startMs) && startMs <= progressMs) {
-      return index
-    }
-  }
-
-  return -1
-})
-
-watch(syncedLines, () => {
-  ensureSelectedSyncedLine()
-}, { deep: true })
 
 watch(activeTab, (value) => {
   if (value !== 'synced') {
@@ -332,63 +153,17 @@ watch(activeTab, (value) => {
   ensureSelectedSyncedLine()
 })
 
-const isKeyboardTargetEditable = (event) => {
-  const element = event.target
-
-  if (!(element instanceof HTMLElement)) {
-    return false
-  }
-
-  const tag = element.tagName.toLowerCase()
-  return element.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select'
-}
-
-const handleSyncedEditorKeyboardShortcuts = (event) => {
-  if (
-    activeTab.value !== 'synced'
-    || isSyncedLineEditing.value
-    || !selectedLineExists.value
-    || isKeyboardTargetEditable(event)
-  ) {
-    return
-  }
-
-  if (event.key === 'ArrowUp') {
-    event.preventDefault()
-    selectSyncedLine(Math.max(0, selectedSyncedLineIndex.value - 1))
-    return
-  }
-
-  if (event.key === 'ArrowDown') {
-    event.preventDefault()
-    selectSyncedLine(Math.min(syncedLines.value.length - 1, selectedSyncedLineIndex.value + 1))
-    return
-  }
-
-  if (event.key === ' ') {
-    event.preventDefault()
-    syncLineToCurrentProgress(selectedSyncedLineIndex.value)
-    return
-  }
-
-  if (event.key === 'Enter') {
-    event.preventDefault()
-    syncLineToCurrentProgress(selectedSyncedLineIndex.value)
-    selectSyncedLine(Math.min(syncedLines.value.length - 1, selectedSyncedLineIndex.value + 1))
-    return
-  }
-
-  if (event.key === 'ArrowLeft') {
-    event.preventDefault()
-    rewindLineBy100(selectedSyncedLineIndex.value)
-    return
-  }
-
-  if (event.key === 'ArrowRight') {
-    event.preventDefault()
-    forwardLineBy100(selectedSyncedLineIndex.value)
-  }
-}
+const { bindSyncedHotkeys, unbindSyncedHotkeys } = useEditLyricsV2SyncedHotkeys({
+  activeTab,
+  isSyncedLineEditing,
+  selectedLineExists,
+  selectedSyncedLineIndex,
+  syncedLines,
+  selectSyncedLine,
+  syncLineToCurrentProgress,
+  rewindLineBy100: rewindLineTimestampBy100,
+  forwardLineBy100: forwardLineTimestampBy100
+})
 
 const changeCodemirrorFontSizeBy = (offset) => {
   const nextFontSize = Math.max(0.4, codemirrorStyle.value.fontSize + offset * 0.1)
@@ -399,17 +174,6 @@ const resetCodemirrorFontSize = () => {
   codemirrorStyle.value.fontSize = 1.0
 }
 
-const resumeOrPlay = () => {
-  if (status.value === 'paused') {
-    resume()
-    return
-  }
-
-  if (editingTrack.value) {
-    playTrack(editingTrack.value)
-  }
-}
-
 const modalTitle = computed(() => {
   if (!editingTrack.value) {
     return 'Edit lyrics (v2)'
@@ -418,15 +182,12 @@ const modalTitle = computed(() => {
   return `${editingTrack.value.title} - ${editingTrack.value.artist_name}`
 })
 
-const hotkeyConfig = [
-  { keys: 'Ctrl+S', handler: () => saveLyrics() },
-  { keys: 'Ctrl+Plus', handler: () => changeCodemirrorFontSizeBy(+1) },
-  { keys: 'Ctrl+=', handler: () => changeCodemirrorFontSizeBy(+1) },
-  { keys: 'Ctrl+-', handler: () => changeCodemirrorFontSizeBy(-1) },
-  { keys: 'Ctrl+_', handler: () => changeCodemirrorFontSizeBy(-1) }
-]
-
-const { bindHotkeys, unbindHotkeys } = useLyricsEditorHotkeys(hotkeyConfig)
+const { bindHotkeys, unbindHotkeys } = useEditLyricsV2Hotkeys({
+  activeTab,
+  saveLyrics,
+  changeFontSizeBy: changeCodemirrorFontSizeBy,
+  resetFontSize: resetCodemirrorFontSize
+})
 
 onMounted(() => {
   disableHotkey()
@@ -443,11 +204,11 @@ onMounted(() => {
   }
 
   bindHotkeys()
-  document.addEventListener('keydown', handleSyncedEditorKeyboardShortcuts)
+  bindSyncedHotkeys()
 })
 
 onUnmounted(() => {
-  document.removeEventListener('keydown', handleSyncedEditorKeyboardShortcuts)
+  unbindSyncedHotkeys()
   unbindHotkeys()
   enableHotkey()
 })

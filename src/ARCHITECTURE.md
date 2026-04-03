@@ -33,7 +33,7 @@ src/
 │   │   ├── album-list/              # Album-specific list and item components
 │   │   ├── artist-list/             # Artist-specific list and item components
 │   │   ├── edit-lyrics/             # Legacy edit modal subcomponents, publish flows, and CodeMirror helpers
-│   │   ├── edit-lyrics-v2/          # V2 edit modal pieces (tabbed plain/synced UI scaffold)
+│   │   ├── edit-lyrics-v2/          # V2 edit modal pieces (plain CodeMirror tab + synced row/insert/empty-state components)
 │   │   ├── my-lrclib/               # User-contributed LRCLIB views and actions
 │   │   ├── search-lyrics/           # Preview UI for remote lyric search results
 │   │   └── track-list/              # Virtualized track rows and row actions
@@ -42,6 +42,7 @@ src/
 │   ├── downloader.js                # Shared download queue and progress state
 │   ├── edit-lyrics.js               # Opens the legacy edit-lyrics modal flow
 │   ├── edit-lyrics-v2.js            # Opens the EditLyricsV2 modal flow
+│   ├── edit-lyrics-v2/              # V2 lyricsfile document, playback, synced hotkey, insert-hover, and inline-edit composables
 │   ├── edit-lyrics/                 # Edit modal document, hotkey, publish, and playback-sync composables
 │   ├── global-state.js              # Shared theme/hotkey/LRCLIB instance state
 │   ├── player.js                    # Shared playback state backed by Tauri events
@@ -250,6 +251,16 @@ This split keeps `EditLyrics.vue` focused on wiring together the modal, child to
 - keyboard-driven synced-line workflows (arrow-key navigation, space/enter sync, left/right +/-100ms) that are paused while a line is actively being edited
 - visual now-playing feedback in synced mode by bolding the active line timestamp and lyric text as playback progresses
 - an empty-state synced editor panel that offers importing lines from plain lyrics or creating the first line manually
+
+The V2 modal keeps layout wiring in `EditLyricsV2.vue` while delegating mutable document state to `useEditLyricsV2Document()`, playback actions to `useEditLyricsV2Playback()`, modal-level save/plain-zoom shortcuts to `useEditLyricsV2Hotkeys()`, and synced editor key handling to `useEditLyricsV2SyncedHotkeys()` under `composables/edit-lyrics-v2/`.
+
+`SyncedLyricsEditor.vue` is further split into focused pieces:
+
+- `SyncedLyricsEmptyState.vue` for the zero-lines onboarding panel
+- `SyncedLyricsLineRow.vue` for each interactive synced row (controls, timestamp, inline edit, delete)
+- `SyncedInsertButton.vue` for floating between-row insert affordances
+- `useEditLyricsV2SyncedInsertHover()` for insert-hover geometry and opacity behavior
+- `useEditLyricsV2SyncedInlineEditing()` for inline row text edit lifecycle and emit wiring
 
 ## Playback Architecture
 

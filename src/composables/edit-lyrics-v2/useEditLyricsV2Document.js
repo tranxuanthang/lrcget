@@ -1,0 +1,236 @@
+import { invoke } from '@tauri-apps/api/core'
+import { computed, ref, watch } from 'vue'
+import { createSyncedLinesFromPlain, parseLyricsfile, serializeLyricsfile } from '@/utils/lyricsfile.js'
+
+const createEmptySyncedLine = () => ({
+  text: '',
+  words: []
+})
+
+export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
+  const plainLyrics = ref('')
+  const syncedLines = ref([])
+  const lyricsfileDocument = ref(null)
+  const isDirty = ref(false)
+  const selectedSyncedLineIndex = ref(-1)
+  const isSyncedLineEditing = ref(false)
+
+  const ensureSelectedSyncedLine = () => {
+    if (syncedLines.value.length === 0) {
+      selectedSyncedLineIndex.value = -1
+      return
+    }
+
+    if (
+      !Number.isInteger(selectedSyncedLineIndex.value)
+      || selectedSyncedLineIndex.value < 0
+      || selectedSyncedLineIndex.value >= syncedLines.value.length
+    ) {
+      selectedSyncedLineIndex.value = 0
+    }
+  }
+
+  const selectSyncedLine = (lineIndex) => {
+    if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+      return
+    }
+
+    selectedSyncedLineIndex.value = lineIndex
+  }
+
+  const setSyncedLineEditingState = (value) => {
+    isSyncedLineEditing.value = value
+  }
+
+  const initializeLyrics = () => {
+    const track = editingTrack.value
+    if (!track) {
+      plainLyrics.value = ''
+      syncedLines.value = []
+      lyricsfileDocument.value = null
+      isDirty.value = false
+      return
+    }
+
+    const parsed = parseLyricsfile(track.lyricsfile)
+
+    plainLyrics.value = parsed.plainLyrics
+    syncedLines.value = createSyncedLinesFromPlain(parsed.plainLyrics, parsed.syncedLines)
+    lyricsfileDocument.value = parsed.document
+    isDirty.value = false
+    isSyncedLineEditing.value = false
+    ensureSelectedSyncedLine()
+  }
+
+  const updatePlainLyrics = (lyrics) => {
+    plainLyrics.value = lyrics
+    syncedLines.value = createSyncedLinesFromPlain(lyrics, syncedLines.value)
+    isDirty.value = true
+    ensureSelectedSyncedLine()
+  }
+
+  const updateSyncedLines = (lines) => {
+    syncedLines.value = lines
+    isDirty.value = true
+    ensureSelectedSyncedLine()
+  }
+
+  const addSyncedLineAt = (lineIndex) => {
+    if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex > syncedLines.value.length) {
+      return
+    }
+
+    const nextLines = [...syncedLines.value]
+    nextLines.splice(lineIndex, 0, createEmptySyncedLine())
+
+    syncedLines.value = nextLines
+    selectedSyncedLineIndex.value = lineIndex
+    isDirty.value = true
+  }
+
+  const deleteSyncedLine = (lineIndex) => {
+    if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+      return
+    }
+
+    syncedLines.value = syncedLines.value.filter((_, index) => index !== lineIndex)
+    isDirty.value = true
+
+    if (syncedLines.value.length === 0) {
+      selectedSyncedLineIndex.value = -1
+      return
+    }
+
+    selectedSyncedLineIndex.value = Math.min(lineIndex, syncedLines.value.length - 1)
+  }
+
+  const importSyncedLinesFromPlain = () => {
+    if (!hasPlainLyrics.value) {
+      return
+    }
+
+    syncedLines.value = createSyncedLinesFromPlain(plainLyrics.value, [])
+    isDirty.value = true
+    ensureSelectedSyncedLine()
+  }
+
+  const withUpdatedLine = (lineIndex, updater) => {
+    if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+      return
+    }
+
+    const nextLines = syncedLines.value.map((line, index) => {
+      if (index !== lineIndex) {
+        return line
+      }
+
+      return updater(line)
+    })
+
+    syncedLines.value = nextLines
+    isDirty.value = true
+  }
+
+  const syncLineToCurrentProgress = (lineIndex) => {
+    withUpdatedLine(lineIndex, (line) => ({
+      ...line,
+      start_ms: Math.max(0, Math.round(progress.value * 1000))
+    }))
+  }
+
+  const shiftLineTimestampBy = (lineIndex, offsetMs) => {
+    withUpdatedLine(lineIndex, (line) => ({
+      ...line,
+      start_ms: Math.max(0, Math.round((line.start_ms || 0) + offsetMs))
+    }))
+  }
+
+  const rewindLineBy100 = (lineIndex) => {
+    shiftLineTimestampBy(lineIndex, -100)
+  }
+
+  const forwardLineBy100 = (lineIndex) => {
+    shiftLineTimestampBy(lineIndex, 100)
+  }
+
+  const saveLyrics = async () => {
+    if (!editingTrack.value || !isDirty.value) {
+      return
+    }
+
+    try {
+      const lyricsfile = serializeLyricsfile({
+        track: editingTrack.value,
+        plainLyrics: plainLyrics.value,
+        syncedLines: syncedLines.value,
+        baseDocument: lyricsfileDocument.value
+      })
+
+      await invoke('save_lyrics', {
+        trackId: editingTrack.value.id,
+        lyricsfile
+      })
+
+      const parsed = parseLyricsfile(lyricsfile)
+      syncedLines.value = createSyncedLinesFromPlain(parsed.plainLyrics, parsed.syncedLines)
+      lyricsfileDocument.value = parsed.document
+      isDirty.value = false
+    } catch (error) {
+      console.error(error)
+      toast.error(error)
+    }
+  }
+
+  const hasPlainLyrics = computed(() => plainLyrics.value.trim().length > 0)
+
+  const selectedLineExists = computed(() => (
+    Number.isInteger(selectedSyncedLineIndex.value)
+    && selectedSyncedLineIndex.value >= 0
+    && selectedSyncedLineIndex.value < syncedLines.value.length
+  ))
+
+  const currentPlayingSyncedLineIndex = computed(() => {
+    if (!Number.isFinite(progress.value) || syncedLines.value.length === 0) {
+      return -1
+    }
+
+    const progressMs = Math.max(0, Math.round(progress.value * 1000))
+
+    for (let index = syncedLines.value.length - 1; index >= 0; index -= 1) {
+      const startMs = syncedLines.value[index]?.start_ms
+      if (Number.isFinite(startMs) && startMs <= progressMs) {
+        return index
+      }
+    }
+
+    return -1
+  })
+
+  watch(syncedLines, () => {
+    ensureSelectedSyncedLine()
+  }, { deep: true })
+
+  return {
+    plainLyrics,
+    syncedLines,
+    isDirty,
+    selectedSyncedLineIndex,
+    isSyncedLineEditing,
+    hasPlainLyrics,
+    selectedLineExists,
+    currentPlayingSyncedLineIndex,
+    initializeLyrics,
+    updatePlainLyrics,
+    updateSyncedLines,
+    selectSyncedLine,
+    setSyncedLineEditingState,
+    addSyncedLineAt,
+    deleteSyncedLine,
+    importSyncedLinesFromPlain,
+    syncLineToCurrentProgress,
+    rewindLineBy100,
+    forwardLineBy100,
+    saveLyrics,
+    ensureSelectedSyncedLine
+  }
+}
