@@ -246,7 +246,9 @@ This split keeps `EditLyrics.vue` focused on wiring together the modal, child to
 `EditLyricsV2.vue` is a parallel editing flow that keeps the playback control bar, removes the legacy sync-command toolbar, and introduces tabbed editing with:
 
 - a plain-lyrics CodeMirror tab
-- a synced-lyrics interactive line list UI (hover actions + inline single-line editing)
+- a synced-lyrics interactive line list UI with persistent per-line controls, single-click line selection, and inline single-line editing
+- keyboard-driven synced-line workflows (arrow-key navigation, space/enter sync, left/right +/-100ms) that are paused while a line is actively being edited
+- visual now-playing feedback in synced mode by bolding the active line timestamp and lyric text as playback progresses
 - a guard that disables the synced tab while plain lyrics are empty
 
 ## Playback Architecture

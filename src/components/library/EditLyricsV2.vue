@@ -57,11 +57,15 @@
       <SyncedLyricsEditor
         v-else
         :model-value="syncedLines"
+        :selected-line-index="selectedSyncedLineIndex"
+        :playing-line-index="currentPlayingSyncedLineIndex"
         @update:model-value="updateSyncedLines"
+        @update:selected-line-index="selectSyncedLine"
+        @editing-state-change="setSyncedLineEditingState"
         @play-line="playLine"
         @sync-line="syncLineToCurrentProgress"
-        @rewind-line="shiftLineTimestampBy($event, -100)"
-        @forward-line="shiftLineTimestampBy($event, 100)"
+        @rewind-line="rewindLineBy100"
+        @forward-line="forwardLineBy100"
       />
     </div>
   </BaseModal>
@@ -94,9 +98,38 @@ const plainLyrics = ref('')
 const syncedLines = ref([])
 const lyricsfileDocument = ref(null)
 const isDirty = ref(false)
+const selectedSyncedLineIndex = ref(-1)
+const isSyncedLineEditing = ref(false)
 const codemirrorStyle = ref({
   fontSize: 1.0
 })
+
+const ensureSelectedSyncedLine = () => {
+  if (syncedLines.value.length === 0) {
+    selectedSyncedLineIndex.value = -1
+    return
+  }
+
+  if (
+    !Number.isInteger(selectedSyncedLineIndex.value)
+    || selectedSyncedLineIndex.value < 0
+    || selectedSyncedLineIndex.value >= syncedLines.value.length
+  ) {
+    selectedSyncedLineIndex.value = 0
+  }
+}
+
+const selectSyncedLine = (lineIndex) => {
+  if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+    return
+  }
+
+  selectedSyncedLineIndex.value = lineIndex
+}
+
+const setSyncedLineEditingState = (value) => {
+  isSyncedLineEditing.value = value
+}
 
 const initializeLyrics = () => {
   const track = editingTrack.value
@@ -114,17 +147,21 @@ const initializeLyrics = () => {
   syncedLines.value = createSyncedLinesFromPlain(parsed.plainLyrics, parsed.syncedLines)
   lyricsfileDocument.value = parsed.document
   isDirty.value = false
+  isSyncedLineEditing.value = false
+  ensureSelectedSyncedLine()
 }
 
 const updatePlainLyrics = (lyrics) => {
   plainLyrics.value = lyrics
   syncedLines.value = createSyncedLinesFromPlain(lyrics, syncedLines.value)
   isDirty.value = true
+  ensureSelectedSyncedLine()
 }
 
 const updateSyncedLines = (lines) => {
   syncedLines.value = lines
   isDirty.value = true
+  ensureSelectedSyncedLine()
 }
 
 const withUpdatedLine = (lineIndex, updater) => {
@@ -175,6 +212,16 @@ const shiftLineTimestampBy = (lineIndex, offsetMs) => {
   }))
 }
 
+const rewindLineBy100 = (lineIndex) => {
+  shiftLineTimestampBy(lineIndex, -100)
+  void playLine(lineIndex)
+}
+
+const forwardLineBy100 = (lineIndex) => {
+  shiftLineTimestampBy(lineIndex, 100)
+  void playLine(lineIndex)
+}
+
 const saveLyrics = async () => {
   if (!editingTrack.value || !isDirty.value) {
     return
@@ -205,11 +252,105 @@ const saveLyrics = async () => {
 
 const hasPlainLyrics = computed(() => plainLyrics.value.trim().length > 0)
 
+const selectedLineExists = computed(() => (
+  Number.isInteger(selectedSyncedLineIndex.value)
+  && selectedSyncedLineIndex.value >= 0
+  && selectedSyncedLineIndex.value < syncedLines.value.length
+))
+
+const currentPlayingSyncedLineIndex = computed(() => {
+  if (!Number.isFinite(progress.value) || syncedLines.value.length === 0) {
+    return -1
+  }
+
+  const progressMs = Math.max(0, Math.round(progress.value * 1000))
+
+  for (let index = syncedLines.value.length - 1; index >= 0; index -= 1) {
+    const startMs = syncedLines.value[index]?.start_ms
+    if (Number.isFinite(startMs) && startMs <= progressMs) {
+      return index
+    }
+  }
+
+  return -1
+})
+
 watch(hasPlainLyrics, (value) => {
   if (!value && activeTab.value === 'synced') {
     activeTab.value = 'plain'
   }
 })
+
+watch(syncedLines, () => {
+  ensureSelectedSyncedLine()
+}, { deep: true })
+
+watch(activeTab, (value) => {
+  if (value !== 'synced') {
+    isSyncedLineEditing.value = false
+    return
+  }
+
+  ensureSelectedSyncedLine()
+})
+
+const isKeyboardTargetEditable = (event) => {
+  const element = event.target
+
+  if (!(element instanceof HTMLElement)) {
+    return false
+  }
+
+  const tag = element.tagName.toLowerCase()
+  return element.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select'
+}
+
+const handleSyncedEditorKeyboardShortcuts = (event) => {
+  if (
+    activeTab.value !== 'synced'
+    || isSyncedLineEditing.value
+    || !selectedLineExists.value
+    || isKeyboardTargetEditable(event)
+  ) {
+    return
+  }
+
+  if (event.key === 'ArrowUp') {
+    event.preventDefault()
+    selectSyncedLine(Math.max(0, selectedSyncedLineIndex.value - 1))
+    return
+  }
+
+  if (event.key === 'ArrowDown') {
+    event.preventDefault()
+    selectSyncedLine(Math.min(syncedLines.value.length - 1, selectedSyncedLineIndex.value + 1))
+    return
+  }
+
+  if (event.key === ' ') {
+    event.preventDefault()
+    syncLineToCurrentProgress(selectedSyncedLineIndex.value)
+    return
+  }
+
+  if (event.key === 'Enter') {
+    event.preventDefault()
+    syncLineToCurrentProgress(selectedSyncedLineIndex.value)
+    selectSyncedLine(Math.min(syncedLines.value.length - 1, selectedSyncedLineIndex.value + 1))
+    return
+  }
+
+  if (event.key === 'ArrowLeft') {
+    event.preventDefault()
+    rewindLineBy100(selectedSyncedLineIndex.value)
+    return
+  }
+
+  if (event.key === 'ArrowRight') {
+    event.preventDefault()
+    forwardLineBy100(selectedSyncedLineIndex.value)
+  }
+}
 
 const changeCodemirrorFontSizeBy = (offset) => {
   const nextFontSize = Math.max(0.4, codemirrorStyle.value.fontSize + offset * 0.1)
@@ -264,9 +405,11 @@ onMounted(() => {
   }
 
   bindHotkeys()
+  document.addEventListener('keydown', handleSyncedEditorKeyboardShortcuts)
 })
 
 onUnmounted(() => {
+  document.removeEventListener('keydown', handleSyncedEditorKeyboardShortcuts)
   unbindHotkeys()
   enableHotkey()
 })
