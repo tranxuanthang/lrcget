@@ -123,11 +123,16 @@ const emit = defineEmits([
   'import-lines-from-plain',
   'editing-state-change',
   'update:words',
-  'word-timing-edited'
+  'word-timing-edited',
+  'update-line-text'
 ])
 
 const hoveredLineIndex = ref(null)
 const modelValue = toRef(props, 'modelValue')
+
+const handleUpdateLineText = (lineIndex, newText) => {
+  emit('update-line-text', lineIndex, newText)
+}
 
 const {
   editingLineIndex,
@@ -140,7 +145,8 @@ const {
 } = useEditLyricsV2SyncedInlineEditing({
   modelValue,
   emit,
-  selectLine: (index) => emit('update:selected-line-index', index)
+  selectLine: (index) => emit('update:selected-line-index', index),
+  updateLineText: handleUpdateLineText
 })
 
 const {

@@ -15,6 +15,7 @@ Add a fixed horizontal word timing lane at the top of the synced lyrics lines co
 - When no line is selected, the lane shows an empty/placeholder state
 - Selecting a different line updates the lane content to show that line's words
 - The lane position is stable - no layout shift occurs when changing selections
+- The lane shows a short placeholder reason when word sync is unavailable for the selected line
 
 ### Visual Layout
 
@@ -38,9 +39,9 @@ Add a fixed horizontal word timing lane at the top of the synced lyrics lines co
 
 - Words render as draggable horizontal segments in the timeline that fill the space until the next word
 - Timeline range: `[line.start_ms, next_line.start_ms]`
-- For last line: `[line.start_ms, line.start_ms + 2000ms]` (fallback window)
+- Word sync is only enabled when **next line is also synced** (`next_line.start_ms` exists)
 - **First word**: `words[0].start_ms` always equals `line.start_ms` (fixed, not draggable)
-- **Last word**: implicitly extends to `next_line.start_ms` (or fallback window end)
+- **Last word**: implicitly extends to `next_line.start_ms`
 - **Middle words**: Drag the handle between words to adjust the `start_ms` of the word to the right
   - The handle is positioned at the boundary between two consecutive words
   - Dragging moves the boundary, effectively changing the `start_ms` of the right word
@@ -60,6 +61,22 @@ Add a fixed horizontal word timing lane at the top of the synced lyrics lines co
   - **Latin scripts**: space-delimited, preserve trailing spaces in word tokens
   - **CJK (Chinese/Japanese/Korean)**: treat each character as a token (no spaces needed)
 - Initial timing: evenly distributed across the line time window
+
+### 2.1 Availability Rules
+
+Word sync is available only when all conditions are true:
+
+- The selected line has non-empty text content
+- The selected line has a valid `start_ms`
+- The next line exists and has a valid `start_ms`
+
+When unavailable, the lane stays visible and shows a short placeholder reason (no content, missing current sync, or missing next-line sync).
+
+### 2.2 Data Consistency Rules
+
+- If line text changes, clear `line.words` for that line
+- If line `start_ms` changes, offset every `words[].start_ms` by the same actual delta
+- If next line `start_ms` changes, previous line words do **not** need mutation (their implicit end updates from timeline context)
 
 ### 3. Distribute Evenly
 
@@ -108,7 +125,7 @@ Add a fixed horizontal word timing lane at the top of the synced lyrics lines co
 - `words[].start_ms` must be monotonically non-decreasing
 - `words[0].start_ms === line.start_ms` (first word always starts at line start)
 - For middle words: `word[i].start_ms >= word[i-1].start_ms` (minimum 1ms gap to allow handles)
-- Implicit `end_ms` for each word is `next_word.start_ms` (or line end for last word)
+- Implicit `end_ms` for each word is `next_word.start_ms` (or selected line window end)
 - All timestamps in milliseconds (integers)
 
 ---
@@ -118,9 +135,9 @@ Add a fixed horizontal word timing lane at the top of the synced lyrics lines co
 1. **SyncedWordTimingLane.vue**
    - Fixed horizontal timeline container positioned at top of lyrics list
    - Playhead indicator synced to current playback
-   - Renders word segments for the selected line
+   - Renders word segments only when availability rules are satisfied
    - "Distribute evenly" button
-   - Empty/placeholder state when no line selected
+   - Empty/placeholder state when no line selected or when word sync is unavailable
 
 2. **SyncedWordTimingSegment.vue**
    - Draggable word block
@@ -133,6 +150,7 @@ Add a fixed horizontal word timing lane at the top of the synced lyrics lines co
 
 - **SyncedLyricsEditor.vue**: Mount lane as fixed header above the scrollable lyrics list
 - **useEditLyricsV2Document.js**: Add helpers for word timing updates and tokenization
+- **useEditLyricsV2Document.js**: Keep word timing consistent when line text/start time changes
 - **EditLyricsV2.vue**: Wire playback progress to lane for playhead sync, pass selected line to lane
 
 ---

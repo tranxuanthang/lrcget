@@ -131,18 +131,68 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     isDirty.value = true
   }
 
-  const syncLineToCurrentProgress = (lineIndex) => {
+  const eraseWordTimings = (lineIndex) => {
     withUpdatedLine(lineIndex, (line) => ({
       ...line,
-      start_ms: Math.max(0, Math.round(progress.value * 1000))
+      words: []
     }))
   }
 
-  const shiftLineTimestampBy = (lineIndex, offsetMs) => {
+  const offsetWordTimings = (lineIndex, offsetMs) => {
+    if (!Number.isFinite(offsetMs) || offsetMs === 0) {
+      return
+    }
+
+    withUpdatedLine(lineIndex, (line) => {
+      if (!Array.isArray(line.words) || line.words.length === 0) {
+        return line
+      }
+
+      return {
+        ...line,
+        words: line.words.map((word) => ({
+          ...word,
+          start_ms: Number.isFinite(word.start_ms)
+            ? Math.max(0, Math.round(word.start_ms + offsetMs))
+            : word.start_ms
+        }))
+      }
+    })
+  }
+
+  const syncLineToCurrentProgress = (lineIndex) => {
+    if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+      return
+    }
+
+    const oldStartMs = syncedLines.value[lineIndex]?.start_ms
+    const newStartMs = Math.max(0, Math.round(progress.value * 1000))
+
     withUpdatedLine(lineIndex, (line) => ({
       ...line,
-      start_ms: Math.max(0, Math.round((line.start_ms || 0) + offsetMs))
+      start_ms: newStartMs
     }))
+
+    if (Number.isFinite(oldStartMs)) {
+      offsetWordTimings(lineIndex, newStartMs - oldStartMs)
+    }
+  }
+
+  const shiftLineTimestampBy = (lineIndex, offsetMs) => {
+    if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+      return
+    }
+
+    const oldStartMsRaw = syncedLines.value[lineIndex]?.start_ms
+    const oldStartMs = Number.isFinite(oldStartMsRaw) ? oldStartMsRaw : 0
+    const newStartMs = Math.max(0, Math.round(oldStartMs + offsetMs))
+
+    withUpdatedLine(lineIndex, (line) => ({
+      ...line,
+      start_ms: newStartMs
+    }))
+
+    offsetWordTimings(lineIndex, newStartMs - oldStartMs)
   }
 
   const rewindLineBy100 = (lineIndex) => {
@@ -151,6 +201,23 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
 
   const forwardLineBy100 = (lineIndex) => {
     shiftLineTimestampBy(lineIndex, 100)
+  }
+
+  const updateLineText = (lineIndex, newText) => {
+    if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+      return
+    }
+
+    const line = syncedLines.value[lineIndex]
+    if (!line || line.text === newText) {
+      return
+    }
+
+    withUpdatedLine(lineIndex, (currentLine) => ({
+      ...currentLine,
+      text: newText,
+      words: []
+    }))
   }
 
   const saveLyrics = async () => {
@@ -231,6 +298,9 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     rewindLineBy100,
     forwardLineBy100,
     saveLyrics,
-    ensureSelectedSyncedLine
+    ensureSelectedSyncedLine,
+    updateLineText,
+    eraseWordTimings,
+    offsetWordTimings
   }
 }

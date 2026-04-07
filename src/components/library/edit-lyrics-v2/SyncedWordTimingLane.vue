@@ -4,15 +4,34 @@
     :class="hasSelectedLine ? 'bg-brave-95 dark:bg-brave-10 min-h-[5rem]' : 'bg-brave-98 dark:bg-brave-5 min-h-[3.5rem]'
 "
   >
-    <!-- Empty state -->
+    <!-- Empty state - no line selected -->
     <div v-if="!hasSelectedLine" class="flex items-center justify-center h-full">
       <span class="text-sm text-brave-50 dark:text-brave-70 italic">
         Select a lyric line to edit word timings
       </span>
     </div>
 
+    <!-- Feature not available states -->
+    <div v-else-if="!hasLineContent" class="flex items-center justify-center h-full">
+      <span class="text-sm text-brave-50 dark:text-brave-70 italic">
+        Add lyrics content to enable word timing
+      </span>
+    </div>
+
+    <div v-else-if="!hasLineStartTime" class="flex items-center justify-center h-full">
+      <span class="text-sm text-brave-50 dark:text-brave-70 italic">
+        Sync the line (set start time) to enable word timing
+      </span>
+    </div>
+
+    <div v-else-if="!hasNextLineStartTime" class="flex items-center justify-center h-full">
+      <span class="text-sm text-brave-50 dark:text-brave-70 italic">
+        Sync the next line to define the timing window
+      </span>
+    </div>
+
     <!-- Word timing timeline -->
-    <template v-else>
+    <template v-else-if="isWordSyncAvailable">
       <!-- Header with line info -->
       <div class="flex items-center justify-between mb-2 shrink-0">
         <div class="flex items-center gap-3 text-xs text-brave-40 dark:text-brave-60">
@@ -141,6 +160,30 @@ const timelineElement = ref(null)
 const timelineWidth = ref(0)
 const dragState = ref(null)
 
+// Availability checks for word sync feature
+const hasLineContent = computed(() => {
+  return props.selectedLine && props.selectedLine.text && props.selectedLine.text.trim().length > 0
+})
+
+const hasLineStartTime = computed(() => {
+  return props.selectedLine && Number.isFinite(props.selectedLine.start_ms)
+})
+
+const hasNextLineStartTime = computed(() => {
+  if (!props.selectedLine || props.selectedLineIndex < 0) return false
+
+  if (props.selectedLineIndex + 1 >= props.allLines.length) {
+    return false
+  }
+
+  const nextLine = props.allLines[props.selectedLineIndex + 1]
+  return Number.isFinite(nextLine?.start_ms)
+})
+
+const isWordSyncAvailable = computed(() => {
+  return hasLineContent.value && hasLineStartTime.value && hasNextLineStartTime.value
+})
+
 const lineEndMs = computed(() => {
   if (!props.selectedLine) return 0
 
@@ -151,6 +194,7 @@ const lineEndMs = computed(() => {
     }
   }
 
+  // Fallback for last line
   if (Number.isFinite(props.selectedLine.start_ms)) {
     return props.selectedLine.start_ms + 2000
   }
@@ -159,7 +203,7 @@ const lineEndMs = computed(() => {
 })
 
 const words = computed(() => {
-  if (!props.selectedLine) return []
+  if (!isWordSyncAvailable.value) return []
 
   const lineWithWords = ensureLineWords(
     props.selectedLine,
@@ -190,20 +234,21 @@ const displayedWords = computed(() => {
 })
 
 const playheadPercent = computed(() => {
-  if (!props.selectedLine || lineEndMs.value <= props.selectedLine.start_ms) {
-    return 0
-  }
+  if (!isWordSyncAvailable.value) return 0
 
   const duration = lineEndMs.value - props.selectedLine.start_ms
-  const elapsed = props.progressMs - props.selectedLine.start_ms
+  if (duration <= 0) return 0
 
+  const elapsed = props.progressMs - props.selectedLine.start_ms
   return Math.max(0, Math.min(100, (elapsed / duration) * 100))
 })
 
 const gridLinesCount = computed(() => {
-  if (!props.selectedLine) return 0
+  if (!isWordSyncAvailable.value) return 0
 
   const duration = lineEndMs.value - props.selectedLine.start_ms
+  if (!Number.isFinite(duration) || duration <= 0) return 0
+
   return Math.max(0, Math.floor(duration / 500) - 1)
 })
 
@@ -214,17 +259,21 @@ const updateTimelineWidth = () => {
 }
 
 const timeToPercent = (timeMs) => {
-  if (!props.selectedLine || lineEndMs.value <= props.selectedLine.start_ms) {
-    return 0
-  }
+  if (!isWordSyncAvailable.value) return 0
 
   const duration = lineEndMs.value - props.selectedLine.start_ms
+  if (duration <= 0) return 0
+
   const elapsed = timeMs - props.selectedLine.start_ms
   return Math.max(0, Math.min(100, (elapsed / duration) * 100))
 }
 
 const clientXToTime = (clientX) => {
-  if (!timelineElement.value || !props.selectedLine || lineEndMs.value <= props.selectedLine.start_ms) {
+  if (!timelineElement.value || !isWordSyncAvailable.value) {
+    return props.selectedLine?.start_ms || 0
+  }
+
+  if (lineEndMs.value <= props.selectedLine.start_ms) {
     return props.selectedLine?.start_ms || 0
   }
 
@@ -252,7 +301,8 @@ const getWordEndMs = (index) => {
     return lineEndMs.value
   }
 
-  return displayedWords.value[index + 1].start_ms
+  const nextWordStart = displayedWords.value[index + 1]?.start_ms
+  return Number.isFinite(nextWordStart) ? nextWordStart : lineEndMs.value
 }
 
 const getBoundaryConstraint = (rightWordIndex) => {
@@ -334,7 +384,7 @@ const startBoundaryDrag = (rightWordIndex, event) => {
   event.preventDefault()
   event.stopPropagation()
 
-  if (!props.selectedLine || rightWordIndex <= 0 || rightWordIndex >= words.value.length) {
+  if (!isWordSyncAvailable.value || rightWordIndex <= 0 || rightWordIndex >= words.value.length) {
     return
   }
 
@@ -360,6 +410,8 @@ watch(() => props.selectedLine, () => {
 }, { immediate: true })
 
 const handleDistributeEvenly = () => {
+  if (!isWordSyncAvailable.value) return
+
   const currentWords = words.value
   if (currentWords.length === 0) return
 
@@ -392,6 +444,13 @@ watch(() => props.hasSelectedLine, (hasLine) => {
     })
   }
 }, { immediate: true })
+
+watch(isWordSyncAvailable, (available) => {
+  if (!available && dragState.value) {
+    dragState.value = null
+    stopBoundaryDrag()
+  }
+})
 
 watch(() => props.allLines, () => {
   if (dragState.value) {

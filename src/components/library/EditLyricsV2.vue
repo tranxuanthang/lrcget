@@ -71,6 +71,7 @@
         @import-lines-from-plain="importSyncedLinesFromPlain"
         @update:words="updateLineWords"
         @word-timing-edited="handleWordTimingEdited"
+        @update-line-text="handleUpdateLineText"
       />
     </div>
   </BaseModal>
@@ -123,7 +124,8 @@ const {
   rewindLineBy100: rewindLineTimestampBy100,
   forwardLineBy100: forwardLineTimestampBy100,
   saveLyrics,
-  ensureSelectedSyncedLine
+  ensureSelectedSyncedLine,
+  updateLineText
 } = useEditLyricsV2Document({ editingTrack, progress, toast })
 
 const codemirrorStyle = ref({
@@ -164,6 +166,10 @@ const updateLineWords = ({ lineIndex, words }) => {
   })
 
   updateSyncedLines(newLines)
+}
+
+const handleUpdateLineText = (lineIndex, newText) => {
+  updateLineText(lineIndex, newText)
 }
 
 const handleWordTimingEdited = async ({ startMs }) => {

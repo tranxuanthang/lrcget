@@ -10,7 +10,9 @@
     <div class="flex items-center gap-1 w-[7.5rem]">
       <button
         v-show="isLineControlsVisible"
-        class="button button-normal p-1 rounded-full text-sm"
+        class="button p-1 rounded-full text-sm h-6 w-6"
+        :class="line.start_ms ? 'button-normal' : 'button-disabled'"
+        :disabled="!line.start_ms"
         title="Play line"
         @click.stop="emit('play-line', index)"
       >
@@ -18,7 +20,7 @@
       </button>
       <button
         v-show="isLineControlsVisible"
-        class="button button-normal p-1 rounded-full text-sm"
+        class="button button-normal p-1 rounded-full text-sm h-6 w-6"
         title="Sync line to current playback"
         @click.stop="emit('sync-line', index)"
       >
@@ -26,7 +28,9 @@
       </button>
       <button
         v-show="isLineControlsVisible"
-        class="button button-normal p-1 rounded-full text-sm"
+        class="button p-1 rounded-full text-sm h-6 w-6"
+        :class="line.start_ms ? 'button-normal' : 'button-disabled'"
+        :disabled="!line.start_ms"
         title="Rewind line by 100ms"
         @click.stop="emit('rewind-line', index)"
       >
@@ -34,7 +38,9 @@
       </button>
       <button
         v-show="isLineControlsVisible"
-        class="button button-normal p-1 rounded-full text-sm"
+        class="button p-1 rounded-full text-sm h-6 w-6"
+        :class="line.start_ms ? 'button-normal' : 'button-disabled'"
+        :disabled="!line.start_ms"
         title="Forward line by 100ms"
         @click.stop="emit('forward-line', index)"
       >

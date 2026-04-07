@@ -1,6 +1,6 @@
 import { nextTick, ref } from 'vue'
 
-export function useEditLyricsV2SyncedInlineEditing({ modelValue, emit, selectLine }) {
+export function useEditLyricsV2SyncedInlineEditing({ modelValue, emit, selectLine, updateLineText }) {
   const editingLineIndex = ref(null)
   const editingText = ref('')
   const lineInput = ref(null)
@@ -40,18 +40,25 @@ export function useEditLyricsV2SyncedInlineEditing({ modelValue, emit, selectLin
       return
     }
 
-    const nextLines = modelValue.value.map((line, index) => {
-      if (index !== editingLineIndex.value) {
-        return line
-      }
+    // Use updateLineText if provided (handles word timing erasure)
+    if (updateLineText) {
+      updateLineText(editingLineIndex.value, editingText.value)
+    } else {
+      // Fallback to direct update
+      const nextLines = modelValue.value.map((line, index) => {
+        if (index !== editingLineIndex.value) {
+          return line
+        }
 
-      return {
-        ...line,
-        text: editingText.value
-      }
-    })
+        return {
+          ...line,
+          text: editingText.value
+        }
+      })
 
-    emit('update:modelValue', nextLines)
+      emit('update:modelValue', nextLines)
+    }
+    
     finishEditing(true)
   }
 

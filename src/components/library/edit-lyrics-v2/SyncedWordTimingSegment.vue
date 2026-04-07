@@ -1,6 +1,6 @@
 <template>
   <div
-    class="word-segment absolute flex items-center justify-center px-2 py-1 text-sm select-none"
+    class="word-segment absolute flex items-center justify-center px-2 py-2 text-sm select-none h-[2rem]"
     :class="segmentClass"
     :style="segmentStyle"
     :title="`${word.text} (${formatTimestampMs(startMs)} - ${formatTimestampMs(endMs)})`"
@@ -55,7 +55,7 @@ const isPlaying = computed(() => {
 
 const segmentClass = computed(() => {
   const baseClasses = ['bg-brave-88 dark:bg-brave-18']
-  
+
   if (isPlaying.value) {
     baseClasses.push(
       'bg-brave-70 dark:bg-brave-30',
@@ -63,7 +63,7 @@ const segmentClass = computed(() => {
       'text-brave-10 dark:text-brave-95'
     )
   }
-  
+
   return baseClasses
 })
 
