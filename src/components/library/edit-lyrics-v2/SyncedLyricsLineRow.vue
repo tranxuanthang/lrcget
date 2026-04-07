@@ -69,11 +69,23 @@
     <div
       v-else
       class="grow min-h-7 flex items-center px-2 rounded-md cursor-text"
-      :class="{ 'font-bold': isLinePlaying }"
+      :class="{ 'font-bold': isLinePlaying, 'opacity-80': !isLinePlaying }"
       @click="emit('select', index)"
       @dblclick="emit('start-edit', index)"
     >
-      {{ line.text || ' ' }}
+      <template v-if="hasWordSync">
+        <span
+          v-for="(word, wordIndex) in line.words"
+          :key="wordIndex"
+          class="whitespace-pre-wrap"
+          :class="{ 'text-yellow-500 dark:text-yellow-400': wordIndex === currentWordIndex }"
+        >
+          {{ word.text }}
+        </span>
+      </template>
+      <template v-else>
+        {{ line.text || ' ' }}
+      </template>
     </div>
 
     <button
@@ -127,6 +139,10 @@ const props = defineProps({
   setLineInputRef: {
     type: Function,
     required: true
+  },
+  progressMs: {
+    type: Number,
+    default: 0
   }
 })
 
@@ -150,6 +166,34 @@ const rowElement = ref(null)
 const editingTextProxy = computed({
   get: () => props.editingText,
   set: (value) => emit('update:editing-text', value)
+})
+
+// Check if line has word-by-word synced data
+const hasWordSync = computed(() => {
+  return props.line?.words && Array.isArray(props.line.words) && props.line.words.length > 0
+})
+
+// Determine the currently playing word index based on progressMs
+const currentWordIndex = computed(() => {
+  if (!hasWordSync.value || !props.isLinePlaying || !props.line.words) {
+    return -1
+  }
+
+  const words = props.line.words
+  for (let i = 0; i < words.length; i++) {
+    const word = words[i]
+    const nextWord = words[i + 1]
+
+    // Check if current time falls within this word's time window
+    const wordStart = word.start_ms
+    const wordEnd = nextWord ? nextWord.start_ms : Infinity
+
+    if (props.progressMs >= wordStart && props.progressMs < wordEnd) {
+      return i
+    }
+  }
+
+  return -1
 })
 
 defineExpose({

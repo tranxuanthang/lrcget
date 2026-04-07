@@ -9,6 +9,8 @@
       :selected-line-index="selectedLineIndex"
       @update:words="handleWordsUpdate"
       @word-timing-edited="handleWordTimingEdited"
+      @play-line="handlePlayLine"
+      @select-next-line="selectLine"
     />
 
     <div
@@ -46,6 +48,7 @@
             :editing-text="editingText"
             :timestamp-text="formatTimestampMs(line.start_ms)"
             :set-line-input-ref="setLineInputRef"
+            :progress-ms="progressMs"
             @mouseenter="hoveredLineIndex = index"
             @mouseleave="hoveredLineIndex = null"
             @select="selectLine"
