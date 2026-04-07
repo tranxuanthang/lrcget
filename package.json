@@ -17,6 +17,7 @@
     "@tauri-apps/plugin-shell": "^2.2.0",
     "codemirror": "^6.0.1",
     "floating-vue": "^5.2.2",
+    "interactjs": "^1.10.27",
     "lodash": "^4.17.21",
     "lrc-kit": "github:tranxuanthang/lrc-kit",
     "mdue": "^0.1.4",

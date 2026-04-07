@@ -259,8 +259,33 @@ The V2 modal keeps layout wiring in `EditLyricsV2.vue` while delegating mutable 
 - `SyncedLyricsEmptyState.vue` for the zero-lines onboarding panel
 - `SyncedLyricsLineRow.vue` for each interactive synced row (controls, timestamp, inline edit, delete)
 - `SyncedInsertButton.vue` for floating between-row insert affordances
+- `SyncedWordTimingLane.vue` - Fixed timeline showing word timing controls for the selected line
+- `SyncedWordTimingSegment.vue` - Visual word segment component sized by adjacent word boundaries
 - `useEditLyricsV2SyncedInsertHover()` for insert-hover geometry and opacity behavior
 - `useEditLyricsV2SyncedInlineEditing()` for inline row text edit lifecycle and emit wiring
+
+**Word Timing Lane**
+
+The `SyncedWordTimingLane.vue` component provides a fixed horizontal timeline at the top of the synced lyrics editor for word-level timing adjustments:
+
+- Displays word segments for the currently selected line only
+- Auto-generates word tokens from line text using `word-tokenizer.js` utilities
+- Supports both Latin (space-delimited) and CJK (character-based) tokenization
+- Renders words as contiguous timeline segments whose widths are derived from the next word boundary
+- Uses dedicated boundary handles between words so the first word stays fixed to the line start
+- Previews boundary movement during drag and commits the new right-word `start_ms` on pointer release
+- Enforces monotonic timing constraints (no overlaps, must stay within line bounds)
+- "Distribute evenly" button to reset word timings to equal spacing across the line window
+- Shows playhead indicator synced to current playback position
+- Grid lines for visual time reference (every 500ms)
+
+The `word-tokenizer.js` utility provides:
+
+- `tokenizeText()` - Splits text into tokens (CJK per-character, Latin space-delimited)
+- `generateWordsFromLine()` - Creates word array from line text
+- `distributeWordTimings()` - Evenly distributes word start times across line duration
+- `hasValidWords()` - Validates existing word array matches line text
+- `ensureLineWords()` - Ensures line has valid words with distributed timings
 
 ## Playback Architecture
 

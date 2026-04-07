@@ -10,35 +10,37 @@
       <EditLyricsV2HeaderActions :is-dirty="isDirty" @save="saveLyrics" />
     </template>
 
+    <template #titleRight>
+      <div class="inline-flex gap-0.5">
+        <button
+          class="button text-sm h-8 w-24 rounded-l-full rounded-r-none"
+          :class="activeTab === 'plain' ? 'button-primary' : 'button-normal'"
+          @click="activeTab = 'plain'"
+        >
+          Plain
+        </button>
+        <button
+          class="button text-sm h-8 w-24 rounded-r-full rounded-l-none"
+          :class="activeTab === 'synced' ? 'button-primary' : 'button-normal'"
+          @click="activeTab = 'synced'"
+        >
+          Synced
+        </button>
+      </div>
+    </template>
+
     <div class="grow overflow-hidden flex flex-col gap-2 h-full">
       <div class="toolbar bg-brave-95 dark:bg-brave-10 rounded-lg">
-        <div class="px-2 pt-2">
-          <div class="inline-flex gap-1 p-1 rounded-full bg-brave-90 dark:bg-brave-20">
-            <button
-              class="button text-sm px-3 py-1 h-8 rounded-full"
-              :class="activeTab === 'plain' ? 'button-primary' : 'button-normal'"
-              @click="activeTab = 'plain'"
-            >
-              Plain lyrics
-            </button>
-            <button
-              class="button text-sm px-3 py-1 h-8 rounded-full"
-              :class="activeTab === 'synced' ? 'button-primary' : 'button-normal'"
-              @click="activeTab = 'synced'"
-            >
-              Synced lyrics
-            </button>
-          </div>
+        <div class="px-2 py-2">
+          <EditLyricsV2PlayerBar
+            :status="status"
+            :duration="duration"
+            :progress="progress"
+            @play-toggle="resumeOrPlay"
+            @pause="pause"
+            @seek="seek"
+          />
         </div>
-
-        <EditLyricsV2PlayerBar
-          :status="status"
-          :duration="duration"
-          :progress="progress"
-          @play-toggle="resumeOrPlay"
-          @pause="pause"
-          @seek="seek"
-        />
       </div>
 
       <PlainLyricsCodeEditor
@@ -56,6 +58,7 @@
         :can-import-from-plain="hasPlainLyrics"
         :selected-line-index="selectedSyncedLineIndex"
         :playing-line-index="currentPlayingSyncedLineIndex"
+        :progress-ms="progressMs"
         @update:model-value="updateSyncedLines"
         @update:selected-line-index="selectSyncedLine"
         @editing-state-change="setSyncedLineEditingState"
@@ -66,6 +69,8 @@
         @delete-line="deleteSyncedLine"
         @add-line-at="addSyncedLineAt"
         @import-lines-from-plain="importSyncedLinesFromPlain"
+        @update:words="updateLineWords"
+        @word-timing-edited="handleWordTimingEdited"
       />
     </div>
   </BaseModal>
@@ -93,6 +98,8 @@ const { disableHotkey, enableHotkey } = useGlobalState()
 const { status, duration, progress, playingTrack, playTrack, pause, resume, seek } = usePlayer()
 const { editingTrack } = useEditLyricsV2()
 const toast = useToast()
+
+const progressMs = computed(() => Math.max(0, Math.round(progress.value * 1000)))
 
 const activeTab = ref('plain')
 const {
@@ -142,6 +149,35 @@ const rewindLineBy100 = (lineIndex) => {
 const forwardLineBy100 = (lineIndex) => {
   forwardLineTimestampBy100(lineIndex)
   void playLine(lineIndex)
+}
+
+const updateLineWords = ({ lineIndex, words }) => {
+  if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+    return
+  }
+
+  const newLines = syncedLines.value.map((line, index) => {
+    if (index !== lineIndex) {
+      return line
+    }
+    return { ...line, words }
+  })
+
+  updateSyncedLines(newLines)
+}
+
+const handleWordTimingEdited = async ({ startMs }) => {
+  // Auto-replay from the beginning of the edited line for instant verification
+  const seekTo = Number.isFinite(startMs) ? startMs / 1000 : progress.value
+  
+  // Ensure we're playing the editing track
+  if (!playingTrack.value || playingTrack.value.id !== editingTrack.value?.id) {
+    await playTrack(editingTrack.value)
+  } else if (status.value === 'paused') {
+    resume()
+  }
+  
+  seek(seekTo)
 }
 
 watch(activeTab, (value) => {

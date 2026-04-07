@@ -5,7 +5,7 @@
       :title="title"
       :style="{ opacity }"
       :class="opacity > 0.05 ? '' : 'pointer-events-none'"
-      @click="emit('click')"
+      @click="(e) => emit('click', e)"
     >
       <Plus />
     </button>

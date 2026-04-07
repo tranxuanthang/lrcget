@@ -1,7 +1,18 @@
 <template>
-  <div class="grow overflow-hidden">
+  <div class="grow overflow-hidden flex flex-col">
+    <SyncedWordTimingLane
+      class="shrink-0 mt-2"
+      :selected-line="selectedLine"
+      :has-selected-line="hasSelectedLine"
+      :progress-ms="progressMs"
+      :all-lines="modelValue"
+      :selected-line-index="selectedLineIndex"
+      @update:words="handleWordsUpdate"
+      @word-timing-edited="handleWordTimingEdited"
+    />
+
     <div
-      class="h-full overflow-y-auto px-2 py-2"
+      class="flex-1 overflow-y-auto py-2"
       @mousemove="handleLinesMouseMove"
       @mouseleave="handleLinesMouseLeave"
       @scroll="handleLinesScroll"
@@ -17,7 +28,7 @@
         <SyncedInsertButton
           title="Add line before first"
           :opacity="insertControlOpacity(0)"
-          @click.stop="handleAddLineAt(0)"
+          @click="handleInsertButtonClick(0, $event)"
         />
 
         <template
@@ -53,14 +64,14 @@
             v-if="index < modelValue.length - 1"
             title="Add line between"
             :opacity="insertControlOpacity(index + 1)"
-            @click.stop="handleAddLineAt(index + 1)"
+            @click="handleInsertButtonClick(index + 1, $event)"
           />
         </template>
 
         <SyncedInsertButton
           title="Add line after last"
           :opacity="insertControlOpacity(modelValue.length)"
-          @click.stop="handleAddLineAt(modelValue.length)"
+          @click="handleInsertButtonClick(modelValue.length, $event)"
         />
       </template>
     </div>
@@ -68,10 +79,11 @@
 </template>
 
 <script setup>
-import { ref, toRef, watch } from 'vue'
+import { computed, ref, toRef, watch } from 'vue'
 import SyncedInsertButton from '@/components/library/edit-lyrics-v2/SyncedInsertButton.vue'
 import SyncedLyricsEmptyState from '@/components/library/edit-lyrics-v2/SyncedLyricsEmptyState.vue'
 import SyncedLyricsLineRow from '@/components/library/edit-lyrics-v2/SyncedLyricsLineRow.vue'
+import SyncedWordTimingLane from '@/components/library/edit-lyrics-v2/SyncedWordTimingLane.vue'
 import { useEditLyricsV2SyncedInlineEditing } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedInlineEditing.js'
 import { useEditLyricsV2SyncedInsertHover } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedInsertHover.js'
 import { formatTimestampMs } from '@/utils/lyricsfile.js'
@@ -92,6 +104,10 @@ const props = defineProps({
   canImportFromPlain: {
     type: Boolean,
     default: false
+  },
+  progressMs: {
+    type: Number,
+    default: 0
   }
 })
 
@@ -105,7 +121,9 @@ const emit = defineEmits([
   'delete-line',
   'add-line-at',
   'import-lines-from-plain',
-  'editing-state-change'
+  'editing-state-change',
+  'update:words',
+  'word-timing-edited'
 ])
 
 const hoveredLineIndex = ref(null)
@@ -188,6 +206,11 @@ const handleAddLineAt = (index) => {
   emit('add-line-at', index)
 }
 
+const handleInsertButtonClick = (index, event) => {
+  event.stopPropagation()
+  handleAddLineAt(index)
+}
+
 const handleImportLinesFromPlain = () => {
   emit('import-lines-from-plain')
 }
@@ -195,6 +218,21 @@ const handleImportLinesFromPlain = () => {
 const handleEditingTextUpdate = (value) => {
   editingText.value = value
 }
+
+const handleWordsUpdate = ({ lineIndex, words }) => {
+  emit('update:words', { lineIndex, words })
+}
+
+const handleWordTimingEdited = ({ lineIndex, startMs }) => {
+  emit('word-timing-edited', { lineIndex, startMs })
+}
+
+const hasSelectedLine = computed(() => props.selectedLineIndex >= 0 && props.selectedLineIndex < props.modelValue.length)
+
+const selectedLine = computed(() => {
+  if (!hasSelectedLine.value) return null
+  return props.modelValue[props.selectedLineIndex]
+})
 
 watch(() => props.modelValue.length, (lineCount) => {
   handleInsertHoverLineCountChange(lineCount)

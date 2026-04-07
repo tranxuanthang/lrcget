@@ -19,6 +19,10 @@
         {{ title }}
       </div>
 
+      <div class="flex-none flex items-center gap-2" :class="{ 'pr-14': closeButton }">
+        <slot name="titleRight" />
+      </div>
+
       <button
         v-if="closeButton"
         class="absolute top-1/2 right-0 -translate-y-1/2 flex-none button text-brave-30 dark:text-brave-90 rounded-full h-12 w-12"
