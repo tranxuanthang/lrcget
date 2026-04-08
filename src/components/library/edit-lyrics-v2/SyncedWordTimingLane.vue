@@ -1,6 +1,6 @@
 <template>
   <div
-    class="word-timing-lane relative flex flex-col px-2 py-2 rounded-lg overflow-hidden h-[5rem]"
+    class="relative flex flex-col px-2 py-2 rounded-lg overflow-hidden h-[5rem] transition-[min-height] duration-200 ease-out"
     :class="hasSelectedLine ? 'bg-brave-95 dark:bg-brave-10' : 'bg-brave-98 dark:bg-brave-5'
 "
   >
@@ -72,7 +72,7 @@
       <!-- Timeline with word segments -->
       <div
         ref="timelineElement"
-        class="timeline-container relative flex-1 bg-brave-98 dark:bg-brave-5 rounded border border-brave-80 dark:border-brave-25"
+        class="relative flex-1 bg-brave-98 dark:bg-brave-5 rounded border border-brave-80 dark:border-brave-25"
         @click="handleTimelineClick"
       >
         <!-- Timeline grid lines (every 500ms) -->
@@ -103,26 +103,25 @@
           v-for="index in boundaryIndexes"
           :key="`boundary-${index}`"
           type="button"
-          class="boundary-handle absolute top-0 bottom-0 z-30 -ml-2 w-4 cursor-ew-resize"
-          :class="{
-            'is-active': dragState?.rightWordIndex === index || (!dragState && selectedBoundaryIndex === index),
-            'is-selected': !dragState && selectedBoundaryIndex === index
-          }"
+          class="group absolute top-0 bottom-0 z-30 -ml-2 w-4 cursor-ew-resize bg-transparent"
           :style="{ left: `${timeToPercent(displayedWords[index].start_ms)}%` }"
           :title="`Adjust start of ${displayedWords[index].text}`"
-          @pointerdown="startBoundaryDrag(index, $event)"
+          @pointerdown="handleBoundaryPointerDown(index, $event)"
           @click="selectBoundary(index)"
         >
-          <span class="boundary-line" />
+          <span
+            class="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2 transition-all duration-150 ease-linear bg-brave-70/70 dark:bg-brave-60/70 group-hover:bg-brave-50 dark:group-hover:bg-brave-70 group-hover:w-[3px] group-hover:ring-1 group-hover:ring-brave-50/25"
+            :class="getBoundaryLineClass(index)"
+          />
         </button>
 
         <div
           v-if="dragState"
-          class="boundary-overlay absolute inset-y-0 z-20 pointer-events-none"
+          class="absolute inset-y-0 z-20 pointer-events-none"
           :style="{ left: `${timeToPercent(dragState.currentStartMs)}%` }"
         >
-          <div class="boundary-overlay-line" />
-          <div class="boundary-overlay-badge">
+          <div class="absolute top-0 bottom-0 w-[3px] -translate-x-1/2 bg-brave-50 dark:bg-brave-70 ring-1 ring-brave-50/25" />
+          <div class="absolute top-[-0.375rem] left-0 -translate-x-1/2 -translate-y-full px-[0.4rem] py-0.5 rounded-full text-xs leading-4 whitespace-nowrap text-brave-20 bg-brave-80 dark:text-brave-95 dark:bg-brave-30">
             {{ formatTimestampMs(dragState.currentStartMs) }}
           </div>
         </div>
@@ -144,6 +143,8 @@
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 import { Equal, Play, Undo } from 'mdue'
 import SyncedWordTimingSegment from '@/components/library/edit-lyrics-v2/SyncedWordTimingSegment.vue'
+import { useEditLyricsV2WordBoundaryDrag } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordBoundaryDrag.js'
+import { useEditLyricsV2WordTimingHotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordTimingHotkeys.js'
 import { formatTimestampMs } from '@/utils/lyricsfile.js'
 import { ensureLineWords, distributeWordTimings } from '@/utils/word-tokenizer.js'
 
@@ -174,9 +175,6 @@ const emit = defineEmits(['update:words', 'word-timing-edited', 'play-line', 'se
 
 const timelineElement = ref(null)
 const timelineWidth = ref(0)
-const dragState = ref(null)
-const selectedBoundaryIndex = ref(1) // First drag handle (boundary between word 0 and 1) is selected by default
-const isDraggingBoundary = ref(false)
 
 // Availability checks for word sync feature
 const hasLineContent = computed(() => {
@@ -220,6 +218,10 @@ const lineEndMs = computed(() => {
   return 2000
 })
 
+const lineStartMs = computed(() => {
+  return Number.isFinite(props.selectedLine?.start_ms) ? props.selectedLine.start_ms : 0
+})
+
 const words = computed(() => {
   if (!isWordSyncAvailable.value) return []
 
@@ -232,42 +234,34 @@ const words = computed(() => {
   return lineWithWords.words || []
 })
 
-const displayedWords = computed(() => {
-  const currentWords = words.value
-
-  if (!dragState.value) {
-    return currentWords
-  }
-
-  return currentWords.map((word, index) => {
-    if (index !== dragState.value.rightWordIndex) {
-      return word
-    }
-
-    return {
-      ...word,
-      start_ms: dragState.value.currentStartMs
-    }
-  })
+const {
+  dragState,
+  displayedWords,
+  boundaryIndexes,
+  selectedBoundaryIndex,
+  startBoundaryDrag,
+  selectBoundary,
+  syncSelectedBoundary,
+  resetBoundarySelection,
+  cancelBoundaryInteraction
+} = useEditLyricsV2WordBoundaryDrag({
+  isWordSyncAvailable,
+  words,
+  lineStartMs,
+  lineEndMs,
+  selectedLineIndex: computed(() => props.selectedLineIndex),
+  onUpdateWords: (payload) => emit('update:words', payload),
+  onWordTimingEdited: (payload) => emit('word-timing-edited', payload)
 })
 
 const playheadPercent = computed(() => {
   if (!isWordSyncAvailable.value) return 0
 
-  const duration = lineEndMs.value - props.selectedLine.start_ms
+  const duration = lineEndMs.value - lineStartMs.value
   if (duration <= 0) return 0
 
-  const elapsed = props.progressMs - props.selectedLine.start_ms
+  const elapsed = props.progressMs - lineStartMs.value
   return Math.max(0, Math.min(100, (elapsed / duration) * 100))
-})
-
-const gridLinesCount = computed(() => {
-  if (!isWordSyncAvailable.value) return 0
-
-  const duration = lineEndMs.value - props.selectedLine.start_ms
-  if (!Number.isFinite(duration) || duration <= 0) return 0
-
-  return Math.max(0, Math.floor(duration / 500) - 1)
 })
 
 const updateTimelineWidth = () => {
@@ -279,40 +273,32 @@ const updateTimelineWidth = () => {
 const timeToPercent = (timeMs) => {
   if (!isWordSyncAvailable.value) return 0
 
-  const duration = lineEndMs.value - props.selectedLine.start_ms
+  const duration = lineEndMs.value - lineStartMs.value
   if (duration <= 0) return 0
 
-  const elapsed = timeMs - props.selectedLine.start_ms
+  const elapsed = timeMs - lineStartMs.value
   return Math.max(0, Math.min(100, (elapsed / duration) * 100))
 }
 
 const clientXToTime = (clientX) => {
   if (!timelineElement.value || !isWordSyncAvailable.value) {
-    return props.selectedLine?.start_ms || 0
+    return lineStartMs.value
   }
 
-  if (lineEndMs.value <= props.selectedLine.start_ms) {
-    return props.selectedLine?.start_ms || 0
+  if (lineEndMs.value <= lineStartMs.value) {
+    return lineStartMs.value
   }
 
   const rect = timelineElement.value.getBoundingClientRect()
   const width = rect.width
   if (width <= 0) {
-    return props.selectedLine.start_ms
+    return lineStartMs.value
   }
 
   const clampedX = Math.max(0, Math.min(width, clientX - rect.left))
-  const duration = lineEndMs.value - props.selectedLine.start_ms
-  return Math.round(props.selectedLine.start_ms + (clampedX / width) * duration)
+  const duration = lineEndMs.value - lineStartMs.value
+  return Math.round(lineStartMs.value + (clampedX / width) * duration)
 }
-
-const boundaryIndexes = computed(() => {
-  if (displayedWords.value.length < 2) {
-    return []
-  }
-
-  return Array.from({ length: displayedWords.value.length - 1 }, (_, index) => index + 1)
-})
 
 const getWordEndMs = (index) => {
   if (index >= displayedWords.value.length - 1) {
@@ -323,155 +309,27 @@ const getWordEndMs = (index) => {
   return Number.isFinite(nextWordStart) ? nextWordStart : lineEndMs.value
 }
 
-const getBoundaryConstraint = (rightWordIndex) => {
-  const currentWords = words.value
-  const previousStartMs = currentWords[rightWordIndex - 1]?.start_ms ?? props.selectedLine?.start_ms ?? 0
-  const nextStartMs = currentWords[rightWordIndex + 1]?.start_ms
-  const minStartMs = previousStartMs + 1
-  const maxStartMs = Number.isFinite(nextStartMs)
-    ? nextStartMs - 1
-    : lineEndMs.value - 1
-
-  return {
-    minStartMs,
-    maxStartMs: Math.max(minStartMs, maxStartMs)
-  }
+const handleBoundaryPointerDown = (rightWordIndex, event) => {
+  startBoundaryDrag(rightWordIndex, event, clientXToTime)
 }
 
-const updateDragPosition = (clientX) => {
-  if (!dragState.value) {
-    return
+const getBoundaryLineClass = (index) => {
+  const isActive = dragState.value?.rightWordIndex === index || (!dragState.value && selectedBoundaryIndex.value === index)
+  const isSelected = !dragState.value && selectedBoundaryIndex.value === index
+
+  if (isSelected) {
+    return 'bg-brave-60 dark:bg-brave-70 w-[3px] ring-2 ring-brave-70/35'
   }
 
-  const { minStartMs, maxStartMs } = getBoundaryConstraint(dragState.value.rightWordIndex)
-  const nextStartMs = clientXToTime(clientX)
-  dragState.value = {
-    ...dragState.value,
-    currentStartMs: Math.max(minStartMs, Math.min(maxStartMs, nextStartMs))
-  }
-}
-
-const commitDraggedBoundary = () => {
-  if (!dragState.value) {
-    return
+  if (isActive) {
+    return 'bg-brave-50 dark:bg-brave-70 w-[3px] ring-1 ring-brave-50/25'
   }
 
-  const { rightWordIndex, currentStartMs, initialStartMs } = dragState.value
-  const hasChanged = currentStartMs !== initialStartMs
-
-  if (hasChanged) {
-    emit('update:words', {
-      lineIndex: props.selectedLineIndex,
-      words: words.value.map((word, index) => {
-        if (index !== rightWordIndex) {
-          return word
-        }
-
-        return {
-          ...word,
-          start_ms: currentStartMs
-        }
-      })
-    })
-
-    // Emit event to trigger auto-replay from the beginning of the edited line
-    emit('word-timing-edited', {
-      lineIndex: props.selectedLineIndex,
-      startMs: props.selectedLine?.start_ms
-    })
-  }
-}
-
-const stopBoundaryDrag = () => {
-  document.removeEventListener('pointermove', handlePointerMove)
-  document.removeEventListener('pointerup', handlePointerUp)
-  document.removeEventListener('pointercancel', handlePointerUp)
-}
-
-const handlePointerMove = (event) => {
-  isDraggingBoundary.value = true
-  updateDragPosition(event.clientX)
-}
-
-const handlePointerUp = () => {
-  commitDraggedBoundary()
-  // Small delay before clearing drag state so click handler knows we were dragging
-  setTimeout(() => {
-    isDraggingBoundary.value = false
-  }, 0)
-  dragState.value = null
-  stopBoundaryDrag()
-}
-
-const startBoundaryDrag = (rightWordIndex, event) => {
-  event.preventDefault()
-  event.stopPropagation()
-
-  if (!isWordSyncAvailable.value || rightWordIndex <= 0 || rightWordIndex >= words.value.length) {
-    return
-  }
-
-  isDraggingBoundary.value = false
-  const initialStartMs = words.value[rightWordIndex].start_ms
-  dragState.value = {
-    rightWordIndex,
-    initialStartMs,
-    currentStartMs: initialStartMs
-  }
-
-  updateDragPosition(event.clientX)
-  document.addEventListener('pointermove', handlePointerMove)
-  document.addEventListener('pointerup', handlePointerUp)
-  document.addEventListener('pointercancel', handlePointerUp)
-}
-
-const selectBoundary = (index) => {
-  if (!isWordSyncAvailable.value || index <= 0 || index >= words.value.length) {
-    return
-  }
-  // Don't select if we just finished dragging
-  if (isDraggingBoundary.value) {
-    return
-  }
-  selectedBoundaryIndex.value = index
+  return ''
 }
 
 const handleSyncWord = () => {
-  if (!isWordSyncAvailable.value) return
-
-  const rightWordIndex = selectedBoundaryIndex.value
-  if (rightWordIndex <= 0 || rightWordIndex >= words.value.length) return
-
-  const currentProgress = props.progressMs
-  const { minStartMs, maxStartMs } = getBoundaryConstraint(rightWordIndex)
-
-  // Clamp the sync time to valid boundaries
-  const newStartMs = Math.max(minStartMs, Math.min(maxStartMs, currentProgress))
-
-  const oldStartMs = words.value[rightWordIndex].start_ms
-  const hasChanged = newStartMs !== oldStartMs
-
-  if (hasChanged) {
-    emit('update:words', {
-      lineIndex: props.selectedLineIndex,
-      words: words.value.map((word, index) => {
-        if (index !== rightWordIndex) {
-          return word
-        }
-        return {
-          ...word,
-          start_ms: newStartMs
-        }
-      })
-    })
-    // Note: Does NOT emit 'word-timing-edited' - line is not replayed
-  }
-
-  // Move to next boundary (if not at the last word)
-  const nextIndex = rightWordIndex + 1
-  if (nextIndex < words.value.length) {
-    selectedBoundaryIndex.value = nextIndex
-  }
+  syncSelectedBoundary(props.progressMs)
 }
 
 const handlePlayLine = () => {
@@ -479,44 +337,21 @@ const handlePlayLine = () => {
   emit('play-line', props.selectedLineIndex)
 }
 
-// Keyboard shortcuts
-const handleKeyDown = (event) => {
-  // Only handle shortcuts when word sync is available and we're not editing
-  if (!isWordSyncAvailable.value) return
-
-  // Don't trigger if user is typing in an input
-  if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') return
-
-  switch (event.key.toLowerCase()) {
-    case 'z':
-      event.preventDefault()
-      handleSyncWord()
-      break
-    case 'x':
-      event.preventDefault()
-      // Check if we're at the last word handle BEFORE syncing
-      const isAtLastBoundary = selectedBoundaryIndex.value >= words.value.length - 1
-      // Sync current word
-      handleSyncWord()
-      // If we were at the last word handle, move to next line
-      if (isAtLastBoundary) {
-        // Check if there's a next line to move to
-        const nextLineIndex = props.selectedLineIndex + 1
-        if (nextLineIndex < props.allLines.length) {
-          // Emit event to select next line - parent will handle this
-          emit('select-next-line', nextLineIndex)
-        }
-      }
-      break
-  }
-}
+const { bindWordTimingHotkeys, unbindWordTimingHotkeys } = useEditLyricsV2WordTimingHotkeys({
+  isWordSyncAvailable,
+  selectedBoundaryIndex,
+  words,
+  selectedLineIndex: computed(() => props.selectedLineIndex),
+  allLines: computed(() => props.allLines),
+  syncSelectedBoundaryAtProgress: () => handleSyncWord(),
+  onSelectNextLine: (nextLineIndex) => emit('select-next-line', nextLineIndex)
+})
 
 watch(() => props.selectedLineIndex, (newIndex, oldIndex) => {
-  stopBoundaryDrag()
-  dragState.value = null
+  cancelBoundaryInteraction()
   // Only reset boundary index when actually changing to a different line
   if (newIndex !== oldIndex) {
-    selectedBoundaryIndex.value = 1 // Reset to first boundary when line changes
+    resetBoundarySelection()
   }
   nextTick(() => {
     updateTimelineWidth()
@@ -541,7 +376,7 @@ const handleDistributeEvenly = () => {
   })
 
   // Reset selected boundary to first after distribute evenly
-  selectedBoundaryIndex.value = 1
+  resetBoundarySelection()
 
   // Emit event to trigger auto-replay from the beginning of the edited line
   emit('word-timing-edited', {
@@ -563,112 +398,25 @@ watch(() => props.hasSelectedLine, (hasLine) => {
 }, { immediate: true })
 
 watch(isWordSyncAvailable, (available) => {
-  if (!available && dragState.value) {
-    dragState.value = null
-    stopBoundaryDrag()
+  if (!available) {
+    cancelBoundaryInteraction()
   }
 })
 
 watch(() => props.allLines, () => {
   if (dragState.value) {
-    dragState.value = null
-    stopBoundaryDrag()
+    cancelBoundaryInteraction()
   }
 }, { deep: true })
 
 onMounted(() => {
   window.addEventListener('resize', updateTimelineWidth)
-  window.addEventListener('keydown', handleKeyDown)
+  bindWordTimingHotkeys()
 })
 
 onUnmounted(() => {
-  stopBoundaryDrag()
+  cancelBoundaryInteraction()
   window.removeEventListener('resize', updateTimelineWidth)
-  window.removeEventListener('keydown', handleKeyDown)
+  unbindWordTimingHotkeys()
 })
 </script>
-
-<style scoped>
-.word-timing-lane {
-  transition: min-height 0.2s ease;
-}
-
-.timeline-container {
-  position: relative;
-}
-
-.boundary-handle {
-  background: transparent;
-}
-
-.boundary-line {
-  position: absolute;
-  left: 50%;
-  top: 0;
-  bottom: 0;
-  width: 2px;
-  transform: translateX(-50%);
-  background: rgba(148, 163, 184, 0.9);
-  transition: background-color 0.12s ease, width 0.12s ease, box-shadow 0.12s ease;
-}
-
-.boundary-handle:hover .boundary-line,
-.boundary-handle.is-active .boundary-line,
-.boundary-handle.is-selected .boundary-line {
-  background: rgba(56, 189, 248, 0.95);
-  width: 3px;
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.18);
-}
-
-/* Lightened up color for selected state (when not dragging) */
-.boundary-handle.is-selected .boundary-line {
-  background: rgba(125, 211, 252, 0.95);
-  box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.3);
-}
-
-.boundary-overlay-line {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  width: 3px;
-  transform: translateX(-50%);
-  background: rgba(56, 189, 248, 0.95);
-  box-shadow: 0 0 0 1px rgba(56, 189, 248, 0.18);
-}
-
-.boundary-overlay-badge {
-  position: absolute;
-  top: -0.375rem;
-  left: 0;
-  transform: translate(-50%, -100%);
-  padding: 0.125rem 0.4rem;
-  border-radius: 9999px;
-  font-size: 0.75rem;
-  line-height: 1rem;
-  white-space: nowrap;
-  color: rgb(15 23 42);
-  background: rgb(125 211 252);
-}
-
-:global(.dark) .boundary-line {
-  background: rgba(100, 116, 139, 0.9);
-}
-
-:global(.dark) .boundary-handle:hover .boundary-line,
-:global(.dark) .boundary-handle.is-active .boundary-line,
-:global(.dark) .boundary-handle.is-selected .boundary-line,
-:global(.dark) .boundary-overlay-line {
-  background: rgba(125, 211, 252, 0.95);
-}
-
-/* Lightened up color for selected state in dark mode (when not dragging) */
-:global(.dark) .boundary-handle.is-selected .boundary-line {
-  background: rgba(125, 211, 252, 0.95);
-  box-shadow: 0 0 0 2px rgba(125, 211, 252, 0.4);
-}
-
-:global(.dark) .boundary-overlay-badge {
-  color: rgb(226 232 240);
-  background: rgb(14 116 144);
-}
-</style>

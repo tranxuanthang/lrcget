@@ -42,7 +42,7 @@ src/
 │   ├── downloader.js                # Shared download queue and progress state
 │   ├── edit-lyrics.js               # Opens the legacy edit-lyrics modal flow
 │   ├── edit-lyrics-v2.js            # Opens the EditLyricsV2 modal flow
-│   ├── edit-lyrics-v2/              # V2 lyricsfile document, playback, synced hotkey, insert-hover, and inline-edit composables
+│   ├── edit-lyrics-v2/              # V2 lyricsfile document, playback, synced hotkey, insert-hover, inline-edit, word-boundary drag, and word-timing hotkey composables
 │   ├── edit-lyrics/                 # Edit modal document, hotkey, publish, and playback-sync composables
 │   ├── global-state.js              # Shared theme/hotkey/LRCLIB instance state
 │   ├── player.js                    # Shared playback state backed by Tauri events
@@ -263,6 +263,8 @@ The V2 modal keeps layout wiring in `EditLyricsV2.vue` while delegating mutable 
 - `SyncedWordTimingSegment.vue` - Visual word segment component sized by adjacent word boundaries
 - `useEditLyricsV2SyncedInsertHover()` for insert-hover geometry and opacity behavior
 - `useEditLyricsV2SyncedInlineEditing()` for inline row text edit lifecycle and emit wiring
+- `useEditLyricsV2WordBoundaryDrag()` for boundary drag threshold handling, pointer listener lifecycle, constrained timing updates, and boundary selection/sync progression
+- `useEditLyricsV2WordTimingHotkeys()` for `z`/`x` shortcuts in the word timing lane, including next-line advance when syncing the last boundary
 
 **Word Timing Lane**
 
