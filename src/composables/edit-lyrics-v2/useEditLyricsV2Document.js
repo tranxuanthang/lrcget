@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core'
 import { computed, ref, watch } from 'vue'
-import { createSyncedLinesFromPlain, parseLyricsfile, serializeLyricsfile } from '@/utils/lyricsfile.js'
+import { createSyncedLinesFromPlain, normalizeSyncedLine, parseLyricsfile, serializeLyricsfile } from '@/utils/lyricsfile.js'
 
 const createEmptySyncedLine = () => ({
   text: '',
@@ -55,7 +55,11 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     const parsed = parseLyricsfile(track.lyricsfile)
 
     plainLyrics.value = parsed.plainLyrics
-    syncedLines.value = createSyncedLinesFromPlain(parsed.plainLyrics, parsed.syncedLines)
+    // Load synced lines independently from plain lyrics
+    // This allows users to have different structures (e.g., annotations, empty lines)
+    syncedLines.value = parsed.syncedLines.map((line) => normalizeSyncedLine(line))
+
+    console.log('syncedLines', syncedLines.value)
     lyricsfileDocument.value = parsed.document
     isDirty.value = false
     isSyncedLineEditing.value = false
@@ -64,9 +68,10 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
 
   const updatePlainLyrics = (lyrics) => {
     plainLyrics.value = lyrics
-    syncedLines.value = createSyncedLinesFromPlain(lyrics, syncedLines.value)
+    // Plain and synced lyrics are now independent - editing plain lyrics
+    // does not automatically update synced lines, allowing users to have
+    // different structures (e.g., annotations like [chorus], empty lines)
     isDirty.value = true
-    ensureSelectedSyncedLine()
   }
 
   const updateSyncedLines = (lines) => {
@@ -239,7 +244,9 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
       })
 
       const parsed = parseLyricsfile(lyricsfile)
-      syncedLines.value = createSyncedLinesFromPlain(parsed.plainLyrics, parsed.syncedLines)
+      // Preserve independent synced lines structure after save
+      // Don't re-sync to plain lyrics to maintain separate structures
+      syncedLines.value = parsed.syncedLines.map((line) => normalizeSyncedLine(line))
       lyricsfileDocument.value = parsed.document
       isDirty.value = false
     } catch (error) {

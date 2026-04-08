@@ -95,7 +95,7 @@ const cloneWords = (words) => {
   }))
 }
 
-const normalizeSyncedLine = (line, fallbackText = '') => {
+export const normalizeSyncedLine = (line, fallbackText = '') => {
   const words = cloneWords(line?.words)
   const textFromWords = words.map((word) => word.text || '').join('')
   const text = typeof line?.text === 'string'

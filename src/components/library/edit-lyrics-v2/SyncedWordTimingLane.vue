@@ -72,7 +72,7 @@
       <!-- Timeline with word segments -->
       <div
         ref="timelineElement"
-        class="timeline-container relative flex-1 bg-brave-98 dark:bg-brave-5 rounded border border-brave-80 dark:border-brave-25 overflow-hidden"
+        class="timeline-container relative flex-1 bg-brave-98 dark:bg-brave-5 rounded border border-brave-80 dark:border-brave-25"
         @click="handleTimelineClick"
       >
         <!-- Timeline grid lines (every 500ms) -->
@@ -130,10 +130,10 @@
         <!-- Current playhead indicator -->
         <div
           v-if="progressMs >= selectedLine.start_ms && progressMs <= lineEndMs"
-          class="absolute top-0 bottom-0 w-0.5 bg-brave-40 dark:bg-brave-60 z-20 pointer-events-none"
+          class="absolute -top-1 bottom-0 w-px bg-brave-40/80 dark:bg-brave-50 z-20 pointer-events-none"
           :style="{ left: `${playheadPercent}%` }"
         >
-          <div class="absolute -top-1 -left-1.5 w-4 h-4 rounded-full bg-brave-40 dark:bg-brave-60" />
+          <div class="absolute -top-1 -left-[3px] w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-brave-40/80 dark:border-t-brave-50" />
         </div>
       </div>
     </template>

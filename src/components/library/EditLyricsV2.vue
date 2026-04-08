@@ -2,7 +2,7 @@
   <BaseModal
     :click-to-close="false"
     :esc-to-close="false"
-    content-class="w-full h-[80vh] max-w-screen-lg"
+    content-class="w-full h-[95vh] max-w-screen-lg"
     :title="modalTitle"
     @close="emit('close')"
   >
@@ -179,14 +179,14 @@ const handleUpdateLineText = (lineIndex, newText) => {
 const handleWordTimingEdited = async ({ startMs }) => {
   // Auto-replay from the beginning of the edited line for instant verification
   const seekTo = Number.isFinite(startMs) ? startMs / 1000 : progress.value
-  
+
   // Ensure we're playing the editing track
   if (!playingTrack.value || playingTrack.value.id !== editingTrack.value?.id) {
     await playTrack(editingTrack.value)
   } else if (status.value === 'paused') {
     resume()
   }
-  
+
   seek(seekTo)
 }
 

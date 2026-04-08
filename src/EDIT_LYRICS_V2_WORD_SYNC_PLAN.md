@@ -212,4 +212,5 @@ When unavailable, the lane stays visible and shows a short placeholder reason (n
 - **SyncedLyricsEditor.vue**: Mount lane as fixed header above the scrollable lyrics list
 - **word-tokenizer.js**: Tokenization utilities (Latin + CJK), word validation, distribute evenly
 - **useEditLyricsV2Document.js**: Keep word timing consistent when line text/start time changes
+  - **NOTE**: Plain lyrics and synced lyrics are now independent. Editing plain lyrics does not automatically update synced lines, allowing users to have different structures (e.g., annotations like `[chorus]`, empty lines). Use `importSyncedLinesFromPlain` for explicit import.
 - **EditLyricsV2.vue**: Wire playback progress to lane for playhead sync, pass selected line to lane, handle `word-timing-edited` event for auto-replay
