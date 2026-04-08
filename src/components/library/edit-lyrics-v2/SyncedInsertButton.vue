@@ -1,7 +1,7 @@
 <template>
   <div class="relative h-0">
     <button
-      class="button button-normal absolute left-1/2 -translate-x-1/2 -translate-y-1/2 p-0.5 rounded-full text-xs"
+      class="button-normal absolute left-1/2 -translate-x-1/2 -translate-y-1/2 p-0.5 rounded-full text-xs"
       :title="title"
       :style="{ opacity }"
       :class="opacity > 0.05 ? '' : 'pointer-events-none'"
