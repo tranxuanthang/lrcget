@@ -7,7 +7,7 @@
     @close="emit('close')"
   >
     <template #titleLeft>
-      <EditLyricsV2HeaderActions :is-dirty="isDirty" @save="saveLyrics" />
+      <EditLyricsV2HeaderActions :is-dirty="isDirty" @save="saveLyrics" @debug="openDebugModal" />
     </template>
 
     <template #titleRight>
@@ -80,7 +80,9 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
 import { useToast } from 'vue-toastification'
+import { useModal } from 'vue-final-modal'
 import BaseModal from '@/components/common/BaseModal.vue'
+import EditLyricsV2DebugModal from '@/components/library/edit-lyrics-v2/EditLyricsV2DebugModal.vue'
 import EditLyricsV2HeaderActions from '@/components/library/edit-lyrics-v2/EditLyricsV2HeaderActions.vue'
 import EditLyricsV2PlayerBar from '@/components/library/edit-lyrics-v2/EditLyricsV2PlayerBar.vue'
 import PlainLyricsCodeEditor from '@/components/library/edit-lyrics-v2/PlainLyricsCodeEditor.vue'
@@ -92,6 +94,7 @@ import { useEditLyricsV2Playback } from '@/composables/edit-lyrics-v2/useEditLyr
 import { useEditLyricsV2SyncedHotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedHotkeys.js'
 import { useGlobalState } from '@/composables/global-state.js'
 import { usePlayer } from '@/composables/player.js'
+import { serializeLyricsfile } from '@/utils/lyricsfile.js'
 
 const emit = defineEmits(['close'])
 
@@ -106,6 +109,7 @@ const activeTab = ref('plain')
 const {
   plainLyrics,
   syncedLines,
+  lyricsfileDocument,
   isDirty,
   selectedSyncedLineIndex,
   isSyncedLineEditing,
@@ -215,6 +219,26 @@ const changeCodemirrorFontSizeBy = (offset) => {
 const resetCodemirrorFontSize = () => {
   codemirrorStyle.value.fontSize = 1.0
 }
+
+const debugModalContent = computed(() => {
+  if (!editingTrack.value) return ''
+  return serializeLyricsfile({
+    track: editingTrack.value,
+    plainLyrics: plainLyrics.value,
+    syncedLines: syncedLines.value,
+    baseDocument: lyricsfileDocument.value
+  }) || ''
+})
+
+const { open: openDebugModal, close: closeDebugModal } = useModal({
+  component: EditLyricsV2DebugModal,
+  attrs: {
+    content: debugModalContent,
+    onClose() {
+      closeDebugModal()
+    }
+  }
+})
 
 const modalTitle = computed(() => {
   if (!editingTrack.value) {

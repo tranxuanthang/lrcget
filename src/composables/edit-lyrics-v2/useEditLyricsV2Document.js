@@ -280,6 +280,7 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
   return {
     plainLyrics,
     syncedLines,
+    lyricsfileDocument,
     isDirty,
     selectedSyncedLineIndex,
     isSyncedLineEditing,

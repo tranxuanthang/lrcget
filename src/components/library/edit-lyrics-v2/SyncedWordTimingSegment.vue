@@ -1,6 +1,6 @@
 <template>
   <div
-    class="word-segment absolute flex items-center justify-center px-2 py-2 text-sm select-none h-[2rem]"
+    class="word-segment absolute flex items-center justify-center px-1 py-1 text-sm select-none h-full"
     :class="segmentClass"
     :style="segmentStyle"
     :title="`${word.text} (${formatTimestampMs(startMs)} - ${formatTimestampMs(endMs)})`"

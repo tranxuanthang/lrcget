@@ -1,7 +1,7 @@
 <template>
   <div
-    class="word-timing-lane relative flex flex-col px-4 py-3 rounded-lg overflow-hidden"
-    :class="hasSelectedLine ? 'bg-brave-95 dark:bg-brave-10 min-h-[5rem]' : 'bg-brave-98 dark:bg-brave-5 min-h-[3.5rem]'
+    class="word-timing-lane relative flex flex-col px-2 py-2 rounded-lg overflow-hidden h-[5rem]"
+    :class="hasSelectedLine ? 'bg-brave-95 dark:bg-brave-10' : 'bg-brave-98 dark:bg-brave-5'
 "
   >
     <!-- Empty state - no line selected -->
@@ -48,6 +48,7 @@
             @click="handlePlayLine"
           >
             <Play class="w-3.5 h-3.5" />
+            <span>Play</span>
           </button>
           <button
             class="button button-primary text-xs px-2 py-1 rounded flex items-center gap-1"
@@ -71,18 +72,18 @@
       <!-- Timeline with word segments -->
       <div
         ref="timelineElement"
-        class="timeline-container relative flex-1 min-h-[2rem] bg-brave-98 dark:bg-brave-5 rounded border border-brave-80 dark:border-brave-25 overflow-hidden"
+        class="timeline-container relative flex-1 bg-brave-98 dark:bg-brave-5 rounded border border-brave-80 dark:border-brave-25 overflow-hidden"
         @click="handleTimelineClick"
       >
         <!-- Timeline grid lines (every 500ms) -->
-        <div class="absolute inset-0 pointer-events-none">
+        <!-- <div class="absolute inset-0 pointer-events-none">
           <template v-for="n in gridLinesCount" :key="n">
             <div
               class="absolute top-0 bottom-0 w-px bg-brave-80 dark:bg-brave-30 opacity-50"
               :style="{ left: `${(n / gridLinesCount) * 100}%` }"
             />
           </template>
-        </div>
+        </div> -->
 
         <!-- Word segments -->
         <SyncedWordTimingSegment

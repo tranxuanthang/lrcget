@@ -17,11 +17,24 @@
         </div>
       </template>
     </VTooltip>
+
+    <VTooltip theme="lrcget-tooltip">
+      <button
+        class="button text-sm px-3 py-1.5 h-8 rounded-full button-normal"
+        @click="emit('debug')"
+      >
+        Debug
+      </button>
+
+      <template #popper>
+        <div class="text-xs font-bold">View YAML debug</div>
+      </template>
+    </VTooltip>
   </div>
 </template>
 
 <script setup>
-const emit = defineEmits(['save'])
+const emit = defineEmits(['save', 'debug'])
 
 defineProps({
   isDirty: {

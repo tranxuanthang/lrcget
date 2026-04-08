@@ -1,7 +1,7 @@
 <template>
   <VueFinalModal
     class="flex justify-center items-center"
-    :content-class="['modal-content p-6 gap-6 flex flex-col', contentClass]"
+    :content-class="['modal-content p-6 gap-6 flex flex-col min-h-0', contentClass]"
     overlay-class="bg-brave-1/70 dark:bg-brave-1/70"
     overlay-transition="fade"
     content-transition="pop-fade"
@@ -32,7 +32,7 @@
       </button>
     </div>
 
-    <div :class="bodyClass">
+    <div :class="['min-h-0', bodyClass]">
       <slot />
     </div>
 

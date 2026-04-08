@@ -2,11 +2,13 @@ This is LRCGET — a desktop music player with synced lyrics support.
 
 Stack: Tauri v2 (Rust backend + Vue 3 frontend).
 
-For project structure:
+To help you quickly understand the project architecture:
 
-- Frontend Vue part: see `src/ARCHITECTURE.md` file.
-- Backend Rust part: see `src-tauri/ARCHITECTURE.md` file.
+- For the frontend (Vue), see `src/ARCHITECTURE.md`.
+- For the backend (Rust), see `src-tauri/ARCHITECTURE.md`.
 
-After completing changes, update `ARCHITECTURE.md` files as needed.
+Read these files before working on the corresponding frontend or backend tasks.
 
-If the changes are related to the backend, run `cargo check` to check the backend.
+After completing your changes, update these two `ARCHITECTURE.md` files as needed.
+
+If your changes are related to the backend, run `cargo check` in the `src-tauri/` directory. If your changes are only related to the frontend, you do not need to run any checks.

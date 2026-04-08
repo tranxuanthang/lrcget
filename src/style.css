@@ -119,10 +119,6 @@ body {
   @apply bg-brave-98 box-border border border-brave-90 focus:border-brave-80 outline-none text-sm rounded-lg transition text-brave-35 placeholder:text-brave-70 resize-none;
 }
 
-.modal-content {
-  @apply rounded-lg bg-white flex flex-col m-2 select-none;
-}
-
 .Vue-Toastification__toast.lrcget-toast {
   padding: 12px 24px !important;
   min-width: auto !important;

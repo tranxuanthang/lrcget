@@ -1,7 +1,7 @@
 <template>
   <div
     ref="rowElement"
-    class="group flex items-center gap-2 px-2 py-1.5 rounded-md transition-colors h-9"
+    class="group flex items-center gap-2 px-4 py-1.5 rounded-md transition-colors h-9"
     :class="rowClass"
     @mouseenter="emit('mouseenter', index)"
     @mouseleave="emit('mouseleave')"
