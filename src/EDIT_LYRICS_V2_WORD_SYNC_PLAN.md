@@ -1,166 +1,86 @@
 # EditLyricsV2 Word Sync Plan
 
-## Overview
+## Overview & Goals
 
-Add a fixed horizontal word timing lane at the top of the synced lyrics lines container. This enables drag-based word timing adjustments for the currently selected line, with CJK support and even distribution.
+Fixed horizontal word timing lane at top of synced lyrics container for drag-based word timing adjustments with CJK support and even distribution. Enables precise per-word synchronization for selected lyric line.
 
----
+## UX/UI Design
 
-## UX Design
+**Fixed Lane** positioned below player progress bar, above lyrics list. Shows word timing for **currently selected line** only. Stable layout without shifts when changing selections.
 
-### Fixed Lane Behavior
-
-- The word timing lane is fixed at the **top** of the synced lyrics lines container (just below the player progress bar)
-- The lane displays word timing for the **currently selected line** only
-- When no line is selected, the lane shows an empty/placeholder state
-- Selecting a different line updates the lane content to show that line's words
-- The lane position is stable - no layout shift occurs when changing selections
-- The lane shows a short placeholder reason when word sync is unavailable for the selected line
-
-### Visual Layout
-
+**Layout:**
 ```
 [Player Progress Bar]
-
-[Word Timing Lane]     ← fixed position, always here
-  [Line info header: timestamps, text preview, Play/Sync word/Redistribute buttons]
-  [Timeline with grid lines every 500ms]
+[Word Timing Lane]  ← fixed
+  [Header: timestamps, text preview, Play/Sync/Redistribute buttons]
+  [Timeline with 500ms grid lines]
 ────────────────────
 [Previous lines]
-
-[Selected Line Row]  ← currently selected line
-
+[Selected Line Row]
 [Next lines]
 ```
 
-### Lane Header
-
-When word sync is available, the lane header displays:
-- **Timestamp range**: `line.start_ms - next_line.start_ms` (e.g., `00:23.500 - 00:26.800`)
-- **Line text preview**: truncated text of the selected line
-- **Play button**: replays the current line from its start time
-- **Sync word button**: syncs the selected boundary to current playback position (keyboard: `z`)
-- **Redistribute button**: distributes word timings evenly across the line window
-
----
+**Lane Header** shows when word sync available:
+- Timestamp range: `line.start_ms - next_line.start_ms`
+- Line text preview (truncated)
+- **Play**: replay current line from start
+- **Sync word**: sync selected boundary to playback position (key `z`)
+- **Redistribute**: evenly distribute word timings
 
 ## Core Features
 
 ### 1. Drag Behavior
+- Words render as draggable horizontal segments in timeline range `[line.start_ms, next_line.start_ms]`
+- Last line fallback: timeline extends to `line.start_ms + 2000ms` if no next line
+- **First word**: `words[0].start_ms` = `line.start_ms` (fixed, not draggable)
+- **Last word**: implicitly extends to line end
+- **Middle words**: Drag handle between words to adjust `start_ms` of right word
+- Constraints: monotonic non-decreasing, min 1ms gap, first word fixed
+- Visual feedback during drag with timestamp badge
+- Changes apply on pointer release
 
-- Words render as draggable horizontal segments in the timeline that fill the space until the next word
-- Timeline range: `[line.start_ms, next_line.start_ms]`
-- **Last line fallback**: If no next line exists, the timeline extends to `line.start_ms + 2000ms`
-- Word sync is only enabled when **next line is also synced** (`next_line.start_ms` exists)
-- **First word**: `words[0].start_ms` always equals `line.start_ms` (fixed, not draggable)
-- **Last word**: implicitly extends to `next_line.start_ms`
-- **Middle words**: Drag the handle between words to adjust the `start_ms` of the word to the right
-  - The handle is positioned at the boundary between two consecutive words
-  - Dragging moves the boundary, effectively changing the `start_ms` of the right word
-  - The left word automatically extends/shrinks to fill the available space
-- Constraints:
-  - Boundary positions must be monotonically non-decreasing
-  - First word cannot be moved (fixed to line start)
-  - Last word's end is implicitly determined by the line end
-  - No handle before the first word or after the last word
-  - Minimum 1ms gap between consecutive word start times
-- Visual feedback during drag with ghost/overlay showing current position and timestamp badge
-- Changes apply immediately on pointer release
+### 2. Boundary Selection
+- Each boundary handle (between words) individually selectable
+- Selected boundary highlighted cyan
+- Default: first boundary when line changes
+- Used for **Sync word** action
 
-### 1.1 Boundary Selection
+### 3. Tokens & Validation
+- If `line.words[]` exists and matches line text → use existing
+- If missing/invalid → auto‑regenerate from `line.text`:
+  - **Latin scripts**: space‑delimited, preserve trailing spaces
+  - **CJK**: each character as token
+- Initial timing: even distribution across line window
+- **Validation**: words valid only if array exists and reconstructed text matches `line.text`
+- If missing `start_ms` values → redistribute evenly
 
-- Each boundary handle (between words) can be individually selected
-- Selected boundary shows a highlighted visual state (cyan)
-- Clicking a boundary selects it without dragging
-- Only one boundary can be selected at a time
-- Default selection: first boundary (between word 0 and word 1) when line changes
-- Selected boundary is used for **Sync word** action
+### 4. Availability Rules
+Word sync available when all true:
+1. Selected line has non‑empty text
+2. Selected line has valid `start_ms`
+3. Next line exists with valid `start_ms`
 
-### 2. Tokens
+When unavailable: lane shows placeholder reason.
 
-- If `line.words[]` exists and is valid (words array matches line text) → use existing
-- If missing or invalid (doesn't match line text) → auto-regenerate from `line.text`:
-  - **Latin scripts**: space-delimited, preserve trailing spaces in word tokens
-  - **CJK (Chinese/Japanese/Korean)**: treat each character as a token (no spaces needed)
-- Initial timing: evenly distributed across the line time window
+### 5. Data Consistency Rules
+- Line text changes → clear `line.words` for that line
+- Line `start_ms` changes → offset all `words[].start_ms` by same delta
+- Next line `start_ms` changes → no mutation needed (implicit end updates)
 
-### 2.1 Word Validation
+### 6. Actions
+- **Distribute evenly**: single‑click reset all word timings to equal spacing
+- **Sync word to playback**: snap selected boundary to current playback position (key `z`)
+- **Sync word + advance**: if on last boundary, sync and advance to next lyric line (key `x`)
 
-Words are considered valid only if:
-1. `line.words` exists and is a non-empty array
-2. The reconstructed text (`words.map(w => w.text).join('')`) exactly matches `line.text`
+### 7. Playback Feedback
+- **Timeline grid lines**: vertical lines every 500ms
+- **Progress indicator**: vertical playhead moves across timeline
+- **Word highlighting**: currently playing word becomes bold with background color
+- **Auto‑replay after edit**: after drag or distribute, replay from `line.start_ms` for verification
 
-If words exist but are missing `start_ms` values, timings are redistributed evenly.
-
-### 2.2 Availability Rules
-
-Word sync is available only when all conditions are true:
-
-- The selected line has non-empty text content
-- The selected line has a valid `start_ms`
-- The next line exists and has a valid `start_ms`
-
-When unavailable, the lane stays visible and shows a short placeholder reason (no content, missing current sync, or missing next-line sync).
-
-### 2.3 Data Consistency Rules
-
-- If line text changes, clear `line.words` for that line
-- If line `start_ms` changes, offset every `words[].start_ms` by the same actual delta
-- If next line `start_ms` changes, previous line words do **not** need mutation (their implicit end updates from timeline context)
-
-### 3. Distribute Evenly
-
-- Single-click action to reset all word timings to equal spacing across the line window
-- Useful for quick prototyping or resetting after manual edits
-- Preserves word tokens, only adjusts `start_ms` values
-- After redistributing, selected boundary resets to first boundary
-- Triggers auto-replay from line start
-
-### 4. Sync Word to Playback Position
-
-- Snaps the **selected boundary** (word start) to the current playback position
-- Useful for "singing along" to set precise timings
-- Keyboard shortcut: `z` key
-- After syncing, automatically advances selection to the next boundary (word)
-- If at the last boundary, pressing `z` stays on that boundary
-- Does **not** trigger auto-replay (unlike drag operations)
-
-### 5. Sync Word + Advance to Next Line
-
-- Keyboard shortcut: `x` key
-- Syncs the selected boundary to current playback position
-- If currently on the **last boundary** (between second-to-last and last word), automatically advances to the next lyric line after syncing
-- This allows efficient sequential word timing: tap `x` repeatedly to sync words, and when reaching the last word, it automatically moves to the next line
-
-### 6. Playback Feedback
-
-**Timeline Grid Lines**
-- Vertical grid lines appear every 500ms across the timeline
-- Provides visual reference for timing precision
-
-**Progress Indicator**
-- A vertical playhead indicator moves across the timeline as the song plays
-- The indicator shows the current playback position relative to the selected line's time window
-- A small circle at the top of the indicator provides a visual anchor point
-- Only visible when playback is within the selected line's time window
-
-**Word Highlighting**
-- The currently playing word becomes **bold** and receives a **slight background color change**
-- This provides immediate visual feedback when timing adjustments are correct
-- The active word is determined by: `word.start_ms <= currentTime < next_word.start_ms`
-
-**Auto-Replay After Edit**
-- After completing a drag-drop action on a word boundary, the song automatically replays from `line.start_ms`
-- This allows instant verification of the timing adjustment
-- The playback resumes from the beginning of the current line to hear the word in context
-- Also triggered after "Distribute evenly"
-
----
-
-## Data Model
+## Data Model & Constraints
 
 ```javascript
-// Line structure (matches LYRICSFILE_CONCEPT.md)
 {
   text: "Waiting in a car",
   start_ms: 23500,
@@ -174,43 +94,31 @@ When unavailable, the lane stays visible and shows a short placeholder reason (n
 }
 ```
 
-### Constraints
-
-- `words[].start_ms` must be monotonically non-decreasing
-- `words[0].start_ms === line.start_ms` (first word always starts at line start)
-- For middle words: `word[i].start_ms >= word[i-1].start_ms` (minimum 1ms gap to allow handles)
-- Implicit `end_ms` for each word is `next_word.start_ms` (or selected line window end)
+**Constraints:**
+- `words[].start_ms` monotonically non‑decreasing
+- `words[0].start_ms === line.start_ms`
+- Minimum 1ms gap between consecutive word start times
+- Implicit `end_ms` for each word = `next_word.start_ms` (or line window end)
 - All timestamps in milliseconds (integers)
 
----
+## Components & Integration
 
-## Components
+| Component | Purpose |
+|-----------|---------|
+| **SyncedWordTimingLane.vue** | Fixed horizontal timeline container, playhead sync, word segments, lane header, boundary handles, drag overlay, keyboard shortcuts (`z`/`x`), empty states |
+| **SyncedWordTimingSegment.vue** | Word block positioned absolutely on timeline, shows word text with horizontal fill, visual states, tooltip with timing |
 
-1. **SyncedWordTimingLane.vue**
-   - Fixed horizontal timeline container positioned at top of lyrics list
-   - Playhead indicator synced to current playback
-   - Renders word segments only when availability rules are satisfied
-   - Timeline grid lines every 500ms
-   - Lane header with timestamp range, line text preview, Play/Sync word/Redistribute buttons
-   - Boundary handles with selection state (cyan highlight when selected)
-   - Drag overlay with timestamp badge showing current position during drag
-   - Empty/placeholder states with reason text when word sync is unavailable
-   - Keyboard shortcuts: `z` (sync word to playback), `x` (sync and advance to next line)
-   - Handles word timing updates and emits `word-timing-edited` for auto-replay
+**Integration points:**
+- **SyncedLyricsEditor.vue**: Mount lane as fixed header above scrollable lyrics list
+- **word‑tokenizer.js**: Tokenization utilities (Latin + CJK), word validation, distribute evenly
+- **useEditLyricsV2Document.js**: Maintain word timing consistency when line text/start time changes
+- **EditLyricsV2.vue**: Wire playback progress to lane, pass selected line, handle `word‑timing‑edited` event for auto‑replay
 
-2. **SyncedWordTimingSegment.vue**
-   - Word block positioned absolutely on the timeline based on start_ms/end_ms
-   - Shows word text with horizontal fill until next word
-   - Visual state: default / currently playing (bold + highlighted background)
-   - Minimum width based on text length
-   - Tooltip shows word timing: `text (start_ms - end_ms)`
+**Note:** Plain lyrics and synced lyrics are independent. Editing plain lyrics does not automatically update synced lines. Use `importSyncedLinesFromPlain` for explicit import.
 
----
+## Keyboard Shortcuts & Actions
 
-## Integration Points
-
-- **SyncedLyricsEditor.vue**: Mount lane as fixed header above the scrollable lyrics list
-- **word-tokenizer.js**: Tokenization utilities (Latin + CJK), word validation, distribute evenly
-- **useEditLyricsV2Document.js**: Keep word timing consistent when line text/start time changes
-  - **NOTE**: Plain lyrics and synced lyrics are now independent. Editing plain lyrics does not automatically update synced lines, allowing users to have different structures (e.g., annotations like `[chorus]`, empty lines). Use `importSyncedLinesFromPlain` for explicit import.
-- **EditLyricsV2.vue**: Wire playback progress to lane for playhead sync, pass selected line to lane, handle `word-timing-edited` event for auto-replay
+| Key | Action |
+|-----|--------|
+| `z` | Sync selected boundary to current playback position |
+| `x` | Sync selected boundary to playback, and if on last boundary, advance to next lyric line |
