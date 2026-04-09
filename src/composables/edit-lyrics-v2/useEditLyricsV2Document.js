@@ -143,44 +143,17 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     }))
   }
 
-  const offsetWordTimings = (lineIndex, offsetMs) => {
-    if (!Number.isFinite(offsetMs) || offsetMs === 0) {
-      return
-    }
-
-    withUpdatedLine(lineIndex, (line) => {
-      if (!Array.isArray(line.words) || line.words.length === 0) {
-        return line
-      }
-
-      return {
-        ...line,
-        words: line.words.map((word) => ({
-          ...word,
-          start_ms: Number.isFinite(word.start_ms)
-            ? Math.max(0, Math.round(word.start_ms + offsetMs))
-            : word.start_ms
-        }))
-      }
-    })
-  }
-
   const syncLineToCurrentProgress = (lineIndex) => {
     if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
       return
     }
 
-    const oldStartMs = syncedLines.value[lineIndex]?.start_ms
     const newStartMs = Math.max(0, Math.round(progress.value * 1000))
 
     withUpdatedLine(lineIndex, (line) => ({
       ...line,
       start_ms: newStartMs
     }))
-
-    if (Number.isFinite(oldStartMs)) {
-      offsetWordTimings(lineIndex, newStartMs - oldStartMs)
-    }
   }
 
   const shiftLineTimestampBy = (lineIndex, offsetMs) => {
@@ -188,16 +161,14 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
       return
     }
 
-    const oldStartMsRaw = syncedLines.value[lineIndex]?.start_ms
-    const oldStartMs = Number.isFinite(oldStartMsRaw) ? oldStartMsRaw : 0
-    const newStartMs = Math.max(0, Math.round(oldStartMs + offsetMs))
+    const currentStartMs = syncedLines.value[lineIndex]?.start_ms
+    const baseStartMs = Number.isFinite(currentStartMs) ? currentStartMs : 0
+    const newStartMs = Math.max(0, Math.round(baseStartMs + offsetMs))
 
     withUpdatedLine(lineIndex, (line) => ({
       ...line,
       start_ms: newStartMs
     }))
-
-    offsetWordTimings(lineIndex, newStartMs - oldStartMs)
   }
 
   const rewindLineBy100 = (lineIndex) => {
@@ -308,7 +279,6 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     saveLyrics,
     ensureSelectedSyncedLine,
     updateLineText,
-    eraseWordTimings,
-    offsetWordTimings
+    eraseWordTimings
   }
 }

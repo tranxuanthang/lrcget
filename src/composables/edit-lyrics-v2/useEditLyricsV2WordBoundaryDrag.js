@@ -6,13 +6,14 @@ export function useEditLyricsV2WordBoundaryDrag({
   isWordSyncAvailable,
   words,
   lineStartMs,
-  lineEndMs,
+  timelineStartMs,
+  timelineEndMs,
   selectedLineIndex,
   onUpdateWords,
   onWordTimingEdited
 }) {
   const dragState = ref(null)
-  const selectedBoundaryIndex = ref(1)
+  const selectedBoundaryIndex = ref(0)
   const isDraggingBoundary = ref(false)
   const dragStartPos = ref(null)
 
@@ -36,11 +37,11 @@ export function useEditLyricsV2WordBoundaryDrag({
   })
 
   const boundaryIndexes = computed(() => {
-    if (displayedWords.value.length < 2) {
+    if (displayedWords.value.length === 0) {
       return []
     }
 
-    return Array.from({ length: displayedWords.value.length - 1 }, (_, index) => index + 1)
+    return Array.from({ length: displayedWords.value.length }, (_, index) => index)
   })
 
   const buildUpdatedWords = (rightWordIndex, startMs) => {
@@ -58,12 +59,25 @@ export function useEditLyricsV2WordBoundaryDrag({
 
   const getBoundaryConstraint = (rightWordIndex) => {
     const currentWords = words.value
-    const previousStartMs = currentWords[rightWordIndex - 1]?.start_ms ?? lineStartMs.value
     const nextStartMs = currentWords[rightWordIndex + 1]?.start_ms
+
+    if (rightWordIndex === 0) {
+      const minStartMs = timelineStartMs.value
+      const maxStartMs = Number.isFinite(nextStartMs)
+        ? nextStartMs - 1
+        : timelineEndMs.value - 1
+
+      return {
+        minStartMs,
+        maxStartMs: Math.max(minStartMs, maxStartMs)
+      }
+    }
+
+    const previousStartMs = currentWords[rightWordIndex - 1]?.start_ms ?? timelineStartMs.value
     const minStartMs = previousStartMs + 1
     const maxStartMs = Number.isFinite(nextStartMs)
       ? nextStartMs - 1
-      : lineEndMs.value - 1
+      : timelineEndMs.value - 1
 
     return {
       minStartMs,
@@ -98,15 +112,18 @@ export function useEditLyricsV2WordBoundaryDrag({
       return false
     }
 
+    const updatedWords = buildUpdatedWords(rightWordIndex, startMs)
+
     onUpdateWords({
       lineIndex: selectedLineIndex.value,
-      words: buildUpdatedWords(rightWordIndex, startMs)
+      words: updatedWords,
+      lineStartMs: rightWordIndex === 0 ? startMs : undefined
     })
 
     if (shouldReplay) {
       onWordTimingEdited({
         lineIndex: selectedLineIndex.value,
-        startMs: lineStartMs.value
+        startMs: rightWordIndex === 0 ? startMs : lineStartMs.value
       })
     }
 
@@ -181,7 +198,7 @@ export function useEditLyricsV2WordBoundaryDrag({
     event.preventDefault()
     event.stopPropagation()
 
-    if (!isWordSyncAvailable.value || rightWordIndex <= 0 || rightWordIndex >= words.value.length) {
+    if (!isWordSyncAvailable.value || rightWordIndex < 0 || rightWordIndex >= words.value.length) {
       return
     }
 
@@ -200,7 +217,7 @@ export function useEditLyricsV2WordBoundaryDrag({
   }
 
   const selectBoundary = (index) => {
-    if (!isWordSyncAvailable.value || index <= 0 || index >= words.value.length) {
+    if (!isWordSyncAvailable.value || index < 0 || index >= words.value.length) {
       return
     }
 
@@ -217,7 +234,7 @@ export function useEditLyricsV2WordBoundaryDrag({
     }
 
     const rightWordIndex = selectedBoundaryIndex.value
-    if (rightWordIndex <= 0 || rightWordIndex >= words.value.length) {
+    if (rightWordIndex < 0 || rightWordIndex >= words.value.length) {
       return false
     }
 
@@ -243,7 +260,7 @@ export function useEditLyricsV2WordBoundaryDrag({
   }
 
   const resetBoundarySelection = () => {
-    selectedBoundaryIndex.value = 1
+    selectedBoundaryIndex.value = 0
   }
 
   const cancelBoundaryInteraction = () => {

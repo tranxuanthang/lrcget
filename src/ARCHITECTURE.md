@@ -68,7 +68,7 @@ Module-level ref composables (singletons by design):
 - **Search**: `SearchLyrics.vue` + `Preview.vue` for LRCLIB lookup
 - **Edit/Publish**:
   - *Legacy*: `EditLyrics.vue` — CodeMirror + sync toolbar
-  - *V2*: `EditLyricsV2.vue` — CodeMirror + interactive synced view + word timing lane
+  - *V2*: `EditLyricsV2.vue` — CodeMirror + interactive synced view + word timing lane. Synced line selection keeps the active row in view while navigating or syncing, and the word timing lane supports dragging the first word boundary to update the line start while keeping the current lane window stable until selection changes; line timestamp edits do not automatically shift existing word timings.
 - **My LRCLIB**: User workflows (preview, edit, publish, flag) in `my-lrclib/`
 
 Utils: `src/utils/` (parsing, linting), Composables: `composables/edit-lyrics/`, `composables/edit-lyrics-v2/`

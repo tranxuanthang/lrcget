@@ -135,6 +135,7 @@ export function useEditLyricsV2SyncedInsertHover({ modelValue }) {
   }
 
   return {
+    lineRowElements,
     setLineRowRef,
     insertControlOpacity,
     handleLinesMouseMove,

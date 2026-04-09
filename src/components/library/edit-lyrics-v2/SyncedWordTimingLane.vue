@@ -36,7 +36,7 @@
       <div class="flex items-center justify-between mb-2 shrink-0">
         <div class="flex items-center gap-3 text-xs text-brave-40 dark:text-brave-60">
           <span class="font-mono bg-brave-90 dark:bg-brave-20 px-2 py-0.5 rounded">
-            {{ formatTimestampMs(selectedLine.start_ms) }} - {{ formatTimestampMs(lineEndMs) }}
+            {{ formatTimestampMs(selectedLine.start_ms) }} - {{ formatTimestampMs(actualLineEndMs) }}
           </span>
           <span class="truncate max-w-xs">{{ selectedLine.text || '(empty)' }}</span>
         </div>
@@ -93,8 +93,8 @@
           :word-index="index"
           :start-ms="word.start_ms"
           :end-ms="getWordEndMs(index)"
-          :line-start-ms="selectedLine.start_ms"
-          :line-end-ms="lineEndMs"
+          :line-start-ms="laneStartMs"
+          :line-end-ms="laneEndMs"
           :timeline-width="timelineWidth"
           :progress-ms="progressMs"
         />
@@ -128,7 +128,7 @@
 
         <!-- Current playhead indicator -->
         <div
-          v-if="progressMs >= selectedLine.start_ms && progressMs <= lineEndMs"
+          v-if="progressMs >= lineStartMs && progressMs <= laneEndMs"
           class="absolute -top-1 bottom-0 w-px bg-brave-40/80 dark:bg-brave-50 z-20 pointer-events-none"
           :style="{ left: `${playheadPercent}%` }"
         >
@@ -175,6 +175,8 @@ const emit = defineEmits(['update:words', 'word-timing-edited', 'play-line', 'se
 
 const timelineElement = ref(null)
 const timelineWidth = ref(0)
+const laneStartMs = ref(0)
+const laneEndMs = ref(0)
 
 // Availability checks for word sync feature
 const hasLineContent = computed(() => {
@@ -200,7 +202,7 @@ const isWordSyncAvailable = computed(() => {
   return hasLineContent.value && hasLineStartTime.value && hasNextLineStartTime.value
 })
 
-const lineEndMs = computed(() => {
+const actualLineEndMs = computed(() => {
   if (!props.selectedLine) return 0
 
   if (props.selectedLineIndex >= 0 && props.selectedLineIndex + 1 < props.allLines.length) {
@@ -221,6 +223,17 @@ const lineEndMs = computed(() => {
 const lineStartMs = computed(() => {
   return Number.isFinite(props.selectedLine?.start_ms) ? props.selectedLine.start_ms : 0
 })
+
+const syncLaneWindowToSelection = () => {
+  if (!props.hasSelectedLine || !props.selectedLine) {
+    laneStartMs.value = 0
+    laneEndMs.value = 0
+    return
+  }
+
+  laneStartMs.value = lineStartMs.value
+  laneEndMs.value = actualLineEndMs.value
+}
 
 const words = computed(() => {
   if (!isWordSyncAvailable.value) return []
@@ -248,7 +261,8 @@ const {
   isWordSyncAvailable,
   words,
   lineStartMs,
-  lineEndMs,
+  timelineStartMs: laneStartMs,
+  timelineEndMs: laneEndMs,
   selectedLineIndex: computed(() => props.selectedLineIndex),
   onUpdateWords: (payload) => emit('update:words', payload),
   onWordTimingEdited: (payload) => emit('word-timing-edited', payload)
@@ -257,10 +271,10 @@ const {
 const playheadPercent = computed(() => {
   if (!isWordSyncAvailable.value) return 0
 
-  const duration = lineEndMs.value - lineStartMs.value
+  const duration = laneEndMs.value - laneStartMs.value
   if (duration <= 0) return 0
 
-  const elapsed = props.progressMs - lineStartMs.value
+  const elapsed = props.progressMs - laneStartMs.value
   return Math.max(0, Math.min(100, (elapsed / duration) * 100))
 })
 
@@ -273,40 +287,40 @@ const updateTimelineWidth = () => {
 const timeToPercent = (timeMs) => {
   if (!isWordSyncAvailable.value) return 0
 
-  const duration = lineEndMs.value - lineStartMs.value
+  const duration = laneEndMs.value - laneStartMs.value
   if (duration <= 0) return 0
 
-  const elapsed = timeMs - lineStartMs.value
+  const elapsed = timeMs - laneStartMs.value
   return Math.max(0, Math.min(100, (elapsed / duration) * 100))
 }
 
 const clientXToTime = (clientX) => {
   if (!timelineElement.value || !isWordSyncAvailable.value) {
-    return lineStartMs.value
+    return laneStartMs.value
   }
 
-  if (lineEndMs.value <= lineStartMs.value) {
-    return lineStartMs.value
+  if (laneEndMs.value <= laneStartMs.value) {
+    return laneStartMs.value
   }
 
   const rect = timelineElement.value.getBoundingClientRect()
   const width = rect.width
   if (width <= 0) {
-    return lineStartMs.value
+    return laneStartMs.value
   }
 
   const clampedX = Math.max(0, Math.min(width, clientX - rect.left))
-  const duration = lineEndMs.value - lineStartMs.value
-  return Math.round(lineStartMs.value + (clampedX / width) * duration)
+  const duration = laneEndMs.value - laneStartMs.value
+  return Math.round(laneStartMs.value + (clampedX / width) * duration)
 }
 
 const getWordEndMs = (index) => {
   if (index >= displayedWords.value.length - 1) {
-    return lineEndMs.value
+    return laneEndMs.value
   }
 
   const nextWordStart = displayedWords.value[index + 1]?.start_ms
-  return Number.isFinite(nextWordStart) ? nextWordStart : lineEndMs.value
+  return Number.isFinite(nextWordStart) ? nextWordStart : laneEndMs.value
 }
 
 const handleBoundaryPointerDown = (rightWordIndex, event) => {
@@ -352,6 +366,9 @@ watch(() => props.selectedLineIndex, (newIndex, oldIndex) => {
   // Only reset boundary index when actually changing to a different line
   if (newIndex !== oldIndex) {
     resetBoundarySelection()
+    syncLaneWindowToSelection()
+  } else if (!props.hasSelectedLine) {
+    syncLaneWindowToSelection()
   }
   nextTick(() => {
     updateTimelineWidth()
@@ -367,7 +384,7 @@ const handleDistributeEvenly = () => {
   const newWords = distributeWordTimings(
     currentWords,
     props.selectedLine.start_ms,
-    lineEndMs.value
+    actualLineEndMs.value
   )
 
   emit('update:words', {
@@ -394,12 +411,20 @@ watch(() => props.hasSelectedLine, (hasLine) => {
     nextTick(() => {
       updateTimelineWidth()
     })
+    return
   }
+
+  syncLaneWindowToSelection()
 }, { immediate: true })
 
-watch(isWordSyncAvailable, (available) => {
+watch(isWordSyncAvailable, (available, wasAvailable) => {
   if (!available) {
     cancelBoundaryInteraction()
+    return
+  }
+
+  if (!wasAvailable) {
+    syncLaneWindowToSelection()
   }
 })
 

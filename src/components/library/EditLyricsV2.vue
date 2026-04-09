@@ -157,16 +157,25 @@ const forwardLineBy100 = (lineIndex) => {
   void playLine(lineIndex)
 }
 
-const updateLineWords = ({ lineIndex, words }) => {
+const updateLineWords = ({ lineIndex, words, lineStartMs }) => {
   if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
     return
   }
+
+  const nextLineStartMs = Number.isFinite(lineStartMs)
+    ? Math.max(0, Math.round(lineStartMs))
+    : null
 
   const newLines = syncedLines.value.map((line, index) => {
     if (index !== lineIndex) {
       return line
     }
-    return { ...line, words }
+
+    return {
+      ...line,
+      ...(nextLineStartMs === null ? {} : { start_ms: nextLineStartMs }),
+      words
+    }
   })
 
   updateSyncedLines(newLines)

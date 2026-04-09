@@ -14,6 +14,7 @@
     />
 
     <div
+      ref="linesListElement"
       class="flex-1 overflow-y-auto py-2"
       @mousemove="handleLinesMouseMove"
       @mouseleave="handleLinesMouseLeave"
@@ -82,7 +83,7 @@
 </template>
 
 <script setup>
-import { computed, ref, toRef, watch } from 'vue'
+import { computed, nextTick, ref, toRef, watch } from 'vue'
 import SyncedInsertButton from '@/components/library/edit-lyrics-v2/SyncedInsertButton.vue'
 import SyncedLyricsEmptyState from '@/components/library/edit-lyrics-v2/SyncedLyricsEmptyState.vue'
 import SyncedLyricsLineRow from '@/components/library/edit-lyrics-v2/SyncedLyricsLineRow.vue'
@@ -131,6 +132,7 @@ const emit = defineEmits([
 ])
 
 const hoveredLineIndex = ref(null)
+const linesListElement = ref(null)
 const modelValue = toRef(props, 'modelValue')
 
 const handleUpdateLineText = (lineIndex, newText) => {
@@ -153,6 +155,7 @@ const {
 })
 
 const {
+  lineRowElements,
   setLineRowRef,
   insertControlOpacity,
   handleLinesMouseMove,
@@ -160,6 +163,26 @@ const {
   handleLinesScroll,
   handleLineCountChange: handleInsertHoverLineCountChange
 } = useEditLyricsV2SyncedInsertHover({ modelValue })
+
+const scrollLineIntoView = (index) => {
+  if (!Number.isInteger(index) || index < 0) {
+    return
+  }
+
+  if (!(linesListElement.value instanceof HTMLElement)) {
+    return
+  }
+
+  const lineRowElement = lineRowElements.value[index]
+  if (!(lineRowElement instanceof HTMLElement)) {
+    return
+  }
+
+  lineRowElement.scrollIntoView({
+    block: 'nearest',
+    inline: 'nearest'
+  })
+}
 
 const rowClass = (index) => {
   if (props.selectedLineIndex === index || editingLineIndex.value === index) {
@@ -228,8 +251,8 @@ const handleEditingTextUpdate = (value) => {
   editingText.value = value
 }
 
-const handleWordsUpdate = ({ lineIndex, words }) => {
-  emit('update:words', { lineIndex, words })
+const handleWordsUpdate = ({ lineIndex, words, lineStartMs }) => {
+  emit('update:words', { lineIndex, words, lineStartMs })
 }
 
 const handleWordTimingEdited = ({ lineIndex, startMs }) => {
@@ -246,5 +269,15 @@ const selectedLine = computed(() => {
 watch(() => props.modelValue.length, (lineCount) => {
   handleInsertHoverLineCountChange(lineCount)
   handleInlineEditingLineCountChange(lineCount)
+})
+
+watch(() => props.selectedLineIndex, (selectedLineIndex, previousLineIndex) => {
+  if (selectedLineIndex === previousLineIndex) {
+    return
+  }
+
+  nextTick(() => {
+    scrollLineIntoView(selectedLineIndex)
+  })
 })
 </script>

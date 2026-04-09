@@ -32,15 +32,17 @@ Fixed horizontal word timing lane at top of synced lyrics container for drag-bas
 ### 1. Drag Behavior
 - Words render as draggable horizontal segments in timeline range `[line.start_ms, next_line.start_ms]`
 - Last line fallback: timeline extends to `line.start_ms + 2000ms` if no next line
-- **First word**: `words[0].start_ms` = `line.start_ms` (fixed, not draggable)
+- **First word**: draggable handle at the start of the lane adjusts `words[0].start_ms`
+- Releasing the first word handle also updates `line.start_ms` immediately
+- After first-word drag, keep the current lane timeframe fixed until the selected line changes so the handle can be dragged back to the original lane start if needed
 - **Last word**: implicitly extends to line end
-- **Middle words**: Drag handle between words to adjust `start_ms` of right word
-- Constraints: monotonic non-decreasing, min 1ms gap, first word fixed
+- **Other words**: Drag handle at each word start to adjust that word's `start_ms`
+- Constraints: monotonic non-decreasing, min 1ms gap
 - Visual feedback during drag with timestamp badge
 - Changes apply on pointer release
 
 ### 2. Boundary Selection
-- Each boundary handle (between words) individually selectable
+- Each word-start boundary handle individually selectable
 - Selected boundary highlighted cyan
 - Default: first boundary when line changes
 - Used for **Sync word** action
@@ -64,7 +66,6 @@ When unavailable: lane shows placeholder reason.
 
 ### 5. Data Consistency Rules
 - Line text changes → clear `line.words` for that line
-- Line `start_ms` changes → offset all `words[].start_ms` by same delta
 - Next line `start_ms` changes → no mutation needed (implicit end updates)
 
 ### 6. Actions
@@ -111,7 +112,7 @@ When unavailable: lane shows placeholder reason.
 **Integration points:**
 - **SyncedLyricsEditor.vue**: Mount lane as fixed header above scrollable lyrics list
 - **word‑tokenizer.js**: Tokenization utilities (Latin + CJK), word validation, distribute evenly
-- **useEditLyricsV2Document.js**: Maintain word timing consistency when line text/start time changes
+- **useEditLyricsV2Document.js**: Maintain synced lyric document state for line text/timestamp edits
 - **EditLyricsV2.vue**: Wire playback progress to lane, pass selected line, handle `word‑timing‑edited` event for auto‑replay
 
 **Note:** Plain lyrics and synced lyrics are independent. Editing plain lyrics does not automatically update synced lines. Use `importSyncedLinesFromPlain` for explicit import.
