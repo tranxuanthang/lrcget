@@ -1,6 +1,6 @@
 <template>
   <transition name="slide-fade" mode="out-in">
-    <div v-if="lyrics" class="flex flex-col gap-1 relative">
+    <div v-if="plainLyrics" class="flex flex-col gap-1 relative">
       <transition name="slide-fade" mode="out-in">
         <div v-if="expanded" class="full-viewer absolute bottom-0 left-0 w-full h-[40vh] bg-brave-95 dark:bg-brave-10 border-t border-brave-90/50 dark:border-brave-10/50 overflow-hidden">
           <div class="relative h-full rounded text-center text-brave-50 whitespace-pre flex flex-col">
@@ -8,7 +8,7 @@
               <button class="text-xl text-brave-30 w-full flex justify-center" type="button" @click="expand"><DragHorizontal /></button>
             </div>
             <div class="grow p-4 h-full overflow-y-auto">
-              {{ props.lyrics }}
+              {{ plainLyrics }}
             </div>
 
             <button
@@ -41,13 +41,27 @@
 
 <script setup>
 import { DragHorizontal, ContentCopy } from 'mdue'
-import { ref } from 'vue'
-import { computed } from '@vue/reactivity'
+import { ref, computed } from 'vue'
+import { parseLyricsfile } from '@/utils/lyricsfile.js'
 
-const props = defineProps(['lyrics'])
+const props = defineProps(['lyricsfile'])
 
 const expanded = ref(false)
 const copied = ref(false)
+
+const parsedLyricsfile = computed(() => {
+  if (!props.lyricsfile) {
+    return null
+  }
+  return parseLyricsfile(props.lyricsfile)
+})
+
+const plainLyrics = computed(() => {
+  if (!parsedLyricsfile.value) {
+    return null
+  }
+  return parsedLyricsfile.value.plainLyrics || null
+})
 
 const expand = () => {
   expanded.value = !expanded.value
@@ -55,7 +69,7 @@ const expand = () => {
 
 const onCopy = async () => {
   try {
-    const text = props.lyrics || ''
+    const text = plainLyrics.value || ''
     if (!text) return
     await navigator.clipboard.writeText(text)
     copied.value = true

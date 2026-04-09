@@ -1,7 +1,7 @@
 <template>
   <div>
-    <LyricsViewer v-if="lyrics && !instrumental" :lyrics="lyrics" :duration="duration" :progress="progress" @lyrics-clicked="lyricsClicked" />
-    <PlainLyricsViewer v-else-if="plainLyrics && !instrumental" :lyrics="plainLyrics" />
+    <LyricsViewer v-if="hasSyncedLyrics && !instrumental" :lyricsfile="lyricsfile" :duration="duration" :progress="progress" @lyrics-clicked="lyricsClicked" />
+    <PlainLyricsViewer v-else-if="hasPlainLyrics && !instrumental" :lyricsfile="lyricsfile" />
     <div v-else class="border-b border-brave-90/50 dark:border-brave-30"></div>
     <div class="bg-brave-95 backdrop-blur px-4 py-3 flex-none flex flex-col justify-center items-center gap-3 dark:bg-brave-10">
       <div class="w-full flex gap-1 justify-center items-center">
@@ -45,6 +45,7 @@ import { usePlayer } from '@/composables/player.js'
 import { useGlobalState } from '@/composables/global-state.js'
 import VolumeSlider from './now-playing/VolumeSlider.vue'
 import { humanDuration } from '@/utils/human-duration'
+import { parseLyricsfile } from '@/utils/lyricsfile.js'
 
 const { isHotkey } = useGlobalState()
 const { playingTrack, status, duration, progress, volume, playTrack, pause, resume, seek, setVolume: setPlayerVolume } = usePlayer()
@@ -58,20 +59,28 @@ const instrumental = computed(() => {
   return playingTrack.value.instrumental
 })
 
-const lyrics = computed(() => {
+const lyricsfile = computed(() => {
   if (!playingTrack.value) {
     return null
   }
 
-  return playingTrack.value.lrc_lyrics
+  return playingTrack.value.lyricsfile
 })
 
-const plainLyrics = computed(() => {
-  if (!playingTrack.value) {
-    return null
+const hasSyncedLyrics = computed(() => {
+  if (!lyricsfile.value) {
+    return false
   }
+  const parsed = parseLyricsfile(lyricsfile.value)
+  return parsed.syncedLines && parsed.syncedLines.length > 0
+})
 
-  return playingTrack.value.txt_lyrics
+const hasPlainLyrics = computed(() => {
+  if (!lyricsfile.value) {
+    return false
+  }
+  const parsed = parseLyricsfile(lyricsfile.value)
+  return parsed.plainLyrics && parsed.plainLyrics.length > 0
 })
 
 const forward10 = computed(() => {

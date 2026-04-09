@@ -40,9 +40,9 @@
     <!-- Lyrics indication -->
     <div class="flex-none w-[10%] flex items-center justify-center p-1" @click="playTrack(track)">
       <div v-if="track">
-        <span v-if="track.instrumental" class="text-gray-200 font-bold text-[0.67rem] bg-gray-500 rounded px-1 py-0.5">Instrumental</span>
-        <span v-else-if="track.lrc_lyrics" class="text-green-200 font-bold text-[0.67rem] bg-green-800 rounded px-1 py-0.5">Synced</span>
-        <span v-else-if="track.txt_lyrics" class="text-gray-200 font-bold text-[0.67rem] bg-gray-800 rounded px-1 py-0.5">Plain</span>
+        <span v-if="lyricsStatus === 'instrumental'" class="text-gray-200 font-bold text-[0.67rem] bg-gray-500 rounded px-1 py-0.5">Instrumental</span>
+        <span v-else-if="lyricsStatus === 'synced'" class="text-green-200 font-bold text-[0.67rem] bg-green-800 rounded px-1 py-0.5">Synced</span>
+        <span v-else-if="lyricsStatus === 'plain'" class="text-gray-200 font-bold text-[0.67rem] bg-gray-800 rounded px-1 py-0.5">Plain</span>
       </div>
     </div>
 
@@ -65,6 +65,7 @@ import { humanDuration } from '../../../utils/human-duration.js'
 import { useSearchLyrics } from '../../../composables/search-lyrics.js'
 import { useEditLyricsV2 } from '../../../composables/edit-lyrics-v2.js'
 import Equalizer from '@/components/icons/Equalizer.vue'
+import { parseLyricsfile } from '@/utils/lyricsfile.js'
 import { ref, onMounted, computed } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
@@ -77,12 +78,28 @@ const { editLyricsV2: editLyrics, editingTrack } = useEditLyricsV2()
 const props = defineProps(['trackId', 'isShowTrackNumber'])
 const track = ref(null)
 
-// const downloadLyrics = () => {
-//   addToQueue([track.value.id])
-// }
-
 const isPlaying = computed(() => {
   return playingTrack.value && track.value && playingTrack.value.id === track.value.id
+})
+
+const lyricsStatus = computed(() => {
+  if (!track.value) {
+    return null
+  }
+  if (track.value.instrumental) {
+    return 'instrumental'
+  }
+  if (!track.value.lyricsfile) {
+    return null
+  }
+  const parsed = parseLyricsfile(track.value.lyricsfile)
+  if (parsed.syncedLines && parsed.syncedLines.length > 0) {
+    return 'synced'
+  }
+  if (parsed.plainLyrics && parsed.plainLyrics.length > 0) {
+    return 'plain'
+  }
+  return null
 })
 
 onMounted(async () => {

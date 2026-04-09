@@ -1,6 +1,6 @@
 <template>
   <transition name="slide-fade" mode="out-in">
-    <div v-if="lyrics && duration && progress" class="flex flex-col gap-1 relative">
+    <div v-if="syncedLines.length > 0 && duration && progress" class="flex flex-col gap-1 relative">
       <transition name="slide-fade" mode="out-in">
         <div v-if="expanded" class="full-viewer absolute bottom-0 left-0 w-full h-[40vh] bg-brave-95 dark:bg-brave-10 border-t border-brave-90/50 dark:border-brave-10/50 overflow-hidden">
           <div class="relative h-full">
@@ -10,7 +10,7 @@
 
             <div id="full-lyrics-container" class="h-full text-center transition" :style="{ transform: fullViewTransform }">
               <p
-                v-for="(line, index) in parsedLyrics"
+                v-for="(line, index) in syncedLines"
                 :key="index"
                 class="transition"
                 :class="{
@@ -18,7 +18,17 @@
                   'text-brave-50 hover:text-brave-40 hover:cursor-pointer dark:text-brave-80 dark:hover:text-brave-90': currentIndex !== index
                 }"
                 @click="onLineClick(line)"
-              >{{ line.content }}</p>
+              >
+                <template v-if="hasWordSync(syncedLines, index)">
+                  <span
+                    v-for="(word, wordIndex) in getLineWords(syncedLines, index)"
+                    :key="wordIndex"
+                    class="whitespace-pre-wrap"
+                    :class="{ 'text-yellow-500 dark:text-yellow-400': currentIndex === index && isWordPlaying(syncedLines, index, wordIndex, progress * 1000) }"
+                  >{{ word.text }}</span>
+                </template>
+                <template v-else>{{ line.text }}</template>
+              </p>
             </div>
 
             <button
@@ -47,7 +57,17 @@
         </div>
 
         <transition name="slide-fade" mode="out-in">
-          <div class="flex w-full justify-center items-center text-brave-30 dark:text-brave-95 text-sm grow" :key="currentLyrics">{{ currentLyrics }}</div>
+          <div class="flex w-full justify-center items-center text-brave-30 dark:text-brave-95 text-sm grow font-bold" :key="currentLyrics">
+            <template v-if="hasWordSync(syncedLines, currentIndex)">
+              <span
+                v-for="(word, wordIndex) in getLineWords(syncedLines, currentIndex)"
+                :key="wordIndex"
+                class="whitespace-pre-wrap"
+                :class="{ 'text-yellow-500 dark:text-yellow-400': isWordPlaying(syncedLines, currentIndex, wordIndex, progress * 1000) }"
+              >{{ word.text }}</span>
+            </template>
+            <template v-else>{{ currentLyrics }}</template>
+          </div>
         </transition>
       </div>
     </div>
@@ -56,20 +76,109 @@
 
 <script setup>
 import { DragHorizontal, ContentCopy } from 'mdue'
-import { Lrc, Runner } from 'lrc-kit'
-import { ref, onMounted, watch, nextTick } from 'vue'
+import { ref, watch, nextTick } from 'vue'
 import { computed } from '@vue/reactivity'
+import { parseLyricsfile } from '@/utils/lyricsfile.js'
 
-const props = defineProps(['lyrics', 'duration', 'progress'])
+const props = defineProps(['duration', 'progress', 'lyricsfile'])
 const emit = defineEmits(['lyricsClicked'])
 
-const runner = ref(null)
-const parsedLyrics = ref(null)
 const currentIndex = ref(null)
-const currentLyrics = ref(null)
 const expanded = ref(false)
 const currentLineElementOffset = ref(null)
 const copied = ref(false)
+
+const parsedLyricsfile = computed(() => {
+  if (!props.lyricsfile) {
+    return null
+  }
+  return parseLyricsfile(props.lyricsfile)
+})
+
+const syncedLines = computed(() => {
+  if (!parsedLyricsfile.value) {
+    return []
+  }
+  return parsedLyricsfile.value.syncedLines || []
+})
+
+const currentLyrics = computed(() => {
+  if (currentIndex.value === null || currentIndex.value < 0 || currentIndex.value >= syncedLines.value.length) {
+    return '…'
+  }
+  const line = syncedLines.value[currentIndex.value]
+  return line?.text || '…'
+})
+
+const getCurrentWordIndex = (line, currentTimeMs) => {
+  if (!line?.words || !Array.isArray(line.words) || line.words.length === 0) {
+    return -1
+  }
+
+  for (let i = 0; i < line.words.length; i++) {
+    const word = line.words[i]
+    const nextWord = line.words[i + 1]
+    const wordStart = word.start_ms
+    const wordEnd = nextWord ? nextWord.start_ms : Infinity
+
+    if (currentTimeMs >= wordStart && currentTimeMs < wordEnd) {
+      return i
+    }
+  }
+
+  return -1
+}
+
+const hasWordSync = (lines, index) => {
+  if (!lines || index === null || index < 0) {
+    return false
+  }
+  const line = lines[index]
+  return line && line.words && Array.isArray(line.words) && line.words.length > 0
+}
+
+const getLineWords = (lines, index) => {
+  if (!lines || index === null || index < 0) {
+    return []
+  }
+  const line = lines[index]
+  if (!line || !line.words || !Array.isArray(line.words)) {
+    return []
+  }
+  return line.words
+}
+
+const isWordPlaying = (lines, lineIndex, wordIndex, progressMs) => {
+  if (!lines || lineIndex === null || lineIndex < 0) {
+    return false
+  }
+  const line = lines[lineIndex]
+  if (!line || !line.words || !Array.isArray(line.words)) {
+    return false
+  }
+  return getCurrentWordIndex(line, progressMs) === wordIndex
+}
+
+const findCurrentLineIndex = (progressMs) => {
+  const lines = syncedLines.value
+  if (!lines || lines.length === 0) {
+    return -1
+  }
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]
+    const nextLine = lines[i + 1]
+    const lineStart = line.start_ms
+    const lineEnd = nextLine ? nextLine.start_ms : Infinity
+
+    if (progressMs >= lineStart && progressMs < lineEnd) {
+      return i
+    }
+  }
+
+  return -1
+}
+
 const expand = () => {
   expanded.value = !expanded.value
   nextTick(() => {
@@ -103,12 +212,12 @@ const fullViewTransform = computed(() => {
 })
 
 const onLineClick = (line) => {
-  emit('lyricsClicked', line)
+  emit('lyricsClicked', { timestamp: line.start_ms })
 }
 
 const onCopy = async () => {
   try {
-    const text = (parsedLyrics.value || []).map(l => l.content).join('\n')
+    const text = syncedLines.value.map(l => l.text).join('\n')
     if (!text) return
     await navigator.clipboard.writeText(text)
     copied.value = true
@@ -118,49 +227,15 @@ const onCopy = async () => {
   }
 }
 
-onMounted(() => {
-  const parsed = Lrc.parse(props.lyrics)
-
-  runner.value = new Runner(parsed)
-  parsedLyrics.value = runner.value.getLyrics()
-})
-
-watch(() => props.lyrics, (newLyrics) => {
-  if (!newLyrics) {
-    return
-  }
-  const parsed = Lrc.parse(newLyrics)
-
-  runner.value = new Runner(parsed)
-  parsedLyrics.value = runner.value.getLyrics()
-})
-
 watch(() => props.progress, (newProgress) => {
-  if (!runner.value || !props.lyrics) {
+  if (!syncedLines.value || syncedLines.value.length === 0) {
+    currentIndex.value = -1
     return
   }
 
-  runner.value.timeUpdate(newProgress)
-  let resultCurrentIndex = runner.value.curIndex()
-
-  if (resultCurrentIndex === null) {
-    resultCurrentIndex = -1
-  }
-
-  currentIndex.value = resultCurrentIndex
-
-  if (currentIndex.value === -1) {
-    currentLyrics.value = '…'
-    return
-  }
-
-  try {
-    const currentLyricsObj = runner.value.getLyric(resultCurrentIndex)
-    currentLyrics.value = currentLyricsObj.content
-  } catch (error) {
-    console.error(error)
-  }
-})
+  const progressMs = newProgress * 1000
+  currentIndex.value = findCurrentLineIndex(progressMs)
+}, { immediate: true })
 
 watch(currentIndex, (newCurrentIndex) => {
   updateCurrentLineElementOffset(newCurrentIndex)
