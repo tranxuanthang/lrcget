@@ -101,7 +101,16 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted, shallowRef, watch } from 'vue'
-import { Close, Loading, Minus, Plus, Check, AlertCircleOutline, AlertCircle, MagnifyPlus, MagnifyMinus, Music } from 'mdue'
+import Close from '~icons/mdi/close'
+import Loading from '~icons/mdi/loading'
+import Minus from '~icons/mdi/minus'
+import Plus from '~icons/mdi/plus'
+import Check from '~icons/mdi/check'
+import AlertCircleOutline from '~icons/mdi/alert-circle-outline'
+import AlertCircle from '~icons/mdi/alert-circle'
+import MagnifyPlus from '~icons/mdi/magnify-plus'
+import MagnifyMinus from '~icons/mdi/magnify-minus'
+import Music from '~icons/mdi/music'
 import { Lrc, Runner, timestampToString, parseLine } from 'lrc-kit'
 import { useGlobalState } from '@/composables/global-state.js'
 import { useToast } from 'vue-toastification'

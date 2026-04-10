@@ -73,7 +73,9 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue'
 import { useSearchLibrary } from '@/composables/search-library.js'
-import { Magnify, Close, Filter } from 'mdue'
+import Magnify from '~icons/mdi/magnify'
+import Close from '~icons/mdi/close'
+import Filter from '~icons/mdi/filter'
 import _debounce from 'lodash/debounce'
 import CheckboxButton from '@/components/common/CheckboxButton.vue'
 

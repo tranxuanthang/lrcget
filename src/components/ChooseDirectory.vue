@@ -46,8 +46,8 @@ import { open } from '@tauri-apps/plugin-dialog'
 import { audioDir } from '@tauri-apps/api/path'
 import { invoke } from '@tauri-apps/api/core'
 import { ref, onMounted } from 'vue'
-import { Close, Plus } from 'mdue'
-
+import Close from '~icons/mdi/close'
+import Plus from '~icons/mdi/plus'
 const emit = defineEmits(['progressStep', 'directoriesChanged'])
 
 const directories = ref([])

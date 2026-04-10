@@ -40,7 +40,8 @@
 </template>
 
 <script setup>
-import { DragHorizontal, ContentCopy } from 'mdue'
+import DragHorizontal from '~icons/mdi/drag-horizontal'
+import ContentCopy from '~icons/mdi/content-copy'
 import { ref, computed } from 'vue'
 import { parseLyricsfile } from '@/utils/lyricsfile.js'
 

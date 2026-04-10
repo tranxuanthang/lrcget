@@ -30,8 +30,8 @@
 </template>
 
 <script setup>
-import { RadioboxMarked, RadioboxBlank } from 'mdue'
-
+import RadioboxMarked from '~icons/mdi/radiobox-marked'
+import RadioboxBlank from '~icons/mdi/radiobox-blank'
 defineProps({
   modelValue: {
     type: [String, Number, Boolean],

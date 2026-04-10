@@ -102,7 +102,14 @@
 
 <script setup>
 import { ref } from 'vue'
-import { DownloadMultiple, Loading, Check, Cog, Information, DotsVertical, Refresh, FolderMultiple } from 'mdue'
+import DownloadMultiple from '~icons/mdi/download-multiple'
+import Loading from '~icons/mdi/loading'
+import Check from '~icons/mdi/check'
+import Cog from '~icons/mdi/cog'
+import Information from '~icons/mdi/information'
+import DotsVertical from '~icons/mdi/dots-vertical'
+import Refresh from '~icons/mdi/refresh'
+import FolderMultiple from '~icons/mdi/folder-multiple'
 import { useDownloader } from '@/composables/downloader.js'
 import MiniSearch from './MiniSearch.vue'
 import { invoke } from '@tauri-apps/api/core'

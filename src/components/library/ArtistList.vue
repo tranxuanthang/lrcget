@@ -36,7 +36,7 @@
 </template>
 
 <script setup>
-import { DownloadMultiple } from 'mdue'
+import DownloadMultiple from '~icons/mdi/download-multiple'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { invoke } from '@tauri-apps/api/core'

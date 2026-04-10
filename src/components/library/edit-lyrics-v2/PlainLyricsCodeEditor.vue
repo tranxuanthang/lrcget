@@ -32,8 +32,9 @@
 
 <script setup>
 import { computed, defineAsyncComponent, onMounted, onUnmounted, ref } from 'vue'
-import { Loading, MagnifyPlus, MagnifyMinus } from 'mdue'
-
+import Loading from '~icons/mdi/loading'
+import MagnifyPlus from '~icons/mdi/magnify-plus'
+import MagnifyMinus from '~icons/mdi/magnify-minus'
 const AsyncCodemirror = defineAsyncComponent(async () => {
   const { Codemirror } = await import('vue-codemirror')
   return Codemirror

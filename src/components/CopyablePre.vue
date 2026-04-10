@@ -14,8 +14,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { ContentCopy } from 'mdue'
-
+import ContentCopy from '~icons/mdi/content-copy'
 const copyablePre = ref(null)
 
 async function copyToClipboard() {

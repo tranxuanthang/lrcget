@@ -30,8 +30,8 @@
 </template>
 
 <script setup>
-import { CheckboxMarked, CheckboxBlankOutline } from 'mdue'
-
+import CheckboxMarked from '~icons/mdi/checkbox-marked'
+import CheckboxBlankOutline from '~icons/mdi/checkbox-blank-outline'
 defineProps({
   modelValue: {
     type: Boolean,

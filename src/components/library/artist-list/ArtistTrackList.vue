@@ -70,7 +70,8 @@
 </template>
 
 <script setup>
-import { ArrowLeft, DownloadMultiple } from 'mdue'
+import ArrowLeft from '~icons/mdi/arrow-left'
+import DownloadMultiple from '~icons/mdi/download-multiple'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { ref, computed, watch, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'

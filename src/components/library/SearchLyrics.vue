@@ -98,7 +98,9 @@
 <script setup>
 import { invoke } from '@tauri-apps/api/core'
 import { ref, onMounted, watch } from 'vue'
-import { Loading, Eye, ContentSave } from 'mdue'
+import Loading from '~icons/mdi/loading'
+import Eye from '~icons/mdi/eye'
+import ContentSave from '~icons/mdi/content-save'
 import { useToast } from 'vue-toastification'
 import Preview from './search-lyrics/Preview.vue'
 import { useModal } from 'vue-final-modal'

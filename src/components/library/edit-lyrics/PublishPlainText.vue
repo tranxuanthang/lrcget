@@ -84,7 +84,7 @@
 <script setup>
 import { invoke } from '@tauri-apps/api/core'
 import { ref, onMounted } from 'vue'
-import { Loading } from 'mdue'
+import Loading from '~icons/mdi/loading'
 import { listen } from '@tauri-apps/api/event'
 import { useToast } from 'vue-toastification'
 import BaseModal from '@/components/common/BaseModal.vue'

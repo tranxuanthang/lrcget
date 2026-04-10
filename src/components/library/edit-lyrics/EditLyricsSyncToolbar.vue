@@ -15,7 +15,11 @@
 </template>
 
 <script setup>
-import { Equal, MotionPlay, Minus, Plus, Music } from 'mdue'
+import Equal from '~icons/mdi/equal'
+import MotionPlay from '~icons/mdi/motion-play'
+import Minus from '~icons/mdi/minus'
+import Plus from '~icons/mdi/plus'
+import Music from '~icons/mdi/music'
 import EqualEnter from '@/components/icons/EqualEnter.vue'
 
 const emit = defineEmits(['sync-line', 'sync-line-only', 'rewind', 'forward', 'repeat', 'mark-instrumental'])

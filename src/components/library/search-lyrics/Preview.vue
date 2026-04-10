@@ -32,7 +32,9 @@
 
 <script setup>
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { Loading, Play, Pause } from 'mdue'
+import Loading from '~icons/mdi/loading'
+import Play from '~icons/mdi/play'
+import Pause from '~icons/mdi/pause'
 import { usePlayer } from '@/composables/player.js'
 import { Lrc, Runner } from 'lrc-kit'
 import Seek from '@/components/now-playing/Seek.vue'

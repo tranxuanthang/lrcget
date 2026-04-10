@@ -17,8 +17,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { ContentCopy } from 'mdue'
-
+import ContentCopy from '~icons/mdi/content-copy'
 const props = defineProps({
   text: { type: String, required: true },
 })

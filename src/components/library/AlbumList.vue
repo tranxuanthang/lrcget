@@ -36,7 +36,7 @@
 </template>
 
 <script setup>
-import { DownloadMultiple } from 'mdue'
+import DownloadMultiple from '~icons/mdi/download-multiple'
 import { ref, computed, onMounted, watch } from 'vue'
 import AlbumItem from './album-list/AlbumItem.vue'
 import AlbumTrackList from './album-list/AlbumTrackList.vue'

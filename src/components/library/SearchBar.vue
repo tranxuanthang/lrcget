@@ -26,7 +26,9 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { Magnify, Close, Loading } from 'mdue'
+import Magnify from '~icons/mdi/magnify'
+import Close from '~icons/mdi/close'
+import Loading from '~icons/mdi/loading'
 import { useSearchLibrary } from '@/composables/search-library.js'
 
 const DEFAULT_WAIT = 500

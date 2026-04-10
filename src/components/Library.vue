@@ -49,7 +49,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
-import { Loading } from 'mdue'
+import Loading from '~icons/mdi/loading'
 import _ from 'lodash'
 import LibraryHeader from './library/LibraryHeader.vue'
 import NowPlaying from './NowPlaying.vue'

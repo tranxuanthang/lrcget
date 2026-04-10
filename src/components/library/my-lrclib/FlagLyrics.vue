@@ -56,7 +56,7 @@
 <script setup>
 import { invoke } from '@tauri-apps/api/core'
 import { ref, onMounted, watch } from 'vue'
-import { Loading } from 'mdue'
+import Loading from '~icons/mdi/loading'
 import { listen } from '@tauri-apps/api/event'
 import { useToast } from 'vue-toastification'
 

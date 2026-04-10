@@ -43,8 +43,7 @@
 </template>
 
 <script setup>
-import { Close } from 'mdue'
-
+import Close from '~icons/mdi/close'
 const props = defineProps({
   title: {
     type: String,

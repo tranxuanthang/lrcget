@@ -92,7 +92,8 @@
 </template>
 
 <script setup>
-import { Alert, CheckCircle } from 'mdue'
+import Alert from '~icons/mdi/alert'
+import CheckCircle from '~icons/mdi/check-circle'
 import { ref, computed } from 'vue'
 import { getVersion } from '@tauri-apps/api/app'
 import semver from 'semver'

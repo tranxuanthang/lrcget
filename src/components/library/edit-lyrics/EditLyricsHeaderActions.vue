@@ -49,8 +49,9 @@
 
 <script setup>
 import { computed } from 'vue'
-import { Check, AlertCircleOutline, AlertCircle } from 'mdue'
-
+import Check from '~icons/mdi/check'
+import AlertCircleOutline from '~icons/mdi/alert-circle-outline'
+import AlertCircle from '~icons/mdi/alert-circle'
 const emit = defineEmits(['save', 'publish'])
 
 const props = defineProps({

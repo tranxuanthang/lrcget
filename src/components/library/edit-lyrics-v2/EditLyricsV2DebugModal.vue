@@ -26,7 +26,7 @@
 
 <script setup>
 import { ref } from 'vue'
-import { ContentCopy } from 'mdue'
+import ContentCopy from '~icons/mdi/content-copy'
 import BaseModal from '@/components/common/BaseModal.vue'
 
 defineProps({

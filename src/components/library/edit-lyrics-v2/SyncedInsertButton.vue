@@ -13,8 +13,7 @@
 </template>
 
 <script setup>
-import { Plus } from 'mdue'
-
+import Plus from '~icons/mdi/plus'
 defineProps({
   title: {
     type: String,

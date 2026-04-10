@@ -25,7 +25,10 @@
 </template>
 
 <script setup>
-import { Bug, WindowMinimize, WindowMaximize, WindowClose } from 'mdue'
+import Bug from '~icons/mdi/bug'
+import WindowMinimize from '~icons/mdi/window-minimize'
+import WindowMaximize from '~icons/mdi/window-maximize'
+import WindowClose from '~icons/mdi/window-close'
 import ChooseDirectory from "./components/ChooseDirectory.vue";
 import Library from "./components/Library.vue";
 import { ref, onMounted, watch } from 'vue'

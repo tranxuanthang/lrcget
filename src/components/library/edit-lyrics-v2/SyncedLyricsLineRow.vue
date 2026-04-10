@@ -101,8 +101,11 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { Play, Equal, Minus, Plus, Close } from 'mdue'
-
+import Play from '~icons/mdi/play'
+import Equal from '~icons/mdi/equal'
+import Minus from '~icons/mdi/minus'
+import Plus from '~icons/mdi/plus'
+import Close from '~icons/mdi/close'
 const props = defineProps({
   index: {
     type: Number,

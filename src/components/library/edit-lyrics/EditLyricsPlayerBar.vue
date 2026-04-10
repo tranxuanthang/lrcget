@@ -9,7 +9,8 @@
 </template>
 
 <script setup>
-import { Play, Pause } from 'mdue'
+import Play from '~icons/mdi/play'
+import Pause from '~icons/mdi/pause'
 import Seek from '@/components/now-playing/Seek.vue'
 
 defineProps({

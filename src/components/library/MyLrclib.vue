@@ -35,7 +35,7 @@
 
 <script setup>
 import { ref, onMounted } from 'vue'
-import { Magnify } from 'mdue'
+import Magnify from '~icons/mdi/magnify'
 import SearchResult from './my-lrclib/SearchResult.vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useGlobalState } from '../../composables/global-state'

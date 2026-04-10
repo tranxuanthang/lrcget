@@ -79,7 +79,11 @@
 </template>
 
 <script setup>
-import { ArrowLeft, Loading, Eye, PlaylistEdit, Flag } from 'mdue'
+import ArrowLeft from '~icons/mdi/arrow-left'
+import Loading from '~icons/mdi/loading'
+import Eye from '~icons/mdi/eye'
+import PlaylistEdit from '~icons/mdi/playlist-edit'
+import Flag from '~icons/mdi/flag'
 import { ref, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { countLines } from '@/utils/count-lines.js'

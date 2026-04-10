@@ -34,7 +34,8 @@
 </template>
 
 <script setup>
-import { VolumeMedium, VolumeMute } from 'mdue';
+import VolumeMedium from '~icons/mdi/volume-medium'
+import VolumeMute from '~icons/mdi/volume-mute'
 import VueSlider from "vue-3-slider-component";
 import { ref, watch } from 'vue'
 

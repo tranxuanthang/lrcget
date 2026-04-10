@@ -60,7 +60,11 @@
 </template>
 
 <script setup>
-import { Play, Pause, TextSearch, PlaylistEdit, Replay } from 'mdue'
+import Play from '~icons/mdi/play'
+import Pause from '~icons/mdi/pause'
+import TextSearch from '~icons/mdi/text-search'
+import PlaylistEdit from '~icons/mdi/playlist-edit'
+import Replay from '~icons/mdi/replay'
 import { humanDuration } from '../../../utils/human-duration.js'
 import { useSearchLyrics } from '../../../composables/search-lyrics.js'
 import { useEditLyricsV2 } from '../../../composables/edit-lyrics-v2.js'

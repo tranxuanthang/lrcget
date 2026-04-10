@@ -24,7 +24,7 @@
           class="button text-sm px-2 py-1.5 h-8 rounded-r-full rounded-l-none button-normal"
           type="button"
         >
-          <span aria-hidden="true">⌄</span>
+          <ChevronDown class="text-base" />
         </button>
 
         <template #popper>
@@ -37,16 +37,31 @@
             <div class="dropdown-section-label">Export to directory:</div>
 
             <label class="dropdown-item">
-              <input v-model="exportPlainText" type="checkbox" class="dropdown-checkbox">
-              <span class="dropdown-label">Plain lyrics (.txt)</span>
+              <CheckboxButton
+                v-model="exportPlainText"
+                name="export-plain-text"
+                id="export-plain-text"
+              >
+                <span class="dropdown-label">Plain lyrics (.txt)</span>
+              </CheckboxButton>
             </label>
             <label class="dropdown-item">
-              <input v-model="exportSyncedLrc" type="checkbox" class="dropdown-checkbox">
-              <span class="dropdown-label">Synced lyrics (.lrc)</span>
+              <CheckboxButton
+                v-model="exportSyncedLrc"
+                name="export-synced-lrc"
+                id="export-synced-lrc"
+              >
+                <span class="dropdown-label">Synced lyrics (.lrc)</span>
+              </CheckboxButton>
             </label>
             <label class="dropdown-item">
-              <input v-model="exportEnhancedLrc" type="checkbox" class="dropdown-checkbox">
-              <span class="dropdown-label">Enhanced LRC lyrics (.elrc)</span>
+              <CheckboxButton
+                v-model="exportEnhancedLrc"
+                name="export-enhanced-lrc"
+                id="export-enhanced-lrc"
+              >
+                <span class="dropdown-label">Enhanced LRC lyrics (.elrc)</span>
+              </CheckboxButton>
             </label>
           </div>
         </template>
@@ -70,6 +85,8 @@
 
 <script setup>
 import { ref } from 'vue'
+import ChevronDown from '~icons/mdi/chevron-down'
+import CheckboxButton from '@/components/common/CheckboxButton.vue'
 
 const emit = defineEmits(['save', 'save-and-publish', 'debug'])
 
@@ -106,7 +123,4 @@ defineProps({
   @apply text-xs uppercase font-bold text-brave-35 dark:text-brave-70 px-2 py-1;
 }
 
-.dropdown-checkbox {
-  @apply rounded text-brave-primary dark:text-brave-60 focus:ring-brave-primary dark:focus:ring-brave-60;
-}
 </style>

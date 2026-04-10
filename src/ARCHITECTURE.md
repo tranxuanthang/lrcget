@@ -4,7 +4,7 @@
 
 Vue 3 frontend in Tauri webview. Handles UI, playback, library browsing, lyric editing, and backend communication. Session state only; persistence in Rust/SQLite.
 
-**Tech Stack**: Vue 3 (`<script setup>`), Vite, Tailwind CSS, Vue Final Modal, Floating Vue, Vue Toastification, TanStack Vue Virtual, CodeMirror.
+**Tech Stack**: Vue 3 (`<script setup>`), Vite, Tailwind CSS, Vue Final Modal, Floating Vue, Vue Toastification, TanStack Vue Virtual, CodeMirror, `unplugin-icons` + Iconify Material Design Icons (`@iconify-json/mdi`).
 
 **Core Patterns**:
 | Pattern | Implementation |
@@ -76,6 +76,8 @@ Utils: `src/utils/` (parsing, linting), Composables: `composables/edit-lyrics/`,
 ## Technical Details
 
 **Styling**: Tailwind CSS + custom classes in `style.css`. Palettes (`brave`, `hoa`) from `tailwind.config.cjs`. Dark mode via `html.dark`. Semantic classes: `.button`, `.input`, `.modal-content`, `.link`.
+
+**Icons**: Icons are imported directly per-file from `~icons/mdi/*` (powered by `unplugin-icons` in `vite.config.js`). Avoid adding `mdue`; use MDI icon imports instead.
 
 **Utilities**: `src/utils/` — duration formatting, line counts, lyric parsing/linting, Lyricsfile YAML helpers.
 
