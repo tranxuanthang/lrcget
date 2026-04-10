@@ -197,8 +197,12 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
   }
 
   const saveLyrics = async () => {
-    if (!editingTrack.value || !isDirty.value) {
-      return
+    if (!editingTrack.value) {
+      return false
+    }
+
+    if (!isDirty.value) {
+      return true
     }
 
     try {
@@ -220,9 +224,11 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
       syncedLines.value = parsed.syncedLines.map((line) => normalizeSyncedLine(line))
       lyricsfileDocument.value = parsed.document
       isDirty.value = false
+      return true
     } catch (error) {
       console.error(error)
       toast.error(error)
+      return false
     }
   }
 

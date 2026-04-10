@@ -159,7 +159,7 @@ Background loop (40ms) in `main.rs` emits `player-state` event.
 | `search_lyrics()` | Search LRCLIB database |
 | `apply_lyrics()` | Apply specific result |
 | `save_lyrics(id, plain?, synced?, lyricsfile?)` | Save edits (prefers `lyricsfile`) |
-| `publish_lyrics()` | Upload to LRCLIB (with PoW) |
+| `publish_lyrics(title, album, artist, duration, plain?, synced?, lyricsfile?)` | Upload to LRCLIB (with PoW; accepts Lyricsfile-only payloads) |
 | `flag_lyrics()` | Report to LRCLIB (with PoW) |
 
 ### Playback & Config

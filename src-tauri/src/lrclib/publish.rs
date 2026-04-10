@@ -12,8 +12,12 @@ pub struct Request {
     album_name: String,
     artist_name: String,
     duration: f64,
-    plain_lyrics: String,
-    synced_lyrics: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    plain_lyrics: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    synced_lyrics: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    lyricsfile: Option<String>,
 }
 
 #[derive(Error, Deserialize, Debug)]
@@ -30,8 +34,9 @@ pub async fn request(
     album_name: &str,
     artist_name: &str,
     duration: f64,
-    plain_lyrics: &str,
-    synced_lyrics: &str,
+    plain_lyrics: Option<&str>,
+    synced_lyrics: Option<&str>,
+    lyricsfile: Option<&str>,
     publish_token: &str,
     lrclib_instance: &str,
 ) -> Result<()> {
@@ -40,8 +45,9 @@ pub async fn request(
         track_name: title.to_owned(),
         album_name: album_name.to_owned(),
         duration: duration.round(),
-        plain_lyrics: plain_lyrics.to_owned(),
-        synced_lyrics: synced_lyrics.to_owned(),
+        plain_lyrics: plain_lyrics.map(str::to_owned),
+        synced_lyrics: synced_lyrics.map(str::to_owned),
+        lyricsfile: lyricsfile.map(str::to_owned),
     };
 
     let version = env!("CARGO_PKG_VERSION");

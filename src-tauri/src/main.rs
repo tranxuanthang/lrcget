@@ -661,10 +661,40 @@ async fn publish_lyrics(
     album_name: String,
     artist_name: String,
     duration: f64,
-    plain_lyrics: String,
-    synced_lyrics: String,
+    plain_lyrics: Option<String>,
+    synced_lyrics: Option<String>,
+    lyricsfile: Option<String>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
+    let plain_lyrics = plain_lyrics.and_then(|lyrics| {
+        let trimmed = lyrics.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_owned())
+        }
+    });
+    let synced_lyrics = synced_lyrics.and_then(|lyrics| {
+        let trimmed = lyrics.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(trimmed.to_owned())
+        }
+    });
+    let lyricsfile = lyricsfile.and_then(|content| {
+        let trimmed = content.trim();
+        if trimmed.is_empty() {
+            None
+        } else {
+            Some(content)
+        }
+    });
+
+    if plain_lyrics.is_none() && synced_lyrics.is_none() && lyricsfile.is_none() {
+        return Err("No lyrics payload provided for publishing".to_owned());
+    }
+
     let config = app_handle
         .db(|db: &Connection| db::get_config(db))
         .map_err(|err| err.to_string())?;
@@ -701,8 +731,9 @@ async fn publish_lyrics(
         &album_name,
         &artist_name,
         duration,
-        &plain_lyrics,
-        &synced_lyrics,
+        plain_lyrics.as_deref(),
+        synced_lyrics.as_deref(),
+        lyricsfile.as_deref(),
         &publish_token,
         &config.lrclib_instance,
     )

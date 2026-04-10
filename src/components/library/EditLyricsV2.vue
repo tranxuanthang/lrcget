@@ -7,7 +7,12 @@
     @close="emit('close')"
   >
     <template #titleLeft>
-      <EditLyricsV2HeaderActions :is-dirty="isDirty" @save="saveLyrics" @debug="openDebugModal" />
+      <EditLyricsV2HeaderActions
+        :is-dirty="isDirty"
+        @save="saveLyrics"
+        @save-and-publish="saveAndPublish"
+        @debug="openDebugModal"
+      />
     </template>
 
     <template #titleRight>
@@ -90,11 +95,11 @@ import SyncedLyricsEditor from '@/components/library/edit-lyrics-v2/SyncedLyrics
 import { useEditLyricsV2 } from '@/composables/edit-lyrics-v2.js'
 import { useEditLyricsV2Document } from '@/composables/edit-lyrics-v2/useEditLyricsV2Document.js'
 import { useEditLyricsV2Hotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2Hotkeys.js'
+import { useEditLyricsV2Publish } from '@/composables/edit-lyrics-v2/useEditLyricsV2Publish.js'
 import { useEditLyricsV2Playback } from '@/composables/edit-lyrics-v2/useEditLyricsV2Playback.js'
 import { useEditLyricsV2SyncedHotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedHotkeys.js'
 import { useGlobalState } from '@/composables/global-state.js'
 import { usePlayer } from '@/composables/player.js'
-import { serializeLyricsfile } from '@/utils/lyricsfile.js'
 
 const emit = defineEmits(['close'])
 
@@ -134,6 +139,14 @@ const {
 
 const codemirrorStyle = ref({
   fontSize: 1.0
+})
+
+const { saveAndPublish, serializedLyricsfile } = useEditLyricsV2Publish({
+  editingTrack,
+  plainLyrics,
+  syncedLines,
+  lyricsfileDocument,
+  saveLyrics
 })
 
 const { playLine, resumeOrPlay } = useEditLyricsV2Playback({
@@ -231,12 +244,7 @@ const resetCodemirrorFontSize = () => {
 
 const debugModalContent = computed(() => {
   if (!editingTrack.value) return ''
-  return serializeLyricsfile({
-    track: editingTrack.value,
-    plainLyrics: plainLyrics.value,
-    syncedLines: syncedLines.value,
-    baseDocument: lyricsfileDocument.value
-  }) || ''
+  return serializedLyricsfile.value
 })
 
 const { open: openDebugModal, close: closeDebugModal } = useModal({

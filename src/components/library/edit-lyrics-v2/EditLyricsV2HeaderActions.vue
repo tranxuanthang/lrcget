@@ -1,22 +1,57 @@
 <template>
   <div class="flex-none flex gap-2 items-center">
-    <VTooltip theme="lrcget-tooltip">
-      <button
-        class="button text-sm px-5 py-1.5 h-8 w-24 rounded-full"
-        :class="{ 'button-primary': isDirty, 'button-disabled': !isDirty }"
-        :disabled="!isDirty"
-        @click="emit('save')"
-      >
-        Save
-      </button>
+    <div class="flex-none flex">
+      <VTooltip theme="lrcget-tooltip">
+        <button
+          class="button text-sm px-5 py-1.5 h-8 w-24 rounded-l-full rounded-r-none border-r border-brave-95 dark:border-brave-5"
+          :class="{ 'button-primary': isDirty, 'button-disabled': !isDirty }"
+          :disabled="!isDirty"
+          @click="emit('save')"
+        >
+          Save
+        </button>
 
-      <template #popper>
-        <div class="text-xs font-bold">
-          Save lyrics
-          <span class="text-[0.65rem] text-brave-30 bg-brave-95 px-1 rounded-full">Ctrl+S</span>
-        </div>
-      </template>
-    </VTooltip>
+        <template #popper>
+          <div class="text-xs font-bold">
+            Save lyrics
+            <span class="text-[0.65rem] text-brave-30 bg-brave-95 px-1 rounded-full">Ctrl+S</span>
+          </div>
+        </template>
+      </VTooltip>
+
+      <VDropdown theme="lrcget-dropdown" placement="bottom-start">
+        <button
+          class="button text-sm px-2 py-1.5 h-8 rounded-r-full rounded-l-none button-normal"
+          type="button"
+        >
+          <span aria-hidden="true">⌄</span>
+        </button>
+
+        <template #popper>
+          <div class="dropdown-container">
+            <button class="dropdown-item" @click="emit('save-and-publish')" v-close-popper>
+              <span class="dropdown-label">Save and Publish</span>
+            </button>
+
+            <div class="dropdown-divider" />
+            <div class="dropdown-section-label">Export to directory:</div>
+
+            <label class="dropdown-item">
+              <input v-model="exportPlainText" type="checkbox" class="dropdown-checkbox">
+              <span class="dropdown-label">Plain lyrics (.txt)</span>
+            </label>
+            <label class="dropdown-item">
+              <input v-model="exportSyncedLrc" type="checkbox" class="dropdown-checkbox">
+              <span class="dropdown-label">Synced lyrics (.lrc)</span>
+            </label>
+            <label class="dropdown-item">
+              <input v-model="exportEnhancedLrc" type="checkbox" class="dropdown-checkbox">
+              <span class="dropdown-label">Enhanced LRC lyrics (.elrc)</span>
+            </label>
+          </div>
+        </template>
+      </VDropdown>
+    </div>
 
     <VTooltip theme="lrcget-tooltip">
       <button
@@ -34,7 +69,13 @@
 </template>
 
 <script setup>
-const emit = defineEmits(['save', 'debug'])
+import { ref } from 'vue'
+
+const emit = defineEmits(['save', 'save-and-publish', 'debug'])
+
+const exportPlainText = ref(false)
+const exportSyncedLrc = ref(false)
+const exportEnhancedLrc = ref(false)
 
 defineProps({
   isDirty: {
@@ -43,3 +84,29 @@ defineProps({
   }
 })
 </script>
+
+<style scoped>
+.dropdown-container {
+  @apply p-1 min-w-[17rem];
+}
+
+.dropdown-item {
+  @apply flex items-center px-2 py-1 hover:bg-brave-90 dark:hover:bg-brave-15 rounded cursor-pointer h-8 gap-2 w-full;
+}
+
+.dropdown-divider {
+  @apply h-px bg-brave-90 dark:bg-brave-15 my-1;
+}
+
+.dropdown-label {
+  @apply text-brave-20 dark:text-brave-90 text-sm font-bold;
+}
+
+.dropdown-section-label {
+  @apply text-xs uppercase font-bold text-brave-35 dark:text-brave-70 px-2 py-1;
+}
+
+.dropdown-checkbox {
+  @apply rounded text-brave-primary dark:text-brave-60 focus:ring-brave-primary dark:focus:ring-brave-60;
+}
+</style>
