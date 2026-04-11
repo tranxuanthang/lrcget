@@ -7,6 +7,13 @@ use serde::{Deserialize, Serialize};
 pub const LYRICSFILE_VERSION: &str = "1.0";
 pub const INSTRUMENTAL_LRC: &str = "[au: instrumental]";
 
+#[derive(Debug, Clone, Copy, Default)]
+pub struct LyricsPresence {
+    pub has_plain_lyrics: bool,
+    pub has_synced_lyrics: bool,
+    pub has_word_synced_lyrics: bool,
+}
+
 #[derive(Debug, Clone)]
 pub struct LyricsfileTrackMetadata {
     pub title: String,
@@ -167,6 +174,33 @@ pub fn parse_lyricsfile(lyricsfile: &str) -> Result<ParsedLyricsfile> {
         plain_lyrics,
         synced_lyrics,
         is_instrumental,
+    })
+}
+
+pub fn lyrics_presence_from_lyricsfile(lyricsfile: &str) -> Result<LyricsPresence> {
+    let document: ParsedLyricsfileDocument = serde_yaml::from_str(lyricsfile)?;
+    let is_instrumental = document.metadata.instrumental;
+
+    if is_instrumental {
+        return Ok(LyricsPresence::default());
+    }
+
+    let has_synced_lyrics = !document.lines.is_empty();
+    let has_word_synced_lyrics = document.lines.iter().any(|line| !line.words.is_empty());
+    let has_plain_from_lines = document.lines.iter().any(|line| {
+        normalize_non_empty(Some(line.text.as_str())).is_some()
+            || line
+                .words
+                .iter()
+                .any(|word| normalize_non_empty(Some(word.text.as_str())).is_some())
+    });
+    let has_plain_lyrics = normalize_non_empty(document.plain.as_deref()).is_some()
+        || (has_synced_lyrics && has_plain_from_lines);
+
+    Ok(LyricsPresence {
+        has_plain_lyrics,
+        has_synced_lyrics,
+        has_word_synced_lyrics,
     })
 }
 

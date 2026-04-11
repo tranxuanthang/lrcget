@@ -26,28 +26,28 @@
       </div>
 
       <div class="flex flex-col gap-2">
-        <div v-for="track in tracks" :key="track.id" class="rounded bg-brave-98 hover:bg-brave-95 dark:bg-brave-5 dark:hover:bg-brave-10 transition px-2 py-1 flex gap-2 justify-between items-center">
+        <div v-for="result in normalizedTracks" :key="result.track.id" class="rounded bg-brave-98 hover:bg-brave-95 dark:bg-brave-5 dark:hover:bg-brave-10 transition px-2 py-1 flex gap-2 justify-between items-center">
           <div class="flex flex-col gap-1">
             <div class="flex gap-2 items-center">
-              <div class="text-sm font-bold text-brave-30 dark:text-brave-95">{{ track.name }}</div>
+              <div class="text-sm font-bold text-brave-30 dark:text-brave-95">{{ result.track.name }}</div>
               <div class="text-[0.65rem] font-bold flex gap-1">
-                <span class="bg-brave-90 text-brave-30 px-1 py-0.5 rounded">{{ humanDuration(track.duration) }}</span>
+                <span class="bg-brave-90 text-brave-30 px-1 py-0.5 rounded">{{ humanDuration(result.track.duration) }}</span>
                 <template v-if="showLineCount === true">
-                  <span v-if="!!track.syncedLyrics" class="bg-blue-800 text-blue-200 px-1 py-0.5 rounded">{{ countLines(track.syncedLyrics) }} Lines</span>
-                  <span v-else-if="!!track.plainLyrics" class="bg-blue-800 text-blue-200 px-1 py-0.5 rounded">{{ countLines(track.plainLyrics) }} Lines</span>
+                  <span v-if="!!result.lyrics.syncedLyrics" class="bg-blue-800 text-blue-200 px-1 py-0.5 rounded">{{ countLines(result.lyrics.syncedLyrics) }} Lines</span>
+                  <span v-else-if="!!result.lyrics.plainLyrics" class="bg-blue-800 text-blue-200 px-1 py-0.5 rounded">{{ countLines(result.lyrics.plainLyrics) }} Lines</span>
                 </template>
-                <span v-if="!!track.syncedLyrics" class="bg-green-800 text-green-200 px-1 py-0.5 rounded">Synced</span>
-                <span v-else-if="!!track.plainLyrics" class="bg-gray-800 text-gray-200 px-1 py-0.5 rounded">Plain</span>
-                <span v-else-if="!!track.instrumental" class="bg-gray-300 text-gray-600 px-1 py-0.5 rounded">Instrumental</span>
+                <span v-if="!!result.lyrics.syncedLyrics" class="bg-green-800 text-green-200 px-1 py-0.5 rounded">Synced</span>
+                <span v-else-if="!!result.lyrics.plainLyrics" class="bg-gray-800 text-gray-200 px-1 py-0.5 rounded">Plain</span>
+                <span v-else-if="!!result.lyrics.instrumental" class="bg-gray-300 text-gray-600 px-1 py-0.5 rounded">Instrumental</span>
               </div>
             </div>
-            <div class="text-sm text-brave-35 dark:text-brave-80">{{ track.albumName }} - {{ track.artistName }}</div>
+            <div class="text-sm text-brave-35 dark:text-brave-80">{{ result.track.albumName }} - {{ result.track.artistName }}</div>
           </div>
           <div class="flex gap-1 items-center">
             <button
               class="button-tiny"
               type="button"
-              @click="setShowingTrack(track)"
+              @click="setShowingTrack(result.track)"
             >
               <Eye />
             </button>
@@ -55,7 +55,7 @@
             <button
               class="button-tiny"
               type="button"
-              @click="setEditingTrack(track)"
+              @click="setEditingTrack(result.track)"
             >
               <PlaylistEdit />
             </button>
@@ -63,7 +63,7 @@
             <button
               class="button-tiny"
               type="button"
-              @click="flagLyrics(track)"
+              @click="flagLyrics(result.track)"
             >
               <Flag />
             </button>
@@ -84,11 +84,12 @@ import Loading from '~icons/mdi/loading'
 import Eye from '~icons/mdi/eye'
 import PlaylistEdit from '~icons/mdi/playlist-edit'
 import Flag from '~icons/mdi/flag'
-import { ref, onMounted } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { countLines } from '@/utils/count-lines.js'
 import { humanDuration } from '@/utils/human-duration.js'
 import { useToast } from 'vue-toastification'
+import { normalizeLrclibLyrics } from '@/utils/lyricsfile.js'
 import EditLyrics from './EditLyrics.vue'
 import PreviewLyrics from './PreviewLyrics.vue'
 import FlagLyrics from './FlagLyrics.vue'
@@ -110,6 +111,11 @@ const showingTrack = ref(null)
 const editingTrack = ref(null)
 const flagLyricsTrack = ref(null)
 const showLineCount = ref(true)
+
+const normalizedTracks = computed(() => tracks.value.map((track) => ({
+  track,
+  lyrics: normalizeLrclibLyrics(track)
+})))
 
 const { open: openPreviewModal, close: closePreviewModal } = useModal({
   component: PreviewLyrics,

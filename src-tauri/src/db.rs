@@ -1,5 +1,7 @@
 use crate::fs_track;
-use crate::lyricsfile::{build_lyricsfile, LyricsfileTrackMetadata};
+use crate::lyricsfile::{
+    build_lyricsfile, lyrics_presence_from_lyricsfile, LyricsPresence, LyricsfileTrackMetadata,
+};
 use crate::persistent_entities::{
     PersistentAlbum, PersistentArtist, PersistentConfig, PersistentTrack,
 };
@@ -38,7 +40,125 @@ pub fn initialize_database(app_handle: &AppHandle) -> Result<Connection, rusqlit
         .to_latest(&mut db)
         .expect("Failed to run database migrations");
 
+    if let Err(error) = backfill_track_lyrics_presence(&db) {
+        eprintln!("Failed to backfill track lyrics presence flags: {}", error);
+    }
+
     Ok(db)
+}
+
+fn derive_lyrics_presence_from_legacy(
+    plain_lyrics: Option<&str>,
+    synced_lyrics: Option<&str>,
+    instrumental: bool,
+) -> LyricsPresence {
+    if instrumental {
+        return LyricsPresence::default();
+    }
+
+    let has_plain_lyrics = plain_lyrics
+        .map(str::trim)
+        .map(|plain| !plain.is_empty())
+        .unwrap_or(false);
+    let has_synced_lyrics = synced_lyrics
+        .map(str::trim)
+        .map(|synced| !synced.is_empty() && !crate::lyricsfile::is_instrumental_lyrics(synced))
+        .unwrap_or(false);
+
+    LyricsPresence {
+        has_plain_lyrics,
+        has_synced_lyrics,
+        has_word_synced_lyrics: false,
+    }
+}
+
+fn set_track_lyrics_presence(
+    track_id: i64,
+    presence: LyricsPresence,
+    db: &Connection,
+) -> Result<()> {
+    db.execute(
+        "UPDATE tracks SET has_plain_lyrics = ?, has_synced_lyrics = ?, has_word_synced_lyrics = ? WHERE id = ?",
+        (
+            presence.has_plain_lyrics,
+            presence.has_synced_lyrics,
+            presence.has_word_synced_lyrics,
+            track_id,
+        ),
+    )?;
+
+    Ok(())
+}
+
+fn set_track_lyrics_presence_tx(
+    track_id: i64,
+    presence: LyricsPresence,
+    tx: &rusqlite::Transaction,
+) -> Result<()> {
+    tx.execute(
+        "UPDATE tracks SET has_plain_lyrics = ?, has_synced_lyrics = ?, has_word_synced_lyrics = ? WHERE id = ?",
+        (
+            presence.has_plain_lyrics,
+            presence.has_synced_lyrics,
+            presence.has_word_synced_lyrics,
+            track_id,
+        ),
+    )?;
+
+    Ok(())
+}
+
+pub fn backfill_track_lyrics_presence(db: &Connection) -> Result<()> {
+    let mut select_statement = db.prepare(indoc! {"
+      SELECT
+        tracks.id,
+        tracks.txt_lyrics,
+        tracks.lrc_lyrics,
+        tracks.instrumental,
+        lyricsfiles.lyricsfile
+      FROM tracks
+      LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
+    "})?;
+
+    let mut rows = select_statement.query([])?;
+    let mut updates: Vec<(i64, LyricsPresence)> = Vec::new();
+
+    while let Some(row) = rows.next()? {
+        let track_id: i64 = row.get("id")?;
+        let txt_lyrics: Option<String> = row.get("txt_lyrics")?;
+        let lrc_lyrics: Option<String> = row.get("lrc_lyrics")?;
+        let is_instrumental: Option<bool> = row.get("instrumental")?;
+        let lyricsfile: Option<String> = row.get("lyricsfile")?;
+        let instrumental = is_instrumental.unwrap_or(false);
+
+        let presence = match lyricsfile
+            .as_deref()
+            .map(str::trim)
+            .filter(|content| !content.is_empty())
+        {
+            Some(lyricsfile_content) => lyrics_presence_from_lyricsfile(lyricsfile_content)
+                .unwrap_or_else(|_| {
+                    derive_lyrics_presence_from_legacy(
+                        txt_lyrics.as_deref(),
+                        lrc_lyrics.as_deref(),
+                        instrumental,
+                    )
+                }),
+            None => derive_lyrics_presence_from_legacy(
+                txt_lyrics.as_deref(),
+                lrc_lyrics.as_deref(),
+                instrumental,
+            ),
+        };
+
+        updates.push((track_id, presence));
+    }
+
+    for (track_id, presence) in updates {
+        set_track_lyrics_presence(track_id, presence, db)?;
+    }
+
+    Ok(())
 }
 
 pub fn get_directories(db: &Connection) -> Result<Vec<String>> {
@@ -221,10 +341,20 @@ pub fn update_track_synced_lyrics(
     plain_lyrics: &str,
     db: &Connection,
 ) -> Result<PersistentTrack> {
+    let presence =
+        derive_lyrics_presence_from_legacy(Some(plain_lyrics), Some(synced_lyrics), false);
+
     let mut statement = db.prepare(
-        "UPDATE tracks SET lrc_lyrics = ?, txt_lyrics = ?, instrumental = false WHERE id = ?",
+        "UPDATE tracks SET lrc_lyrics = ?, txt_lyrics = ?, instrumental = false, has_plain_lyrics = ?, has_synced_lyrics = ?, has_word_synced_lyrics = ? WHERE id = ?",
     )?;
-    statement.execute((synced_lyrics, plain_lyrics, id))?;
+    statement.execute((
+        synced_lyrics,
+        plain_lyrics,
+        presence.has_plain_lyrics,
+        presence.has_synced_lyrics,
+        presence.has_word_synced_lyrics,
+        id,
+    ))?;
 
     Ok(get_track_by_id(id, db)?)
 }
@@ -234,17 +364,19 @@ pub fn update_track_plain_lyrics(
     plain_lyrics: &str,
     db: &Connection,
 ) -> Result<PersistentTrack> {
+    let presence = derive_lyrics_presence_from_legacy(Some(plain_lyrics), None, false);
+
     let mut statement = db.prepare(
-        "UPDATE tracks SET txt_lyrics = ?, lrc_lyrics = null, instrumental = false WHERE id = ?",
+        "UPDATE tracks SET txt_lyrics = ?, lrc_lyrics = null, instrumental = false, has_plain_lyrics = ?, has_synced_lyrics = false, has_word_synced_lyrics = false WHERE id = ?",
     )?;
-    statement.execute((plain_lyrics, id))?;
+    statement.execute((plain_lyrics, presence.has_plain_lyrics, id))?;
 
     Ok(get_track_by_id(id, db)?)
 }
 
 pub fn update_track_null_lyrics(id: i64, db: &Connection) -> Result<PersistentTrack> {
     let mut statement = db.prepare(
-        "UPDATE tracks SET txt_lyrics = null, lrc_lyrics = null, instrumental = false WHERE id = ?",
+        "UPDATE tracks SET txt_lyrics = null, lrc_lyrics = null, instrumental = false, has_plain_lyrics = false, has_synced_lyrics = false, has_word_synced_lyrics = false WHERE id = ?",
     )?;
     statement.execute([id])?;
 
@@ -253,7 +385,7 @@ pub fn update_track_null_lyrics(id: i64, db: &Connection) -> Result<PersistentTr
 
 pub fn update_track_instrumental(id: i64, db: &Connection) -> Result<PersistentTrack> {
     let mut statement = db.prepare(
-        "UPDATE tracks SET txt_lyrics = null, lrc_lyrics = ?, instrumental = true WHERE id = ?",
+        "UPDATE tracks SET txt_lyrics = null, lrc_lyrics = ?, instrumental = true, has_plain_lyrics = false, has_synced_lyrics = false, has_word_synced_lyrics = false WHERE id = ?",
     )?;
     statement.execute(params!["[au: instrumental]", id])?;
 
@@ -269,6 +401,8 @@ pub fn upsert_lyricsfile_for_track(
     lyricsfile: &str,
     db: &Connection,
 ) -> Result<()> {
+    let presence = lyrics_presence_from_lyricsfile(lyricsfile)?;
+
     db.execute(
         indoc! {"
         INSERT INTO lyricsfiles (
@@ -309,6 +443,8 @@ pub fn upsert_lyricsfile_for_track(
         ),
     )?;
 
+    set_track_lyrics_presence(track_id, presence, db)?;
+
     Ok(())
 }
 
@@ -321,6 +457,8 @@ pub fn upsert_lyricsfile_for_track_tx(
     lyricsfile: &str,
     tx: &rusqlite::Transaction,
 ) -> Result<()> {
+    let presence = lyrics_presence_from_lyricsfile(lyricsfile)?;
+
     tx.execute(
         indoc! {"
         INSERT INTO lyricsfiles (
@@ -361,11 +499,14 @@ pub fn upsert_lyricsfile_for_track_tx(
         ),
     )?;
 
+    set_track_lyrics_presence_tx(track_id, presence, tx)?;
+
     Ok(())
 }
 
 pub fn delete_lyricsfile_by_track_id(track_id: i64, db: &Connection) -> Result<()> {
     db.execute("DELETE FROM lyricsfiles WHERE track_id = ?", [track_id])?;
+    set_track_lyrics_presence(track_id, LyricsPresence::default(), db)?;
     Ok(())
 }
 
@@ -404,6 +545,12 @@ pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
     let txt_lyrics = track.txt_lyrics();
     let lrc_lyrics = track.lrc_lyrics();
 
+    let presence = derive_lyrics_presence_from_legacy(
+        txt_lyrics.as_deref(),
+        lrc_lyrics.as_deref(),
+        is_instrumental,
+    );
+
     let query = indoc! {"
     INSERT INTO tracks (
         file_path,
@@ -416,8 +563,11 @@ pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
         track_number,
         txt_lyrics,
         lrc_lyrics,
-        instrumental
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        instrumental,
+        has_plain_lyrics,
+        has_synced_lyrics,
+        has_word_synced_lyrics
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   "};
     let mut statement = db.prepare(query)?;
     let track_id = statement.insert((
@@ -432,6 +582,9 @@ pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
         txt_lyrics.clone(),
         lrc_lyrics.clone(),
         is_instrumental,
+        presence.has_plain_lyrics,
+        presence.has_synced_lyrics,
+        presence.has_word_synced_lyrics,
     ))?;
 
     let lyricsfile_track_metadata = LyricsfileTrackMetadata::new(
@@ -514,26 +667,30 @@ pub fn get_track_ids(
 ) -> Result<Vec<i64>> {
     let base_query = "SELECT id FROM tracks";
 
-    let mut conditions = Vec::new();
+    let mut included_categories: Vec<&str> = Vec::new();
+    if synced_lyrics {
+        included_categories.push("(has_synced_lyrics = true AND instrumental = false)");
+    }
+    if plain_lyrics {
+        included_categories.push(
+            "(has_plain_lyrics = true AND has_synced_lyrics = false AND instrumental = false)",
+        );
+    }
+    if instrumental {
+        included_categories.push("instrumental = true");
+    }
+    if no_lyrics {
+        included_categories.push(
+            "(has_plain_lyrics = false AND has_synced_lyrics = false AND instrumental = false)",
+        );
+    }
 
-    if !synced_lyrics {
-        conditions.push("(lrc_lyrics IS NULL OR lrc_lyrics = '[au: instrumental]')");
-    }
-    if !plain_lyrics {
-        conditions.push("(txt_lyrics IS NULL OR lrc_lyrics IS NOT NULL)");
-    }
-    if !instrumental {
-        conditions.push("instrumental = false");
-    }
-    if !no_lyrics {
-        conditions
-            .push("(txt_lyrics IS NOT NULL OR lrc_lyrics IS NOT NULL OR instrumental = true)");
-    }
-
-    let where_clause = if !conditions.is_empty() {
-        format!(" WHERE {}", conditions.join(" AND "))
-    } else {
+    let where_clause = if included_categories.len() == 4 {
         String::new()
+    } else if included_categories.is_empty() {
+        " WHERE 0".to_string()
+    } else {
+        format!(" WHERE ({})", included_categories.join(" OR "))
     };
 
     let full_query = format!("{}{} ORDER BY title_lower ASC", base_query, where_clause);
@@ -567,26 +724,30 @@ pub fn get_search_track_ids(
       OR tracks.title_lower LIKE ?)
     "};
 
-    let mut conditions = Vec::new();
+    let mut included_categories: Vec<&str> = Vec::new();
+    if synced_lyrics {
+        included_categories.push("(has_synced_lyrics = true AND instrumental = false)");
+    }
+    if plain_lyrics {
+        included_categories.push(
+            "(has_plain_lyrics = true AND has_synced_lyrics = false AND instrumental = false)",
+        );
+    }
+    if instrumental {
+        included_categories.push("instrumental = true");
+    }
+    if no_lyrics {
+        included_categories.push(
+            "(has_plain_lyrics = false AND has_synced_lyrics = false AND instrumental = false)",
+        );
+    }
 
-    if !synced_lyrics {
-        conditions.push("(lrc_lyrics IS NULL OR lrc_lyrics = '[au: instrumental]')");
-    }
-    if !plain_lyrics {
-        conditions.push("(txt_lyrics IS NULL OR lrc_lyrics IS NOT NULL)");
-    }
-    if !instrumental {
-        conditions.push("instrumental = false");
-    }
-    if !no_lyrics {
-        conditions
-            .push("(txt_lyrics IS NOT NULL OR lrc_lyrics IS NOT NULL OR instrumental = true)");
-    }
-
-    let where_clause = if !conditions.is_empty() {
-        format!(" AND {}", conditions.join(" AND "))
-    } else {
+    let where_clause = if included_categories.len() == 4 {
         String::new()
+    } else if included_categories.is_empty() {
+        " AND 0".to_string()
+    } else {
+        format!(" AND ({})", included_categories.join(" OR "))
     };
 
     let full_query = format!("{}{} ORDER BY title_lower ASC", base_query, where_clause);
@@ -806,10 +967,10 @@ pub fn get_album_track_ids(
 
     let lyrics_conditions = match (without_plain_lyrics, without_synced_lyrics) {
         (true, true) => {
-            " AND txt_lyrics IS NULL AND lrc_lyrics IS NULL AND tracks.instrumental = false"
+            " AND has_plain_lyrics = false AND has_synced_lyrics = false AND tracks.instrumental = false"
         }
-        (true, false) => " AND txt_lyrics IS NULL AND tracks.instrumental = false",
-        (false, true) => " AND lrc_lyrics IS NULL AND tracks.instrumental = false",
+        (true, false) => " AND has_plain_lyrics = false AND tracks.instrumental = false",
+        (false, true) => " AND has_synced_lyrics = false AND tracks.instrumental = false",
         (false, false) => "",
     };
 
@@ -887,10 +1048,10 @@ pub fn get_artist_track_ids(
 
     let lyrics_conditions = match (without_plain_lyrics, without_synced_lyrics) {
         (true, true) => {
-            " AND txt_lyrics IS NULL AND lrc_lyrics IS NULL AND tracks.instrumental = false"
+            " AND has_plain_lyrics = false AND has_synced_lyrics = false AND tracks.instrumental = false"
         }
-        (true, false) => " AND txt_lyrics IS NULL AND tracks.instrumental = false",
-        (false, true) => " AND lrc_lyrics IS NULL AND tracks.instrumental = false",
+        (true, false) => " AND has_plain_lyrics = false AND tracks.instrumental = false",
+        (false, true) => " AND has_synced_lyrics = false AND tracks.instrumental = false",
         (false, false) => "",
     };
 
@@ -1101,9 +1262,15 @@ pub fn insert_track_from_metadata_tx(
         .as_ref()
         .map_or(false, |l| l.contains("[au:") && l.contains("instrumental"));
 
+    let presence = derive_lyrics_presence_from_legacy(
+        lyrics.txt_lyrics.as_deref(),
+        lyrics.lrc_lyrics.as_deref(),
+        instrumental,
+    );
+
     tx.execute(
-        "INSERT INTO tracks (file_path, file_name, title, title_lower, album_id, artist_id, duration, track_number, file_size, modified_time, content_hash, scan_status, txt_lyrics, lrc_lyrics, instrumental) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
-        (
+        "INSERT INTO tracks (file_path, file_name, title, title_lower, album_id, artist_id, duration, track_number, file_size, modified_time, content_hash, scan_status, txt_lyrics, lrc_lyrics, instrumental, has_plain_lyrics, has_synced_lyrics, has_word_synced_lyrics) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        params![
             &metadata.file_path,
             &metadata.file_name,
             &metadata.title,
@@ -1119,7 +1286,10 @@ pub fn insert_track_from_metadata_tx(
             lyrics.txt_lyrics.as_ref(),
             lyrics.lrc_lyrics.as_ref(),
             instrumental,
-        ),
+            presence.has_plain_lyrics,
+            presence.has_synced_lyrics,
+            presence.has_word_synced_lyrics,
+        ],
     )?;
 
     Ok(tx.last_insert_rowid())

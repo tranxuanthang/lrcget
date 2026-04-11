@@ -1,6 +1,6 @@
 <template>
   <transition name="slide-fade" mode="out-in">
-    <div v-if="syncedLines.length > 0 && duration && progress" class="flex flex-col gap-1 relative">
+    <div v-if="syncedLines.length > 0 && duration != null && progress != null" class="flex flex-col gap-1 relative">
       <transition name="slide-fade" mode="out-in">
         <div v-if="expanded" class="full-viewer absolute bottom-0 left-0 w-full h-[40vh] bg-brave-95 dark:bg-brave-10 border-t border-brave-90/50 dark:border-brave-10/50 overflow-hidden">
           <div class="relative h-full">
@@ -213,7 +213,7 @@ const fullViewTransform = computed(() => {
 })
 
 const onLineClick = (line) => {
-  emit('lyricsClicked', { timestamp: line.start_ms })
+  emit('lyricsClicked', { timestamp: line.start_ms / 1000 })
 }
 
 const onCopy = async () => {

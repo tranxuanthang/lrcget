@@ -11,6 +11,7 @@ use thiserror::Error;
 pub struct RawResponse {
     pub plain_lyrics: Option<String>,
     pub synced_lyrics: Option<String>,
+    pub lyricsfile: Option<String>,
     instrumental: bool,
     lang: Option<String>,
     isrc: Option<String>,
@@ -87,6 +88,7 @@ pub async fn request_raw(id: i64, lrclib_instance: &str) -> Result<RawResponse> 
 
             if lrclib_response.synced_lyrics.is_some()
                 || lrclib_response.plain_lyrics.is_some()
+                || lrclib_response.lyricsfile.is_some()
                 || lrclib_response.instrumental
             {
                 Ok(lrclib_response)

@@ -16,6 +16,7 @@ struct SearchItem {
     instrumental: bool,
     plain_lyrics: Option<String>,
     synced_lyrics: Option<String>,
+    lyricsfile: Option<String>,
 }
 
 #[derive(Deserialize, Serialize)]

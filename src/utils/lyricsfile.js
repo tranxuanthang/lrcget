@@ -212,9 +212,37 @@ export const parseLyricsfile = (lyricsfileContent) => {
 
   return {
     plainLyrics,
+    syncedLyrics,
     syncedLines: cloneSyncedLines(lines),
     isInstrumental,
     document
+  }
+}
+
+export const normalizeLrclibLyrics = (item) => {
+  const plainLyrics = normalizeNonEmpty(item?.plainLyrics)
+  const syncedLyrics = normalizeNonEmpty(item?.syncedLyrics)
+  const instrumental = Boolean(item?.instrumental)
+  const lyricsfile = normalizeNonEmpty(item?.lyricsfile)
+
+  if (!lyricsfile) {
+    return {
+      plainLyrics: plainLyrics || '',
+      syncedLyrics: syncedLyrics || '',
+      instrumental,
+      hasLyricsfile: false
+    }
+  }
+
+  const parsed = parseLyricsfile(lyricsfile)
+  const fallbackPlainLyrics = normalizeNonEmpty(parsed.plainLyrics) || ''
+  const fallbackSyncedLyrics = normalizeNonEmpty(parsed.syncedLyrics) || ''
+
+  return {
+    plainLyrics: plainLyrics || fallbackPlainLyrics,
+    syncedLyrics: syncedLyrics || fallbackSyncedLyrics,
+    instrumental: instrumental || Boolean(parsed.isInstrumental),
+    hasLyricsfile: true
   }
 }
 

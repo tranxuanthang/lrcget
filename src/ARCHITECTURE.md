@@ -65,7 +65,8 @@ Module-level ref composables (singletons by design):
 
 **Lyrics Workflows**:
 - **Display**: `LyricsViewer.vue` (synced) / `PlainLyricsViewer.vue`. Click to `seek()`
-- **Search**: `SearchLyrics.vue` + `Preview.vue` for LRCLIB lookup
+- **Search**: `SearchLyrics.vue` + `Preview.vue` for LRCLIB lookup, including word-level highlight in preview when Lyricsfile word timings are available
+- **LRCLIB normalization**: `normalizeLrclibLyrics()` in `utils/lyricsfile.js` derives plain/synced/instrumental state from `lyricsfile` when LRCLIB responses omit direct `plainLyrics`/`syncedLyrics`
 - **Edit/Publish**:
   - *Legacy*: `EditLyrics.vue` — CodeMirror + sync toolbar
   - *V2*: `EditLyricsV2.vue` — CodeMirror + interactive synced view + word timing lane. Synced line selection keeps the active row in view while navigating or syncing, and the word timing lane supports dragging the first word boundary to update the line start while keeping the current lane window stable until selection changes; line timestamp edits do not automatically shift existing word timings. Header actions use a split save dropdown (`EditLyricsV2HeaderActions.vue`) with `Save`, `Save and Publish`, and export placeholders. V2 publish is isolated in `useEditLyricsV2Publish.js` + `EditLyricsV2PublishModal.vue` and sends serialized Lyricsfile payloads.
@@ -79,7 +80,7 @@ Utils: `src/utils/` (parsing, linting), Composables: `composables/edit-lyrics/`,
 
 **Icons**: Icons are imported directly per-file from `~icons/mdi/*` (powered by `unplugin-icons` in `vite.config.js`). Avoid adding `mdue`; use MDI icon imports instead.
 
-**Utilities**: `src/utils/` — duration formatting, line counts, lyric parsing/linting, Lyricsfile YAML helpers.
+**Utilities**: `src/utils/` — duration formatting, line counts, lyric parsing/linting, Lyricsfile YAML helpers (including LRCLIB payload normalization for lyricsfile-first responses).
 
 ## Constraints
 

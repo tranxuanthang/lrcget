@@ -63,7 +63,7 @@ trait ServiceAccess {
 }
 ```
 
-### Database Schema (v9)
+### Database Schema (v10)
 
 **Tables:**
 | Table | Purpose |
@@ -73,14 +73,16 @@ trait ServiceAccess {
 | `config_data` | Settings (embed, skip flags, theme, LRCLIB instance) |
 | `artists` | name, name_lower (search) |
 | `albums` | name, album_artist_name, image_path |
-| `tracks` | file_path, title, duration, lrc_lyrics, txt_lyrics, instrumental |
+| `tracks` | file_path, title, duration, lrc_lyrics, txt_lyrics, instrumental, has_plain_lyrics, has_synced_lyrics, has_word_synced_lyrics |
 | `lyricsfiles` | Persisted YAML lyrics (decoupled from tracks) |
 
 **Migration v8 (scanning):** Added `file_size`, `modified_time`, `content_hash`, `scan_status`
 
 **Migration v9:** Added `lyricsfiles` table with denormalized track metadata
 
-**Indexes:** All `*_lower` columns + `content_hash`, `scan_status`, `modified_time+file_size` (fingerprint)
+**Migration v10:** Added indexed lyrics-presence booleans on `tracks` (`has_plain_lyrics`, `has_synced_lyrics`, `has_word_synced_lyrics`) used for filtering
+
+**Indexes:** All `*_lower` columns + `content_hash`, `scan_status`, `modified_time+file_size` (fingerprint) + lyrics-presence indexes
 
 ### File Scanning (`scanner/`)
 
@@ -189,5 +191,6 @@ Background loop (40ms) in `main.rs` emits `player-state` event.
 ## Notes
 
 - **Lyrics Storage:** Sidecar files (default) | Embedded MP3/FLAC (optional) | `lyricsfiles` table (persistence)
+- **Filtering Source of Truth:** Lyrics filters now use derived `tracks.has_*_lyrics` booleans (from Lyricsfile content), not null checks on `txt_lyrics`/`lrc_lyrics`
 - **Instrumental:** `[au: instrumental]` marker in lrc_lyrics
 - **Security:** PoW for LRCLIB writes, user-agent in requests, DB in app_data_dir

@@ -57,31 +57,31 @@
         </div>
 
         <div v-else class="flex flex-col h-full gap-2 overflow-auto">
-          <div v-if="searchResult && searchResult.length" class="flex flex-col gap-1 overflow-auto">
-            <div v-for="item in searchResult" :key="item.id" class="rounded bg-brave-98 dark:bg-brave-10 hover:bg-brave-95 hover:dark:bg-brave-10 border border-transparent hover:dark:border-brave-30 transition px-2 py-1 flex gap-2">
+          <div v-if="normalizedSearchResult.length" class="flex flex-col gap-1 overflow-auto">
+            <div v-for="result in normalizedSearchResult" :key="result.item.id" class="rounded bg-brave-98 dark:bg-brave-10 hover:bg-brave-95 hover:dark:bg-brave-10 border border-transparent hover:dark:border-brave-30 transition px-2 py-1 flex gap-2">
               <div class="h-full overflow-hidden grow">
                 <div class="font-bold flex gap-1">
-                  <span class="mr-1 text-sm text-brave-30 dark:text-brave-95">{{ item.name }}</span>
+                  <span class="mr-1 text-sm text-brave-30 dark:text-brave-95">{{ result.item.name }}</span>
                   <template v-if="showLineCount === true">
-                    <span v-if="item.syncedLyrics" class="text-blue-200 font-bold text-[0.65rem] bg-blue-800 rounded px-1 py-0.5">{{ countLines(item.syncedLyrics) }} Lines</span>
-                    <span v-else-if="item.plainLyrics" class="text-blue-200 font-bold text-[0.65rem] bg-blue-800 rounded px-1 py-0.5">{{ countLines(item.plainLyrics) }} Lines</span>
+                    <span v-if="result.lyrics.syncedLyrics" class="text-blue-200 font-bold text-[0.65rem] bg-blue-800 rounded px-1 py-0.5">{{ countLines(result.lyrics.syncedLyrics) }} Lines</span>
+                    <span v-else-if="result.lyrics.plainLyrics" class="text-blue-200 font-bold text-[0.65rem] bg-blue-800 rounded px-1 py-0.5">{{ countLines(result.lyrics.plainLyrics) }} Lines</span>
                   </template>
-                  <span v-if="item.syncedLyrics" class="text-green-200 font-bold text-[0.65rem] bg-green-800 rounded px-1 py-0.5">Synced</span>
-                  <span v-else-if="item.plainLyrics" class="text-gray-200 font-bold text-[0.65rem] bg-gray-800 rounded px-1 py-0.5">Plain</span>
-                  <span v-else-if="item.instrumental" class="text-gray-200 font-bold text-[0.65rem] bg-gray-500 rounded px-1 py-0.5">Instrumental</span>
-                  <span v-if="Math.round(item.duration) - Math.round(searchingTrack.duration) > 2" class="text-blue-800 text-[0.75rem]">
-                    +{{ humanDuration(Math.abs(item.duration - Math.round(searchingTrack.duration))) }}
+                  <span v-if="result.lyrics.syncedLyrics" class="text-green-200 font-bold text-[0.65rem] bg-green-800 rounded px-1 py-0.5">Synced</span>
+                  <span v-else-if="result.lyrics.plainLyrics" class="text-gray-200 font-bold text-[0.65rem] bg-gray-800 rounded px-1 py-0.5">Plain</span>
+                  <span v-else-if="result.lyrics.instrumental" class="text-gray-200 font-bold text-[0.65rem] bg-gray-500 rounded px-1 py-0.5">Instrumental</span>
+                  <span v-if="Math.round(result.item.duration) - Math.round(searchingTrack.duration) > 2" class="text-blue-800 text-[0.75rem]">
+                    +{{ humanDuration(Math.abs(result.item.duration - Math.round(searchingTrack.duration))) }}
                   </span>
-                  <span v-else-if="Math.round(item.duration) - Math.round(searchingTrack.duration) < -2" class="text-blue-800 text-[0.75rem]">
-                    -{{ humanDuration(Math.abs(item.duration - Math.round(searchingTrack.duration))) }}
+                  <span v-else-if="Math.round(result.item.duration) - Math.round(searchingTrack.duration) < -2" class="text-blue-800 text-[0.75rem]">
+                    -{{ humanDuration(Math.abs(result.item.duration - Math.round(searchingTrack.duration))) }}
                   </span>
                 </div>
-                <div class="text-sm text-brave-35 dark:text-brave-90 truncate"><span>{{ item.albumName }}</span> | <span>{{ item.artistName }}</span></div>
+                <div class="text-sm text-brave-35 dark:text-brave-90 truncate"><span>{{ result.item.albumName }}</span> | <span>{{ result.item.artistName }}</span></div>
               </div>
 
               <div class="flex gap-2 items-center">
-                <button class="button-tiny" title="Preview this lyrics" @click="preview(item)"><Eye /></button>
-                <button class="button-tiny" title="Apply this lyrics" @click="apply(item)"><ContentSave /></button>
+                <button class="button-tiny" title="Preview this lyrics" @click="preview(result.item)"><Eye /></button>
+                <button class="button-tiny" title="Apply this lyrics" @click="apply(result.item)"><ContentSave /></button>
               </div>
             </div>
           </div>
@@ -97,13 +97,15 @@
 
 <script setup>
 import { invoke } from '@tauri-apps/api/core'
-import { ref, onMounted, watch } from 'vue'
+import { computed, ref, onMounted } from 'vue'
 import Loading from '~icons/mdi/loading'
 import Eye from '~icons/mdi/eye'
 import ContentSave from '~icons/mdi/content-save'
 import { useToast } from 'vue-toastification'
 import Preview from './search-lyrics/Preview.vue'
 import { useModal } from 'vue-final-modal'
+import { countLines } from '@/utils/count-lines.js'
+import { normalizeLrclibLyrics } from '@/utils/lyricsfile.js'
 
 const toast = useToast()
 const props = defineProps(['searchingTrack'])
@@ -134,9 +136,16 @@ const { open: openPreviewModal, close: closePreviewModal } = useModal({
   },
 })
 
-const countLines = (lines) => {
-  return (lines.match(/\n/g) || []).length + 1
-}
+const normalizedSearchResult = computed(() => {
+  if (!Array.isArray(searchResult.value)) {
+    return []
+  }
+
+  return searchResult.value.map((item) => ({
+    item,
+    lyrics: normalizeLrclibLyrics(item)
+  }))
+})
 
 const humanDuration = (seconds) => {
   return new Date(seconds * 1000).toISOString().slice(14, 19)

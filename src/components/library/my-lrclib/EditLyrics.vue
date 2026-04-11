@@ -123,6 +123,7 @@ import { executeLint as executeLyricsLint } from '@/utils/lyrics-lint.js'
 import { executeLint as executePlainTextLint } from '@/utils/plain-text-lint.js'
 import { useModal } from 'vue-final-modal'
 import { isSynchronizedLyrics } from '@/utils/lyrics.js'
+import { normalizeLrclibLyrics } from '@/utils/lyricsfile.js'
 
 const AsyncCodemirror = defineAsyncComponent(async () => {
   const { Codemirror } = await import('vue-codemirror')
@@ -379,6 +380,24 @@ const handlePublish = () => {
   }
 }
 
+const getUnifiedLyricsFromTrack = (track) => {
+  const normalized = normalizeLrclibLyrics(track)
+
+  if (normalized.syncedLyrics) {
+    return normalized.syncedLyrics
+  }
+
+  if (normalized.plainLyrics) {
+    return normalized.plainLyrics
+  }
+
+  if (normalized.instrumental) {
+    return '[au: instrumental]'
+  }
+
+  return ''
+}
+
 onUnmounted(async () => {
   enableHotkey()
   if (keydownEvent.value) {
@@ -395,15 +414,7 @@ onMounted(async () => {
     return
   }
 
-  if (editingTrack.value.syncedLyrics) {
-    unifiedLyrics.value = editingTrack.value.syncedLyrics
-  } else if (editingTrack.value.plainLyrics) {
-    unifiedLyrics.value = editingTrack.value.plainLyrics
-  } else if (editingTrack.value.instrumental) {
-    unifiedLyrics.value = '[au: instrumental]'
-  } else {
-    unifiedLyrics.value = ''
-  }
+  unifiedLyrics.value = getUnifiedLyricsFromTrack(editingTrack.value)
 
   const parsed = Lrc.parse(unifiedLyrics.value)
 
@@ -437,16 +448,7 @@ watch(cmContainer, () => {
 watch(() => props.editingTrack, () => {
   if (props.editingTrack) {
     editingTrack.value = props.editingTrack
-
-    if (editingTrack.value.syncedLyrics) {
-      unifiedLyrics.value = editingTrack.value.syncedLyrics
-    } else if (editingTrack.value.plainLyrics) {
-      unifiedLyrics.value = editingTrack.value.plainLyrics
-    } else if (editingTrack.value.instrumental) {
-      unifiedLyrics.value = '[au: instrumental]'
-    } else {
-      unifiedLyrics.value = ''
-    }
+    unifiedLyrics.value = getUnifiedLyricsFromTrack(editingTrack.value)
   }
 })
 </script>

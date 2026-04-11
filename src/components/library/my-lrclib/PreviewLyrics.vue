@@ -5,7 +5,7 @@
     :title="`${props.track.name} - ${props.track.artistName}`"
     body-class="flex flex-col h-full min-h-0"
   >
-    <template v-if="props.track.syncedLyrics && props.track.plainLyrics">
+    <template v-if="resolvedLyrics.syncedLyrics && resolvedLyrics.plainLyrics">
       <div class="flex justify-center mb-2">
         <div class="rounded-full p-1 bg-brave-95 text-brave-30 dark:bg-brave-10 dark:text-brave-95 flex justify-center gap-1">
           <button
@@ -27,12 +27,12 @@
         </div>
       </div>
 
-      <LyricsPanel :text="lyricsType === 'synced' ? props.track.syncedLyrics : props.track.plainLyrics" />
+      <LyricsPanel :text="lyricsType === 'synced' ? resolvedLyrics.syncedLyrics : resolvedLyrics.plainLyrics" />
     </template>
 
-    <LyricsPanel v-else-if="props.track.plainLyrics" :text="props.track.plainLyrics" />
+    <LyricsPanel v-else-if="resolvedLyrics.plainLyrics" :text="resolvedLyrics.plainLyrics" />
 
-    <div v-else-if="props.track.instrumental" class="grow rounded bg-brave-99 text-brave-30 dark:bg-brave-1 dark:text-brave-95 whitespace-pre-line p-4 overflow-scroll italic flex items-center justify-center">
+    <div v-else-if="resolvedLyrics.instrumental" class="grow rounded bg-brave-99 text-brave-30 dark:bg-brave-1 dark:text-brave-95 whitespace-pre-line p-4 overflow-scroll italic flex items-center justify-center">
       This track is instrumental
     </div>
 
@@ -43,11 +43,13 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import LyricsPanel from './LyricsPanel.vue'
+import { normalizeLrclibLyrics } from '@/utils/lyricsfile.js'
 
 const props = defineProps(['track'])
 const emit = defineEmits(['close'])
 
 const lyricsType = ref('synced')
+const resolvedLyrics = computed(() => normalizeLrclibLyrics(props.track))
 </script>

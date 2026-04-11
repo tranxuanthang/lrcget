@@ -22,6 +22,13 @@ use serde::Serialize;
 use state::{AppState, ServiceAccess, Notify, NotifyType};
 use tauri::{AppHandle, Manager, State, Emitter};
 
+struct ResolvedLyricsPayload {
+    plain_lyrics: String,
+    synced_lyrics: String,
+    is_instrumental: bool,
+    provided_lyricsfile: Option<String>,
+}
+
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct PublishLyricsProgress {
@@ -68,6 +75,55 @@ fn persist_lyricsfile_for_track(
     }
 
     Ok(())
+}
+
+fn resolve_lrclib_lyrics_payload(
+    lrclib_response: lrclib::get::RawResponse,
+) -> Result<ResolvedLyricsPayload, String> {
+    let provided_lyricsfile = lrclib_response
+        .lyricsfile
+        .clone()
+        .filter(|content| !content.trim().is_empty());
+
+    if let Some(lyricsfile_content) = provided_lyricsfile {
+        let parsed = lyricsfile::parse_lyricsfile(&lyricsfile_content).map_err(|err| err.to_string())?;
+        let plain_lyrics = parsed.plain_lyrics.unwrap_or_default();
+        let synced_lyrics = parsed.synced_lyrics.unwrap_or_default();
+        let is_instrumental = parsed.is_instrumental;
+
+        if !is_instrumental && plain_lyrics.trim().is_empty() && synced_lyrics.trim().is_empty() {
+            return Err(lyrics::GetLyricsError::NotFound.to_string());
+        }
+
+        return Ok(ResolvedLyricsPayload {
+            plain_lyrics,
+            synced_lyrics,
+            is_instrumental,
+            provided_lyricsfile: Some(lyricsfile_content),
+        });
+    }
+
+    match lrclib::get::Response::from_raw_response(lrclib_response) {
+        lrclib::get::Response::SyncedLyrics(synced_lyrics, plain_lyrics) => Ok(ResolvedLyricsPayload {
+            plain_lyrics,
+            synced_lyrics,
+            is_instrumental: false,
+            provided_lyricsfile: None,
+        }),
+        lrclib::get::Response::UnsyncedLyrics(plain_lyrics) => Ok(ResolvedLyricsPayload {
+            plain_lyrics,
+            synced_lyrics: String::new(),
+            is_instrumental: false,
+            provided_lyricsfile: None,
+        }),
+        lrclib::get::Response::IsInstrumental => Ok(ResolvedLyricsPayload {
+            plain_lyrics: String::new(),
+            synced_lyrics: lyricsfile::INSTRUMENTAL_LRC.to_owned(),
+            is_instrumental: true,
+            provided_lyricsfile: None,
+        }),
+        lrclib::get::Response::None => Err(lyrics::GetLyricsError::NotFound.to_string()),
+    }
 }
 
 #[tauri::command]
@@ -388,46 +444,84 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
     let config = app_handle
         .db(|db| db::get_config(db))
         .map_err(|err| err.to_string())?;
-    let lyrics = lyrics::download_lyrics_for_track(&track, config.try_embed_lyrics, &config.lrclib_instance)
+    let lrclib_response = lrclib::get::request_raw(
+        &track.title,
+        &track.album_name,
+        &track.artist_name,
+        track.duration,
+        &config.lrclib_instance,
+    )
         .await
         .map_err(|err| err.to_string())?;
-    match lyrics {
-        lrclib::get::Response::SyncedLyrics(synced_lyrics, plain_lyrics) => {
-            app_handle
-                .db(|db: &Connection| {
-                    db::update_track_synced_lyrics(track_id, &synced_lyrics, &plain_lyrics, db)
-                })
-                .map_err(|err| err.to_string())?;
-            persist_lyricsfile_for_track(
-                &app_handle,
-                &track,
-                Some(plain_lyrics.as_str()),
-                Some(synced_lyrics.as_str()),
-            )?;
-            app_handle.emit("reload-track-id", track_id).unwrap();
-            Ok("Synced lyrics downloaded".to_owned())
-        }
-        lrclib::get::Response::UnsyncedLyrics(plain_lyrics) => {
-            app_handle
-                .db(|db: &Connection| db::update_track_plain_lyrics(track_id, &plain_lyrics, db))
-                .map_err(|err| err.to_string())?;
-            persist_lyricsfile_for_track(&app_handle, &track, Some(plain_lyrics.as_str()), None)?;
-            app_handle.emit("reload-track-id", track_id).unwrap();
-            Ok("Plain lyrics downloaded".to_owned())
-        }
-        lrclib::get::Response::IsInstrumental => {
-            app_handle
-                .db(|db: &Connection| db::update_track_instrumental(track_id, db))
-                .map_err(|err| err.to_string())?;
-            persist_lyricsfile_for_track(
-                &app_handle,
-                &track,
-                None,
-                Some(lyricsfile::INSTRUMENTAL_LRC),
-            )?;
-            Ok("Marked track as instrumental".to_owned())
-        }
-        lrclib::get::Response::None => Err(lyrics::GetLyricsError::NotFound.to_string()),
+    let resolved = resolve_lrclib_lyrics_payload(lrclib_response)?;
+
+    lyrics::apply_string_lyrics_for_track(
+        &track,
+        &resolved.plain_lyrics,
+        &resolved.synced_lyrics,
+        config.try_embed_lyrics,
+    )
+    .await
+    .map_err(|err| err.to_string())?;
+
+    if resolved.is_instrumental {
+        app_handle
+            .db(|db: &Connection| db::update_track_instrumental(track_id, db))
+            .map_err(|err| err.to_string())?;
+    } else if !resolved.synced_lyrics.is_empty() {
+        app_handle
+            .db(|db: &Connection| {
+                db::update_track_synced_lyrics(
+                    track_id,
+                    &resolved.synced_lyrics,
+                    &resolved.plain_lyrics,
+                    db,
+                )
+            })
+            .map_err(|err| err.to_string())?;
+    } else if !resolved.plain_lyrics.is_empty() {
+        app_handle
+            .db(|db: &Connection| db::update_track_plain_lyrics(track_id, &resolved.plain_lyrics, db))
+            .map_err(|err| err.to_string())?;
+    } else {
+        app_handle
+            .db(|db: &Connection| db::update_track_null_lyrics(track_id, db))
+            .map_err(|err| err.to_string())?;
+    }
+
+    if let Some(lyricsfile_content) = resolved.provided_lyricsfile.as_deref() {
+        app_handle
+            .db(|db: &Connection| {
+                db::upsert_lyricsfile_for_track(
+                    track.id,
+                    &track.title,
+                    &track.album_name,
+                    &track.artist_name,
+                    track.duration,
+                    lyricsfile_content,
+                    db,
+                )
+            })
+            .map_err(|err| err.to_string())?;
+    } else {
+        persist_lyricsfile_for_track(
+            &app_handle,
+            &track,
+            Some(resolved.plain_lyrics.as_str()),
+            Some(resolved.synced_lyrics.as_str()),
+        )?;
+    }
+
+    app_handle.emit("reload-track-id", track_id).unwrap();
+
+    if resolved.is_instrumental {
+        Ok("Marked track as instrumental".to_owned())
+    } else if !resolved.synced_lyrics.is_empty() {
+        Ok("Synced lyrics downloaded".to_owned())
+    } else if !resolved.plain_lyrics.is_empty() {
+        Ok("Plain lyrics downloaded".to_owned())
+    } else {
+        Err(lyrics::GetLyricsError::NotFound.to_string())
     }
 }
 
@@ -445,52 +539,77 @@ async fn apply_lyrics(
         .map_err(|err| err.to_string())?
         .try_embed_lyrics;
 
-    let lyrics = lrclib::get::Response::from_raw_response(lrclib_response);
-    let lyrics = lyrics::apply_lyrics_for_track(&track, lyrics, is_try_embed_lyrics)
+    let resolved = resolve_lrclib_lyrics_payload(lrclib_response)?;
+
+    lyrics::apply_string_lyrics_for_track(
+        &track,
+        &resolved.plain_lyrics,
+        &resolved.synced_lyrics,
+        is_try_embed_lyrics,
+    )
         .await
         .map_err(|err| err.to_string())?;
 
-    match lyrics {
-        lrclib::get::Response::SyncedLyrics(synced_lyrics, plain_lyrics) => {
-            app_handle
-                .db(|db: &Connection| {
-                    db::update_track_synced_lyrics(track_id, &synced_lyrics, &plain_lyrics, db)
-                })
-                .map_err(|err| err.to_string())?;
-            persist_lyricsfile_for_track(
-                &app_handle,
-                &track,
-                Some(plain_lyrics.as_str()),
-                Some(synced_lyrics.as_str()),
-            )?;
-            std::thread::spawn(move || {
-                app_handle.emit("reload-track-id", track_id).unwrap();
-            });
-            Ok("Synced lyrics downloaded".to_owned())
-        }
-        lrclib::get::Response::UnsyncedLyrics(plain_lyrics) => {
-            app_handle
-                .db(|db: &Connection| db::update_track_plain_lyrics(track_id, &plain_lyrics, db))
-                .map_err(|err| err.to_string())?;
-            persist_lyricsfile_for_track(&app_handle, &track, Some(plain_lyrics.as_str()), None)?;
-            std::thread::spawn(move || {
-                app_handle.emit("reload-track-id", track_id).unwrap();
-            });
-            Ok("Plain lyrics downloaded".to_owned())
-        }
-        lrclib::get::Response::IsInstrumental => {
-            app_handle
-                .db(|db: &Connection| db::update_track_instrumental(track_id, db))
-                .map_err(|err| err.to_string())?;
-            persist_lyricsfile_for_track(
-                &app_handle,
-                &track,
-                None,
-                Some(lyricsfile::INSTRUMENTAL_LRC),
-            )?;
-            Ok("Marked track as instrumental".to_owned())
-        }
-        lrclib::get::Response::None => Err(lyrics::GetLyricsError::NotFound.to_string()),
+    if resolved.is_instrumental {
+        app_handle
+            .db(|db: &Connection| db::update_track_instrumental(track_id, db))
+            .map_err(|err| err.to_string())?;
+    } else if !resolved.synced_lyrics.is_empty() {
+        app_handle
+            .db(|db: &Connection| {
+                db::update_track_synced_lyrics(
+                    track_id,
+                    &resolved.synced_lyrics,
+                    &resolved.plain_lyrics,
+                    db,
+                )
+            })
+            .map_err(|err| err.to_string())?;
+    } else if !resolved.plain_lyrics.is_empty() {
+        app_handle
+            .db(|db: &Connection| db::update_track_plain_lyrics(track_id, &resolved.plain_lyrics, db))
+            .map_err(|err| err.to_string())?;
+    } else {
+        app_handle
+            .db(|db: &Connection| db::update_track_null_lyrics(track_id, db))
+            .map_err(|err| err.to_string())?;
+    }
+
+    if let Some(lyricsfile_content) = resolved.provided_lyricsfile.as_deref() {
+        app_handle
+            .db(|db: &Connection| {
+                db::upsert_lyricsfile_for_track(
+                    track.id,
+                    &track.title,
+                    &track.album_name,
+                    &track.artist_name,
+                    track.duration,
+                    lyricsfile_content,
+                    db,
+                )
+            })
+            .map_err(|err| err.to_string())?;
+    } else {
+        persist_lyricsfile_for_track(
+            &app_handle,
+            &track,
+            Some(resolved.plain_lyrics.as_str()),
+            Some(resolved.synced_lyrics.as_str()),
+        )?;
+    }
+
+    std::thread::spawn(move || {
+        app_handle.emit("reload-track-id", track_id).unwrap();
+    });
+
+    if resolved.is_instrumental {
+        Ok("Marked track as instrumental".to_owned())
+    } else if !resolved.synced_lyrics.is_empty() {
+        Ok("Synced lyrics downloaded".to_owned())
+    } else if !resolved.plain_lyrics.is_empty() {
+        Ok("Plain lyrics downloaded".to_owned())
+    } else {
+        Err(lyrics::GetLyricsError::NotFound.to_string())
     }
 }
 
