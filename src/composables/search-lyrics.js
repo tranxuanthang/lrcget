@@ -5,7 +5,7 @@ import SearchLyrics from '@/components/library/SearchLyrics.vue'
 const searchingTrack = ref(null)
 
 export function useSearchLyrics() {
-  const searchLyrics = (track) => {
+  const searchLyrics = track => {
     searchingTrack.value = track
     openModal()
   }
@@ -19,12 +19,12 @@ export function useSearchLyrics() {
       },
       onClosed() {
         searchingTrack.value = null
-      }
+      },
     },
   })
 
   return {
     searchingTrack,
-    searchLyrics
+    searchLyrics,
   }
 }

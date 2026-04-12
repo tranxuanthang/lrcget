@@ -9,15 +9,19 @@ export function useEditLyricsV2Publish({
   syncedLines,
   lyricsfileDocument,
   isInstrumental,
-  saveLyrics
+  saveLyrics,
 }) {
-  const { open: openPublishModalRaw, close: closePublishModal, patchOptions: patchPublishModalOptions } = useModal({
+  const {
+    open: openPublishModalRaw,
+    close: closePublishModal,
+    patchOptions: patchPublishModalOptions,
+  } = useModal({
     component: EditLyricsV2PublishModal,
     attrs: {
       onClose() {
         closePublishModal()
-      }
-    }
+      },
+    },
   })
 
   const serializedLyricsfile = computed(() => {
@@ -25,13 +29,15 @@ export function useEditLyricsV2Publish({
       return ''
     }
 
-    return serializeLyricsfile({
-      track: editingTrack.value,
-      plainLyrics: plainLyrics.value,
-      syncedLines: syncedLines.value,
-      baseDocument: lyricsfileDocument.value,
-      isInstrumental: isInstrumental.value
-    }) || ''
+    return (
+      serializeLyricsfile({
+        track: editingTrack.value,
+        plainLyrics: plainLyrics.value,
+        syncedLines: syncedLines.value,
+        baseDocument: lyricsfileDocument.value,
+        isInstrumental: isInstrumental.value,
+      }) || ''
+    )
   })
 
   const openPublishModal = () => {
@@ -42,8 +48,8 @@ export function useEditLyricsV2Publish({
     patchPublishModalOptions({
       attrs: {
         track: editingTrack.value,
-        lyricsfile: serializedLyricsfile.value
-      }
+        lyricsfile: serializedLyricsfile.value,
+      },
     })
 
     openPublishModalRaw()
@@ -61,6 +67,6 @@ export function useEditLyricsV2Publish({
   return {
     saveAndPublish,
     openPublishModal,
-    serializedLyricsfile
+    serializedLyricsfile,
   }
 }

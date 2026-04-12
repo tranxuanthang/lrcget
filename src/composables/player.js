@@ -8,14 +8,14 @@ const duration = ref(null)
 const progress = ref(null)
 const volume = ref(1.0)
 
-listen('player-state', async (event) => {
+listen('player-state', async event => {
   duration.value = event.payload.duration
   progress.value = event.payload.progress
   status.value = event.payload.status
   volume.value = event.payload.volume
 })
 
-listen('reload-track-id', async (event) => {
+listen('reload-track-id', async event => {
   const payload = event.payload
   if (playingTrack.value && playingTrack.value.id === payload) {
     playingTrack.value = await invoke('get_track', { trackId: playingTrack.value.id })
@@ -23,7 +23,7 @@ listen('reload-track-id', async (event) => {
 })
 
 export function usePlayer() {
-  const playTrack = (track) => {
+  const playTrack = track => {
     playingTrack.value = track
     invoke('play_track', { trackId: track.id })
   }
@@ -44,12 +44,12 @@ export function usePlayer() {
     invoke('resume_track')
   }
 
-  const seek = (position) => {
+  const seek = position => {
     if (!playingTrack.value) {
       return
     }
 
-    if (status.value === 'stopped' ) {
+    if (status.value === 'stopped') {
       invoke('play_track', { trackId: playingTrack.value.id })
     }
 
@@ -64,7 +64,7 @@ export function usePlayer() {
     invoke('stop_track')
   }
 
-  const setVolume = (volume) => {
+  const setVolume = volume => {
     invoke('set_volume', { volume })
   }
 
@@ -79,6 +79,6 @@ export function usePlayer() {
     resume,
     stop,
     seek,
-    setVolume
+    setVolume,
   }
 }

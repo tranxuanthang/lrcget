@@ -3,11 +3,11 @@ import { ref } from 'vue'
 import { executeLint as executeLyricsLint } from '@/utils/lyrics-lint.js'
 import { executeLint as executePlainTextLint } from '@/utils/plain-text-lint.js'
 
-const getInitialLyrics = (track) => track?.lrc_lyrics || track?.txt_lyrics || ''
+const getInitialLyrics = track => track?.lrc_lyrics || track?.txt_lyrics || ''
 
-const buildLintState = (lyrics) => ({
+const buildLintState = lyrics => ({
   lyricsLintResult: executeLyricsLint(lyrics),
-  plainTextLintResult: executePlainTextLint(lyrics)
+  plainTextLintResult: executePlainTextLint(lyrics),
 })
 
 export function useLyricsDocument({ editingTrack, toast }) {
@@ -16,7 +16,7 @@ export function useLyricsDocument({ editingTrack, toast }) {
   const lyricsLintResult = ref([])
   const plainTextLintResult = ref([])
 
-  const syncDerivedState = (lyrics) => {
+  const syncDerivedState = lyrics => {
     const nextState = buildLintState(lyrics)
     lyricsLintResult.value = nextState.lyricsLintResult
     plainTextLintResult.value = nextState.plainTextLintResult
@@ -45,8 +45,8 @@ export function useLyricsDocument({ editingTrack, toast }) {
 
       await invoke('save_lyrics', {
         trackId: editingTrack.value.id,
-        plainLyrics: unifiedLyrics.value.replace(/^\[(.*)\] */mg, ''),
-        syncedLyrics: isLyricsSynced ? unifiedLyrics.value : ''
+        plainLyrics: unifiedLyrics.value.replace(/^\[(.*)\] */gm, ''),
+        syncedLyrics: isLyricsSynced ? unifiedLyrics.value : '',
       })
 
       isDirty.value = false
@@ -63,6 +63,6 @@ export function useLyricsDocument({ editingTrack, toast }) {
     plainTextLintResult,
     initializeLyrics,
     updateLyrics,
-    saveLyrics
+    saveLyrics,
   }
 }

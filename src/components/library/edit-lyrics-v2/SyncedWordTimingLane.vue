@@ -1,8 +1,7 @@
 <template>
   <div
     class="relative flex flex-col px-2 py-2 rounded-lg overflow-hidden h-[5rem] transition-[min-height] duration-200 ease-out"
-    :class="hasSelectedLine ? 'bg-brave-95 dark:bg-brave-10' : 'bg-brave-98 dark:bg-brave-5'
-"
+    :class="hasSelectedLine ? 'bg-brave-95 dark:bg-brave-10' : 'bg-brave-98 dark:bg-brave-5'"
   >
     <!-- Empty state - no line selected -->
     <div v-if="!hasSelectedLine" class="flex items-center justify-center h-full">
@@ -36,7 +35,8 @@
       <div class="flex items-center justify-between mb-2 shrink-0">
         <div class="flex items-center gap-3 text-xs text-brave-40 dark:text-brave-60">
           <span class="font-mono bg-brave-90 dark:bg-brave-20 px-2 py-0.5 rounded">
-            {{ formatTimestampMs(selectedLine.start_ms) }} - {{ formatTimestampMs(actualLineEndMs) }}
+            {{ formatTimestampMs(selectedLine.start_ms) }} -
+            {{ formatTimestampMs(actualLineEndMs) }}
           </span>
           <span class="truncate max-w-xs">{{ selectedLine.text || '(empty)' }}</span>
         </div>
@@ -120,8 +120,12 @@
           class="absolute inset-y-0 z-20 pointer-events-none"
           :style="{ left: `${timeToPercent(dragState.currentStartMs)}%` }"
         >
-          <div class="absolute top-0 bottom-0 w-[3px] -translate-x-1/2 bg-brave-50 dark:bg-brave-70 ring-1 ring-brave-50/25" />
-          <div class="absolute top-[-0.375rem] left-0 -translate-x-1/2 -translate-y-full px-[0.4rem] py-0.5 rounded-full text-xs leading-4 whitespace-nowrap text-brave-20 bg-brave-80 dark:text-brave-95 dark:bg-brave-30">
+          <div
+            class="absolute top-0 bottom-0 w-[3px] -translate-x-1/2 bg-brave-50 dark:bg-brave-70 ring-1 ring-brave-50/25"
+          />
+          <div
+            class="absolute top-[-0.375rem] left-0 -translate-x-1/2 -translate-y-full px-[0.4rem] py-0.5 rounded-full text-xs leading-4 whitespace-nowrap text-brave-20 bg-brave-80 dark:text-brave-95 dark:bg-brave-30"
+          >
             {{ formatTimestampMs(dragState.currentStartMs) }}
           </div>
         </div>
@@ -132,7 +136,9 @@
           class="absolute -top-1 bottom-0 w-px bg-brave-40/80 dark:bg-brave-50 z-20 pointer-events-none"
           :style="{ left: `${playheadPercent}%` }"
         >
-          <div class="absolute -top-1 -left-[3px] w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-brave-40/80 dark:border-t-brave-50" />
+          <div
+            class="absolute -top-1 -left-[3px] w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-brave-40/80 dark:border-t-brave-50"
+          />
         </div>
       </div>
     </template>
@@ -153,24 +159,24 @@ import { ensureLineWords, distributeWordTimings } from '@/utils/word-tokenizer.j
 const props = defineProps({
   selectedLine: {
     type: Object,
-    default: null
+    default: null,
   },
   hasSelectedLine: {
     type: Boolean,
-    default: false
+    default: false,
   },
   progressMs: {
     type: Number,
-    default: 0
+    default: 0,
   },
   allLines: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   selectedLineIndex: {
     type: Number,
-    default: -1
-  }
+    default: -1,
+  },
 })
 
 const emit = defineEmits(['update:words', 'word-timing-edited', 'play-line', 'select-next-line'])
@@ -240,11 +246,7 @@ const syncLaneWindowToSelection = () => {
 const words = computed(() => {
   if (!isWordSyncAvailable.value) return []
 
-  const lineWithWords = ensureLineWords(
-    props.selectedLine,
-    props.allLines,
-    props.selectedLineIndex
-  )
+  const lineWithWords = ensureLineWords(props.selectedLine, props.allLines, props.selectedLineIndex)
 
   return lineWithWords.words || []
 })
@@ -258,7 +260,7 @@ const {
   selectBoundary,
   syncSelectedBoundary,
   resetBoundarySelection,
-  cancelBoundaryInteraction
+  cancelBoundaryInteraction,
 } = useEditLyricsV2WordBoundaryDrag({
   isWordSyncAvailable,
   words,
@@ -266,8 +268,8 @@ const {
   timelineStartMs: laneStartMs,
   timelineEndMs: laneEndMs,
   selectedLineIndex: computed(() => props.selectedLineIndex),
-  onUpdateWords: (payload) => emit('update:words', payload),
-  onWordTimingEdited: (payload) => emit('word-timing-edited', payload)
+  onUpdateWords: payload => emit('update:words', payload),
+  onWordTimingEdited: payload => emit('word-timing-edited', payload),
 })
 
 const playheadPercent = computed(() => {
@@ -286,7 +288,7 @@ const updateTimelineWidth = () => {
   }
 }
 
-const timeToPercent = (timeMs) => {
+const timeToPercent = timeMs => {
   if (!isWordSyncAvailable.value) return 0
 
   const duration = laneEndMs.value - laneStartMs.value
@@ -296,7 +298,7 @@ const timeToPercent = (timeMs) => {
   return Math.max(0, Math.min(100, (elapsed / duration) * 100))
 }
 
-const clientXToTime = (clientX) => {
+const clientXToTime = clientX => {
   if (!timelineElement.value || !isWordSyncAvailable.value) {
     return laneStartMs.value
   }
@@ -316,7 +318,7 @@ const clientXToTime = (clientX) => {
   return Math.round(laneStartMs.value + (clampedX / width) * duration)
 }
 
-const getWordEndMs = (index) => {
+const getWordEndMs = index => {
   if (index >= displayedWords.value.length - 1) {
     return laneEndMs.value
   }
@@ -329,8 +331,10 @@ const handleBoundaryPointerDown = (rightWordIndex, event) => {
   startBoundaryDrag(rightWordIndex, event, clientXToTime)
 }
 
-const getBoundaryLineClass = (index) => {
-  const isActive = dragState.value?.rightWordIndex === index || (!dragState.value && selectedBoundaryIndex.value === index)
+const getBoundaryLineClass = index => {
+  const isActive =
+    dragState.value?.rightWordIndex === index ||
+    (!dragState.value && selectedBoundaryIndex.value === index)
   const isSelected = !dragState.value && selectedBoundaryIndex.value === index
 
   if (isSelected) {
@@ -360,22 +364,26 @@ const { bindWordTimingHotkeys, unbindWordTimingHotkeys } = useEditLyricsV2WordTi
   selectedLineIndex: computed(() => props.selectedLineIndex),
   allLines: computed(() => props.allLines),
   syncSelectedBoundaryAtProgress: () => handleSyncWord(),
-  onSelectNextLine: (nextLineIndex) => emit('select-next-line', nextLineIndex)
+  onSelectNextLine: nextLineIndex => emit('select-next-line', nextLineIndex),
 })
 
-watch(() => props.selectedLineIndex, (newIndex, oldIndex) => {
-  cancelBoundaryInteraction()
-  // Only reset boundary index when actually changing to a different line
-  if (newIndex !== oldIndex) {
-    resetBoundarySelection()
-    syncLaneWindowToSelection()
-  } else if (!props.hasSelectedLine) {
-    syncLaneWindowToSelection()
-  }
-  nextTick(() => {
-    updateTimelineWidth()
-  })
-}, { immediate: true })
+watch(
+  () => props.selectedLineIndex,
+  (newIndex, oldIndex) => {
+    cancelBoundaryInteraction()
+    // Only reset boundary index when actually changing to a different line
+    if (newIndex !== oldIndex) {
+      resetBoundarySelection()
+      syncLaneWindowToSelection()
+    } else if (!props.hasSelectedLine) {
+      syncLaneWindowToSelection()
+    }
+    nextTick(() => {
+      updateTimelineWidth()
+    })
+  },
+  { immediate: true }
+)
 
 const handleDistributeEvenly = () => {
   if (!isWordSyncAvailable.value) return
@@ -391,7 +399,7 @@ const handleDistributeEvenly = () => {
 
   emit('update:words', {
     lineIndex: props.selectedLineIndex,
-    words: newWords
+    words: newWords,
   })
 
   // Reset selected boundary to first after distribute evenly
@@ -400,24 +408,28 @@ const handleDistributeEvenly = () => {
   // Emit event to trigger auto-replay from the beginning of the edited line
   emit('word-timing-edited', {
     lineIndex: props.selectedLineIndex,
-    startMs: props.selectedLine?.start_ms
+    startMs: props.selectedLine?.start_ms,
   })
 }
 
-const handleTimelineClick = (event) => {
+const handleTimelineClick = event => {
   event.stopPropagation()
 }
 
-watch(() => props.hasSelectedLine, (hasLine) => {
-  if (hasLine) {
-    nextTick(() => {
-      updateTimelineWidth()
-    })
-    return
-  }
+watch(
+  () => props.hasSelectedLine,
+  hasLine => {
+    if (hasLine) {
+      nextTick(() => {
+        updateTimelineWidth()
+      })
+      return
+    }
 
-  syncLaneWindowToSelection()
-}, { immediate: true })
+    syncLaneWindowToSelection()
+  },
+  { immediate: true }
+)
 
 watch(isWordSyncAvailable, (available, wasAvailable) => {
   if (!available) {
@@ -430,11 +442,15 @@ watch(isWordSyncAvailable, (available, wasAvailable) => {
   }
 })
 
-watch(() => props.allLines, () => {
-  if (dragState.value) {
-    cancelBoundaryInteraction()
-  }
-}, { deep: true })
+watch(
+  () => props.allLines,
+  () => {
+    if (dragState.value) {
+      cancelBoundaryInteraction()
+    }
+  },
+  { deep: true }
+)
 
 onMounted(() => {
   window.addEventListener('resize', updateTimelineWidth)

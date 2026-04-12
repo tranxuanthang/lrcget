@@ -17,19 +17,16 @@
           :config="{ height: 'auto' }"
         />
 
-        <div
-          v-else
-          class="flex flex-col h-full items-center justify-center text-sm text-brave-40"
-        >
-          <div class="animate-spin text-xl text-brave-30"><Loading /></div>
+        <div v-else class="flex flex-col h-full items-center justify-center text-sm text-brave-40">
+          <div class="animate-spin text-xl text-brave-30">
+            <Loading />
+          </div>
           <div>Loading editor...</div>
         </div>
       </div>
     </div>
 
-    <div
-      class="flex flex-col w-fit self-end bg-brave-95 dark:bg-brave-10 rounded-lg"
-    >
+    <div class="flex flex-col w-fit self-end bg-brave-95 dark:bg-brave-10 rounded-lg">
       <div class="toolbar px-2 py-1 flex items-stretch gap-1">
         <button
           class="button button-normal px-1.5 py-0.5 text-sm rounded-full"
@@ -66,22 +63,15 @@
 </template>
 
 <script setup>
-import {
-  computed,
-  defineAsyncComponent,
-  onMounted,
-  onUnmounted,
-  ref,
-  watch,
-} from "vue";
-import PlainLyricsEmptyState from "@/components/library/edit-lyrics-v2/PlainLyricsEmptyState.vue";
-import Loading from "~icons/mdi/loading";
-import MagnifyPlus from "~icons/mdi/magnify-plus";
-import MagnifyMinus from "~icons/mdi/magnify-minus";
+import { computed, defineAsyncComponent, onMounted, onUnmounted, ref, watch } from 'vue'
+import PlainLyricsEmptyState from '@/components/library/edit-lyrics-v2/PlainLyricsEmptyState.vue'
+import Loading from '~icons/mdi/loading'
+import MagnifyPlus from '~icons/mdi/magnify-plus'
+import MagnifyMinus from '~icons/mdi/magnify-minus'
 const AsyncCodemirror = defineAsyncComponent(async () => {
-  const { Codemirror } = await import("vue-codemirror");
-  return Codemirror;
-});
+  const { Codemirror } = await import('vue-codemirror')
+  return Codemirror
+})
 
 const props = defineProps({
   modelValue: {
@@ -96,92 +86,92 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
-});
+})
 
 const emit = defineEmits([
-  "update:modelValue",
-  "change-font-size",
-  "reset-font-size",
-  "import-lines-from-synced",
-  "mark-as-instrumental",
-]);
+  'update:modelValue',
+  'change-font-size',
+  'reset-font-size',
+  'import-lines-from-synced',
+  'mark-as-instrumental',
+])
 
-const cmContainer = ref(null);
-const cmHeight = ref(0);
-const shouldLoadCodeMirror = ref(false);
-const manuallyDismissed = ref(false);
+const cmContainer = ref(null)
+const cmHeight = ref(0)
+const shouldLoadCodeMirror = ref(false)
+const manuallyDismissed = ref(false)
 
 const lyricsProxy = computed({
   get: () => props.modelValue,
-  set: (value) => emit("update:modelValue", value),
-});
+  set: value => emit('update:modelValue', value),
+})
 
 const handleResize = () => {
   if (!cmContainer.value) {
-    return;
+    return
   }
 
-  cmHeight.value = cmContainer.value.offsetHeight;
-};
+  cmHeight.value = cmContainer.value.offsetHeight
+}
 
-const handleWheel = (event) => {
+const handleWheel = event => {
   if (!event.ctrlKey) {
-    return;
+    return
   }
 
-  emit("change-font-size", event.deltaY > 0 ? -1 : 1);
-};
+  emit('change-font-size', event.deltaY > 0 ? -1 : 1)
+}
 
 const shouldShowEmptyState = computed(() => {
-  return props.modelValue.trim().length === 0 && !manuallyDismissed.value;
-});
+  return props.modelValue.trim().length === 0 && !manuallyDismissed.value
+})
 
 const canImportFromSynced = computed(() => {
-  return props.syncedLines.length > 0;
-});
+  return props.syncedLines.length > 0
+})
 
 const handleImportFromSynced = () => {
   if (!canImportFromSynced.value) {
-    return;
+    return
   }
 
   const linesText = props.syncedLines
-    .map((line) => line.text || "")
-    .filter((text) => text.length > 0)
-    .join("\n");
+    .map(line => line.text || '')
+    .filter(text => text.length > 0)
+    .join('\n')
 
-  emit("update:modelValue", linesText);
-};
+  emit('update:modelValue', linesText)
+}
 
 const handleAddLineManually = () => {
   // Simply hide the empty state
-  manuallyDismissed.value = true;
-};
+  manuallyDismissed.value = true
+}
 
 const handleMarkAsInstrumental = () => {
-  emit("mark-as-instrumental");
-};
+  emit('mark-as-instrumental')
+}
 
 // Reset manuallyDismissed when content is added so that if user clears it again,
 // the empty state will show
 watch(
   () => props.modelValue,
-  (newValue) => {
+  newValue => {
     if (newValue.trim().length > 0) {
-      manuallyDismissed.value = false;
+      manuallyDismissed.value = false
     }
-  },
-);
+  }
+)
 
 onMounted(() => {
-  window.addEventListener("resize", handleResize);
-  handleResize();
+  window.addEventListener('resize', handleResize)
+  handleResize()
   setTimeout(() => {
-    shouldLoadCodeMirror.value = true;
-  }, 100);
-});
+    shouldLoadCodeMirror.value = true
+  }, 100)
+})
 
 onUnmounted(() => {
-  window.removeEventListener("resize", handleResize);
-});
+  window.removeEventListener('resize', handleResize)
+})
 </script>

@@ -39,11 +39,11 @@ export function useEditLyricsV2Export({ editingTrack, saveLyrics, serializedLyri
       const results = await invoke('export_lyrics', {
         trackId: editingTrack.value.id,
         formats,
-        lyricsfile: serializedLyricsfile.value
+        lyricsfile: serializedLyricsfile.value,
       })
 
-      const succeeded = results.filter((result) => result.success)
-      const failed = results.filter((result) => !result.success)
+      const succeeded = results.filter(result => result.success)
+      const failed = results.filter(result => !result.success)
 
       if (succeeded.length > 0 && failed.length === 0) {
         toast.success(
@@ -55,11 +55,13 @@ export function useEditLyricsV2Export({ editingTrack, saveLyrics, serializedLyri
       }
 
       if (succeeded.length > 0) {
-        toast.warning(`Export completed with partial failures: ${failed.map((result) => result.message).join('; ')}`)
+        toast.warning(
+          `Export completed with partial failures: ${failed.map(result => result.message).join('; ')}`
+        )
         return true
       }
 
-      toast.error(failed.map((result) => result.message).join('; '))
+      toast.error(failed.map(result => result.message).join('; '))
       return false
     } catch (error) {
       console.error(error)
@@ -72,6 +74,6 @@ export function useEditLyricsV2Export({ editingTrack, saveLyrics, serializedLyri
 
   return {
     exportLyrics,
-    isExporting
+    isExporting,
   }
 }

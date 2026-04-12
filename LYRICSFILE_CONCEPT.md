@@ -1,17 +1,17 @@
 ```yaml
-version: "1.0"
+version: '1.0'
 
 metadata:
-  title: "Song Title"
-  artist: "Artist Name"
-  album: "Album Name"
+  title: 'Song Title'
+  artist: 'Artist Name'
+  album: 'Album Name'
   duration_ms: 245000
   offset_ms: 0
-  language: "en"
+  language: 'en'
   instrumental: false
 
 lines:
-  - text: "Synced line here"
+  - text: 'Synced line here'
     start_ms: 12000
     end_ms: 15500
 
@@ -32,52 +32,53 @@ plain: |
 
 ### Top-Level Fields
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `version` | string | Yes | Format version, always `"1.0"` |
-| `metadata` | object | Yes | Song information |
-| `lines` | array | No | Synced lyric lines (omit if unsynced) |
-| `plain` | string | No | Plain text lyrics (multiline) |
+| Field      | Type   | Required | Description                           |
+| ---------- | ------ | -------- | ------------------------------------- |
+| `version`  | string | Yes      | Format version, always `"1.0"`        |
+| `metadata` | object | Yes      | Song information                      |
+| `lines`    | array  | No       | Synced lyric lines (omit if unsynced) |
+| `plain`    | string | No       | Plain text lyrics (multiline)         |
 
 ### Metadata Object
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `title` | string | Yes | Song title |
-| `artist` | string | Yes | Primary artist |
-| `album` | string | No | Album name |
-| `duration_ms` | integer | No | Total song length in milliseconds |
-| `offset_ms` | integer | No | Global timing offset in milliseconds (default: `0`) |
-| `language` | string | No | ISO 639-1 language code |
-| `instrumental` | boolean | No | `true` if song has no vocals (default: `false`) |
+| Field          | Type    | Required | Description                                         |
+| -------------- | ------- | -------- | --------------------------------------------------- |
+| `title`        | string  | Yes      | Song title                                          |
+| `artist`       | string  | Yes      | Primary artist                                      |
+| `album`        | string  | No       | Album name                                          |
+| `duration_ms`  | integer | No       | Total song length in milliseconds                   |
+| `offset_ms`    | integer | No       | Global timing offset in milliseconds (default: `0`) |
+| `language`     | string  | No       | ISO 639-1 language code                             |
+| `instrumental` | boolean | No       | `true` if song has no vocals (default: `false`)     |
 
 ### Line Object
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `text` | string | Yes | Full line text |
-| `start_ms` | integer | Yes | Line start time in milliseconds |
-| `end_ms` | integer | No | Line end time in milliseconds |
-| `words` | array | No | Word-level sync array |
+| Field      | Type    | Required | Description                     |
+| ---------- | ------- | -------- | ------------------------------- |
+| `text`     | string  | Yes      | Full line text                  |
+| `start_ms` | integer | Yes      | Line start time in milliseconds |
+| `end_ms`   | integer | No       | Line end time in milliseconds   |
+| `words`    | array   | No       | Word-level sync array           |
 
 ### Word Object
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `text` | string | Yes | Word text including trailing space (except last word) |
-| `start_ms` | integer | Yes | Word start time in milliseconds |
-| `end_ms` | integer | No | Word end time in milliseconds |
+| Field      | Type    | Required | Description                                           |
+| ---------- | ------- | -------- | ----------------------------------------------------- |
+| `text`     | string  | Yes      | Word text including trailing space (except last word) |
+| `start_ms` | integer | Yes      | Word start time in milliseconds                       |
+| `end_ms`   | integer | No       | Word end time in milliseconds                         |
 
 ---
 
 ## Usage Patterns
 
 ### 1. Unsynced Lyrics Only
+
 ```yaml
-version: "1.0"
+version: '1.0'
 metadata:
-  title: "New Song"
-  artist: "Unknown Artist"
+  title: 'New Song'
+  artist: 'Unknown Artist'
   instrumental: false
 
 lines: []
@@ -93,18 +94,19 @@ plain: |
 ```
 
 ### 2. Synced + Plain (Customized)
+
 ```yaml
-version: "1.0"
+version: '1.0'
 metadata:
-  title: "Midnight City"
-  artist: "M83"
+  title: 'Midnight City'
+  artist: 'M83'
   duration_ms: 243000
 
 lines:
-  - text: "Waiting in a car"
+  - text: 'Waiting in a car'
     start_ms: 23500
     end_ms: 26800
-  - text: "Waiting for a ride in the dark"
+  - text: 'Waiting for a ride in the dark'
     start_ms: 26800
     end_ms: 31500
 
@@ -120,27 +122,30 @@ plain: |
   [Verse 2]
   The city is my church
 ```
-*Note: Plain version includes custom headers, empty lines, and notes that wouldn't exist in the synced array.*
+
+_Note: Plain version includes custom headers, empty lines, and notes that wouldn't exist in the synced array._
 
 ### 3. Instrumental (No Lyrics)
+
 ```yaml
-version: "1.0"
+version: '1.0'
 metadata:
-  title: "Adagio in G Minor"
-  artist: "Tomaso Albinoni"
+  title: 'Adagio in G Minor'
+  artist: 'Tomaso Albinoni'
   duration_ms: 480000
   instrumental: true
 
 lines: []
-plain: ""  # Empty or omitted
+plain: '' # Empty or omitted
 ```
 
 ### 4. Word-Synced Lyrics
+
 ```yaml
-version: "1.0"
+version: '1.0'
 metadata:
-  title: "Shape of You"
-  artist: "Ed Sheeran"
+  title: 'Shape of You'
+  artist: 'Ed Sheeran'
   duration_ms: 235000
 
 lines:
@@ -148,59 +153,59 @@ lines:
     start_ms: 12450
     end_ms: 18200
     words:
-      - text: "The "
+      - text: 'The '
         start_ms: 12450
         end_ms: 12900
-      - text: "club "
+      - text: 'club '
         start_ms: 12900
         end_ms: 13500
       - text: "isn't "
         start_ms: 13500
         end_ms: 14200
-      - text: "the "
+      - text: 'the '
         start_ms: 14200
         end_ms: 14600
-      - text: "best "
+      - text: 'best '
         start_ms: 14600
         end_ms: 15200
-      - text: "place "
+      - text: 'place '
         start_ms: 15200
         end_ms: 15800
-      - text: "to "
+      - text: 'to '
         start_ms: 15800
         end_ms: 16200
-      - text: "find "
+      - text: 'find '
         start_ms: 16200
         end_ms: 16800
-      - text: "a "
+      - text: 'a '
         start_ms: 16800
         end_ms: 17100
-      - text: "lover"
+      - text: 'lover'
         start_ms: 17100
         end_ms: 18200
-  - text: "So the bar is where I go"
+  - text: 'So the bar is where I go'
     start_ms: 18500
     end_ms: 22100
     words:
-      - text: "So "
+      - text: 'So '
         start_ms: 18500
         end_ms: 19000
-      - text: "the "
+      - text: 'the '
         start_ms: 19000
         end_ms: 19400
-      - text: "bar "
+      - text: 'bar '
         start_ms: 19400
         end_ms: 20000
-      - text: "is "
+      - text: 'is '
         start_ms: 20000
         end_ms: 20400
-      - text: "where "
+      - text: 'where '
         start_ms: 20400
         end_ms: 21000
-      - text: "I "
+      - text: 'I '
         start_ms: 21000
         end_ms: 21400
-      - text: "go"
+      - text: 'go'
         start_ms: 21400
         end_ms: 22100
 
@@ -209,7 +214,8 @@ plain: |
   The club isn't the best place to find a lover
   So the bar is where I go
 ```
-*Note: Word objects include trailing spaces in `text` (except the last word) to allow proper reconstruction of the full line. Each word has its own `start_ms` for karaoke-style highlighting.*
+
+_Note: Word objects include trailing spaces in `text` (except the last word) to allow proper reconstruction of the full line. Each word has its own `start_ms` for karaoke-style highlighting._
 
 ---
 

@@ -10,27 +10,35 @@
   >
     <div class="flex flex-col items-center">
       <div v-if="!isPublishing" class="mb-4 text-center">
-        Publish lyrics for <strong>{{ track?.title }} - {{ track?.artist_name }}</strong> to your current LRCLIB instance?
+        Publish lyrics for <strong>{{ track?.title }} - {{ track?.artist_name }}</strong> to your
+        current LRCLIB instance?
       </div>
       <div v-else class="mb-4 text-center">
-        Publishing lyrics for <strong>{{ track?.title }} - {{ track?.artist_name }}</strong>...
+        Publishing lyrics for <strong>{{ track?.title }} - {{ track?.artist_name }}</strong
+        >...
       </div>
 
       <table v-if="isPublishing" class="text-xs table-auto font-mono uppercase">
         <tbody>
           <tr>
             <td class="px-2 py-1">Request challenge...</td>
-            <td class="text-right px-2 py-1">{{ progress.requestChallenge }}</td>
+            <td class="text-right px-2 py-1">
+              {{ progress.requestChallenge }}
+            </td>
           </tr>
 
           <tr>
             <td class="px-2 py-1">Solve challenge...</td>
-            <td class="text-right px-2 py-1">{{ progress.solveChallenge }}</td>
+            <td class="text-right px-2 py-1">
+              {{ progress.solveChallenge }}
+            </td>
           </tr>
 
           <tr>
             <td class="px-2 py-1">Publish lyrics...</td>
-            <td class="text-right px-2 py-1">{{ progress.publishLyrics }}</td>
+            <td class="text-right px-2 py-1">
+              {{ progress.publishLyrics }}
+            </td>
           </tr>
         </tbody>
       </table>
@@ -38,8 +46,12 @@
 
     <template #footer>
       <div v-if="!isPublishing" class="flex gap-2 justify-center w-full">
-        <button class="button button-primary px-8 py-2 rounded-full" @click="publishLyrics">Publish Now</button>
-        <button class="button button-normal px-8 py-2 rounded-full" @click="handleClose">Cancel</button>
+        <button class="button button-primary px-8 py-2 rounded-full" @click="publishLyrics">
+          Publish Now
+        </button>
+        <button class="button button-normal px-8 py-2 rounded-full" @click="handleClose">
+          Cancel
+        </button>
       </div>
 
       <div v-else class="flex gap-2 justify-center w-full">
@@ -64,12 +76,12 @@ const emit = defineEmits(['close'])
 const props = defineProps({
   track: {
     type: Object,
-    required: true
+    required: true,
   },
   lyricsfile: {
     type: String,
-    required: true
-  }
+    required: true,
+  },
 })
 
 const toast = useToast()
@@ -77,7 +89,7 @@ const isPublishing = ref(false)
 const progress = ref({
   requestChallenge: 'Pending',
   solveChallenge: 'Pending',
-  publishLyrics: 'Pending'
+  publishLyrics: 'Pending',
 })
 let unlistenPublishProgress = null
 
@@ -107,10 +119,12 @@ const publishLyrics = async () => {
       albumName: props.track.album_name,
       artistName: props.track.artist_name,
       duration: props.track.duration,
-      lyricsfile: props.lyricsfile
+      lyricsfile: props.lyricsfile,
     })
 
-    toast.success('Your lyrics has been published successfully! It might take up to 24 hours to be visible on the search results.')
+    toast.success(
+      'Your lyrics has been published successfully! It might take up to 24 hours to be visible on the search results.'
+    )
     emit('close')
   } catch (error) {
     console.error(error)
@@ -129,7 +143,7 @@ const handleClose = () => {
 }
 
 onMounted(async () => {
-  unlistenPublishProgress = await listen('publish-lyrics-progress', (event) => {
+  unlistenPublishProgress = await listen('publish-lyrics-progress', event => {
     progress.value = event.payload
   })
 })

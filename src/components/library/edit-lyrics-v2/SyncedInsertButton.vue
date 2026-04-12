@@ -5,7 +5,7 @@
       :title="title"
       :style="{ opacity }"
       :class="opacity > 0.05 ? '' : 'pointer-events-none'"
-      @click="(e) => emit('click', e)"
+      @click="e => emit('click', e)"
     >
       <Plus />
     </button>
@@ -17,12 +17,12 @@ import Plus from '~icons/mdi/plus'
 defineProps({
   title: {
     type: String,
-    required: true
+    required: true,
   },
   opacity: {
     type: Number,
-    default: 0
-  }
+    default: 0,
+  },
 })
 
 const emit = defineEmits(['click'])

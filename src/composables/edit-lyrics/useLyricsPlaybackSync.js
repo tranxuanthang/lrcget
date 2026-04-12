@@ -17,16 +17,20 @@ export function useLyricsPlaybackSync({ progress, unifiedLyrics, view, addLineHi
     runner = new Runner(Lrc.parse(lyrics || ''))
   }
 
-  watch(unifiedLyrics, (newLyrics) => {
-    refreshRunner(newLyrics)
+  watch(
+    unifiedLyrics,
+    newLyrics => {
+      refreshRunner(newLyrics)
 
-    if (!newLyrics) {
-      currentIndex.value = -1
-      clearHighlight()
-    }
-  }, { immediate: true })
+      if (!newLyrics) {
+        currentIndex.value = -1
+        clearHighlight()
+      }
+    },
+    { immediate: true }
+  )
 
-  watch(progress, (newProgress) => {
+  watch(progress, newProgress => {
     if (!view.value || !runner || !unifiedLyrics.value) {
       return
     }
@@ -54,6 +58,6 @@ export function useLyricsPlaybackSync({ progress, unifiedLyrics, view, addLineHi
   return {
     currentIndex,
     refreshRunner,
-    resetPlaybackSync
+    resetPlaybackSync,
   }
 }

@@ -1,7 +1,7 @@
 import { computed, ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
-const delay = (time) => new Promise((resolve, reject) => setTimeout(resolve, time))
+const delay = time => new Promise((resolve, reject) => setTimeout(resolve, time))
 
 const downloadQueue = ref([])
 const downloadedItems = ref([])
@@ -16,14 +16,14 @@ const downloadedCount = computed(() => {
   return downloadedItems.value.length
 })
 
-const addLog = (logObj) => {
+const addLog = logObj => {
   log.value.unshift(logObj)
   if (log.value.length > 1000) {
     log.value.pop()
   }
 }
 
-const downloadLyrics = async (track) => {
+const downloadLyrics = async track => {
   try {
     const result = await invoke('download_lyrics', { trackId: track.id })
 
@@ -31,7 +31,12 @@ const downloadLyrics = async (track) => {
       return
     }
 
-    addLog({ status: 'success', title: track.title, artistName: track.artist_name, message: result })
+    addLog({
+      status: 'success',
+      title: track.title,
+      artistName: track.artist_name,
+      message: result,
+    })
     successCount.value++
   } catch (error) {
     if (!isDownloading.value) {
@@ -72,7 +77,7 @@ const downloadProgress = computed(() => {
   return downloadedCount.value / totalCount.value
 })
 
-const addToQueue = (trackIds) => {
+const addToQueue = trackIds => {
   isDownloading.value = true
 
   for (let i = 0; i < trackIds.length; i++) {

@@ -1,43 +1,39 @@
 <template>
   <div v-if="!isLoading" class="flex flex-col w-full h-screen">
     <LibraryHeader
-      :activeTab="activeTab"
-      @changeActiveTab="changeActiveTab"
-      @showConfig="openConfigModal"
-      @showAbout="openAboutModal"
-      @showDownloadViewer="openDownloadViewer"
-      @refreshLibrary="refreshLibrary"
-      @uninitializeLibrary="$emit('uninitializeLibrary')"
-      @manageDirectories="$emit('manageDirectories')"
-      @exportAllLyrics="handleExportAllLyrics"
+      :active-tab="activeTab"
+      @change-active-tab="changeActiveTab"
+      @show-config="openConfigModal"
+      @show-about="openAboutModal"
+      @show-download-viewer="openDownloadViewer"
+      @refresh-library="refreshLibrary"
+      @uninitialize-library="$emit('uninitializeLibrary')"
+      @manage-directories="$emit('manageDirectories')"
+      @export-all-lyrics="handleExportAllLyrics"
     />
 
     <div class="relative grow overflow-hidden">
-      <TrackList
-        :isActive="activeTab === 'tracks'"
-      />
+      <TrackList :is-active="activeTab === 'tracks'" />
 
-      <AlbumList
-        :isActive="activeTab === 'albums'"
-      />
+      <AlbumList :is-active="activeTab === 'albums'" />
 
-      <ArtistList
-        :isActive="activeTab === 'artists'"
-      />
+      <ArtistList :is-active="activeTab === 'artists'" />
 
-      <MyLrclib
-        :isActive="activeTab === 'my-lrclib'"
-      />
+      <MyLrclib :is-active="activeTab === 'my-lrclib'" />
     </div>
 
     <NowPlaying class="flex-none" />
   </div>
 
   <div v-else class="flex flex-col justify-center items-center w-full h-full">
-    <div class="animate-spin text-xl text-brave-30"><Loading /></div>
+    <div class="animate-spin text-xl text-brave-30">
+      <Loading />
+    </div>
     <div v-if="isScanning" class="flex flex-col items-center justify-center text-sm text-brave-40">
       <div>Scanning library...</div>
-      <div v-if="scanProgress" class="mt-1 font-medium">{{ scanProgress.message }}</div>
+      <div v-if="scanProgress" class="mt-1 font-medium">
+        {{ scanProgress.message }}
+      </div>
     </div>
 
     <div v-else class="flex flex-col items-center justify-center text-sm text-brave-40">
@@ -69,8 +65,8 @@ import { useExporter } from '@/composables/export.js'
 const props = defineProps({
   shouldScan: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 const emit = defineEmits(['uninitializeLibrary', 'scanComplete', 'manageDirectories'])
@@ -90,7 +86,7 @@ const { open: openAboutModal, close: closeAboutModal } = useModal({
   attrs: {
     onClose() {
       closeAboutModal()
-    }
+    },
   },
 })
 
@@ -105,7 +101,7 @@ const { open: openConfigModal, close: closeConfigModal } = useModal({
     },
     onManageDirectories() {
       emit('manageDirectories')
-    }
+    },
   },
 })
 
@@ -114,7 +110,7 @@ const { open: openDownloadViewer, close: closeDownloadViewer } = useModal({
   attrs: {
     onClose() {
       closeDownloadViewer()
-    }
+    },
   },
 })
 
@@ -123,17 +119,21 @@ const { open: openExportViewer, close: closeExportViewer } = useModal({
   attrs: {
     onClose() {
       closeExportViewer()
-    }
+    },
   },
 })
 
-const { addToQueue: addToExportQueue, setupEventListeners: setupExportListeners, cleanupEventListeners: cleanupExportListeners } = useExporter()
+const {
+  addToQueue: addToExportQueue,
+  setupEventListeners: setupExportListeners,
+  cleanupEventListeners: cleanupExportListeners,
+} = useExporter()
 
-const changeActiveTab = (tab) => {
+const changeActiveTab = tab => {
   activeTab.value = tab
 }
 
-const handleExportAllLyrics = async (formats) => {
+const handleExportAllLyrics = async formats => {
   try {
     openExportViewer()
     await setupExportListeners()
@@ -165,12 +165,12 @@ const setupScanListeners = async () => {
   }
 
   // Listen for scan progress updates
-  unlistenScanProgress = await listen('scan-progress', (event) => {
+  unlistenScanProgress = await listen('scan-progress', event => {
     scanProgress.value = event.payload
   })
 
   // Listen for scan completion
-  unlistenScanComplete = await listen('scan-complete', (event) => {
+  unlistenScanComplete = await listen('scan-complete', event => {
     scanResult.value = event.payload
     isScanning.value = false
     isLoading.value = false
@@ -223,11 +223,14 @@ onMounted(async () => {
 })
 
 // Watch for changes to shouldScan prop
-watch(() => props.shouldScan, (newValue) => {
-  if (newValue && !isScanning.value) {
-    scanLibrary(false)
+watch(
+  () => props.shouldScan,
+  newValue => {
+    if (newValue && !isScanning.value) {
+      scanLibrary(false)
+    }
   }
-})
+)
 
 onUnmounted(async () => {
   await cleanupScanListeners()

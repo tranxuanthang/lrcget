@@ -1,9 +1,11 @@
 <template>
-  <div class="relative grow rounded bg-brave-99 text-brave-30 dark:bg-brave-1 dark:text-brave-95 h-full overflow-hidden">
+  <div
+    class="relative grow rounded bg-brave-99 text-brave-30 dark:bg-brave-1 dark:text-brave-95 h-full overflow-hidden"
+  >
     <button
       class="absolute bottom-2 right-2 flex items-center gap-1 px-3 py-1 rounded text-xs font-bold bg-brave-90 text-brave-20 dark:bg-brave-10 dark:text-brave-95 hover:bg-brave-80 dark:hover:bg-brave-20"
-      @click.stop="onCopy"
       :aria-label="copied ? 'Copied' : 'Copy'"
+      @click.stop="onCopy"
     >
       <ContentCopy class="w-4 h-4" />
       <span>{{ copied ? 'Copied' : 'Copy' }}</span>

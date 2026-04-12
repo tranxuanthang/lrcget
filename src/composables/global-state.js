@@ -15,10 +15,10 @@ export function useGlobalState() {
   }
   const isHotkey = computed(() => isHotkeyState.value)
 
-  const setThemeMode = (mode) => {
+  const setThemeMode = mode => {
     themeModeState.value = mode
   }
-  const setLrclibInstance = (instance) => {
+  const setLrclibInstance = instance => {
     lrclibInstanceState.value = instance
   }
 
@@ -33,6 +33,6 @@ export function useGlobalState() {
     setThemeMode,
     themeMode,
     setLrclibInstance,
-    lrclibInstance
+    lrclibInstance,
   }
 }

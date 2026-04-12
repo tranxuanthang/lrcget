@@ -27,7 +27,7 @@
           @repeat="repeatLine"
           @mark-instrumental="markAsInstrumental"
         />
-        <div class="w-full border-b border-brave-90 dark:border-brave-20"></div>
+        <div class="w-full border-b border-brave-90 dark:border-brave-20" />
         <EditLyricsPlayerBar
           :status="status"
           :duration="duration"
@@ -59,7 +59,10 @@ import EditLyricsHeaderActions from '@/components/library/edit-lyrics/EditLyrics
 import EditLyricsSyncToolbar from '@/components/library/edit-lyrics/EditLyricsSyncToolbar.vue'
 import EditLyricsPlayerBar from '@/components/library/edit-lyrics/EditLyricsPlayerBar.vue'
 import LyricsCodeEditor from '@/components/library/edit-lyrics/LyricsCodeEditor.vue'
-import { addLineHighlight, lineHighlightExtensions } from '@/components/library/edit-lyrics/codemirror-line-highlight.js'
+import {
+  addLineHighlight,
+  lineHighlightExtensions,
+} from '@/components/library/edit-lyrics/codemirror-line-highlight.js'
 import { useToast } from 'vue-toastification'
 import { useEditLyrics } from '@/composables/edit-lyrics.js'
 import { useGlobalState } from '@/composables/global-state.js'
@@ -79,7 +82,7 @@ const toast = useToast()
 
 const view = shallowRef(null)
 const codemirrorStyle = ref({
-  fontSize: 1.0
+  fontSize: 1.0,
 })
 
 const {
@@ -89,33 +92,35 @@ const {
   plainTextLintResult,
   initializeLyrics,
   updateLyrics,
-  saveLyrics
+  saveLyrics,
 } = useLyricsDocument({ editingTrack, toast })
 
-const { publishStatus, publishButtonTooltip, publishStatusTooltip, openPublishModal } = useLyricsPublish({
-  editingTrack,
-  unifiedLyrics,
-  lyricsLintResult,
-  plainTextLintResult
-})
+const { publishStatus, publishButtonTooltip, publishStatusTooltip, openPublishModal } =
+  useLyricsPublish({
+    editingTrack,
+    unifiedLyrics,
+    lyricsLintResult,
+    plainTextLintResult,
+  })
 
 const { resetPlaybackSync } = useLyricsPlaybackSync({
   progress,
   unifiedLyrics,
   view,
-  addLineHighlight
+  addLineHighlight,
 })
 
-const { syncLine, repeatLine, rewind100, fastForward100, markAsInstrumental } = useLyricsEditorCommands({
-  view,
-  unifiedLyrics,
-  progress,
-  duration,
-  seek,
-  onLyricsChange: (lyrics) => updateLyrics(lyrics)
-})
+const { syncLine, repeatLine, rewind100, fastForward100, markAsInstrumental } =
+  useLyricsEditorCommands({
+    view,
+    unifiedLyrics,
+    progress,
+    duration,
+    seek,
+    onLyricsChange: lyrics => updateLyrics(lyrics),
+  })
 
-const changeCodemirrorFontSizeBy = (offset) => {
+const changeCodemirrorFontSizeBy = offset => {
   const nextFontSize = Math.max(0.4, codemirrorStyle.value.fontSize + offset * 0.1)
   codemirrorStyle.value.fontSize = +nextFontSize.toFixed(2)
 }
@@ -128,7 +133,7 @@ const handleReady = ({ view: editorView }) => {
   view.value = editorView
 
   view.value.dispatch({
-    effects: EditorView.scrollIntoView(0)
+    effects: EditorView.scrollIntoView(0),
   })
 }
 
@@ -161,7 +166,7 @@ const hotkeyConfig = [
   { keys: 'Ctrl+Plus', handler: () => changeCodemirrorFontSizeBy(+1) },
   { keys: 'Ctrl+=', handler: () => changeCodemirrorFontSizeBy(+1) },
   { keys: 'Ctrl+-', handler: () => changeCodemirrorFontSizeBy(-1) },
-  { keys: 'Ctrl+_', handler: () => changeCodemirrorFontSizeBy(-1) }
+  { keys: 'Ctrl+_', handler: () => changeCodemirrorFontSizeBy(-1) },
 ]
 
 const { bindHotkeys, unbindHotkeys } = useLyricsEditorHotkeys(hotkeyConfig)

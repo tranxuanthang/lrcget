@@ -11,27 +11,27 @@
     tooltip="hover"
     @change="chooseProgress"
   >
-    <template #dot="{pos, index, value, focus, disabled}">
-      <div
-        class="w-full h-full rounded-full bg-brave-30"
-      />
+    <template #dot="{ pos, index, value, focus, disabled }">
+      <div class="w-full h-full rounded-full bg-brave-30" />
     </template>
 
     <template #process="{ start, end }">
-      <div
-        class="absolute h-full rounded-full bg-brave-30"
-        :style="'width: ' + end + '%;'"
-      />
+      <div class="absolute h-full rounded-full bg-brave-30" :style="'width: ' + end + '%;'" />
     </template>
 
-    <template #tooltip="{pos, index, value, focus, disabled}">
-      <div v-if="value !== null" class="text-brave-30 text-[0.6rem] font-bold rounded-lg px-1 py-0.5 bg-brave-90">{{ humanDuration(value * props.duration) }}</div>
+    <template #tooltip="{ pos, index, value, focus, disabled }">
+      <div
+        v-if="value !== null"
+        class="text-brave-30 text-[0.6rem] font-bold rounded-lg px-1 py-0.5 bg-brave-90"
+      >
+        {{ humanDuration(value * props.duration) }}
+      </div>
     </template>
   </VueSlider>
 </template>
 
 <script setup>
-import VueSlider from "vue-3-slider-component";
+import VueSlider from 'vue-3-slider-component'
 import { ref, onMounted, watch } from 'vue'
 import { humanDuration } from '@/utils/human-duration'
 import _throttle from 'lodash/throttle'
@@ -46,7 +46,7 @@ const progressPercent = ref(0.0)
 // There is a slight delay after seeking before the player can actually start playing from the new position due to kira's StreamingSoundHandle.
 // So this is a hack to prevent the seek bar from jumping back to the old position after user seeks.
 // Also throttle the seek event to prevent it from being called too frequently.
-const chooseProgress = _throttle((value) => {
+const chooseProgress = _throttle(value => {
   emit('seek', value * props.duration)
 
   isGracePeriod.value = true
@@ -57,7 +57,7 @@ const chooseProgress = _throttle((value) => {
   }, 500)
 }, 200)
 
-const roundThousandths = (num) => {
+const roundThousandths = num => {
   return Math.round(num * 1000.0) / 1000.0
 }
 
@@ -67,16 +67,22 @@ onMounted(() => {
   progressPercent.value = roundThousandths(props.progress / props.duration)
 })
 
-watch(() => props.progress, (newProgress) => {
-  if (!props.duration || !newProgress) return
-  if (isGracePeriod.value) return
+watch(
+  () => props.progress,
+  newProgress => {
+    if (!props.duration || !newProgress) return
+    if (isGracePeriod.value) return
 
-  progressPercent.value = roundThousandths(newProgress / props.duration)
-})
+    progressPercent.value = roundThousandths(newProgress / props.duration)
+  }
+)
 
-watch(() => props.duration, (newDuration) => {
-  if (!props.progress || !newDuration) return
+watch(
+  () => props.duration,
+  newDuration => {
+    if (!props.progress || !newDuration) return
 
-  progressPercent.value = roundThousandths(props.progress / newDuration)
-})
+    progressPercent.value = roundThousandths(props.progress / newDuration)
+  }
+)
 </script>

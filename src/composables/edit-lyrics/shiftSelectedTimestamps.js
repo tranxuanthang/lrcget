@@ -19,7 +19,10 @@ export function shiftSelectedTimestamps({ view, delta, maxTimestamp = Infinity }
       }
 
       const nextTimestamp = Math.max(0, Math.min(boundedMaxTimestamp, parsed.timestamps[0] + delta))
-      const replacedText = currentLine.text.replace(/^(\s*\[(.*)\]\s*)*/g, `[${timestampToString(nextTimestamp)}] `)
+      const replacedText = currentLine.text.replace(
+        /^(\s*\[(.*)\]\s*)*/g,
+        `[${timestampToString(nextTimestamp)}] `
+      )
 
       if (firstTimestamp === null) {
         firstTimestamp = nextTimestamp
@@ -28,13 +31,13 @@ export function shiftSelectedTimestamps({ view, delta, maxTimestamp = Infinity }
       changes.push({
         from: currentLine.from,
         to: currentLine.to,
-        insert: replacedText
+        insert: replacedText,
       })
     }
   }
 
   return {
     changes,
-    firstTimestamp
+    firstTimestamp,
   }
 }

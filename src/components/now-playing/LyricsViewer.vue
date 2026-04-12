@@ -1,21 +1,38 @@
 <template>
   <transition name="slide-fade" mode="out-in">
-    <div v-if="syncedLines.length > 0 && duration != null && progress != null" class="flex flex-col gap-1 relative">
+    <div
+      v-if="syncedLines.length > 0 && duration != null && progress != null"
+      class="flex flex-col gap-1 relative"
+    >
       <transition name="slide-fade" mode="out-in">
-        <div v-if="expanded" class="full-viewer absolute bottom-0 left-0 w-full h-[40vh] bg-brave-95 dark:bg-brave-10 border-t border-brave-90/50 dark:border-brave-10/50 overflow-hidden">
+        <div
+          v-if="expanded"
+          class="full-viewer absolute bottom-0 left-0 w-full h-[40vh] bg-brave-95 dark:bg-brave-10 border-t border-brave-90/50 dark:border-brave-10/50 overflow-hidden"
+        >
           <div class="relative h-full">
             <div class="flex justify-center items-center h-6 w-full relative z-10">
-              <button class="text-xl text-brave-30 dark:text-brave-80 w-full flex justify-center" type="button" @click="expand"><DragHorizontal /></button>
+              <button
+                class="text-xl text-brave-30 dark:text-brave-80 w-full flex justify-center"
+                type="button"
+                @click="expand"
+              >
+                <DragHorizontal />
+              </button>
             </div>
 
-            <div id="full-lyrics-container" class="h-full text-center transition" :style="{ transform: fullViewTransform }">
+            <div
+              id="full-lyrics-container"
+              class="h-full text-center transition"
+              :style="{ transform: fullViewTransform }"
+            >
               <p
                 v-for="(line, index) in syncedLines"
                 :key="index"
                 class="transition"
                 :class="{
                   'font-bold text-brave-50 dark:text-brave-95': currentIndex === index,
-                  'text-brave-50 hover:text-brave-40 hover:cursor-pointer dark:text-brave-80 dark:hover:text-brave-90': currentIndex !== index
+                  'text-brave-50 hover:text-brave-40 hover:cursor-pointer dark:text-brave-80 dark:hover:text-brave-90':
+                    currentIndex !== index,
                 }"
                 @click="onLineClick(line)"
               >
@@ -24,25 +41,36 @@
                     v-for="(word, wordIndex) in getLineWords(syncedLines, index)"
                     :key="wordIndex"
                     class="whitespace-pre-wrap"
-                    :class="{ 'text-yellow-500 dark:text-yellow-400': currentIndex === index && isWordPlaying(syncedLines, index, wordIndex, progress * 1000) }"
-                  >{{ word.text }}</span>
+                    :class="{
+                      'text-yellow-500 dark:text-yellow-400':
+                        currentIndex === index &&
+                        isWordPlaying(syncedLines, index, wordIndex, progress * 1000),
+                    }"
+                    >{{ word.text }}</span
+                  >
                 </template>
-                <template v-else>{{ line.text }}</template>
+                <template v-else>
+                  {{ line.text }}
+                </template>
               </p>
             </div>
 
             <button
               class="z-10 absolute bottom-2 right-2 flex items-center gap-1 px-3 py-1 rounded text-xs font-bold bg-brave-90 text-brave-20 dark:bg-brave-15 dark:text-brave-95 hover:bg-brave-80 dark:hover:bg-brave-20 shadow"
               type="button"
-              @click.stop="onCopy"
               :aria-label="copied ? 'Copied' : 'Copy'"
+              @click.stop="onCopy"
             >
               <ContentCopy class="w-4 h-4" />
               <span>{{ copied ? 'Copied' : 'Copy' }}</span>
             </button>
 
-            <div class="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-brave-95 dark:from-brave-10 pointer-events-none"></div>
-            <div class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-brave-95 dark:from-brave-10 pointer-events-none"></div>
+            <div
+              class="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-brave-95 dark:from-brave-10 pointer-events-none"
+            />
+            <div
+              class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-brave-95 dark:from-brave-10 pointer-events-none"
+            />
           </div>
         </div>
       </transition>
@@ -53,20 +81,38 @@
         @click="expand"
       >
         <div class="flex justify-center items-center h-4 w-full">
-          <button class="text-xl text-brave-30 dark:text-brave-95 w-full flex justify-center" type="button"><DragHorizontal /></button>
+          <button
+            class="text-xl text-brave-30 dark:text-brave-95 w-full flex justify-center"
+            type="button"
+          >
+            <DragHorizontal />
+          </button>
         </div>
 
         <transition name="slide-fade" mode="out-in">
-          <div class="flex w-full justify-center items-center text-brave-30 dark:text-brave-95 text-sm grow font-bold" :key="currentLyrics">
+          <div
+            :key="currentLyrics"
+            class="flex w-full justify-center items-center text-brave-30 dark:text-brave-95 text-sm grow font-bold"
+          >
             <template v-if="hasWordSync(syncedLines, currentIndex)">
               <span
                 v-for="(word, wordIndex) in getLineWords(syncedLines, currentIndex)"
                 :key="wordIndex"
                 class="whitespace-pre-wrap"
-                :class="{ 'text-yellow-500 dark:text-yellow-400': isWordPlaying(syncedLines, currentIndex, wordIndex, progress * 1000) }"
-              >{{ word.text }}</span>
+                :class="{
+                  'text-yellow-500 dark:text-yellow-400': isWordPlaying(
+                    syncedLines,
+                    currentIndex,
+                    wordIndex,
+                    progress * 1000
+                  ),
+                }"
+                >{{ word.text }}</span
+              >
             </template>
-            <template v-else>{{ currentLyrics }}</template>
+            <template v-else>
+              {{ currentLyrics }}
+            </template>
           </div>
         </transition>
       </div>
@@ -78,7 +124,7 @@
 import DragHorizontal from '~icons/mdi/drag-horizontal'
 import ContentCopy from '~icons/mdi/content-copy'
 import { ref, watch, nextTick } from 'vue'
-import { computed } from '@vue/reactivity'
+import { computed } from 'vue'
 import { parseLyricsfile } from '@/utils/lyricsfile.js'
 
 const props = defineProps(['duration', 'progress', 'lyricsfile'])
@@ -104,7 +150,11 @@ const syncedLines = computed(() => {
 })
 
 const currentLyrics = computed(() => {
-  if (currentIndex.value === null || currentIndex.value < 0 || currentIndex.value >= syncedLines.value.length) {
+  if (
+    currentIndex.value === null ||
+    currentIndex.value < 0 ||
+    currentIndex.value >= syncedLines.value.length
+  ) {
     return '…'
   }
   const line = syncedLines.value[currentIndex.value]
@@ -160,7 +210,7 @@ const isWordPlaying = (lines, lineIndex, wordIndex, progressMs) => {
   return getCurrentWordIndex(line, progressMs) === wordIndex
 }
 
-const findCurrentLineIndex = (progressMs) => {
+const findCurrentLineIndex = progressMs => {
   const lines = syncedLines.value
   if (!lines || lines.length === 0) {
     return -1
@@ -187,7 +237,7 @@ const expand = () => {
   })
 }
 
-const updateCurrentLineElementOffset = (newCurrentIndex) => {
+const updateCurrentLineElementOffset = newCurrentIndex => {
   if (newCurrentIndex === null) {
     newCurrentIndex = -1
   }
@@ -212,7 +262,7 @@ const fullViewTransform = computed(() => {
   return `translateY(calc(50% - 2.5em - ${currentLineElementOffset.value}px))`
 })
 
-const onLineClick = (line) => {
+const onLineClick = line => {
   emit('lyricsClicked', { timestamp: line.start_ms / 1000 })
 }
 
@@ -228,17 +278,21 @@ const onCopy = async () => {
   }
 }
 
-watch(() => props.progress, (newProgress) => {
-  if (!syncedLines.value || syncedLines.value.length === 0) {
-    currentIndex.value = -1
-    return
-  }
+watch(
+  () => props.progress,
+  newProgress => {
+    if (!syncedLines.value || syncedLines.value.length === 0) {
+      currentIndex.value = -1
+      return
+    }
 
-  const progressMs = newProgress * 1000
-  currentIndex.value = findCurrentLineIndex(progressMs)
-}, { immediate: true })
+    const progressMs = newProgress * 1000
+    currentIndex.value = findCurrentLineIndex(progressMs)
+  },
+  { immediate: true }
+)
 
-watch(currentIndex, (newCurrentIndex) => {
+watch(currentIndex, newCurrentIndex => {
   updateCurrentLineElementOffset(newCurrentIndex)
 })
 </script>

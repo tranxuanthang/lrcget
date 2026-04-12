@@ -29,7 +29,7 @@
 
         <div v-for="(line, index) in modelValue" :key="index">
           <SyncedLyricsLineRow
-            :ref="(component) => setLineRowRef(component, index)"
+            :ref="component => setLineRowRef(component, index)"
             :line="line"
             :index="index"
             :row-class="rowClass(index)"
@@ -81,14 +81,14 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, toRef, watch } from "vue";
-import SyncedInsertButton from "@/components/library/edit-lyrics-v2/SyncedInsertButton.vue";
-import SyncedLyricsEmptyState from "@/components/library/edit-lyrics-v2/SyncedLyricsEmptyState.vue";
-import SyncedLyricsLineRow from "@/components/library/edit-lyrics-v2/SyncedLyricsLineRow.vue";
-import SyncedWordTimingLane from "@/components/library/edit-lyrics-v2/SyncedWordTimingLane.vue";
-import { useEditLyricsV2SyncedInlineEditing } from "@/composables/edit-lyrics-v2/useEditLyricsV2SyncedInlineEditing.js";
-import { useEditLyricsV2SyncedInsertHover } from "@/composables/edit-lyrics-v2/useEditLyricsV2SyncedInsertHover.js";
-import { formatTimestampMs } from "@/utils/lyricsfile.js";
+import { computed, nextTick, ref, toRef, watch } from 'vue'
+import SyncedInsertButton from '@/components/library/edit-lyrics-v2/SyncedInsertButton.vue'
+import SyncedLyricsEmptyState from '@/components/library/edit-lyrics-v2/SyncedLyricsEmptyState.vue'
+import SyncedLyricsLineRow from '@/components/library/edit-lyrics-v2/SyncedLyricsLineRow.vue'
+import SyncedWordTimingLane from '@/components/library/edit-lyrics-v2/SyncedWordTimingLane.vue'
+import { useEditLyricsV2SyncedInlineEditing } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedInlineEditing.js'
+import { useEditLyricsV2SyncedInsertHover } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedInsertHover.js'
+import { formatTimestampMs } from '@/utils/lyricsfile.js'
 
 const props = defineProps({
   modelValue: {
@@ -111,32 +111,32 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
-});
+})
 
 const emit = defineEmits([
-  "update:modelValue",
-  "update:selected-line-index",
-  "play-line",
-  "sync-line",
-  "rewind-line",
-  "forward-line",
-  "delete-line",
-  "add-line-at",
-  "import-lines-from-plain",
-  "editing-state-change",
-  "update:words",
-  "word-timing-edited",
-  "update-line-text",
-  "mark-as-instrumental",
-]);
+  'update:modelValue',
+  'update:selected-line-index',
+  'play-line',
+  'sync-line',
+  'rewind-line',
+  'forward-line',
+  'delete-line',
+  'add-line-at',
+  'import-lines-from-plain',
+  'editing-state-change',
+  'update:words',
+  'word-timing-edited',
+  'update-line-text',
+  'mark-as-instrumental',
+])
 
-const hoveredLineIndex = ref(null);
-const linesListElement = ref(null);
-const modelValue = toRef(props, "modelValue");
+const hoveredLineIndex = ref(null)
+const linesListElement = ref(null)
+const modelValue = toRef(props, 'modelValue')
 
 const handleUpdateLineText = (lineIndex, newText) => {
-  emit("update-line-text", lineIndex, newText);
-};
+  emit('update-line-text', lineIndex, newText)
+}
 
 const {
   editingLineIndex,
@@ -149,9 +149,9 @@ const {
 } = useEditLyricsV2SyncedInlineEditing({
   modelValue,
   emit,
-  selectLine: (index) => emit("update:selected-line-index", index),
+  selectLine: index => emit('update:selected-line-index', index),
   updateLineText: handleUpdateLineText,
-});
+})
 
 const {
   lineRowElements,
@@ -161,135 +161,133 @@ const {
   handleLinesMouseLeave,
   handleLinesScroll,
   handleLineCountChange: handleInsertHoverLineCountChange,
-} = useEditLyricsV2SyncedInsertHover({ modelValue });
+} = useEditLyricsV2SyncedInsertHover({ modelValue })
 
-const scrollLineIntoView = (index) => {
+const scrollLineIntoView = index => {
   if (!Number.isInteger(index) || index < 0) {
-    return;
+    return
   }
 
   if (!(linesListElement.value instanceof HTMLElement)) {
-    return;
+    return
   }
 
-  const lineRowElement = lineRowElements.value[index];
+  const lineRowElement = lineRowElements.value[index]
   if (!(lineRowElement instanceof HTMLElement)) {
-    return;
+    return
   }
 
   lineRowElement.scrollIntoView({
-    block: "nearest",
-    inline: "nearest",
-  });
-};
+    block: 'nearest',
+    inline: 'nearest',
+  })
+}
 
-const rowClass = (index) => {
+const rowClass = index => {
   if (props.selectedLineIndex === index || editingLineIndex.value === index) {
-    return "bg-brave-95 dark:bg-brave-10/60";
+    return 'bg-brave-95 dark:bg-brave-10/60'
   }
 
   if (hoveredLineIndex.value === index) {
-    return "bg-brave-98 dark:bg-brave-10/30";
+    return 'bg-brave-98 dark:bg-brave-10/30'
   }
 
-  return "bg-transparent";
-};
+  return 'bg-transparent'
+}
 
-const selectLine = (index) => {
-  emit("update:selected-line-index", index);
-};
+const selectLine = index => {
+  emit('update:selected-line-index', index)
+}
 
-const isLineControlsVisible = (index) =>
-  hoveredLineIndex.value === index || props.selectedLineIndex === index;
+const isLineControlsVisible = index =>
+  hoveredLineIndex.value === index || props.selectedLineIndex === index
 
-const isLinePlaying = (index) => props.playingLineIndex === index;
+const isLinePlaying = index => props.playingLineIndex === index
 
 const emitLineAction = (eventName, index, selectBefore = true) => {
   if (selectBefore) {
-    selectLine(index);
+    selectLine(index)
   }
 
-  emit(eventName, index);
-};
+  emit(eventName, index)
+}
 
-const handlePlayLine = (index) => {
-  emitLineAction("play-line", index);
-};
+const handlePlayLine = index => {
+  emitLineAction('play-line', index)
+}
 
-const handleSyncLine = (index) => {
-  emitLineAction("sync-line", index);
-};
+const handleSyncLine = index => {
+  emitLineAction('sync-line', index)
+}
 
-const handleRewindLine = (index) => {
-  emitLineAction("rewind-line", index);
-};
+const handleRewindLine = index => {
+  emitLineAction('rewind-line', index)
+}
 
-const handleForwardLine = (index) => {
-  emitLineAction("forward-line", index);
-};
+const handleForwardLine = index => {
+  emitLineAction('forward-line', index)
+}
 
-const handleDeleteLine = (index) => {
-  emitLineAction("delete-line", index, false);
-};
+const handleDeleteLine = index => {
+  emitLineAction('delete-line', index, false)
+}
 
-const handleAddLineAt = (index) => {
-  emit("add-line-at", index);
-};
+const handleAddLineAt = index => {
+  emit('add-line-at', index)
+}
 
 const handleInsertButtonClick = (index, event) => {
-  event.stopPropagation();
-  handleAddLineAt(index);
-};
+  event.stopPropagation()
+  handleAddLineAt(index)
+}
 
 const handleImportLinesFromPlain = () => {
-  emit("import-lines-from-plain");
-};
+  emit('import-lines-from-plain')
+}
 
 const handleMarkAsInstrumental = () => {
-  emit("mark-as-instrumental");
-};
+  emit('mark-as-instrumental')
+}
 
-const handleEditingTextUpdate = (value) => {
-  editingText.value = value;
-};
+const handleEditingTextUpdate = value => {
+  editingText.value = value
+}
 
 const handleWordsUpdate = ({ lineIndex, words, lineStartMs }) => {
-  emit("update:words", { lineIndex, words, lineStartMs });
-};
+  emit('update:words', { lineIndex, words, lineStartMs })
+}
 
 const handleWordTimingEdited = ({ lineIndex, startMs }) => {
-  emit("word-timing-edited", { lineIndex, startMs });
-};
+  emit('word-timing-edited', { lineIndex, startMs })
+}
 
 const hasSelectedLine = computed(
-  () =>
-    props.selectedLineIndex >= 0 &&
-    props.selectedLineIndex < props.modelValue.length,
-);
+  () => props.selectedLineIndex >= 0 && props.selectedLineIndex < props.modelValue.length
+)
 
 const selectedLine = computed(() => {
-  if (!hasSelectedLine.value) return null;
-  return props.modelValue[props.selectedLineIndex];
-});
+  if (!hasSelectedLine.value) return null
+  return props.modelValue[props.selectedLineIndex]
+})
 
 watch(
   () => props.modelValue.length,
-  (lineCount) => {
-    handleInsertHoverLineCountChange(lineCount);
-    handleInlineEditingLineCountChange(lineCount);
-  },
-);
+  lineCount => {
+    handleInsertHoverLineCountChange(lineCount)
+    handleInlineEditingLineCountChange(lineCount)
+  }
+)
 
 watch(
   () => props.selectedLineIndex,
   (selectedLineIndex, previousLineIndex) => {
     if (selectedLineIndex === previousLineIndex) {
-      return;
+      return
     }
 
     nextTick(() => {
-      scrollLineIntoView(selectedLineIndex);
-    });
-  },
-);
+      scrollLineIntoView(selectedLineIndex)
+    })
+  }
+)
 </script>

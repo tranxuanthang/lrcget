@@ -5,7 +5,7 @@ import { useToast } from 'vue-toastification'
 
 const toast = useToast()
 
-const delay = (time) => new Promise((resolve) => setTimeout(resolve, time))
+const delay = time => new Promise(resolve => setTimeout(resolve, time))
 
 const exportQueue = ref([])
 const exportedItems = ref([])
@@ -27,14 +27,14 @@ const exportFormats = ref({
 let unlistenProgress = null
 let unlistenComplete = null
 
-const addLog = (logObj) => {
+const addLog = logObj => {
   log.value.unshift(logObj)
   if (log.value.length > 1000) {
     log.value.pop()
   }
 }
 
-const exportTrack = async (track) => {
+const exportTrack = async track => {
   try {
     const formats = []
     if (exportFormats.value.plainText) formats.push('txt')
@@ -159,13 +159,13 @@ const setupEventListeners = async () => {
   }
 
   // Listen for export progress events from backend
-  unlistenProgress = await listen('export-progress', (event) => {
+  unlistenProgress = await listen('export-progress', event => {
     const { trackId, status, message } = event.payload
     // Frontend already handles progress via exportNext loop
     // This is for real-time updates if backend handles the loop
   })
 
-  unlistenComplete = await listen('export-complete', (event) => {
+  unlistenComplete = await listen('export-complete', event => {
     const { exported, skipped, errors } = event.payload
     isExporting.value = false
     toast.success(`Export complete: ${exported} exported, ${skipped} skipped, ${errors} errors`)

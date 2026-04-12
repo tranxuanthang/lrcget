@@ -5,11 +5,13 @@
 Change LRCGET's lyrics storage model from "auto-export to sidecar files" to "database-first with optional/manual export".
 
 ### Current Behavior
+
 - Lyrics are automatically imported from `.txt`/`.lrc` files during library scan
 - Lyrics are automatically saved to `.txt`/`.lrc` files when downloaded, searched, or edited
 - Lyrics are stored in both `tracks` table (`txt_lyrics`, `lrc_lyrics`) and `lyricsfiles` table
 
 ### Target Behavior
+
 - Lyrics continue to be imported from `.txt`/`.lrc` files during scan (into `lyricsfiles` table)
 - Lyrics are **only** saved to database (no automatic file writes)
 - Users manually export lyrics when desired via UI actions
@@ -20,11 +22,13 @@ Change LRCGET's lyrics storage model from "auto-export to sidecar files" to "dat
 ### 1.1 Database & Configuration
 
 **Migration:** Add export configuration columns to `config_data` table
+
 - `export_format_lrc: boolean` (default: false)
 - `export_format_txt: boolean` (default: false)
 - `export_embed: boolean` (default: false)
 
 **Update:**
+
 - `PersistentConfig` struct to include new fields
 - `get_config()` and `set_config()` functions
 - Add functions to query tracks with lyrics for mass export
@@ -34,6 +38,7 @@ Change LRCGET's lyrics storage model from "auto-export to sidecar files" to "dat
 **Create:** `src-tauri/src/export.rs`
 
 Core functionality:
+
 - `export_lyrics_for_track()` - Export single track to specified formats
 - `export_all_lyrics()` - Mass export with progress callbacks
 - Format generators for `.lrc`, `.txt`
@@ -42,11 +47,13 @@ Core functionality:
 ### 1.3 Remove Auto-Export
 
 **Modify:** `src-tauri/src/lyrics.rs`
+
 - Remove automatic file-writing functions
 - Move path-building utilities to export module
 - Keep embed functions for export module use
 
 **Update Commands:**
+
 - `download_lyrics()` - Only save to DB + lyricsfiles table
 - `apply_lyrics()` - Only save to DB + lyricsfiles table
 - `save_lyrics()` - Only save to DB + lyricsfiles table
@@ -54,12 +61,14 @@ Core functionality:
 ### 1.4 New Commands
 
 **Add to `src-tauri/src/main.rs`:**
+
 - `export_lyrics(track_id, formats)` - Export single track
 - `export_all_lyrics(formats)` - Mass export all tracks with lyrics
 - `get_export_config()` - Get current export settings
 - `set_export_config(...)` - Update export settings
 
 **Add Events:**
+
 - `export-progress` - Real-time progress updates
 - `export-complete` - Export finished notification
 
@@ -70,6 +79,7 @@ Core functionality:
 **Update:** `src/components/Config.vue`
 
 Add "Lyrics Export Settings" section with:
+
 - Format checkboxes: `.lrc`, `.txt`, embedded
 - Help text explaining each format
 
@@ -78,6 +88,7 @@ Add "Lyrics Export Settings" section with:
 **Create:** `src/composables/export.js`
 
 Exports:
+
 - `exportTrack()` - Single track export
 - `exportAllTracks()` - Mass export with progress
 - `getExportConfig()` / `setExportConfig()`
@@ -88,6 +99,7 @@ Exports:
 **Create:** `src/components/ExportViewer.vue`
 
 Features:
+
 - Format selection UI
 - Progress display with progress bar
 - Current track name display
@@ -98,6 +110,7 @@ Features:
 **Update:** Track row component
 
 Add export icon button:
+
 - Visible only for tracks with lyrics
 - Uses configured formats or prompts for selection
 - Shows success/error notification
@@ -107,6 +120,7 @@ Add export icon button:
 **Update:** `src/components/library/Library.vue`
 
 Add "Export All Lyrics" button to toolbar:
+
 - Opens ExportViewer modal
 - Exports all tracks that have lyrics in database
 - Shows progress and summary
@@ -114,6 +128,7 @@ Add "Export All Lyrics" button to toolbar:
 ## Phase 3: Documentation
 
 Update architecture docs:
+
 - `src/ARCHITECTURE.md` - Frontend export flow
 - `src-tauri/ARCHITECTURE.md` - Backend export module, commands, events
 
@@ -122,17 +137,20 @@ Note deprecated `txt_lyrics`/`lrc_lyrics` columns (no longer written to).
 ## Implementation Sprints
 
 ### Sprint 1: Core Infrastructure
+
 - Database migration
 - Config schema updates
 - Create export module
 - Add new commands
 
 ### Sprint 2: Remove Auto-Export
+
 - Remove file-writing from lyrics module
 - Update download/apply/save commands
 - Test: Only DB writes, no file writes
 
 ### Sprint 3: Frontend UI
+
 - Config settings UI
 - Export composable
 - ExportViewer modal
@@ -140,6 +158,7 @@ Note deprecated `txt_lyrics`/`lrc_lyrics` columns (no longer written to).
 - Mass export button
 
 ### Sprint 4: Integration & Polish
+
 - Event listeners
 - Documentation updates
 - Testing
@@ -147,14 +166,17 @@ Note deprecated `txt_lyrics`/`lrc_lyrics` columns (no longer written to).
 ## Design Decisions
 
 ### Export Location
+
 - Individual track export: Same directory as track file
 - Mass export: Each track's own directory (custom directory for future)
 
 ### Conflict Handling
+
 - Overwrite existing files silently
 - No backup creation
 
 ### Backward Compatibility
+
 - Existing `.lrc`/`.txt` files left as-is
 - Import from files continues to work
 - No automatic deletion of existing files
@@ -192,6 +214,6 @@ Note deprecated `txt_lyrics`/`lrc_lyrics` columns (no longer written to).
 
 ## Implementation History
 
-| Date | Sprint | Description |
-|------|--------|-------------|
-| 2026-04-12 | - | Created implementation plan |
+| Date       | Sprint | Description                 |
+| ---------- | ------ | --------------------------- |
+| 2026-04-12 | -      | Created implementation plan |

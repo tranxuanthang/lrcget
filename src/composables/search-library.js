@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 
-const searchValue = ref("")
+const searchValue = ref('')
 const filters = ref({
   syncedLyricsTracks: true,
   plainLyricsTracks: true,

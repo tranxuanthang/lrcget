@@ -1,7 +1,7 @@
 import { parseLine } from 'lrc-kit'
 import { detectStandard } from './lyrics.js'
 
-export const executeLint = (source) => {
+export const executeLint = source => {
   const lines = source.split('\n').map(line => line.trim())
   const problems = []
   let lastNonEmptyLine = null
@@ -14,15 +14,19 @@ export const executeLint = (source) => {
         problems.push({
           line: index + 1,
           severity: 'error',
-          message: 'Line is not synchronized or invalid tag syntax'
+          message: 'Line is not synchronized or invalid tag syntax',
         })
       }
 
-      if (parsed.type === 'TIME' && ((parsed.content.endsWith('.') && !parsed.content.endsWith('...')) || parsed.content.endsWith(','))) {
+      if (
+        parsed.type === 'TIME' &&
+        ((parsed.content.endsWith('.') && !parsed.content.endsWith('...')) ||
+          parsed.content.endsWith(','))
+      ) {
         problems.push({
           line: index + 1,
           severity: 'error',
-          message: 'Line should not end with a punctuation such as comma and dot'
+          message: 'Line should not end with a punctuation such as comma and dot',
         })
       }
 
@@ -30,7 +34,7 @@ export const executeLint = (source) => {
         problems.push({
           line: index + 1,
           severity: 'error',
-          message: `Expect the following format: ${standard.name}`
+          message: `Expect the following format: ${standard.name}`,
         })
       }
 
@@ -40,7 +44,7 @@ export const executeLint = (source) => {
         problems.push({
           line: index + 1,
           severity: 'error',
-          message: 'Unnecessary empty line'
+          message: 'Unnecessary empty line',
         })
       }
     }
@@ -53,7 +57,7 @@ export const executeLint = (source) => {
       problems.push({
         line: lastNonEmptyLine.lineIndex + 1,
         severity: 'error',
-        message: 'Expect a synchronized empty line to mark the end of lyrics'
+        message: 'Expect a synchronized empty line to mark the end of lyrics',
       })
     }
   }

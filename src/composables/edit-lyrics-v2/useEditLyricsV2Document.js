@@ -1,10 +1,15 @@
 import { invoke } from '@tauri-apps/api/core'
 import { computed, ref, watch } from 'vue'
-import { createSyncedLinesFromPlain, normalizeSyncedLine, parseLyricsfile, serializeLyricsfile } from '@/utils/lyricsfile.js'
+import {
+  createSyncedLinesFromPlain,
+  normalizeSyncedLine,
+  parseLyricsfile,
+  serializeLyricsfile,
+} from '@/utils/lyricsfile.js'
 
 const createEmptySyncedLine = () => ({
   text: '',
-  words: []
+  words: [],
 })
 
 export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
@@ -23,15 +28,15 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     }
 
     if (
-      !Number.isInteger(selectedSyncedLineIndex.value)
-      || selectedSyncedLineIndex.value < 0
-      || selectedSyncedLineIndex.value >= syncedLines.value.length
+      !Number.isInteger(selectedSyncedLineIndex.value) ||
+      selectedSyncedLineIndex.value < 0 ||
+      selectedSyncedLineIndex.value >= syncedLines.value.length
     ) {
       selectedSyncedLineIndex.value = 0
     }
   }
 
-  const selectSyncedLine = (lineIndex) => {
+  const selectSyncedLine = lineIndex => {
     if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
       return
     }
@@ -39,7 +44,7 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     selectedSyncedLineIndex.value = lineIndex
   }
 
-  const setSyncedLineEditingState = (value) => {
+  const setSyncedLineEditingState = value => {
     isSyncedLineEditing.value = value
   }
 
@@ -58,7 +63,7 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     plainLyrics.value = parsed.plainLyrics
     // Load synced lines independently from plain lyrics
     // This allows users to have different structures (e.g., annotations, empty lines)
-    syncedLines.value = parsed.syncedLines.map((line) => normalizeSyncedLine(line))
+    syncedLines.value = parsed.syncedLines.map(line => normalizeSyncedLine(line))
     isInstrumental.value = parsed.isInstrumental
 
     console.log('syncedLines', syncedLines.value)
@@ -68,7 +73,7 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     ensureSelectedSyncedLine()
   }
 
-  const updatePlainLyrics = (lyrics) => {
+  const updatePlainLyrics = lyrics => {
     plainLyrics.value = lyrics
     // Plain and synced lyrics are now independent - editing plain lyrics
     // does not automatically update synced lines, allowing users to have
@@ -76,13 +81,13 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     isDirty.value = true
   }
 
-  const updateSyncedLines = (lines) => {
+  const updateSyncedLines = lines => {
     syncedLines.value = lines
     isDirty.value = true
     ensureSelectedSyncedLine()
   }
 
-  const addSyncedLineAt = (lineIndex) => {
+  const addSyncedLineAt = lineIndex => {
     if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex > syncedLines.value.length) {
       return
     }
@@ -95,7 +100,7 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     isDirty.value = true
   }
 
-  const deleteSyncedLine = (lineIndex) => {
+  const deleteSyncedLine = lineIndex => {
     if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
       return
     }
@@ -138,23 +143,23 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     isDirty.value = true
   }
 
-  const eraseWordTimings = (lineIndex) => {
-    withUpdatedLine(lineIndex, (line) => ({
+  const eraseWordTimings = lineIndex => {
+    withUpdatedLine(lineIndex, line => ({
       ...line,
-      words: []
+      words: [],
     }))
   }
 
-  const syncLineToCurrentProgress = (lineIndex) => {
+  const syncLineToCurrentProgress = lineIndex => {
     if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
       return
     }
 
     const newStartMs = Math.max(0, Math.round(progress.value * 1000))
 
-    withUpdatedLine(lineIndex, (line) => ({
+    withUpdatedLine(lineIndex, line => ({
       ...line,
-      start_ms: newStartMs
+      start_ms: newStartMs,
     }))
   }
 
@@ -167,17 +172,17 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     const baseStartMs = Number.isFinite(currentStartMs) ? currentStartMs : 0
     const newStartMs = Math.max(0, Math.round(baseStartMs + offsetMs))
 
-    withUpdatedLine(lineIndex, (line) => ({
+    withUpdatedLine(lineIndex, line => ({
       ...line,
-      start_ms: newStartMs
+      start_ms: newStartMs,
     }))
   }
 
-  const rewindLineBy100 = (lineIndex) => {
+  const rewindLineBy100 = lineIndex => {
     shiftLineTimestampBy(lineIndex, -100)
   }
 
-  const forwardLineBy100 = (lineIndex) => {
+  const forwardLineBy100 = lineIndex => {
     shiftLineTimestampBy(lineIndex, 100)
   }
 
@@ -191,14 +196,14 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
       return
     }
 
-    withUpdatedLine(lineIndex, (currentLine) => ({
+    withUpdatedLine(lineIndex, currentLine => ({
       ...currentLine,
       text: newText,
-      words: []
+      words: [],
     }))
   }
 
-  const setInstrumental = (value) => {
+  const setInstrumental = value => {
     isInstrumental.value = Boolean(value)
     isDirty.value = true
   }
@@ -218,18 +223,18 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
         plainLyrics: plainLyrics.value,
         syncedLines: syncedLines.value,
         baseDocument: lyricsfileDocument.value,
-        isInstrumental: isInstrumental.value
+        isInstrumental: isInstrumental.value,
       })
 
       await invoke('save_lyrics', {
         trackId: editingTrack.value.id,
-        lyricsfile
+        lyricsfile,
       })
 
       const parsed = parseLyricsfile(lyricsfile)
       // Preserve independent synced lines structure after save
       // Don't re-sync to plain lyrics to maintain separate structures
-      syncedLines.value = parsed.syncedLines.map((line) => normalizeSyncedLine(line))
+      syncedLines.value = parsed.syncedLines.map(line => normalizeSyncedLine(line))
       lyricsfileDocument.value = parsed.document
       isDirty.value = false
       return true
@@ -242,11 +247,12 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
 
   const hasPlainLyrics = computed(() => plainLyrics.value.trim().length > 0)
 
-  const selectedLineExists = computed(() => (
-    Number.isInteger(selectedSyncedLineIndex.value)
-    && selectedSyncedLineIndex.value >= 0
-    && selectedSyncedLineIndex.value < syncedLines.value.length
-  ))
+  const selectedLineExists = computed(
+    () =>
+      Number.isInteger(selectedSyncedLineIndex.value) &&
+      selectedSyncedLineIndex.value >= 0 &&
+      selectedSyncedLineIndex.value < syncedLines.value.length
+  )
 
   const currentPlayingSyncedLineIndex = computed(() => {
     if (!Number.isFinite(progress.value) || syncedLines.value.length === 0) {
@@ -265,9 +271,13 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     return -1
   })
 
-  watch(syncedLines, () => {
-    ensureSelectedSyncedLine()
-  }, { deep: true })
+  watch(
+    syncedLines,
+    () => {
+      ensureSelectedSyncedLine()
+    },
+    { deep: true }
+  )
 
   return {
     plainLyrics,
@@ -295,6 +305,6 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     ensureSelectedSyncedLine,
     updateLineText,
     eraseWordTimings,
-    setInstrumental
+    setInstrumental,
   }
 }

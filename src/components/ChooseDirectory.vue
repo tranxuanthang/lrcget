@@ -31,10 +31,7 @@
         </button>
       </div>
 
-      <button
-        class="button button-primary w-full p-4 rounded-lg"
-        @click.prevent="progressStep"
-      >
+      <button class="button button-primary w-full p-4 rounded-lg" @click.prevent="progressStep">
         Continue
       </button>
     </div>
@@ -57,7 +54,8 @@ const progressStep = async () => {
   await invoke('set_directories', { directories: directories.value })
 
   // Check if directories actually changed
-  const hasChanged = JSON.stringify(originalDirectories.value.sort()) !== JSON.stringify(directories.value.sort())
+  const hasChanged =
+    JSON.stringify(originalDirectories.value.sort()) !== JSON.stringify(directories.value.sort())
 
   if (hasChanged) {
     emit('directoriesChanged')
@@ -72,7 +70,7 @@ onMounted(async () => {
     directories.value = [...directoriesFromDB]
     originalDirectories.value = [...directoriesFromDB]
   } else {
-    const dirPath = await audioDir();
+    const dirPath = await audioDir()
     directories.value.push(dirPath)
     originalDirectories.value = [dirPath]
   }
@@ -81,7 +79,7 @@ onMounted(async () => {
 const chooseDirectory = async () => {
   const selected = await open({
     directory: true,
-    recursive: true
+    recursive: true,
   })
 
   if (selected && !directories.value.includes(selected)) {
@@ -89,7 +87,7 @@ const chooseDirectory = async () => {
   }
 }
 
-const removeDirectory = (index) => {
+const removeDirectory = index => {
   if (index < 0) {
     return
   }

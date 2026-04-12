@@ -2,7 +2,7 @@ import { nextTick, ref } from 'vue'
 
 const INSERT_HOVER_MAX_DISTANCE_PX = 26
 
-const resolveRowElement = (value) => {
+const resolveRowElement = value => {
   if (value instanceof HTMLElement) {
     return value
   }
@@ -32,7 +32,7 @@ export function useEditLyricsV2SyncedInsertHover({ modelValue }) {
     lineRowElements.value[index] = resolveRowElement(value)
   }
 
-  const getInsertCenterY = (insertIndex) => {
+  const getInsertCenterY = insertIndex => {
     const lineCount = modelValue.value.length
     if (lineCount === 0) {
       return null
@@ -62,7 +62,7 @@ export function useEditLyricsV2SyncedInsertHover({ modelValue }) {
     hoveredInsertOpacity.value = 0
   }
 
-  const updateHoveredInsertByMouseY = (mouseClientY) => {
+  const updateHoveredInsertByMouseY = mouseClientY => {
     if (!Number.isFinite(mouseClientY) || modelValue.value.length < 1) {
       resetHoveredInsert()
       return
@@ -90,10 +90,10 @@ export function useEditLyricsV2SyncedInsertHover({ modelValue }) {
     }
 
     hoveredInsertIndex.value = nearestInsertIndex
-    hoveredInsertOpacity.value = Math.max(0, 1 - (nearestDistance / INSERT_HOVER_MAX_DISTANCE_PX))
+    hoveredInsertOpacity.value = Math.max(0, 1 - nearestDistance / INSERT_HOVER_MAX_DISTANCE_PX)
   }
 
-  const insertControlOpacity = (insertIndex) => {
+  const insertControlOpacity = insertIndex => {
     if (hoveredInsertIndex.value !== insertIndex) {
       return 0
     }
@@ -101,7 +101,7 @@ export function useEditLyricsV2SyncedInsertHover({ modelValue }) {
     return hoveredInsertOpacity.value
   }
 
-  const handleLinesMouseMove = (event) => {
+  const handleLinesMouseMove = event => {
     lastMouseClientY.value = event.clientY
     updateHoveredInsertByMouseY(event.clientY)
   }
@@ -119,7 +119,7 @@ export function useEditLyricsV2SyncedInsertHover({ modelValue }) {
     updateHoveredInsertByMouseY(lastMouseClientY.value)
   }
 
-  const handleLineCountChange = (lineCount) => {
+  const handleLineCountChange = lineCount => {
     lineRowElements.value = lineRowElements.value.slice(0, lineCount)
 
     if (lineCount < 1) {
@@ -141,6 +141,6 @@ export function useEditLyricsV2SyncedInsertHover({ modelValue }) {
     handleLinesMouseMove,
     handleLinesMouseLeave,
     handleLinesScroll,
-    handleLineCountChange
+    handleLineCountChange,
   }
 }

@@ -5,9 +5,9 @@ export function useEditLyricsV2WordTimingHotkeys({
   selectedLineIndex,
   allLines,
   syncSelectedBoundaryAtProgress,
-  onSelectNextLine
+  onSelectNextLine,
 }) {
-  const handleWordTimingKeyDown = (event) => {
+  const handleWordTimingKeyDown = event => {
     if (!isWordSyncAvailable.value) {
       return
     }
@@ -50,6 +50,6 @@ export function useEditLyricsV2WordTimingHotkeys({
 
   return {
     bindWordTimingHotkeys,
-    unbindWordTimingHotkeys
+    unbindWordTimingHotkeys,
   }
 }

@@ -5,40 +5,83 @@
     body-class="flex flex-col gap-4 h-full min-h-0"
     @close="emit('close')"
   >
-    <div class="flex flex-none gap-4 items-center bg-brave-95 dark:bg-brave-10 rounded-lg px-4 py-2">
-      <button v-if="status !== 'playing'" @click.prevent="resume" class="button button-primary text-white p-2 rounded-full text-xl"><Play /></button>
-      <button v-else @click.prevent="pause" class="button button-primary text-white p-2 rounded-full text-xl"><Pause /></button>
-      <div class="flex-none w-12 text-xs text-brave-30 dark:text-brave-95">{{ humanDuration(progress) }}</div>
+    <div
+      class="flex flex-none gap-4 items-center bg-brave-95 dark:bg-brave-10 rounded-lg px-4 py-2"
+    >
+      <button
+        v-if="status !== 'playing'"
+        class="button button-primary text-white p-2 rounded-full text-xl"
+        @click.prevent="resume"
+      >
+        <Play />
+      </button>
+      <button
+        v-else
+        class="button button-primary text-white p-2 rounded-full text-xl"
+        @click.prevent="pause"
+      >
+        <Pause />
+      </button>
+      <div class="flex-none w-12 text-xs text-brave-30 dark:text-brave-95">
+        {{ humanDuration(progress) }}
+      </div>
       <Seek class="grow" :duration="duration" :progress="progress" @seek="seek" />
-      <div class="flex-none w-12 text-xs text-brave-30 dark:text-brave-95">{{ humanDuration(duration) }}</div>
+      <div class="flex-none w-12 text-xs text-brave-30 dark:text-brave-95">
+        {{ humanDuration(duration) }}
+      </div>
     </div>
 
     <div v-if="resolvedLyrics.syncedLyrics" class="relative grow h-full overflow-hidden">
-      <div id="full-lyrics-container" class="h-full text-center transition" :style="{ transform: fullViewTransform }">
-        <p v-for="(line, index) in visibleSyncedLines" :key="index" class="text-brave-50 dark:text-brave-95" :class="{ 'font-bold': currentIndex === index }">
+      <div
+        id="full-lyrics-container"
+        class="h-full text-center transition"
+        :style="{ transform: fullViewTransform }"
+      >
+        <p
+          v-for="(line, index) in visibleSyncedLines"
+          :key="index"
+          class="text-brave-50 dark:text-brave-95"
+          :class="{ 'font-bold': currentIndex === index }"
+        >
           <template v-if="hasWordSyncLine(line)">
             <span
               v-for="(word, wordIndex) in line.words"
               :key="wordIndex"
               class="whitespace-pre-wrap"
-              :class="{ 'text-yellow-500 dark:text-yellow-400': currentIndex === index && isWordPlaying(line, wordIndex, progress * 1000) }"
-            >{{ word.text }}</span>
+              :class="{
+                'text-yellow-500 dark:text-yellow-400':
+                  currentIndex === index && isWordPlaying(line, wordIndex, progress * 1000),
+              }"
+              >{{ word.text }}</span
+            >
           </template>
-          <template v-else>{{ lineText(line) }}</template>
+          <template v-else>
+            {{ lineText(line) }}
+          </template>
         </p>
       </div>
 
-      <div class="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-white dark:from-brave-5"></div>
-      <div class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-white dark:from-brave-5"></div>
+      <div
+        class="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-white dark:from-brave-5"
+      />
+      <div
+        class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-white dark:from-brave-5"
+      />
     </div>
 
-    <div v-else-if="resolvedLyrics.plainLyrics" class="relative grow text-center text-brave-50 whitespace-pre h-full overflow-hidden">
+    <div
+      v-else-if="resolvedLyrics.plainLyrics"
+      class="relative grow text-center text-brave-50 whitespace-pre h-full overflow-hidden"
+    >
       <div class="grow p-4 h-full overflow-y-auto">
         {{ resolvedLyrics.plainLyrics }}
       </div>
     </div>
 
-    <div v-else-if="resolvedLyrics.instrumental" class="relative grow text-center text-brave-50 whitespace-pre h-full overflow-hidden">
+    <div
+      v-else-if="resolvedLyrics.instrumental"
+      class="relative grow text-center text-brave-50 whitespace-pre h-full overflow-hidden"
+    >
       <div class="grow p-4 h-full overflow-y-auto italic flex items-center justify-center">
         This track is instrumental
       </div>
@@ -56,7 +99,8 @@ import Seek from '@/components/now-playing/Seek.vue'
 import { normalizeLrclibLyrics, parseLyricsfile } from '@/utils/lyricsfile.js'
 
 const props = defineProps(['track', 'lyrics'])
-const { playingTrack, status, duration, progress, playTrack, pause, resume, stop, seek } = usePlayer()
+const { playingTrack, status, duration, progress, playTrack, pause, resume, stop, seek } =
+  usePlayer()
 const emit = defineEmits(['close'])
 
 const runner = ref(null)
@@ -75,7 +119,9 @@ const lyricsfileSyncedLines = computed(() => {
 })
 
 const hasWordSyncedLyrics = computed(() => {
-  return lyricsfileSyncedLines.value.some((line) => Array.isArray(line?.words) && line.words.length > 0)
+  return lyricsfileSyncedLines.value.some(
+    line => Array.isArray(line?.words) && line.words.length > 0
+  )
 })
 
 const visibleSyncedLines = computed(() => {
@@ -86,7 +132,7 @@ const visibleSyncedLines = computed(() => {
   return parsedLyrics.value || []
 })
 
-const humanDuration = (seconds) => {
+const humanDuration = seconds => {
   if (!seconds) {
     seconds = 0
   }
@@ -94,7 +140,7 @@ const humanDuration = (seconds) => {
   return new Date(seconds * 1000).toISOString().slice(11, 19)
 }
 
-const lineText = (line) => {
+const lineText = line => {
   if (!line) {
     return ''
   }
@@ -106,7 +152,7 @@ const lineText = (line) => {
   return line.content || ''
 }
 
-const hasWordSyncLine = (line) => {
+const hasWordSyncLine = line => {
   return Array.isArray(line?.words) && line.words.length > 0
 }
 
@@ -133,7 +179,7 @@ const isWordPlaying = (line, wordIndex, progressMs) => {
   return getCurrentWordIndex(line, progressMs) === wordIndex
 }
 
-const updateCurrentLineElementOffset = (newCurrentIndex) => {
+const updateCurrentLineElementOffset = newCurrentIndex => {
   if (newCurrentIndex === null) {
     newCurrentIndex = -1
   }
@@ -175,7 +221,7 @@ onUnmounted(() => {
   parsedLyrics.value = null
 })
 
-watch(progress, (newProgress) => {
+watch(progress, newProgress => {
   if (!runner.value || !props.lyrics) {
     return
   }
@@ -202,8 +248,7 @@ watch(progress, (newProgress) => {
   }
 })
 
-watch(currentIndex, (newCurrentIndex) => {
+watch(currentIndex, newCurrentIndex => {
   updateCurrentLineElementOffset(newCurrentIndex)
 })
-
 </script>

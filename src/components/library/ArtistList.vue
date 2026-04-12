@@ -1,13 +1,11 @@
 <template>
-  <div ref="parentRef" class="p-4 overflow-y-auto h-full" v-show="props.isActive">
-    <div
-      :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }"
-    >
+  <div v-show="props.isActive" ref="parentRef" class="p-4 overflow-y-auto h-full">
+    <div :style="{ height: `${totalSize}px`, width: '100%', position: 'relative' }">
       <div class="w-full">
         <div class="w-full flex">
           <div class="text-xs text-brave-30/70 font-bold flex w-full dark:text-brave-95">
             <div class="text-left flex-none w-[65%] p-1">Artist</div>
-            <div class="text-right flex-none w-[15%] p-1"></div>
+            <div class="text-right flex-none w-[15%] p-1" />
           </div>
         </div>
         <div class="w-full flex flex-col">
@@ -20,10 +18,7 @@
               transform: `translateY(${virtualRow.start}px)`,
             }"
           >
-            <ArtistItem
-              :artistId="virtualRow.key"
-              @open-artist="openArtist"
-            />
+            <ArtistItem :artist-id="virtualRow.key" @open-artist="openArtist" />
           </div>
         </div>
       </div>
@@ -57,7 +52,7 @@ const rowVirtualizer = useVirtualizer(
     estimateSize: () => 52,
     overscan: 5,
     paddingStart: 32,
-    getItemKey: (index) => artistIds.value[index]
+    getItemKey: index => artistIds.value[index],
   }))
 )
 
@@ -65,7 +60,7 @@ const virtualRows = computed(() => rowVirtualizer.value.getVirtualItems())
 
 const totalSize = computed(() => rowVirtualizer.value.getTotalSize())
 
-const openArtist = async (artist) => {
+const openArtist = async artist => {
   currentArtist.value = artist
 }
 
@@ -75,9 +70,12 @@ onMounted(async () => {
   }
 })
 
-watch(() => props.isActive, async () => {
-  if (props.isActive) {
-    artistIds.value = await invoke('get_artist_ids')
+watch(
+  () => props.isActive,
+  async () => {
+    if (props.isActive) {
+      artistIds.value = await invoke('get_artist_ids')
+    }
   }
-})
+)
 </script>

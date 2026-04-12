@@ -16,36 +16,36 @@ import { formatTimestampMs } from '@/utils/lyricsfile.js'
 const props = defineProps({
   word: {
     type: Object,
-    required: true
+    required: true,
   },
   wordIndex: {
     type: Number,
-    required: true
+    required: true,
   },
   startMs: {
     type: Number,
-    default: 0
+    default: 0,
   },
   endMs: {
     type: Number,
-    default: 0
+    default: 0,
   },
   lineStartMs: {
     type: Number,
-    default: 0
+    default: 0,
   },
   lineEndMs: {
     type: Number,
-    default: 0
+    default: 0,
   },
   timelineWidth: {
     type: Number,
-    default: 0
+    default: 0,
   },
   progressMs: {
     type: Number,
-    default: 0
-  }
+    default: 0,
+  },
 })
 
 const isPlaying = computed(() => {
@@ -82,7 +82,7 @@ const segmentStyle = computed(() => {
     left: `${leftPercent}%`,
     width: `${widthPercent}%`,
     minWidth: `${minWidth}px`,
-    transition: 'none'
+    transition: 'none',
   }
 })
 </script>

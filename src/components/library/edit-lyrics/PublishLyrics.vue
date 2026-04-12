@@ -2,9 +2,9 @@
   <BaseModal
     :click-to-close="!isPublishing"
     :esc-to-close="!isPublishing"
-    :closeButton="!isPublishing"
-    @close="close"
+    :close-button="!isPublishing"
     content-class="max-w-screen-sm max-h-[60vh] flex flex-col"
+    @close="close"
   >
     <template #default>
       <div v-if="lintResult.length" class="grow flex flex-col h-full overflow-hidden">
@@ -21,11 +21,19 @@
             </thead>
             <tbody class="text-xs">
               <tr v-for="(problem, index) in lintResult" :key="index">
-                <td class="p-1 text-right">{{ problem.line }}</td>
-                <td class="p-1 text-center">
-                  <span v-if="problem.severity === 'error'" class="bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-100 font-bold text-xs px-1 py-0.5 rounded">Error</span>
+                <td class="p-1 text-right">
+                  {{ problem.line }}
                 </td>
-                <td class="p-1">{{ problem.message }}</td>
+                <td class="p-1 text-center">
+                  <span
+                    v-if="problem.severity === 'error'"
+                    class="bg-red-200 text-red-800 dark:bg-red-900 dark:text-red-100 font-bold text-xs px-1 py-0.5 rounded"
+                    >Error</span
+                  >
+                </td>
+                <td class="p-1">
+                  {{ problem.message }}
+                </td>
               </tr>
             </tbody>
           </table>
@@ -34,27 +42,36 @@
 
       <div v-else class="flex flex-col items-center">
         <div v-if="!isPublishing" class="mb-4">
-          Do you want to publish your synchronized lyrics of the song <strong>{{ title }} - {{ artistName }}</strong> to your current LRCLIB instance?
+          Do you want to publish your synchronized lyrics of the song
+          <strong>{{ title }} - {{ artistName }}</strong> to your current LRCLIB instance?
         </div>
         <div v-else class="mb-4">
-          Publishing your synchronized lyrics of the song <strong>{{ title }} - {{ artistName }}</strong>...
+          Publishing your synchronized lyrics of the song
+          <strong>{{ title }} - {{ artistName }}</strong
+          >...
         </div>
 
         <table v-if="isPublishing" class="text-xs table-auto font-mono uppercase">
           <tbody>
             <tr>
               <td class="px-2 py-1">Request challenge...</td>
-              <td class="text-right px-2 py-1">{{ progress.requestChallenge }}</td>
+              <td class="text-right px-2 py-1">
+                {{ progress.requestChallenge }}
+              </td>
             </tr>
 
             <tr>
               <td class="px-2 py-1">Solve challenge...</td>
-              <td class="text-right px-2 py-1">{{ progress.solveChallenge }}</td>
+              <td class="text-right px-2 py-1">
+                {{ progress.solveChallenge }}
+              </td>
             </tr>
 
             <tr>
               <td class="px-2 py-1">Publish lyrics...</td>
-              <td class="text-right px-2 py-1">{{ progress.publishLyrics }}</td>
+              <td class="text-right px-2 py-1">
+                {{ progress.publishLyrics }}
+              </td>
             </tr>
           </tbody>
         </table>
@@ -67,13 +84,17 @@
       </div>
 
       <div v-else-if="!isPublishing" class="flex gap-2 justify-center w-full">
-        <button class="button button-primary px-8 py-2 rounded-full" @click="publishLyrics">Publish Now</button>
+        <button class="button button-primary px-8 py-2 rounded-full" @click="publishLyrics">
+          Publish Now
+        </button>
         <button class="button button-normal px-8 py-2 rounded-full" @click="close">Cancel</button>
       </div>
 
       <div v-else class="flex gap-2 justify-center w-full">
         <button class="button button-disabled px-8 py-2 rounded-full flex gap-3" disabled>
-          <div class="animate-spin"><Loading /></div>
+          <div class="animate-spin">
+            <Loading />
+          </div>
           <div>Publishing</div>
         </button>
       </div>
@@ -93,7 +114,7 @@ const emit = defineEmits(['close'])
 const props = defineProps({
   lintResult: {
     type: Array,
-    required: true
+    required: true,
   },
   title: {
     type: String,
@@ -114,7 +135,7 @@ const props = defineProps({
   lyrics: {
     type: Object,
     required: true,
-  }
+  },
 })
 
 const isPublishing = ref(false)
@@ -122,12 +143,12 @@ const isError = ref(false)
 const progress = ref({
   requestChallenge: 'Pending',
   solveChallenge: 'Pending',
-  publishLyrics: 'Pending'
+  publishLyrics: 'Pending',
 })
 
 const publishLyrics = async () => {
   isPublishing.value = true
-  const plainLyrics = props.lyrics.replace(/^\[(.*)\] */mg, '')
+  const plainLyrics = props.lyrics.replace(/^\[(.*)\] */gm, '')
   const syncedLyrics = props.lyrics
   try {
     await invoke('publish_lyrics', {
@@ -136,9 +157,11 @@ const publishLyrics = async () => {
       artistName: props.artistName,
       duration: props.duration,
       plainLyrics,
-      syncedLyrics
+      syncedLyrics,
     })
-    toast.success('Your lyrics has been published successfully! It might take up to 24 hours to be visible on the search results.')
+    toast.success(
+      'Your lyrics has been published successfully! It might take up to 24 hours to be visible on the search results.'
+    )
   } catch (error) {
     isError.value = true
     console.error(error)
@@ -151,7 +174,7 @@ const publishLyrics = async () => {
 
 onMounted(() => {
   console.log('lintResult', props.lintResult)
-  listen('publish-lyrics-progress', (event) => {
+  listen('publish-lyrics-progress', event => {
     progress.value = event.payload
   })
 })

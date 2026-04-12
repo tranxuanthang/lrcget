@@ -5,8 +5,8 @@ export const addLineHighlight = StateEffect.define()
 
 const lineHighlightMark = Decoration.line({
   attributes: {
-    class: 'cm-current-lyrics'
-  }
+    class: 'cm-current-lyrics',
+  },
 })
 
 const lineHighlightField = StateField.define({
@@ -27,13 +27,13 @@ const lineHighlightField = StateField.define({
       }
 
       nextLines = Decoration.none.update({
-        add: [lineHighlightMark.range(effect.value)]
+        add: [lineHighlightMark.range(effect.value)],
       })
     }
 
     return nextLines
   },
-  provide: (field) => EditorView.decorations.from(field)
+  provide: field => EditorView.decorations.from(field),
 })
 
 export const lineHighlightExtensions = [lineHighlightField]

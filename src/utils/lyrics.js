@@ -1,35 +1,35 @@
-export const isSynchronizedLyrics = (lyrics) => {
+export const isSynchronizedLyrics = lyrics => {
   // Match either timestamp tags [00:00.00] or metadata tags [xx:value]
   return /^\[(?:\d{2}:\d{2}[.:]\d{2,3}|[a-z]+:.+?)\]/.test(lyrics)
 }
 
-export const detectStandard = (lyrics) => {
+export const detectStandard = lyrics => {
   // Define format patterns
   const formats = [
     {
       name: '[mm:ss.xx] text',
       space: true,
       msPrecision: 2,
-      regex: /^\[\d{2}:\d{2}\.\d{2}\](?= [^ ])/
+      regex: /^\[\d{2}:\d{2}\.\d{2}\](?= [^ ])/,
     },
     {
       name: '[mm:ss.xx]text',
       space: false,
       msPrecision: 2,
-      regex: /^\[\d{2}:\d{2}\.\d{2}\](?=[^ ])/
+      regex: /^\[\d{2}:\d{2}\.\d{2}\](?=[^ ])/,
     },
     {
       name: '[mm:ss.xxx] text',
       space: true,
       msPrecision: 3,
-      regex: /^\[\d{2}:\d{2}\.\d{3}\](?= [^ ])/
+      regex: /^\[\d{2}:\d{2}\.\d{3}\](?= [^ ])/,
     },
     {
       name: '[mm:ss.xxx]text',
       space: false,
       msPrecision: 3,
-      regex: /^\[\d{2}:\d{2}\.\d{3}\](?=[^ ])/
-    }
+      regex: /^\[\d{2}:\d{2}\.\d{3}\](?=[^ ])/,
+    },
   ]
 
   // Split into lines and find first line with timestamp

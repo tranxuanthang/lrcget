@@ -18,6 +18,7 @@ pip install -r requirements.txt
 ```
 
 Optional dependencies:
+
 - `faker` - More realistic artist/album names
 - `mutagen` - Proper ID3 metadata tags
 - `pydub` - Better MP3 generation
@@ -25,16 +26,19 @@ Optional dependencies:
 ## Usage
 
 Basic usage (1000 files):
+
 ```bash
 python generate_fake_music.py
 ```
 
 Generate 100K files:
+
 ```bash
 python generate_fake_music.py -n 100000 -o ./large_library --workers 8
 ```
 
 Custom options:
+
 ```bash
 # Shorter songs (5-15 seconds)
 python generate_fake_music.py -n 5000 --duration 5 15
@@ -48,16 +52,16 @@ python generate_fake_music.py -n 100 -v
 
 ## Command Line Arguments
 
-| Argument | Short | Default | Description |
-|----------|-------|---------|-------------|
-| `--num-files` | `-n` | 1000 | Number of files to generate |
-| `--output` | `-o` | ./fake_music | Output directory |
-| `--duration` | | 5 30 | Min/max duration in seconds |
-| `--workers` | `-w` | 4 | Parallel workers |
-| `--no-faker` | | False | Use simple random names |
-| `--audio-type` | | silent | silent or white_noise |
-| `--batch-size` | | 1000 | Progress update interval |
-| `--verbose` | `-v` | False | Show each file created |
+| Argument       | Short | Default      | Description                 |
+| -------------- | ----- | ------------ | --------------------------- |
+| `--num-files`  | `-n`  | 1000         | Number of files to generate |
+| `--output`     | `-o`  | ./fake_music | Output directory            |
+| `--duration`   |       | 5 30         | Min/max duration in seconds |
+| `--workers`    | `-w`  | 4            | Parallel workers            |
+| `--no-faker`   |       | False        | Use simple random names     |
+| `--audio-type` |       | silent       | silent or white_noise       |
+| `--batch-size` |       | 1000         | Progress update interval    |
+| `--verbose`    | `-v`  | False        | Show each file created      |
 
 ## File Size
 

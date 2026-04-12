@@ -1,12 +1,7 @@
-export function useEditLyricsV2Hotkeys({
-  activeTab,
-  saveLyrics,
-  changeFontSizeBy,
-  resetFontSize
-}) {
-  const isCtrlPressed = (event) => event.ctrlKey || event.metaKey
+export function useEditLyricsV2Hotkeys({ activeTab, saveLyrics, changeFontSizeBy, resetFontSize }) {
+  const isCtrlPressed = event => event.ctrlKey || event.metaKey
 
-  const handleKeyboardShortcuts = (event) => {
+  const handleKeyboardShortcuts = event => {
     if (!isCtrlPressed(event)) {
       return
     }
@@ -51,6 +46,6 @@ export function useEditLyricsV2Hotkeys({
 
   return {
     bindHotkeys,
-    unbindHotkeys
+    unbindHotkeys,
   }
 }

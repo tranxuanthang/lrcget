@@ -1,3 +1,3 @@
-export const countLines = (lines) => {
+export const countLines = lines => {
   return (lines.match(/\n/g) || []).length + 1
 }

@@ -1,29 +1,23 @@
 <template>
   <div class="inline-flex items-center">
     <input
-      type="checkbox"
       :id="id"
+      type="checkbox"
       :name="name"
       :checked="modelValue"
       class="hidden"
       :disabled="disabled"
       @change="$emit('update:modelValue', !modelValue)"
-    >
+    />
     <label
       :for="id"
       class="inline-flex items-center cursor-pointer select-none"
       :class="disabled ? 'opacity-50 cursor-not-allowed' : ''"
     >
-      <CheckboxMarked
-        v-if="modelValue"
-        class="w-6 h-6 text-brave-30 dark:text-brave-90"
-      />
-      <CheckboxBlankOutline
-        v-else
-        class="w-6 h-6 text-brave-30 dark:text-brave-90"
-      />
+      <CheckboxMarked v-if="modelValue" class="w-6 h-6 text-brave-30 dark:text-brave-90" />
+      <CheckboxBlankOutline v-else class="w-6 h-6 text-brave-30 dark:text-brave-90" />
       <span class="ml-1 child-label">
-        <slot></slot>
+        <slot />
       </span>
     </label>
   </div>
@@ -35,20 +29,20 @@ import CheckboxBlankOutline from '~icons/mdi/checkbox-blank-outline'
 defineProps({
   modelValue: {
     type: Boolean,
-    required: true
+    required: true,
   },
   name: {
     type: String,
-    required: true
+    required: true,
   },
   id: {
     type: String,
-    required: true
+    required: true,
   },
   disabled: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 defineEmits(['update:modelValue'])

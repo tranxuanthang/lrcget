@@ -1,14 +1,14 @@
-import { fileURLToPath, URL } from "url";
-import { defineConfig } from "vite";
-import vue from "@vitejs/plugin-vue";
-import Icons from "unplugin-icons/vite";
+import { fileURLToPath, URL } from 'url'
+import { defineConfig } from 'vite'
+import vue from '@vitejs/plugin-vue'
+import Icons from 'unplugin-icons/vite'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     vue(),
     Icons({
-      compiler: "vue3",
+      compiler: 'vue3',
     }),
   ],
 
@@ -22,12 +22,12 @@ export default defineConfig({
   },
   // to make use of `TAURI_DEBUG` and other env variables
   // https://tauri.studio/v1/api/config#buildconfig.beforedevcommand
-  envPrefix: ["VITE_", "TAURI_"],
+  envPrefix: ['VITE_', 'TAURI_'],
   build: {
     // Tauri supports es2021
-    target: ["es2021", "chrome100", "safari13"],
+    target: ['es2021', 'chrome100', 'safari13'],
     // don't minify for debug builds
-    minify: !process.env.TAURI_DEBUG ? "esbuild" : false,
+    minify: !process.env.TAURI_DEBUG ? 'esbuild' : false,
     // produce sourcemaps for debug builds
     sourcemap: true,
   },
@@ -39,10 +39,16 @@ export default defineConfig({
   resolve: {
     alias: [
       { find: '@', replacement: fileURLToPath(new URL('./src', import.meta.url)) },
-      { find: '@assets', replacement: fileURLToPath(new URL('./src/shared/assets', import.meta.url)) },
+      {
+        find: '@assets',
+        replacement: fileURLToPath(new URL('./src/shared/assets', import.meta.url)),
+      },
       { find: '@cmp', replacement: fileURLToPath(new URL('./src/shared/cmp', import.meta.url)) },
-      { find: '@stores', replacement: fileURLToPath(new URL('./src/shared/stores', import.meta.url)) },
-      { find: '@use', replacement: fileURLToPath(new URL('./src/shared/use', import.meta.url)) }
-    ]
-  }
-});
+      {
+        find: '@stores',
+        replacement: fileURLToPath(new URL('./src/shared/stores', import.meta.url)),
+      },
+      { find: '@use', replacement: fileURLToPath(new URL('./src/shared/use', import.meta.url)) },
+    ],
+  },
+})

@@ -1,7 +1,7 @@
 export function useLyricsEditorHotkeys(config) {
   let keydownEvent = null
 
-  const createHotkeyHandler = (hotkeyConfig) => (event) => {
+  const createHotkeyHandler = hotkeyConfig => event => {
     for (const { keys, handler } of hotkeyConfig) {
       const [modifier, key] = keys.split('+')
       const expectedModifier = modifier.toLowerCase()
@@ -9,7 +9,7 @@ export function useLyricsEditorHotkeys(config) {
 
       const modifierMatch = {
         alt: event.altKey,
-        ctrl: event.ctrlKey || event.metaKey
+        ctrl: event.ctrlKey || event.metaKey,
       }[expectedModifier]
 
       if (modifierMatch && event.key.toLowerCase() === expectedKey) {
@@ -40,6 +40,6 @@ export function useLyricsEditorHotkeys(config) {
 
   return {
     bindHotkeys,
-    unbindHotkeys
+    unbindHotkeys,
   }
 }

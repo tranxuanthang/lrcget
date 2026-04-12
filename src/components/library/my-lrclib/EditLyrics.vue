@@ -3,8 +3,8 @@
     :click-to-close="false"
     :esc-to-close="false"
     content-class="w-full h-[80vh] max-w-screen-lg"
-    @close="emit('close')"
     :title="`${editingTrack.name} - ${editingTrack.artistName}`"
+    @close="emit('close')"
   >
     <template #titleLeft>
       <div class="flex-none flex gap-1 items-center">
@@ -19,7 +19,9 @@
           </button>
 
           <template #popper>
-            <div v-if="isSynchronizedLyrics(unifiedLyrics)" class="text-xs font-bold">Publish synchronized lyrics to LRCLIB service</div>
+            <div v-if="isSynchronizedLyrics(unifiedLyrics)" class="text-xs font-bold">
+              Publish synchronized lyrics to LRCLIB service
+            </div>
             <div v-else class="text-xs font-bold">Publish plain text lyrics to LRCLIB service</div>
           </template>
         </VTooltip>
@@ -36,7 +38,10 @@
           <AlertCircleOutline class="text-orange-500 text-2xl block" />
 
           <template #popper>
-            <div class="text-xs font-bold">Lyrics not synchronized<br />You can still publish it, but consider synchronizing it to help others</div>
+            <div class="text-xs font-bold">
+              Lyrics not synchronized<br />You can still publish it, but consider synchronizing it
+              to help others
+            </div>
           </template>
         </VTooltip>
 
@@ -44,7 +49,9 @@
           <AlertCircle class="text-red-500 text-2xl block" />
 
           <template #popper>
-            <div class="text-xs font-bold">Lyrics error detected<br />Press the publish button for details</div>
+            <div class="text-xs font-bold">
+              Lyrics error detected<br />Press the publish button for details
+            </div>
           </template>
         </VTooltip>
       </div>
@@ -54,19 +61,42 @@
       <div class="flex flex-col bg-brave-95 dark:bg-brave-10 rounded-lg">
         <div class="toolbar px-4 py-2 flex justify-between items-stretch gap-1">
           <div class="flex gap-1">
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Rewind line 100ms (Alt+LeftArrow)" @click="rewind100"><Minus /></button>
-            <button class="button button-normal px-3 py-1 text-lg rounded-full" title="Forward line 100ms (Alt+RightArrow)" @click="fastForward100"><Plus /></button>
+            <button
+              class="button button-normal px-3 py-1 text-lg rounded-full"
+              title="Rewind line 100ms (Alt+LeftArrow)"
+              @click="rewind100"
+            >
+              <Minus />
+            </button>
+            <button
+              class="button button-normal px-3 py-1 text-lg rounded-full"
+              title="Forward line 100ms (Alt+RightArrow)"
+              @click="fastForward100"
+            >
+              <Plus />
+            </button>
           </div>
 
           <div>
-            <button class="button button-warning px-3 py-1 text-lg rounded-full" title="Mark track as instrumental" @click="markAsInstrumental"><Music /> <span class="text-xs">Mark Instrumental</span></button>
+            <button
+              class="button button-warning px-3 py-1 text-lg rounded-full"
+              title="Mark track as instrumental"
+              @click="markAsInstrumental"
+            >
+              <Music /> <span class="text-xs">Mark Instrumental</span>
+            </button>
           </div>
         </div>
       </div>
 
       <!-- NOTE: AsyncCodemirror component does not have @wheel event handler, so it has to be handled here (in the container) -->
-      <div class="relative h-full w-full" id="cm-container" ref="cmContainer">
-        <div class="overflow-hidden absolute w-full" :style="{ height: `${cmHeight}px` }" @keydown="handleKeydown" @wheel="handleWheel">
+      <div id="cm-container" ref="cmContainer" class="relative h-full w-full">
+        <div
+          class="overflow-hidden absolute w-full"
+          :style="{ height: `${cmHeight}px` }"
+          @keydown="handleKeydown"
+          @wheel="handleWheel"
+        >
           <AsyncCodemirror
             v-if="shouldLoadCodeMirror"
             v-model="unifiedLyrics"
@@ -81,8 +111,13 @@
             @change="lyricsUpdated"
           />
 
-          <div v-else class="flex flex-col h-full items-center justify-center text-sm text-brave-40">
-            <div class="animate-spin text-xl text-brave-30"><Loading /></div>
+          <div
+            v-else
+            class="flex flex-col h-full items-center justify-center text-sm text-brave-40"
+          >
+            <div class="animate-spin text-xl text-brave-30">
+              <Loading />
+            </div>
             <div>Loading editor...</div>
           </div>
         </div>
@@ -90,9 +125,27 @@
 
       <div class="flex flex-col w-fit self-end bg-brave-95 dark:bg-brave-10 rounded-lg">
         <div class="toolbar px-2 py-1 flex items-stretch gap-1">
-          <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom out" @click="changeCodemirrorFontSizeBy(-1)"><MagnifyMinus /></button>
-          <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full w-[4.5em]" title="Reset zoom level" @click="resetCodemirrorFontSize">{{ (codemirrorStyle.fontSize * 100).toFixed(0) }}%</button>
-          <button class="button button-normal px-1.5 py-0.5 text-sm rounded-full" title="Zoom in" @click="changeCodemirrorFontSizeBy(+1)"><MagnifyPlus /></button>
+          <button
+            class="button button-normal px-1.5 py-0.5 text-sm rounded-full"
+            title="Zoom out"
+            @click="changeCodemirrorFontSizeBy(-1)"
+          >
+            <MagnifyMinus />
+          </button>
+          <button
+            class="button button-normal px-1.5 py-0.5 text-sm rounded-full w-[4.5em]"
+            title="Reset zoom level"
+            @click="resetCodemirrorFontSize"
+          >
+            {{ (codemirrorStyle.fontSize * 100).toFixed(0) }}%
+          </button>
+          <button
+            class="button button-normal px-1.5 py-0.5 text-sm rounded-full"
+            title="Zoom in"
+            @click="changeCodemirrorFontSizeBy(+1)"
+          >
+            <MagnifyPlus />
+          </button>
         </div>
       </div>
     </div>
@@ -148,7 +201,11 @@ const cmHeight = ref(null)
 
 const runner = ref(null)
 
-const { open: openPublishLyricsModal, close: closePublishLyricsModal, patchOptions: patchPublishLyricsModalOptions } = useModal({
+const {
+  open: openPublishLyricsModal,
+  close: closePublishLyricsModal,
+  patchOptions: patchPublishLyricsModalOptions,
+} = useModal({
   component: PublishLyrics,
   attrs: {
     track: props.editingTrack,
@@ -156,11 +213,15 @@ const { open: openPublishLyricsModal, close: closePublishLyricsModal, patchOptio
     lintResult: lyricsLintResult.value,
     onClose() {
       closePublishLyricsModal()
-    }
-  }
+    },
+  },
 })
 
-const { open: openPublishPlainTextModal, close: closePublishPlainTextModal, patchOptions: patchPublishPlainTextModalOptions } = useModal({
+const {
+  open: openPublishPlainTextModal,
+  close: closePublishPlainTextModal,
+  patchOptions: patchPublishPlainTextModalOptions,
+} = useModal({
   component: PublishPlainText,
   attrs: {
     track: props.editingTrack,
@@ -168,19 +229,19 @@ const { open: openPublishPlainTextModal, close: closePublishPlainTextModal, patc
     lintResult: plainTextLintResult.value,
     onClose() {
       closePublishPlainTextModal()
-    }
-  }
+    },
+  },
 })
 
 const codemirrorStyle = ref({
-  fontSize: 1.0
+  fontSize: 1.0,
 })
 
 const addLineHighlight = StateEffect.define()
 
 const lineHighlightField = StateField.define({
   create() {
-    return Decoration.none;
+    return Decoration.none
   },
   update(lines, tr) {
     lines = lines.map(tr.changes)
@@ -189,70 +250,69 @@ const lineHighlightField = StateField.define({
         lines = Decoration.none
       } else if (e.is(addLineHighlight)) {
         lines = Decoration.none
-        lines = lines.update({add: [lineHighlightMark.range(e.value)]})
+        lines = lines.update({ add: [lineHighlightMark.range(e.value)] })
       }
     }
     return lines
   },
-  provide: (f) => EditorView.decorations.from(f)
+  provide: f => EditorView.decorations.from(f),
 })
 
 const lineHighlightMark = Decoration.line({
   attributes: {
-    class: 'cm-current-lyrics'
-  }
+    class: 'cm-current-lyrics',
+  },
 })
 
 const extensions = [lineHighlightField]
 
-const handleWheel = (payload) => {
-  if (!payload.ctrlKey) return;
+const handleWheel = payload => {
+  if (!payload.ctrlKey) return
 
   changeCodemirrorFontSizeBy(payload.deltaY > 0 ? -1 : +1)
 }
 
-const handleKeydown = (payload) => {
-  if (!payload.ctrlKey) return;
+const handleKeydown = payload => {
+  if (!payload.ctrlKey) return
 
   switch (payload.key) {
     case '+':
     case '=':
       changeCodemirrorFontSizeBy(+1)
-      break;
+      break
     case '-':
     case '_':
       changeCodemirrorFontSizeBy(-1)
-      break;
+      break
     default:
-      break;
+      break
   }
 }
 
-const changeCodemirrorFontSizeBy = (offset) => {
-  if (!shouldLoadCodeMirror) return;
+const changeCodemirrorFontSizeBy = offset => {
+  if (!shouldLoadCodeMirror.value) return
 
+  let newFontSize = codemirrorStyle.value.fontSize + offset * 0.1
+  if (newFontSize < 0.4) newFontSize = 0.4
 
-  let newFontSize = codemirrorStyle.value.fontSize + offset * 0.1;
-  if (newFontSize < 0.4) newFontSize = 0.4;
-
-  codemirrorStyle.value.fontSize = +(newFontSize.toFixed(2));
+  codemirrorStyle.value.fontSize = +newFontSize.toFixed(2)
 }
 
-const handleReady = (payload) => {
+const handleReady = payload => {
   view.value = payload.view
 
   view.value.dispatch({
-    effects: EditorView.scrollIntoView(0)
+    effects: EditorView.scrollIntoView(0),
   })
 }
 
 const resetCodemirrorFontSize = () => {
-  if (!shouldLoadCodeMirror) return;
+  if (!shouldLoadCodeMirror.value) return
 
   codemirrorStyle.value.fontSize = 1.0
 }
 
-const lyricsUpdated = (newLyrics) => {
+const lyricsUpdated = newLyrics => {
   const parsed = Lrc.parse(newLyrics)
   runner.value = new Runner(parsed)
   isDirty.value = true
@@ -282,7 +342,7 @@ const rewind100 = () => {
         changes.push({
           from: currentLine.from,
           to: currentLine.to,
-          insert: replacedText
+          insert: replacedText,
         })
       }
     }
@@ -317,7 +377,7 @@ const fastForward100 = () => {
         changes.push({
           from: currentLine.from,
           to: currentLine.to,
-          insert: replacedText
+          insert: replacedText,
         })
       }
     }
@@ -339,8 +399,8 @@ const markAsInstrumental = () => {
     changes: {
       from: 0,
       to: view.value.state.doc.length,
-      insert: newContent
-    }
+      insert: newContent,
+    },
   })
 
   view.value.focus()
@@ -362,7 +422,7 @@ const handlePublish = () => {
         duration: editingTrack.value.duration,
         lyrics: unifiedLyrics.value,
         lintResult: lyricsLintResult.value,
-      }
+      },
     })
     openPublishLyricsModal()
   } else {
@@ -374,13 +434,13 @@ const handlePublish = () => {
         duration: editingTrack.value.duration,
         lyrics: unifiedLyrics.value,
         lintResult: plainTextLintResult.value,
-      }
+      },
     })
     openPublishPlainTextModal()
   }
 }
 
-const getUnifiedLyricsFromTrack = (track) => {
+const getUnifiedLyricsFromTrack = track => {
   const normalized = normalizeLrclibLyrics(track)
 
   if (normalized.syncedLyrics) {
@@ -420,7 +480,7 @@ onMounted(async () => {
 
   runner.value = new Runner(parsed)
 
-  keydownEvent.value = document.addEventListener('keydown', (event) => {
+  keydownEvent.value = document.addEventListener('keydown', event => {
     if (event.altKey === true && event.key === 'ArrowLeft') {
       event.preventDefault()
       rewind100()
@@ -436,7 +496,7 @@ onMounted(async () => {
 
 watch(cmContainer, () => {
   if (cmContainer.value) {
-    setTimeout(() => shouldLoadCodeMirror.value = true, 100)
+    setTimeout(() => (shouldLoadCodeMirror.value = true), 100)
 
     // Monitor the window size and dynamically adjust the height of the CodeMirror editor accordingly
     window.addEventListener('resize', handleResize)
@@ -445,14 +505,16 @@ watch(cmContainer, () => {
   }
 })
 
-watch(() => props.editingTrack, () => {
-  if (props.editingTrack) {
-    editingTrack.value = props.editingTrack
-    unifiedLyrics.value = getUnifiedLyricsFromTrack(editingTrack.value)
+watch(
+  () => props.editingTrack,
+  () => {
+    if (props.editingTrack) {
+      editingTrack.value = props.editingTrack
+      unifiedLyrics.value = getUnifiedLyricsFromTrack(editingTrack.value)
+    }
   }
-})
+)
 </script>
-
 
 <style scoped>
 .codemirror-custom {

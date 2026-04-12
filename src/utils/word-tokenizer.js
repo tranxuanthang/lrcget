@@ -5,15 +5,15 @@
 
 // CJK Unicode ranges
 const CJK_RANGES = [
-  [0x4E00, 0x9FFF],   // CJK Unified Ideographs
-  [0x3040, 0x309F],   // Hiragana
-  [0x30A0, 0x30FF],   // Katakana
-  [0xAC00, 0xD7AF],   // Hangul Syllables
-  [0x3400, 0x4DBF],   // CJK Extension A
-  [0xF900, 0xFAFF],   // CJK Compatibility Ideographs
-  [0xFF66, 0xFF9F],   // Halfwidth Katakana
-  [0x31F0, 0x31FF],   // Katakana Phonetic Extensions
-  [0x3000, 0x303F],   // CJK Symbols and Punctuation
+  [0x4e00, 0x9fff], // CJK Unified Ideographs
+  [0x3040, 0x309f], // Hiragana
+  [0x30a0, 0x30ff], // Katakana
+  [0xac00, 0xd7af], // Hangul Syllables
+  [0x3400, 0x4dbf], // CJK Extension A
+  [0xf900, 0xfaff], // CJK Compatibility Ideographs
+  [0xff66, 0xff9f], // Halfwidth Katakana
+  [0x31f0, 0x31ff], // Katakana Phonetic Extensions
+  [0x3000, 0x303f], // CJK Symbols and Punctuation
 ]
 
 /**
@@ -159,7 +159,7 @@ export function generateWordsFromLine(line) {
 
   const tokens = tokenizeText(line.text)
   return tokens.map(token => ({
-    text: token.text
+    text: token.text,
   }))
 }
 
@@ -182,7 +182,7 @@ export function distributeWordTimings(words, startMs, endMs) {
   if (duration === 0) {
     return words.map(word => ({
       ...word,
-      start_ms: start
+      start_ms: start,
     }))
   }
 
@@ -190,7 +190,7 @@ export function distributeWordTimings(words, startMs, endMs) {
 
   return words.map((word, index) => ({
     ...word,
-    start_ms: Math.round(start + (index * step))
+    start_ms: Math.round(start + index * step),
   }))
 }
 
@@ -247,7 +247,7 @@ export function ensureLineWords(line, lines, lineIndex) {
     if (!hasTimings) {
       return {
         ...line,
-        words: distributeWordTimings(line.words, startTime, endTime)
+        words: distributeWordTimings(line.words, startTime, endTime),
       }
     }
 
@@ -261,6 +261,6 @@ export function ensureLineWords(line, lines, lineIndex) {
 
   return {
     ...line,
-    words: distributeWordTimings(words, startTime, endTime)
+    words: distributeWordTimings(words, startTime, endTime),
   }
 }

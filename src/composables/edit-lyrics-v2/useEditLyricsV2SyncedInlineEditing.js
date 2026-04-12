@@ -1,15 +1,20 @@
 import { nextTick, ref } from 'vue'
 
-export function useEditLyricsV2SyncedInlineEditing({ modelValue, emit, selectLine, updateLineText }) {
+export function useEditLyricsV2SyncedInlineEditing({
+  modelValue,
+  emit,
+  selectLine,
+  updateLineText,
+}) {
   const editingLineIndex = ref(null)
   const editingText = ref('')
   const lineInput = ref(null)
 
-  const setLineInputRef = (element) => {
+  const setLineInputRef = element => {
     lineInput.value = element
   }
 
-  const finishEditing = (emitStateChange) => {
+  const finishEditing = emitStateChange => {
     const wasEditing = editingLineIndex.value !== null
     editingLineIndex.value = null
     editingText.value = ''
@@ -19,7 +24,7 @@ export function useEditLyricsV2SyncedInlineEditing({ modelValue, emit, selectLin
     }
   }
 
-  const startEditingLine = (lineIndex) => {
+  const startEditingLine = lineIndex => {
     if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= modelValue.value.length) {
       return
     }
@@ -52,13 +57,13 @@ export function useEditLyricsV2SyncedInlineEditing({ modelValue, emit, selectLin
 
         return {
           ...line,
-          text: editingText.value
+          text: editingText.value,
         }
       })
 
       emit('update:modelValue', nextLines)
     }
-    
+
     finishEditing(true)
   }
 
@@ -66,7 +71,7 @@ export function useEditLyricsV2SyncedInlineEditing({ modelValue, emit, selectLin
     finishEditing(true)
   }
 
-  const handleLineCountChange = (lineCount) => {
+  const handleLineCountChange = lineCount => {
     if (editingLineIndex.value !== null && editingLineIndex.value >= lineCount) {
       finishEditing(true)
     }
@@ -79,6 +84,6 @@ export function useEditLyricsV2SyncedInlineEditing({ modelValue, emit, selectLin
     startEditingLine,
     saveEditingLine,
     cancelEditingLine,
-    handleLineCountChange
+    handleLineCountChange,
   }
 }

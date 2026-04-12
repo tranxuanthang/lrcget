@@ -40,7 +40,7 @@ defineProps({
     type: Boolean,
     default: false,
   },
-});
+})
 
-const emit = defineEmits(["import-lines-from-synced", "add-line-manually", "mark-as-instrumental"]);
+const emit = defineEmits(['import-lines-from-synced', 'add-line-manually', 'mark-as-instrumental'])
 </script>

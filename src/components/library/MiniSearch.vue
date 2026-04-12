@@ -6,15 +6,15 @@
       class="h-full input px-[2rem] py-1.5 pr-1.5 w-[16rem] dark:text-brave-95"
       placeholder="Search for tracks..."
       autofocus
-    >
+    />
     <div class="absolute top-0 left-0 w-[2rem] h-full flex justify-center items-center pl-0.5">
       <Magnify class="text-brave-30 dark:text-brave-95" />
     </div>
     <div class="absolute top-0 right-0 h-full flex items-center px-1 gap-1">
       <button
         v-if="searchInput !== ''"
-        @click="searchInput = ''"
         class="w-[1.5rem] h-[1.5rem] flex justify-center items-center text-brave-30 group-hover:text-brave-20 dark:text-brave-95 dark:hover:text-brave-90 rounded-full"
+        @click="searchInput = ''"
       >
         <Close />
       </button>
@@ -29,37 +29,33 @@
           <div class="dropdown-container">
             <label class="dropdown-item">
               <CheckboxButton
+                id="synced-lyrics"
                 v-model="filters.syncedLyricsTracks"
                 name="synced-lyrics"
-                id="synced-lyrics"
               >
                 <span class="dropdown-label">Synced lyrics tracks</span>
               </CheckboxButton>
             </label>
             <label class="dropdown-item">
               <CheckboxButton
+                id="plain-lyrics"
                 v-model="filters.plainLyricsTracks"
                 name="plain-lyrics"
-                id="plain-lyrics"
               >
                 <span class="dropdown-label">Plain lyrics tracks</span>
               </CheckboxButton>
             </label>
             <label class="dropdown-item">
               <CheckboxButton
+                id="instrumental"
                 v-model="filters.instrumentalTracks"
                 name="instrumental"
-                id="instrumental"
               >
                 <span class="dropdown-label">Instrumental tracks</span>
               </CheckboxButton>
             </label>
             <label class="dropdown-item">
-              <CheckboxButton
-                v-model="filters.noLyricsTracks"
-                name="no-lyrics"
-                id="no-lyrics"
-              >
+              <CheckboxButton id="no-lyrics" v-model="filters.noLyricsTracks" name="no-lyrics">
                 <span class="dropdown-label">No lyrics tracks</span>
               </CheckboxButton>
             </label>
@@ -84,7 +80,7 @@ const { setSearch, filters } = useSearchLibrary()
 const searchInput = ref('')
 
 const isFilters = computed(() => {
-  return Object.values(filters.value).some((value) => !value)
+  return Object.values(filters.value).some(value => !value)
 })
 
 const debouncedSearch = _debounce(async () => {

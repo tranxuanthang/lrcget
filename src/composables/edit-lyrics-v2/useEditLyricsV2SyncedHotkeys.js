@@ -7,9 +7,9 @@ export function useEditLyricsV2SyncedHotkeys({
   selectSyncedLine,
   syncLineToCurrentProgress,
   rewindLineBy100,
-  forwardLineBy100
+  forwardLineBy100,
 }) {
-  const isKeyboardTargetEditable = (event) => {
+  const isKeyboardTargetEditable = event => {
     const element = event.target
 
     if (!(element instanceof HTMLElement)) {
@@ -20,12 +20,12 @@ export function useEditLyricsV2SyncedHotkeys({
     return element.isContentEditable || tag === 'input' || tag === 'textarea' || tag === 'select'
   }
 
-  const handleSyncedEditorKeyboardShortcuts = (event) => {
+  const handleSyncedEditorKeyboardShortcuts = event => {
     if (
-      activeTab.value !== 'synced'
-      || isSyncedLineEditing.value
-      || !selectedLineExists.value
-      || isKeyboardTargetEditable(event)
+      activeTab.value !== 'synced' ||
+      isSyncedLineEditing.value ||
+      !selectedLineExists.value ||
+      isKeyboardTargetEditable(event)
     ) {
       return
     }
@@ -77,6 +77,6 @@ export function useEditLyricsV2SyncedHotkeys({
 
   return {
     bindSyncedHotkeys,
-    unbindSyncedHotkeys
+    unbindSyncedHotkeys,
   }
 }

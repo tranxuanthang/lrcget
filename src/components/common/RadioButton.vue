@@ -1,14 +1,14 @@
 <template>
   <div class="inline-flex items-center">
     <input
-      type="radio"
       :id="id"
+      type="radio"
       :name="name"
       :value="value"
       :checked="modelValue === value"
       class="hidden"
       @change="$emit('update:modelValue', value)"
-    >
+    />
     <label
       :for="id"
       class="inline-flex items-center cursor-pointer select-none"
@@ -18,12 +18,9 @@
         v-if="modelValue === value"
         class="w-6 h-6 text-brave-30 dark:text-brave-90"
       />
-      <RadioboxBlank
-        v-else
-        class="w-6 h-6 text-brave-30 dark:text-brave-90"
-      />
+      <RadioboxBlank v-else class="w-6 h-6 text-brave-30 dark:text-brave-90" />
       <span class="ml-1 child-label">
-        <slot></slot>
+        <slot />
       </span>
     </label>
   </div>
@@ -35,24 +32,24 @@ import RadioboxBlank from '~icons/mdi/radiobox-blank'
 defineProps({
   modelValue: {
     type: [String, Number, Boolean],
-    required: true
+    required: true,
   },
   value: {
     type: [String, Number, Boolean],
-    required: true
+    required: true,
   },
   name: {
     type: String,
-    required: true
+    required: true,
   },
   id: {
     type: String,
-    required: true
+    required: true,
   },
   disabled: {
     type: Boolean,
-    default: false
-  }
+    default: false,
+  },
 })
 
 defineEmits(['update:modelValue'])

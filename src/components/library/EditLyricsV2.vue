@@ -65,16 +65,11 @@
       </div>
 
       <!-- Instrumental State -->
-      <div
-        v-if="isInstrumental"
-        class="absolute bottom-16 left-1/2 -translate-x-1/2 px-3 z-10"
-      >
+      <div v-if="isInstrumental" class="absolute bottom-16 left-1/2 -translate-x-1/2 px-3 z-10">
         <div
           class="w-full max-w-lg rounded-lg border border-brave-90 dark:border-brave-20 bg-brave-98 dark:bg-brave-10 p-5 shadow-lg"
         >
-          <h3 class="text-base font-semibold">
-            Track is marked as instrumental
-          </h3>
+          <h3 class="text-base font-semibold">Track is marked as instrumental</h3>
           <div class="mt-4 flex flex-wrap gap-2">
             <button
               class="button button-normal px-2 py-1 text-xs rounded-full"
@@ -124,46 +119,35 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from "vue";
-import { useToast } from "vue-toastification";
-import { useModal } from "vue-final-modal";
-import BaseModal from "@/components/common/BaseModal.vue";
-import EditLyricsV2DebugModal from "@/components/library/edit-lyrics-v2/EditLyricsV2DebugModal.vue";
-import EditLyricsV2HeaderActions from "@/components/library/edit-lyrics-v2/EditLyricsV2HeaderActions.vue";
-import EditLyricsV2PlayerBar from "@/components/library/edit-lyrics-v2/EditLyricsV2PlayerBar.vue";
-import PlainLyricsCodeEditor from "@/components/library/edit-lyrics-v2/PlainLyricsCodeEditor.vue";
-import SyncedLyricsEditor from "@/components/library/edit-lyrics-v2/SyncedLyricsEditor.vue";
-import { useEditLyricsV2 } from "@/composables/edit-lyrics-v2.js";
-import { useEditLyricsV2Document } from "@/composables/edit-lyrics-v2/useEditLyricsV2Document.js";
-import { useEditLyricsV2Hotkeys } from "@/composables/edit-lyrics-v2/useEditLyricsV2Hotkeys.js";
-import { useEditLyricsV2Publish } from "@/composables/edit-lyrics-v2/useEditLyricsV2Publish.js";
-import { useEditLyricsV2Playback } from "@/composables/edit-lyrics-v2/useEditLyricsV2Playback.js";
-import { useEditLyricsV2Export } from "@/composables/edit-lyrics-v2/useEditLyricsV2Export.js";
-import { useEditLyricsV2SyncedHotkeys } from "@/composables/edit-lyrics-v2/useEditLyricsV2SyncedHotkeys.js";
-import { useGlobalState } from "@/composables/global-state.js";
-import { usePlayer } from "@/composables/player.js";
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { useToast } from 'vue-toastification'
+import { useModal } from 'vue-final-modal'
+import BaseModal from '@/components/common/BaseModal.vue'
+import EditLyricsV2DebugModal from '@/components/library/edit-lyrics-v2/EditLyricsV2DebugModal.vue'
+import EditLyricsV2HeaderActions from '@/components/library/edit-lyrics-v2/EditLyricsV2HeaderActions.vue'
+import EditLyricsV2PlayerBar from '@/components/library/edit-lyrics-v2/EditLyricsV2PlayerBar.vue'
+import PlainLyricsCodeEditor from '@/components/library/edit-lyrics-v2/PlainLyricsCodeEditor.vue'
+import SyncedLyricsEditor from '@/components/library/edit-lyrics-v2/SyncedLyricsEditor.vue'
+import { useEditLyricsV2 } from '@/composables/edit-lyrics-v2.js'
+import { useEditLyricsV2Document } from '@/composables/edit-lyrics-v2/useEditLyricsV2Document.js'
+import { useEditLyricsV2Hotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2Hotkeys.js'
+import { useEditLyricsV2Publish } from '@/composables/edit-lyrics-v2/useEditLyricsV2Publish.js'
+import { useEditLyricsV2Playback } from '@/composables/edit-lyrics-v2/useEditLyricsV2Playback.js'
+import { useEditLyricsV2Export } from '@/composables/edit-lyrics-v2/useEditLyricsV2Export.js'
+import { useEditLyricsV2SyncedHotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedHotkeys.js'
+import { useGlobalState } from '@/composables/global-state.js'
+import { usePlayer } from '@/composables/player.js'
 
-const emit = defineEmits(["close"]);
+const emit = defineEmits(['close'])
 
-const { disableHotkey, enableHotkey } = useGlobalState();
-const {
-  status,
-  duration,
-  progress,
-  playingTrack,
-  playTrack,
-  pause,
-  resume,
-  seek,
-} = usePlayer();
-const { editingTrack } = useEditLyricsV2();
-const toast = useToast();
+const { disableHotkey, enableHotkey } = useGlobalState()
+const { status, duration, progress, playingTrack, playTrack, pause, resume, seek } = usePlayer()
+const { editingTrack } = useEditLyricsV2()
+const toast = useToast()
 
-const progressMs = computed(() =>
-  Math.max(0, Math.round(progress.value * 1000)),
-);
+const progressMs = computed(() => Math.max(0, Math.round(progress.value * 1000)))
 
-const activeTab = ref("plain");
+const activeTab = ref('plain')
 const {
   plainLyrics,
   syncedLines,
@@ -190,11 +174,11 @@ const {
   ensureSelectedSyncedLine,
   updateLineText,
   setInstrumental,
-} = useEditLyricsV2Document({ editingTrack, progress, toast });
+} = useEditLyricsV2Document({ editingTrack, progress, toast })
 
 const codemirrorStyle = ref({
   fontSize: 1.0,
-});
+})
 
 const { saveAndPublish, serializedLyricsfile } = useEditLyricsV2Publish({
   editingTrack,
@@ -203,14 +187,14 @@ const { saveAndPublish, serializedLyricsfile } = useEditLyricsV2Publish({
   lyricsfileDocument,
   isInstrumental,
   saveLyrics,
-});
+})
 
 const { exportLyrics, isExporting } = useEditLyricsV2Export({
   editingTrack,
   saveLyrics,
   serializedLyricsfile,
   toast,
-});
+})
 
 const { playLine, resumeOrPlay } = useEditLyricsV2Playback({
   editingTrack,
@@ -221,150 +205,139 @@ const { playLine, resumeOrPlay } = useEditLyricsV2Playback({
   playTrack,
   resume,
   seek,
-});
+})
 
-const rewindLineBy100 = (lineIndex) => {
-  rewindLineTimestampBy100(lineIndex);
-  void playLine(lineIndex);
-};
+const rewindLineBy100 = lineIndex => {
+  rewindLineTimestampBy100(lineIndex)
+  void playLine(lineIndex)
+}
 
-const forwardLineBy100 = (lineIndex) => {
-  forwardLineTimestampBy100(lineIndex);
-  void playLine(lineIndex);
-};
+const forwardLineBy100 = lineIndex => {
+  forwardLineTimestampBy100(lineIndex)
+  void playLine(lineIndex)
+}
 
 const updateLineWords = ({ lineIndex, words, lineStartMs }) => {
-  if (
-    !Number.isInteger(lineIndex) ||
-    lineIndex < 0 ||
-    lineIndex >= syncedLines.value.length
-  ) {
-    return;
+  if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+    return
   }
 
-  const nextLineStartMs = Number.isFinite(lineStartMs)
-    ? Math.max(0, Math.round(lineStartMs))
-    : null;
+  const nextLineStartMs = Number.isFinite(lineStartMs) ? Math.max(0, Math.round(lineStartMs)) : null
 
   const newLines = syncedLines.value.map((line, index) => {
     if (index !== lineIndex) {
-      return line;
+      return line
     }
 
     return {
       ...line,
       ...(nextLineStartMs === null ? {} : { start_ms: nextLineStartMs }),
       words,
-    };
-  });
+    }
+  })
 
-  updateSyncedLines(newLines);
-};
+  updateSyncedLines(newLines)
+}
 
 const handleUpdateLineText = (lineIndex, newText) => {
-  updateLineText(lineIndex, newText);
-};
+  updateLineText(lineIndex, newText)
+}
 
 const handleWordTimingEdited = async ({ startMs }) => {
   // Auto-replay from the beginning of the edited line for instant verification
-  const seekTo = Number.isFinite(startMs) ? startMs / 1000 : progress.value;
+  const seekTo = Number.isFinite(startMs) ? startMs / 1000 : progress.value
 
   // Ensure we're playing the editing track
   if (!playingTrack.value || playingTrack.value.id !== editingTrack.value?.id) {
-    await playTrack(editingTrack.value);
-  } else if (status.value === "paused") {
-    resume();
+    await playTrack(editingTrack.value)
+  } else if (status.value === 'paused') {
+    resume()
   }
 
-  seek(seekTo);
-};
+  seek(seekTo)
+}
 
-watch(activeTab, (value) => {
-  if (value !== "synced") {
-    isSyncedLineEditing.value = false;
-    return;
+watch(activeTab, value => {
+  if (value !== 'synced') {
+    isSyncedLineEditing.value = false
+    return
   }
 
-  ensureSelectedSyncedLine();
-});
+  ensureSelectedSyncedLine()
+})
 
-const { bindSyncedHotkeys, unbindSyncedHotkeys } = useEditLyricsV2SyncedHotkeys(
-  {
-    activeTab,
-    isSyncedLineEditing,
-    selectedLineExists,
-    selectedSyncedLineIndex,
-    syncedLines,
-    selectSyncedLine,
-    syncLineToCurrentProgress,
-    rewindLineBy100: rewindLineTimestampBy100,
-    forwardLineBy100: forwardLineTimestampBy100,
-  },
-);
+const { bindSyncedHotkeys, unbindSyncedHotkeys } = useEditLyricsV2SyncedHotkeys({
+  activeTab,
+  isSyncedLineEditing,
+  selectedLineExists,
+  selectedSyncedLineIndex,
+  syncedLines,
+  selectSyncedLine,
+  syncLineToCurrentProgress,
+  rewindLineBy100: rewindLineTimestampBy100,
+  forwardLineBy100: forwardLineTimestampBy100,
+})
 
-const changeCodemirrorFontSizeBy = (offset) => {
-  const nextFontSize = Math.max(
-    0.4,
-    codemirrorStyle.value.fontSize + offset * 0.1,
-  );
-  codemirrorStyle.value.fontSize = +nextFontSize.toFixed(2);
-};
+const changeCodemirrorFontSizeBy = offset => {
+  const nextFontSize = Math.max(0.4, codemirrorStyle.value.fontSize + offset * 0.1)
+  codemirrorStyle.value.fontSize = +nextFontSize.toFixed(2)
+}
 
 const resetCodemirrorFontSize = () => {
-  codemirrorStyle.value.fontSize = 1.0;
-};
+  codemirrorStyle.value.fontSize = 1.0
+}
 
 const debugModalContent = computed(() => {
-  if (!editingTrack.value) return "";
-  return serializedLyricsfile.value;
-});
+  if (!editingTrack.value) return ''
+  return serializedLyricsfile.value
+})
 
 const { open: openDebugModal, close: closeDebugModal } = useModal({
   component: EditLyricsV2DebugModal,
   attrs: {
     content: debugModalContent,
     onClose() {
-      closeDebugModal();
+      closeDebugModal()
     },
   },
-});
+})
 
 const modalTitle = computed(() => {
   if (!editingTrack.value) {
-    return "Edit lyrics (v2)";
+    return 'Edit lyrics (v2)'
   }
 
-  return `${editingTrack.value.title} - ${editingTrack.value.artist_name}`;
-});
+  return `${editingTrack.value.title} - ${editingTrack.value.artist_name}`
+})
 
 const { bindHotkeys, unbindHotkeys } = useEditLyricsV2Hotkeys({
   activeTab,
   saveLyrics,
   changeFontSizeBy: changeCodemirrorFontSizeBy,
   resetFontSize: resetCodemirrorFontSize,
-});
+})
 
 onMounted(() => {
-  disableHotkey();
+  disableHotkey()
 
   if (!editingTrack.value) {
-    return;
+    return
   }
 
-  initializeLyrics();
+  initializeLyrics()
 
   if (!playingTrack.value || playingTrack.value.id !== editingTrack.value.id) {
-    playTrack(editingTrack.value);
-    pause();
+    playTrack(editingTrack.value)
+    pause()
   }
 
-  bindHotkeys();
-  bindSyncedHotkeys();
-});
+  bindHotkeys()
+  bindSyncedHotkeys()
+})
 
 onUnmounted(() => {
-  unbindSyncedHotkeys();
-  unbindHotkeys();
-  enableHotkey();
-});
+  unbindSyncedHotkeys()
+  unbindHotkeys()
+  enableHotkey()
+})
 </script>

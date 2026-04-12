@@ -29,18 +29,25 @@
       </button>
 
       <template #popper>
-        <div class="text-xs font-bold">{{ publishButtonTooltip }}</div>
+        <div class="text-xs font-bold">
+          {{ publishButtonTooltip }}
+        </div>
       </template>
     </VTooltip>
 
     <VTooltip theme="lrcget-tooltip">
       <Check v-if="publishStatus === 'clean'" class="text-lime-500 text-2xl block" />
-      <AlertCircleOutline v-else-if="publishStatus === 'plain-text-only'" class="text-orange-500 text-2xl block" />
+      <AlertCircleOutline
+        v-else-if="publishStatus === 'plain-text-only'"
+        class="text-orange-500 text-2xl block"
+      />
       <AlertCircle v-else class="text-red-500 text-2xl block" />
 
       <template #popper>
         <div class="text-xs font-bold">
-          <div v-for="line in publishStatusLines" :key="line">{{ line }}</div>
+          <div v-for="line in publishStatusLines" :key="line">
+            {{ line }}
+          </div>
         </div>
       </template>
     </VTooltip>
@@ -57,20 +64,20 @@ const emit = defineEmits(['save', 'publish'])
 const props = defineProps({
   isDirty: {
     type: Boolean,
-    required: true
+    required: true,
   },
   publishButtonTooltip: {
     type: String,
-    required: true
+    required: true,
   },
   publishStatus: {
     type: String,
-    required: true
+    required: true,
   },
   publishStatusTooltip: {
     type: String,
-    required: true
-  }
+    required: true,
+  },
 })
 
 const publishStatusLines = computed(() => props.publishStatusTooltip.split('\n'))

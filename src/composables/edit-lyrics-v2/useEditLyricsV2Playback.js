@@ -6,9 +6,9 @@ export function useEditLyricsV2Playback({
   status,
   playTrack,
   resume,
-  seek
+  seek,
 }) {
-  const playLine = async (lineIndex) => {
+  const playLine = async lineIndex => {
     if (!editingTrack.value) {
       return
     }
@@ -38,6 +38,6 @@ export function useEditLyricsV2Playback({
 
   return {
     playLine,
-    resumeOrPlay
+    resumeOrPlay,
   }
 }

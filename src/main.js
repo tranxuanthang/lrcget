@@ -1,5 +1,5 @@
 import { createApp } from 'vue'
-import App from "./App.vue"
+import App from './App.vue'
 import Toast, { POSITION } from 'vue-toastification'
 import { createVfm } from 'vue-final-modal'
 import FloatingVue from 'floating-vue'
@@ -27,21 +27,21 @@ app.use(Toast, {
   hideProgressBar: true,
   closeButton: false,
   draggablePercent: 0.4,
-  closeOnClick: false
+  closeOnClick: false,
 })
 app.use(FloatingVue, {
   themes: {
     'lrcget-tooltip': {
-      '$extend': 'tooltip',
+      $extend: 'tooltip',
       delay: {
         show: 50,
         hide: 50,
-      }
+      },
     },
-    "lrcget-dropdown": {
-      triggers: ["click"],
+    'lrcget-dropdown': {
+      triggers: ['click'],
       autoHide: true,
-      placement: "bottom",
+      placement: 'bottom',
     },
   },
 })
@@ -50,7 +50,7 @@ app.mount('#app')
 
 document.addEventListener(
   'contextmenu',
-  (event) => {
+  event => {
     event.preventDefault()
     return false
   },

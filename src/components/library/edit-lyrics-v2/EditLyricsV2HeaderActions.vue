@@ -15,19 +15,12 @@
         <template #popper>
           <div class="text-xs font-bold">
             Save lyrics
-            <span
-              class="text-[0.65rem] text-brave-30 bg-brave-95 px-1 rounded-full"
-              >Ctrl+S</span
-            >
+            <span class="text-[0.65rem] text-brave-30 bg-brave-95 px-1 rounded-full">Ctrl+S</span>
           </div>
         </template>
       </VTooltip>
 
-      <VDropdown
-        theme="lrcget-dropdown"
-        placement="bottom-start"
-        @show="refreshEmbedConfig"
-      >
+      <VDropdown theme="lrcget-dropdown" placement="bottom-start" @show="refreshEmbedConfig">
         <button
           class="button text-sm px-2 py-1.5 h-8 rounded-r-full rounded-l-none button-normal"
           type="button"
@@ -37,38 +30,34 @@
 
         <template #popper>
           <div class="dropdown-container">
-            <div class="dropdown-section-label">
-              Publish lyrics into your LRCLIB instance:
-            </div>
+            <div class="dropdown-section-label">Publish lyrics into your LRCLIB instance:</div>
             <div class="px-2 py-2">
               <button
+                v-close-popper
                 class="button button-primary w-full text-sm h-8 rounded"
                 @click="emit('save-and-publish')"
-                v-close-popper
               >
                 Save and Publish
               </button>
             </div>
 
             <div class="dropdown-divider" />
-            <div class="dropdown-section-label">
-              Export to track's directory:
-            </div>
+            <div class="dropdown-section-label">Export to track's directory:</div>
 
             <label class="dropdown-item">
               <CheckboxButton
+                id="export-plain-text"
                 v-model="exportPlainText"
                 name="export-plain-text"
-                id="export-plain-text"
               >
                 <span class="dropdown-label">Plain lyrics (.txt)</span>
               </CheckboxButton>
             </label>
             <label class="dropdown-item">
               <CheckboxButton
+                id="export-synced-lrc"
                 v-model="exportSyncedLrc"
                 name="export-synced-lrc"
-                id="export-synced-lrc"
               >
                 <span class="dropdown-label">Synced lyrics (.lrc)</span>
               </CheckboxButton>
@@ -79,9 +68,9 @@
               :class="{ 'opacity-50 cursor-not-allowed': !tryEmbedLyrics }"
             >
               <CheckboxButton
+                id="embed-into-track"
                 v-model="embedIntoTrack"
                 name="embed-into-track"
-                id="embed-into-track"
                 :disabled="!tryEmbedLyrics"
               >
                 <span class="dropdown-label">Embed into track</span>
@@ -90,20 +79,16 @@
 
             <div class="px-2 py-2">
               <button
+                v-close-popper
                 class="button w-full text-sm h-8 rounded"
                 :class="
-                  hasSelectedExportFormat && !isExporting
-                    ? 'button-primary'
-                    : 'button-disabled'
+                  hasSelectedExportFormat && !isExporting ? 'button-primary' : 'button-disabled'
                 "
                 :disabled="!hasSelectedExportFormat || isExporting"
                 type="button"
                 @click="handleExportClick"
-                v-close-popper
               >
-                {{
-                  isExporting ? "Saving and exporting..." : "Save and export"
-                }}
+                {{ isExporting ? 'Saving and exporting...' : 'Save and export' }}
               </button>
             </div>
           </div>
@@ -127,42 +112,42 @@
 </template>
 
 <script setup>
-import { computed, ref, onMounted } from "vue";
-import ChevronDown from "~icons/mdi/chevron-down";
-import ContentSave from "~icons/mdi/content-save";
-import Bug from "~icons/mdi/bug";
-import CheckboxButton from "@/components/common/CheckboxButton.vue";
-import { invoke } from "@tauri-apps/api/core";
+import { computed, ref, onMounted } from 'vue'
+import ChevronDown from '~icons/mdi/chevron-down'
+import ContentSave from '~icons/mdi/content-save'
+import Bug from '~icons/mdi/bug'
+import CheckboxButton from '@/components/common/CheckboxButton.vue'
+import { invoke } from '@tauri-apps/api/core'
 
-const emit = defineEmits(["save", "save-and-publish", "export", "debug"]);
+const emit = defineEmits(['save', 'save-and-publish', 'export', 'debug'])
 
-const exportPlainText = ref(false);
-const exportSyncedLrc = ref(false);
-const embedIntoTrack = ref(false);
-const tryEmbedLyrics = ref(false);
+const exportPlainText = ref(false)
+const exportSyncedLrc = ref(false)
+const embedIntoTrack = ref(false)
+const tryEmbedLyrics = ref(false)
 
 const refreshEmbedConfig = async () => {
-  const config = await invoke("get_config");
-  tryEmbedLyrics.value = config.try_embed_lyrics;
-};
+  const config = await invoke('get_config')
+  tryEmbedLyrics.value = config.try_embed_lyrics
+}
 
-onMounted(refreshEmbedConfig);
+onMounted(refreshEmbedConfig)
 
 const hasSelectedExportFormat = computed(
-  () => exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value,
-);
+  () => exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value
+)
 
 const handleExportClick = () => {
   if (!hasSelectedExportFormat.value) {
-    return;
+    return
   }
 
-  emit("export", {
+  emit('export', {
     plainText: exportPlainText.value,
     syncedLrc: exportSyncedLrc.value,
     embedIntoTrack: embedIntoTrack.value,
-  });
-};
+  })
+}
 
 defineProps({
   isDirty: {
@@ -173,7 +158,7 @@ defineProps({
     type: Boolean,
     default: false,
   },
-});
+})
 </script>
 
 <style scoped>

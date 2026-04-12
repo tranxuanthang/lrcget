@@ -1,14 +1,13 @@
 <template>
   <BaseModal
-    title="Configuration"
-    @close="checkAndClose"
     content-class="w-full h-[80vh] max-w-screen-md"
     body-class="flex flex-col h-full min-h-0 justify-between gap-6"
     :title="isFinished ? 'Downloaded' : 'Downloading'"
+    @close="checkAndClose"
   >
     <div class="flex flex-col items-center justify-center gap-1">
       <div class="w-full bg-brave-95 h-1 rounded">
-        <div class="bg-brave-30 h-1" :style="{ width: progressWidth }"></div>
+        <div class="bg-brave-30 h-1" :style="{ width: progressWidth }" />
       </div>
       <div class="text-[0.7rem] text-brave-30/60 dark:text-brave-95/60 flex gap-3">
         <span>{{ successCount }} FOUND</span>
@@ -20,17 +19,29 @@
       <div
         v-for="logItem in log"
         :key="logItem.title + logItem.artistName"
-        :class="{ 'text-green-800 dark:text-green-400': logItem.status === 'success', 'text-red-800 dark:text-red-400': logItem.status === 'failure' }"
+        :class="{
+          'text-green-800 dark:text-green-400': logItem.status === 'success',
+          'text-red-800 dark:text-red-400': logItem.status === 'failure',
+        }"
       >
-        <strong>{{ logItem.title }} - {{ logItem.artistName }}</strong>:
+        <strong>{{ logItem.title }} - {{ logItem.artistName }}</strong
+        >:
         <span>{{ logItem.message }}</span>
       </div>
     </div>
 
     <template #footer>
       <div class="flex-none flex justify-center">
-        <button v-if="isFinished" class="button button-primary px-8 py-2 rounded-full" @click="checkAndClose">Finish</button>
-        <button v-else class="button button-normal px-8 py-2 rounded-full" @click="handleStop">Stop</button>
+        <button
+          v-if="isFinished"
+          class="button button-primary px-8 py-2 rounded-full"
+          @click="checkAndClose"
+        >
+          Finish
+        </button>
+        <button v-else class="button button-normal px-8 py-2 rounded-full" @click="handleStop">
+          Stop
+        </button>
       </div>
     </template>
   </BaseModal>
@@ -49,7 +60,7 @@ const {
   downloadedCount,
   startOver,
   stopDownloading,
-  log
+  log,
 } = useDownloader()
 
 const emit = defineEmits(['close'])

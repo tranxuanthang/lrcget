@@ -1,7 +1,5 @@
 <template>
-  <div
-    class="px-4 py-2 h-12 flex justify-between gap-4 flex-none items-stretch"
-  >
+  <div class="px-4 py-2 h-12 flex justify-between gap-4 flex-none items-stretch">
     <div class="flex-1 ml-2">
       <MiniSearch v-if="props.activeTab === 'tracks'" />
     </div>
@@ -57,10 +55,12 @@
       <button
         v-if="isBuildingQueue"
         class="button button-disabled px-4 py-1.5 h-full min-w-[12rem] text-xs rounded-full"
-        @click.prevent="$emit('showDownloadViewer')"
         disabled
+        @click.prevent="$emit('showDownloadViewer')"
       >
-        <div class="animate-spin text-sm"><Loading /></div>
+        <div class="animate-spin text-sm">
+          <Loading />
+        </div>
         <div class="flex gap-1">
           <div>Preparing</div>
         </div>
@@ -71,7 +71,9 @@
         class="button button-working h-full min-w-[12rem] px-4 py-1.5 text-xs rounded-full"
         @click.prevent="$emit('showDownloadViewer')"
       >
-        <div class="animate-spin text-sm"><Loading /></div>
+        <div class="animate-spin text-sm">
+          <Loading />
+        </div>
         <div class="flex gap-1">
           <div>Downloading</div>
           <div>{{ downloadedCount }}/{{ totalCount }}</div>
@@ -83,7 +85,9 @@
         class="button button-done h-full min-w-[12rem] px-4 py-1.5 text-xs rounded-full"
         @click.prevent="$emit('showDownloadViewer')"
       >
-        <div class="text-sm"><Check /></div>
+        <div class="text-sm">
+          <Check />
+        </div>
         <span> Downloaded {{ downloadedCount }}/{{ totalCount }} </span>
       </button>
 
@@ -92,7 +96,9 @@
         class="button button-primary px-4 py-1.5 h-full min-w-[12rem] text-xs rounded-full"
         @click.prevent="downloadAllLyrics"
       >
-        <div class="text-sm"><DownloadMultiple /></div>
+        <div class="text-sm">
+          <DownloadMultiple />
+        </div>
         <span>Download all lyrics</span>
       </button>
 
@@ -110,24 +116,22 @@
         </button>
         <template #popper>
           <div class="dropdown-container min-w-[17rem]">
-            <div class="dropdown-section-label">
-              Export all lyrics to tracks' directory:
-            </div>
+            <div class="dropdown-section-label">Export all lyrics to tracks' directory:</div>
 
             <label class="dropdown-item">
               <CheckboxButton
+                id="export-plain-text"
                 v-model="exportPlainText"
                 name="export-plain-text"
-                id="export-plain-text"
               >
                 <span class="dropdown-label">Plain lyrics (.txt)</span>
               </CheckboxButton>
             </label>
             <label class="dropdown-item">
               <CheckboxButton
+                id="export-synced-lrc"
                 v-model="exportSyncedLrc"
                 name="export-synced-lrc"
-                id="export-synced-lrc"
               >
                 <span class="dropdown-label">Synced lyrics (.lrc)</span>
               </CheckboxButton>
@@ -138,9 +142,9 @@
               :class="{ 'opacity-50 cursor-not-allowed': !tryEmbedLyrics }"
             >
               <CheckboxButton
+                id="embed-into-track"
                 v-model="embedIntoTrack"
                 name="embed-into-track"
-                id="embed-into-track"
                 :disabled="!tryEmbedLyrics"
               >
                 <span class="dropdown-label">Embed into track</span>
@@ -149,14 +153,12 @@
 
             <div class="px-2 py-2">
               <button
+                v-close-popper
                 class="button w-full text-sm h-8 rounded"
-                :class="
-                  hasSelectedExportFormat ? 'button-primary' : 'button-disabled'
-                "
+                :class="hasSelectedExportFormat ? 'button-primary' : 'button-disabled'"
                 :disabled="!hasSelectedExportFormat"
                 type="button"
                 @click="handleExportClick"
-                v-close-popper
               >
                 Export
               </button>
@@ -165,55 +167,31 @@
         </template>
       </VDropdown>
 
-      <VDropdown
-        theme="lrcget-dropdown"
-        placement="top-end"
-        class="h-full aspect-square"
-      >
+      <VDropdown theme="lrcget-dropdown" placement="top-end" class="h-full aspect-square">
         <button class="button button-normal h-full aspect-square rounded-full">
           <DotsVertical />
         </button>
         <template #popper>
           <div class="dropdown-container">
-            <button
-              class="dropdown-item"
-              @click="$emit('refreshLibrary')"
-              v-close-popper
-            >
+            <button v-close-popper class="dropdown-item" @click="$emit('refreshLibrary')">
               <Refresh class="text-brave-20 dark:text-brave-90" />
               <span class="text-brave-20 dark:text-brave-90 text-sm font-bold"
                 >Refresh library</span
               >
             </button>
-            <button
-              class="dropdown-item"
-              @click="$emit('manageDirectories')"
-              v-close-popper
-            >
+            <button v-close-popper class="dropdown-item" @click="$emit('manageDirectories')">
               <FolderMultiple class="text-brave-20 dark:text-brave-90" />
               <span class="text-brave-20 dark:text-brave-90 text-sm font-bold"
                 >Manage directories</span
               >
             </button>
-            <button
-              class="dropdown-item"
-              @click="$emit('showConfig')"
-              v-close-popper
-            >
+            <button v-close-popper class="dropdown-item" @click="$emit('showConfig')">
               <Cog class="text-brave-20 dark:text-brave-90" />
-              <span class="text-brave-20 dark:text-brave-90 text-sm font-bold"
-                >Settings</span
-              >
+              <span class="text-brave-20 dark:text-brave-90 text-sm font-bold">Settings</span>
             </button>
-            <button
-              class="dropdown-item"
-              @click="$emit('showAbout')"
-              v-close-popper
-            >
+            <button v-close-popper class="dropdown-item" @click="$emit('showAbout')">
               <Information class="text-brave-20 dark:text-brave-90" />
-              <span class="text-brave-20 dark:text-brave-90 text-sm font-bold"
-                >About</span
-              >
+              <span class="text-brave-20 dark:text-brave-90 text-sm font-bold">About</span>
             </button>
           </div>
         </template>
@@ -223,87 +201,85 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from "vue";
-import DownloadMultiple from "~icons/mdi/download-multiple";
-import Loading from "~icons/mdi/loading";
-import Check from "~icons/mdi/check";
-import Cog from "~icons/mdi/cog";
-import Information from "~icons/mdi/information";
-import DotsVertical from "~icons/mdi/dots-vertical";
-import Refresh from "~icons/mdi/refresh";
-import FolderMultiple from "~icons/mdi/folder-multiple";
-import Export from "~icons/mdi/export";
-import CheckboxButton from "@/components/common/CheckboxButton.vue";
-import { useDownloader } from "@/composables/downloader.js";
-import MiniSearch from "./MiniSearch.vue";
-import { invoke } from "@tauri-apps/api/core";
+import { ref, computed, onMounted } from 'vue'
+import DownloadMultiple from '~icons/mdi/download-multiple'
+import Loading from '~icons/mdi/loading'
+import Check from '~icons/mdi/check'
+import Cog from '~icons/mdi/cog'
+import Information from '~icons/mdi/information'
+import DotsVertical from '~icons/mdi/dots-vertical'
+import Refresh from '~icons/mdi/refresh'
+import FolderMultiple from '~icons/mdi/folder-multiple'
+import Export from '~icons/mdi/export'
+import CheckboxButton from '@/components/common/CheckboxButton.vue'
+import { useDownloader } from '@/composables/downloader.js'
+import MiniSearch from './MiniSearch.vue'
+import { invoke } from '@tauri-apps/api/core'
 
-const props = defineProps(["activeTab"]);
+const props = defineProps(['activeTab'])
 const emit = defineEmits([
-  "changeActiveTab",
-  "showConfig",
-  "showAbout",
-  "showDownloadViewer",
-  "refreshLibrary",
-  "manageDirectories",
-  "exportAllLyrics",
-]);
+  'changeActiveTab',
+  'showConfig',
+  'showAbout',
+  'showDownloadViewer',
+  'refreshLibrary',
+  'manageDirectories',
+  'exportAllLyrics',
+])
 
-const exportPlainText = ref(false);
-const exportSyncedLrc = ref(false);
-const embedIntoTrack = ref(false);
-const tryEmbedLyrics = ref(false);
+const exportPlainText = ref(false)
+const exportSyncedLrc = ref(false)
+const embedIntoTrack = ref(false)
+const tryEmbedLyrics = ref(false)
 
 const refreshEmbedConfig = async () => {
-  const config = await invoke("get_config");
-  tryEmbedLyrics.value = config.try_embed_lyrics;
-};
+  const config = await invoke('get_config')
+  tryEmbedLyrics.value = config.try_embed_lyrics
+}
 
-onMounted(refreshEmbedConfig);
+onMounted(refreshEmbedConfig)
 
 const hasSelectedExportFormat = computed(
-  () => exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value,
-);
+  () => exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value
+)
 
 const handleExportClick = () => {
   if (!hasSelectedExportFormat.value) {
-    return;
+    return
   }
 
-  emit("exportAllLyrics", {
+  emit('exportAllLyrics', {
     plainText: exportPlainText.value,
     syncedLrc: exportSyncedLrc.value,
     embedIntoTrack: embedIntoTrack.value,
-  });
-};
+  })
+}
 
-const { isDownloading, totalCount, downloadedCount, addToQueue } =
-  useDownloader();
+const { isDownloading, totalCount, downloadedCount, addToQueue } = useDownloader()
 
-const isBuildingQueue = ref(false);
+const isBuildingQueue = ref(false)
 
 const downloadAllLyrics = async () => {
-  isBuildingQueue.value = true;
+  isBuildingQueue.value = true
 
   try {
-    const config = await invoke("get_config");
-    let downloadTrackIds = await invoke("get_track_ids", {
-      searchQuery: "",
+    const config = await invoke('get_config')
+    let downloadTrackIds = await invoke('get_track_ids', {
+      searchQuery: '',
       syncedLyricsTracks: !config.skip_tracks_with_synced_lyrics,
       plainLyricsTracks: !config.skip_tracks_with_plain_lyrics,
       instrumentalTracks:
-        !config.skip_tracks_with_synced_lyrics &&
-        !config.skip_tracks_with_plain_lyrics, // Treat instrumental tracks as either synced or plain lyrics tracks
+        !config.skip_tracks_with_synced_lyrics && !config.skip_tracks_with_plain_lyrics, // Treat instrumental tracks as either synced or plain lyrics tracks
       noLyricsTracks: true,
-    });
-    addToQueue(downloadTrackIds);
+    })
+    addToQueue(downloadTrackIds)
   } catch (error) {
     // TODO handle error by showing an error popup, etc...
-    console.error(error);
+    console.error(error)
   } finally {
-    isBuildingQueue.value = false;
+    isBuildingQueue.value = false
   }
-};
+}
 </script>
 
 <style scoped>

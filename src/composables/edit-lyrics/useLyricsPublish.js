@@ -4,26 +4,41 @@ import PublishLyrics from '@/components/library/edit-lyrics/PublishLyrics.vue'
 import PublishPlainText from '@/components/library/edit-lyrics/PublishPlainText.vue'
 import { isSynchronizedLyrics } from '@/utils/lyrics.js'
 
-export function useLyricsPublish({ editingTrack, unifiedLyrics, lyricsLintResult, plainTextLintResult }) {
-  const { open: openPublishLyricsModal, close: closePublishLyricsModal, patchOptions: patchPublishLyricsModalOptions } = useModal({
+export function useLyricsPublish({
+  editingTrack,
+  unifiedLyrics,
+  lyricsLintResult,
+  plainTextLintResult,
+}) {
+  const {
+    open: openPublishLyricsModal,
+    close: closePublishLyricsModal,
+    patchOptions: patchPublishLyricsModalOptions,
+  } = useModal({
     component: PublishLyrics,
     attrs: {
       onClose() {
         closePublishLyricsModal()
-      }
-    }
+      },
+    },
   })
 
-  const { open: openPublishPlainTextModal, close: closePublishPlainTextModal, patchOptions: patchPublishPlainTextModalOptions } = useModal({
+  const {
+    open: openPublishPlainTextModal,
+    close: closePublishPlainTextModal,
+    patchOptions: patchPublishPlainTextModalOptions,
+  } = useModal({
     component: PublishPlainText,
     attrs: {
       onClose() {
         closePublishPlainTextModal()
-      }
-    }
+      },
+    },
   })
 
-  const publishMode = computed(() => isSynchronizedLyrics(unifiedLyrics.value) ? 'synced' : 'plain-text')
+  const publishMode = computed(() =>
+    isSynchronizedLyrics(unifiedLyrics.value) ? 'synced' : 'plain-text'
+  )
   const publishStatus = computed(() => {
     if (lyricsLintResult.value.length === 0) {
       return 'clean'
@@ -64,15 +79,15 @@ export function useLyricsPublish({ editingTrack, unifiedLyrics, lyricsLintResult
       albumName: editingTrack.value.album_name,
       artistName: editingTrack.value.artist_name,
       duration: editingTrack.value.duration,
-      lyrics: unifiedLyrics.value
+      lyrics: unifiedLyrics.value,
     }
 
     if (publishMode.value === 'synced') {
       patchPublishLyricsModalOptions({
         attrs: {
           ...attrs,
-          lintResult: lyricsLintResult.value
-        }
+          lintResult: lyricsLintResult.value,
+        },
       })
       openPublishLyricsModal()
       return
@@ -81,8 +96,8 @@ export function useLyricsPublish({ editingTrack, unifiedLyrics, lyricsLintResult
     patchPublishPlainTextModalOptions({
       attrs: {
         ...attrs,
-        lintResult: plainTextLintResult.value
-      }
+        lintResult: plainTextLintResult.value,
+      },
     })
     openPublishPlainTextModal()
   }
@@ -92,6 +107,6 @@ export function useLyricsPublish({ editingTrack, unifiedLyrics, lyricsLintResult
     publishStatus,
     publishButtonTooltip,
     publishStatusTooltip,
-    openPublishModal
+    openPublishModal,
   }
 }
