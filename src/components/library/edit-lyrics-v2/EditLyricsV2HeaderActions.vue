@@ -33,16 +33,23 @@
 
         <template #popper>
           <div class="dropdown-container">
-            <button
-              class="dropdown-item"
-              @click="emit('save-and-publish')"
-              v-close-popper
-            >
-              <span class="dropdown-label">Save and Publish</span>
-            </button>
+            <div class="dropdown-section-label">
+              Publish lyrics into your LRCLIB instance:
+            </div>
+            <div class="px-2 py-2">
+              <button
+                class="button button-primary w-full text-sm h-8 rounded"
+                @click="emit('save-and-publish')"
+                v-close-popper
+              >
+                Save and Publish
+              </button>
+            </div>
 
             <div class="dropdown-divider" />
-            <div class="dropdown-section-label">Export to directory:</div>
+            <div class="dropdown-section-label">
+              Export to track's directory:
+            </div>
 
             <label class="dropdown-item">
               <CheckboxButton
@@ -62,15 +69,31 @@
                 <span class="dropdown-label">Synced lyrics (.lrc)</span>
               </CheckboxButton>
             </label>
+
             <label class="dropdown-item">
               <CheckboxButton
-                v-model="exportEnhancedLrc"
-                name="export-enhanced-lrc"
-                id="export-enhanced-lrc"
+                v-model="embedIntoTrack"
+                name="embed-into-track"
+                id="embed-into-track"
               >
-                <span class="dropdown-label">Enhanced LRC lyrics (.elrc)</span>
+                <span class="dropdown-label"
+                  >Embed into track (best-effort)</span
+                >
               </CheckboxButton>
             </label>
+
+            <div class="px-2 py-2">
+              <button
+                class="button w-full text-sm h-8 rounded"
+                :class="hasSelectedExportFormat && !isExporting ? 'button-primary' : 'button-disabled'"
+                :disabled="!hasSelectedExportFormat || isExporting"
+                type="button"
+                @click="handleExportClick"
+                v-close-popper
+              >
+                {{ isExporting ? 'Saving and exporting...' : 'Save and export' }}
+              </button>
+            </div>
           </div>
         </template>
       </VDropdown>
@@ -92,22 +115,42 @@
 </template>
 
 <script setup>
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import ChevronDown from "~icons/mdi/chevron-down";
 import ContentSave from "~icons/mdi/content-save";
 import Bug from "~icons/mdi/bug";
 import CheckboxButton from "@/components/common/CheckboxButton.vue";
 
-const emit = defineEmits(["save", "save-and-publish", "debug"]);
+const emit = defineEmits(["save", "save-and-publish", "export", "debug"]);
 
 const exportPlainText = ref(false);
 const exportSyncedLrc = ref(false);
-const exportEnhancedLrc = ref(false);
+const embedIntoTrack = ref(false);
+
+const hasSelectedExportFormat = computed(() => (
+  exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value
+));
+
+const handleExportClick = () => {
+  if (!hasSelectedExportFormat.value) {
+    return;
+  }
+
+  emit("export", {
+    plainText: exportPlainText.value,
+    syncedLrc: exportSyncedLrc.value,
+    embedIntoTrack: embedIntoTrack.value,
+  });
+};
 
 defineProps({
   isDirty: {
     type: Boolean,
     required: true,
+  },
+  isExporting: {
+    type: Boolean,
+    default: false,
   },
 });
 </script>

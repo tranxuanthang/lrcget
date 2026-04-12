@@ -295,28 +295,3 @@ fn insert_new_track(
 
     Ok(())
 }
-
-/// DEPRECATED: Use single-pass scan_library instead
-///
-/// This function performs a full directory traversal just to count files,
-/// which is inefficient for large libraries. The new scan_library() uses
-/// a single-pass approach that discovers and processes files simultaneously,
-/// emitting "Found N files so far..." progress updates instead of requiring
-/// a pre-scan count.
-///
-/// Kept for backward compatibility but should not be used for new code.
-#[deprecated(
-    since = "0.9.0",
-    note = "Use scan_library() instead - it performs single-pass streaming with real-time progress"
-)]
-pub fn estimate_file_count(directories: &[String]) -> Result<usize> {
-    let mut count = 0;
-    for directory in directories {
-        let pattern = format!(
-            "{}/**/*.{{mp3,m4a,flac,ogg,opus,wav,wma,aac,aiff,ape,mpc,wv}}",
-            directory
-        );
-        count += glob(&pattern)?.count();
-    }
-    Ok(count)
-}

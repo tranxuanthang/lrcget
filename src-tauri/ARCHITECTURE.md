@@ -29,8 +29,7 @@ src-tauri/
 │   │   ├── hasher.rs        # xxhash3 content hashing
 │   │   ├── metadata.rs      # Audio metadata extraction
 │   │   └── models.rs        # ScanResult, ScanProgress
-│   ├── fs_track.rs          # DEPRECATED: Old scanner
-│   ├── lyrics.rs            # Download, save, embed lyrics
+│   ├── export.rs            # Manual sidecar/embed export helpers
 │   ├── lyricsfile.rs        # YAML lyricsfile helpers
 │   ├── player.rs            # Kira audio playback
 │   ├── persistent_entities.rs # Track/Album/Artist structs
@@ -139,9 +138,7 @@ Background loop (40ms) in `main.rs` emits `player-state` event.
 ### Library
 | Command | Description |
 |---------|-------------|
-| `scan_library(use_hash?)` | Incremental scan (NEW). Emits `scan-progress`, `scan-complete` |
-| `initialize_library()` | DEPRECATED - use `scan_library` |
-| `refresh_library()` | DEPRECATED - use `scan_library` |
+| `scan_library(use_hash?)` | Incremental scan. Emits `scan-progress`, `scan-complete` |
 | `uninitialize_library()` | Clear all library data |
 
 ### Data Queries
@@ -159,9 +156,10 @@ Background loop (40ms) in `main.rs` emits `player-state` event.
 | `download_lyrics()` | Auto-download from LRCLIB |
 | `retrieve_lyrics/by_id()` | Get raw LRCLIB response |
 | `search_lyrics()` | Search LRCLIB database |
-| `apply_lyrics()` | Apply specific result |
+| `apply_lyrics()` | Save a selected LRCLIB result into database-backed lyrics storage |
 | `save_lyrics(id, plain?, synced?, lyricsfile?)` | Save edits (prefers `lyricsfile`) |
 | `publish_lyrics(title, album, artist, duration, plain?, synced?, lyricsfile?)` | Upload to LRCLIB (with PoW; accepts Lyricsfile-only payloads) |
+| `export_lyrics(track_id, formats, lyricsfile?)` | Manual export to `.txt`, `.lrc`, or embedded tags |
 | `flag_lyrics()` | Report to LRCLIB (with PoW) |
 
 ### Playback & Config
@@ -180,8 +178,6 @@ Background loop (40ms) in `main.rs` emits `player-state` event.
 | `publish-lyrics-progress` | Status | Publishing updates |
 | `flag-lyrics-progress` | Status | Flagging updates |
 
-**DEPRECATED:** `initialize-progress` (use `scan-progress`)
-
 ## Configuration
 
 **tauri.conf.json:** Window 1024x768 min, CSP for asset protocol + media
@@ -190,7 +186,7 @@ Background loop (40ms) in `main.rs` emits `player-state` event.
 
 ## Notes
 
-- **Lyrics Storage:** Sidecar files (default) | Embedded MP3/FLAC (optional) | `lyricsfiles` table (persistence)
+- **Lyrics Storage:** `lyricsfiles` table is the persistence source of truth; sidecar files and embedded tags are manual exports
 - **Filtering Source of Truth:** Lyrics filters now use derived `tracks.has_*_lyrics` booleans (from Lyricsfile content), not null checks on `txt_lyrics`/`lrc_lyrics`
 - **Instrumental:** `[au: instrumental]` marker in lrc_lyrics
 - **Security:** PoW for LRCLIB writes, user-agent in requests, DB in app_data_dir

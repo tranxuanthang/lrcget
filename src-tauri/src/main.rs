@@ -5,20 +5,19 @@
 
 pub mod db;
 pub mod scanner;
-pub mod fs_track;
 pub mod library;
 pub mod lrclib;
-pub mod lyrics;
 pub mod lyricsfile;
 pub mod persistent_entities;
 pub mod player;
 pub mod state;
 pub mod utils;
+pub mod export;
 
 use persistent_entities::{PersistentAlbum, PersistentArtist, PersistentConfig, PersistentTrack};
 use player::Player;
 use rusqlite::Connection;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use state::{AppState, ServiceAccess, Notify, NotifyType};
 use tauri::{AppHandle, Manager, State, Emitter};
 
@@ -28,6 +27,8 @@ struct ResolvedLyricsPayload {
     is_instrumental: bool,
     provided_lyricsfile: Option<String>,
 }
+
+const LRCLIB_TRACK_NOT_FOUND: &str = "This track does not exist in LRCLIB database";
 
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -43,6 +44,24 @@ struct FlagLyricsProgress {
     request_challenge: String,
     solve_challenge: String,
     flag_lyrics: String,
+}
+
+#[derive(Clone, Copy, Deserialize)]
+#[serde(rename_all = "lowercase")]
+enum ExportLyricsFormat {
+    Txt,
+    Lrc,
+    Embedded,
+}
+
+impl From<ExportLyricsFormat> for export::ExportFormat {
+    fn from(value: ExportLyricsFormat) -> Self {
+        match value {
+            ExportLyricsFormat::Txt => export::ExportFormat::Txt,
+            ExportLyricsFormat::Lrc => export::ExportFormat::Lrc,
+            ExportLyricsFormat::Embedded => export::ExportFormat::Embedded,
+        }
+    }
 }
 
 fn persist_lyricsfile_for_track(
@@ -92,7 +111,7 @@ fn resolve_lrclib_lyrics_payload(
         let is_instrumental = parsed.is_instrumental;
 
         if !is_instrumental && plain_lyrics.trim().is_empty() && synced_lyrics.trim().is_empty() {
-            return Err(lyrics::GetLyricsError::NotFound.to_string());
+            return Err(LRCLIB_TRACK_NOT_FOUND.to_owned());
         }
 
         return Ok(ResolvedLyricsPayload {
@@ -122,7 +141,7 @@ fn resolve_lrclib_lyrics_payload(
             is_instrumental: true,
             provided_lyricsfile: None,
         }),
-        lrclib::get::Response::None => Err(lyrics::GetLyricsError::NotFound.to_string()),
+        lrclib::get::Response::None => Err(LRCLIB_TRACK_NOT_FOUND.to_owned()),
     }
 }
 
@@ -197,37 +216,11 @@ async fn set_config(
 }
 
 #[tauri::command]
-async fn initialize_library(
-    app_state: State<'_, AppState>,
-    app_handle: AppHandle,
-) -> Result<(), String> {
-    let mut conn_guard = app_state.db.lock().unwrap();
-    let conn = conn_guard.as_mut().unwrap();
-    library::initialize_library(conn, app_handle).map_err(|err| err.to_string())?;
-
-    Ok(())
-}
-
-#[tauri::command]
 async fn uninitialize_library(app_state: State<'_, AppState>) -> Result<(), String> {
     let conn_guard = app_state.db.lock().unwrap();
     let conn = conn_guard.as_ref().unwrap();
 
     library::uninitialize_library(conn).map_err(|err| err.to_string())?;
-
-    Ok(())
-}
-
-#[tauri::command]
-async fn refresh_library(
-    app_state: State<'_, AppState>,
-    app_handle: AppHandle,
-) -> Result<(), String> {
-    let mut conn_guard = app_state.db.lock().unwrap();
-    let conn = conn_guard.as_mut().unwrap();
-
-    library::uninitialize_library(conn).map_err(|err| err.to_string())?;
-    library::initialize_library(conn, app_handle).map_err(|err| err.to_string())?;
 
     Ok(())
 }
@@ -455,15 +448,6 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
         .map_err(|err| err.to_string())?;
     let resolved = resolve_lrclib_lyrics_payload(lrclib_response)?;
 
-    lyrics::apply_string_lyrics_for_track(
-        &track,
-        &resolved.plain_lyrics,
-        &resolved.synced_lyrics,
-        config.try_embed_lyrics,
-    )
-    .await
-    .map_err(|err| err.to_string())?;
-
     if resolved.is_instrumental {
         app_handle
             .db(|db: &Connection| db::update_track_instrumental(track_id, db))
@@ -521,7 +505,7 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
     } else if !resolved.plain_lyrics.is_empty() {
         Ok("Plain lyrics downloaded".to_owned())
     } else {
-        Err(lyrics::GetLyricsError::NotFound.to_string())
+        Err(LRCLIB_TRACK_NOT_FOUND.to_owned())
     }
 }
 
@@ -534,21 +518,8 @@ async fn apply_lyrics(
     let track = app_handle
         .db(|db| db::get_track_by_id(track_id, db))
         .map_err(|err| err.to_string())?;
-    let is_try_embed_lyrics = app_handle
-        .db(|db| db::get_config(db))
-        .map_err(|err| err.to_string())?
-        .try_embed_lyrics;
 
     let resolved = resolve_lrclib_lyrics_payload(lrclib_response)?;
-
-    lyrics::apply_string_lyrics_for_track(
-        &track,
-        &resolved.plain_lyrics,
-        &resolved.synced_lyrics,
-        is_try_embed_lyrics,
-    )
-        .await
-        .map_err(|err| err.to_string())?;
 
     if resolved.is_instrumental {
         app_handle
@@ -609,7 +580,7 @@ async fn apply_lyrics(
     } else if !resolved.plain_lyrics.is_empty() {
         Ok("Plain lyrics downloaded".to_owned())
     } else {
-        Err(lyrics::GetLyricsError::NotFound.to_string())
+        Err(LRCLIB_TRACK_NOT_FOUND.to_owned())
     }
 }
 
@@ -689,10 +660,6 @@ async fn save_lyrics(
     let track = app_handle
         .db(|db| db::get_track_by_id(track_id, db))
         .map_err(|err| err.to_string())?;
-    let is_try_embed_lyrics = app_handle
-        .db(|db| db::get_config(db))
-        .map_err(|err| err.to_string())?
-        .try_embed_lyrics;
 
     let provided_lyricsfile = lyricsfile.filter(|content| !content.trim().is_empty());
 
@@ -716,15 +683,6 @@ async fn save_lyrics(
             resolved_is_instrumental,
         )
     };
-
-    lyrics::apply_string_lyrics_for_track(
-        &track,
-        &plain_lyrics,
-        &synced_lyrics,
-        is_try_embed_lyrics,
-    )
-    .await
-    .map_err(|err| err.to_string())?;
 
     if is_instrumental {
         app_handle
@@ -937,6 +895,32 @@ fn play_track(
 }
 
 #[tauri::command]
+async fn export_lyrics(
+    track_id: i64,
+    formats: Vec<ExportLyricsFormat>,
+    lyricsfile: Option<String>,
+    app_handle: AppHandle,
+) -> Result<Vec<export::ExportResult>, String> {
+    if formats.is_empty() {
+        return Err("Select at least one export format".to_owned());
+    }
+
+    let track = app_handle
+        .db(|db| db::get_track_by_id(track_id, db))
+        .map_err(|err| err.to_string())?;
+
+    let lyricsfile_content = lyricsfile
+        .filter(|content| !content.trim().is_empty())
+        .or_else(|| track.lyricsfile.clone().filter(|content| !content.trim().is_empty()))
+        .ok_or_else(|| "No lyrics available for export".to_owned())?;
+
+    let parsed = lyricsfile::parse_lyricsfile(&lyricsfile_content).map_err(|err| err.to_string())?;
+    let export_formats = formats.into_iter().map(Into::into).collect::<Vec<_>>();
+
+    Ok(export::export_track(&track, &parsed, &export_formats))
+}
+
+#[tauri::command]
 fn pause_track(app_state: tauri::State<AppState>) -> Result<(), String> {
     let mut player_guard = app_state.player.lock().map_err(|e| e.to_string())?;
 
@@ -1074,9 +1058,7 @@ async fn main() {
             get_init,
             get_config,
             set_config,
-            initialize_library,
             uninitialize_library,
-            refresh_library,
             scan_library,
             get_tracks,
             get_track_ids,
@@ -1098,6 +1080,7 @@ async fn main() {
             search_lyrics,
             save_lyrics,
             publish_lyrics,
+            export_lyrics,
             flag_lyrics,
             play_track,
             pause_track,

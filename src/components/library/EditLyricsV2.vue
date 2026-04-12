@@ -9,8 +9,10 @@
     <template #titleLeft>
       <EditLyricsV2HeaderActions
         :is-dirty="isDirty"
+        :is-exporting="isExporting"
         @save="saveLyrics"
         @save-and-publish="saveAndPublish"
+        @export="exportLyrics"
         @debug="openDebugModal"
       />
     </template>
@@ -97,6 +99,7 @@ import { useEditLyricsV2Document } from '@/composables/edit-lyrics-v2/useEditLyr
 import { useEditLyricsV2Hotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2Hotkeys.js'
 import { useEditLyricsV2Publish } from '@/composables/edit-lyrics-v2/useEditLyricsV2Publish.js'
 import { useEditLyricsV2Playback } from '@/composables/edit-lyrics-v2/useEditLyricsV2Playback.js'
+import { useEditLyricsV2Export } from '@/composables/edit-lyrics-v2/useEditLyricsV2Export.js'
 import { useEditLyricsV2SyncedHotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedHotkeys.js'
 import { useGlobalState } from '@/composables/global-state.js'
 import { usePlayer } from '@/composables/player.js'
@@ -147,6 +150,13 @@ const { saveAndPublish, serializedLyricsfile } = useEditLyricsV2Publish({
   syncedLines,
   lyricsfileDocument,
   saveLyrics
+})
+
+const { exportLyrics, isExporting } = useEditLyricsV2Export({
+  editingTrack,
+  saveLyrics,
+  serializedLyricsfile,
+  toast
 })
 
 const { playLine, resumeOrPlay } = useEditLyricsV2Playback({

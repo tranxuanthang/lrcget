@@ -1,7 +1,4 @@
-use crate::fs_track;
-use crate::lyricsfile::{
-    build_lyricsfile, lyrics_presence_from_lyricsfile, LyricsPresence, LyricsfileTrackMetadata,
-};
+use crate::lyricsfile::{lyrics_presence_from_lyricsfile, LyricsPresence};
 use crate::persistent_entities::{
     PersistentAlbum, PersistentArtist, PersistentConfig, PersistentTrack,
 };
@@ -10,7 +7,6 @@ use crate::utils::prepare_input;
 use anyhow::Result;
 use include_dir::{include_dir, Dir};
 use indoc::indoc;
-use regex::Regex;
 use rusqlite::{named_params, params, Connection, OptionalExtension};
 use rusqlite_migration::Migrations;
 use std::fs;
@@ -507,109 +503,6 @@ pub fn upsert_lyricsfile_for_track_tx(
 pub fn delete_lyricsfile_by_track_id(track_id: i64, db: &Connection) -> Result<()> {
     db.execute("DELETE FROM lyricsfiles WHERE track_id = ?", [track_id])?;
     set_track_lyrics_presence(track_id, LyricsPresence::default(), db)?;
-    Ok(())
-}
-
-pub fn add_tracks(tracks: &Vec<fs_track::FsTrack>, db: &mut Connection) -> Result<()> {
-    let tx = db.transaction()?;
-
-    for track in tracks.iter() {
-        add_track(track, &tx)?;
-    }
-
-    tx.commit()?;
-
-    Ok(())
-}
-
-pub fn add_track(track: &fs_track::FsTrack, db: &Connection) -> Result<()> {
-    let artist_result = find_artist(&track.artist(), db);
-    let artist_id = match artist_result {
-        Ok(artist_id) => artist_id,
-        Err(_) => add_artist(&track.artist(), db)?,
-    };
-
-    let album_result = find_album(&track.album(), &track.album_artist(), db);
-    let album_id = match album_result {
-        Ok(album_id) => album_id,
-        Err(_) => add_album(&track.album(), &track.album_artist(), db)?,
-    };
-
-    // Create a regex to match "[au: instrumental]" or "[au:instrumental]"
-    let re = Regex::new(r"\[au:\s*instrumental\]").expect("Invalid regex");
-    let is_instrumental = track
-        .lrc_lyrics()
-        .as_ref()
-        .map_or(false, |lyrics| re.is_match(lyrics));
-
-    let txt_lyrics = track.txt_lyrics();
-    let lrc_lyrics = track.lrc_lyrics();
-
-    let presence = derive_lyrics_presence_from_legacy(
-        txt_lyrics.as_deref(),
-        lrc_lyrics.as_deref(),
-        is_instrumental,
-    );
-
-    let query = indoc! {"
-    INSERT INTO tracks (
-        file_path,
-        file_name,
-        title,
-        title_lower,
-        album_id,
-        artist_id,
-        duration,
-        track_number,
-        txt_lyrics,
-        lrc_lyrics,
-        instrumental,
-        has_plain_lyrics,
-        has_synced_lyrics,
-        has_word_synced_lyrics
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  "};
-    let mut statement = db.prepare(query)?;
-    let track_id = statement.insert((
-        track.file_path(),
-        track.file_name(),
-        track.title(),
-        prepare_input(&track.title()),
-        album_id,
-        artist_id,
-        track.duration(),
-        track.track_number(),
-        txt_lyrics.clone(),
-        lrc_lyrics.clone(),
-        is_instrumental,
-        presence.has_plain_lyrics,
-        presence.has_synced_lyrics,
-        presence.has_word_synced_lyrics,
-    ))?;
-
-    let lyricsfile_track_metadata = LyricsfileTrackMetadata::new(
-        &track.title(),
-        &track.album(),
-        &track.artist(),
-        track.duration(),
-    );
-
-    if let Some(lyricsfile) = build_lyricsfile(
-        &lyricsfile_track_metadata,
-        txt_lyrics.as_deref(),
-        lrc_lyrics.as_deref(),
-    ) {
-        upsert_lyricsfile_for_track(
-            track_id,
-            &track.title(),
-            &track.album(),
-            &track.artist(),
-            track.duration(),
-            &lyricsfile,
-            db,
-        )?;
-    }
-
     Ok(())
 }
 
