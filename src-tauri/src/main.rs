@@ -920,6 +920,143 @@ async fn export_lyrics(
     Ok(export::export_track(&track, &parsed, &export_formats))
 }
 
+/// Detail for a single format export result
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ExportFormatDetail {
+    pub format: String,
+    pub status: export::ExportStatus,
+}
+
+/// Result summary for track export (used by mass export)
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct TrackExportSummary {
+    pub success: bool,
+    pub exported: i32,
+    pub skipped: i32,
+    pub errors: i32,
+    pub message: String,
+    pub details: Vec<ExportFormatDetail>,
+}
+
+#[tauri::command]
+async fn export_track_lyrics(
+    track_id: i64,
+    formats: Vec<ExportLyricsFormat>,
+    app_handle: AppHandle,
+) -> Result<TrackExportSummary, String> {
+    if formats.is_empty() {
+        return Ok(TrackExportSummary {
+            success: true,
+            exported: 0,
+            skipped: 0,
+            errors: 0,
+            message: "No formats selected".to_owned(),
+            details: vec![],
+        });
+    }
+
+    let track = app_handle
+        .db(|db| db::get_track_by_id(track_id, db))
+        .map_err(|err| err.to_string())?;
+
+    // Get lyrics from lyricsfile column
+    let lyricsfile_content = track
+        .lyricsfile
+        .clone()
+        .filter(|content| !content.trim().is_empty());
+
+    if lyricsfile_content.is_none() {
+        return Ok(TrackExportSummary {
+            success: true,
+            exported: 0,
+            skipped: 1,
+            errors: 0,
+            message: "No lyrics available for this track".to_owned(),
+            details: vec![],
+        });
+    }
+
+    let parsed = lyricsfile::parse_lyricsfile(&lyricsfile_content.unwrap()).map_err(|err| err.to_string())?;
+    let export_formats = formats.into_iter().map(Into::into).collect::<Vec<_>>();
+
+    let results = export::export_track(&track, &parsed, &export_formats);
+
+    // Count results based on status
+    let exported = results
+        .iter()
+        .filter(|r| matches!(r.status, export::ExportStatus::Success))
+        .count() as i32;
+    let skipped = results
+        .iter()
+        .filter(|r| matches!(r.status, export::ExportStatus::Skipped(_)))
+        .count() as i32;
+    let errors = results
+        .iter()
+        .filter(|r| matches!(r.status, export::ExportStatus::Error(_)))
+        .count() as i32;
+
+    // Build detailed results with status info
+    let details: Vec<ExportFormatDetail> = results
+        .iter()
+        .map(|r| ExportFormatDetail {
+            format: format!("{:?}", r.format).to_lowercase(),
+            status: r.status.clone(),
+        })
+        .collect();
+
+    // Build message
+    let message = if errors > 0 {
+        let error_details: Vec<String> = results
+            .iter()
+            .filter(|r| matches!(r.status, export::ExportStatus::Error(_)))
+            .map(|r| {
+                let msg = match &r.status {
+                    export::ExportStatus::Error(msg) => msg.clone(),
+                    _ => String::new(),
+                };
+                format!("{:?}: {}", r.format, msg)
+            })
+            .collect();
+        format!(
+            "Exported {}, skipped {}, {} error(s) - {}",
+            exported,
+            skipped,
+            errors,
+            error_details.join("; ")
+        )
+    } else if exported > 0 {
+        if skipped > 0 {
+            format!("Exported {}, skipped {}", exported, skipped)
+        } else {
+            format!("Exported {} format(s)", exported)
+        }
+    } else if skipped > 0 {
+        format!("Skipped {} format(s)", skipped)
+    } else {
+        "No formats exported".to_owned()
+    };
+
+    Ok(TrackExportSummary {
+        success: errors == 0,
+        exported,
+        skipped,
+        errors,
+        message,
+        details,
+    })
+}
+
+#[tauri::command]
+async fn get_track_ids_with_lyrics(app_state: State<'_, AppState>) -> Result<Vec<i64>, String> {
+    let conn_guard = app_state.db.lock().unwrap();
+    let conn = conn_guard.as_ref().unwrap();
+    let track_ids = db::get_track_ids_with_lyrics(conn).map_err(|err| err.to_string())?;
+
+    Ok(track_ids)
+}
+
 #[tauri::command]
 fn pause_track(app_state: tauri::State<AppState>) -> Result<(), String> {
     let mut player_guard = app_state.player.lock().map_err(|e| e.to_string())?;
@@ -1081,6 +1218,8 @@ async fn main() {
             save_lyrics,
             publish_lyrics,
             export_lyrics,
+            export_track_lyrics,
+            get_track_ids_with_lyrics,
             flag_lyrics,
             play_track,
             pause_track,

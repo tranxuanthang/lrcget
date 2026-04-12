@@ -9,6 +9,7 @@
       @refreshLibrary="refreshLibrary"
       @uninitializeLibrary="$emit('uninitializeLibrary')"
       @manageDirectories="$emit('manageDirectories')"
+      @exportAllLyrics="handleExportAllLyrics"
     />
 
     <div class="relative grow overflow-hidden">
@@ -58,10 +59,12 @@ import AlbumList from './library/AlbumList.vue'
 import ArtistList from './library/ArtistList.vue'
 import MyLrclib from './library/MyLrclib.vue'
 import DownloadViewer from './library/DownloadViewer.vue'
+import ExportViewer from './library/ExportViewer.vue'
 import Config from './library/Config.vue'
 import About from './About.vue'
 import { useToast } from 'vue-toastification'
 import { useModal } from 'vue-final-modal'
+import { useExporter } from '@/composables/export.js'
 
 const props = defineProps({
   shouldScan: {
@@ -115,8 +118,41 @@ const { open: openDownloadViewer, close: closeDownloadViewer } = useModal({
   },
 })
 
+const { open: openExportViewer, close: closeExportViewer } = useModal({
+  component: ExportViewer,
+  attrs: {
+    onClose() {
+      closeExportViewer()
+    }
+  },
+})
+
+const { addToQueue: addToExportQueue, setupEventListeners: setupExportListeners, cleanupEventListeners: cleanupExportListeners } = useExporter()
+
 const changeActiveTab = (tab) => {
   activeTab.value = tab
+}
+
+const handleExportAllLyrics = async (formats) => {
+  try {
+    openExportViewer()
+    await setupExportListeners()
+
+    // Get all track IDs that have lyrics
+    const trackIds = await invoke('get_track_ids_with_lyrics')
+
+    if (trackIds.length === 0) {
+      toast.info('No tracks with lyrics found to export')
+      closeExportViewer()
+      return
+    }
+
+    addToExportQueue(trackIds, formats)
+  } catch (error) {
+    console.error(error)
+    toast.error(`Failed to start export: ${error}`)
+    closeExportViewer()
+  }
 }
 
 const setupScanListeners = async () => {
@@ -195,5 +231,6 @@ watch(() => props.shouldScan, (newValue) => {
 
 onUnmounted(async () => {
   await cleanupScanListeners()
+  await cleanupExportListeners()
 })
 </script>

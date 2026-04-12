@@ -23,7 +23,7 @@
         </template>
       </VTooltip>
 
-      <VDropdown theme="lrcget-dropdown" placement="bottom-start">
+      <VDropdown theme="lrcget-dropdown" placement="bottom-start" @show="refreshEmbedConfig">
         <button
           class="button text-sm px-2 py-1.5 h-8 rounded-r-full rounded-l-none button-normal"
           type="button"
@@ -70,11 +70,12 @@
               </CheckboxButton>
             </label>
 
-            <label class="dropdown-item">
+            <label class="dropdown-item" :class="{ 'opacity-50 cursor-not-allowed': !tryEmbedLyrics }">
               <CheckboxButton
                 v-model="embedIntoTrack"
                 name="embed-into-track"
                 id="embed-into-track"
+                :disabled="!tryEmbedLyrics"
               >
                 <span class="dropdown-label"
                   >Embed into track (best-effort)</span
@@ -115,17 +116,26 @@
 </template>
 
 <script setup>
-import { computed, ref } from "vue";
+import { computed, ref, onMounted } from "vue";
 import ChevronDown from "~icons/mdi/chevron-down";
 import ContentSave from "~icons/mdi/content-save";
 import Bug from "~icons/mdi/bug";
 import CheckboxButton from "@/components/common/CheckboxButton.vue";
+import { invoke } from "@tauri-apps/api/core";
 
 const emit = defineEmits(["save", "save-and-publish", "export", "debug"]);
 
 const exportPlainText = ref(false);
 const exportSyncedLrc = ref(false);
 const embedIntoTrack = ref(false);
+const tryEmbedLyrics = ref(false);
+
+const refreshEmbedConfig = async () => {
+  const config = await invoke("get_config");
+  tryEmbedLyrics.value = config.try_embed_lyrics;
+};
+
+onMounted(refreshEmbedConfig);
 
 const hasSelectedExportFormat = computed(() => (
   exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value

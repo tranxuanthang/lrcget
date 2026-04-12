@@ -12,6 +12,7 @@
 | Events | Async backend→frontend via `app.emit()` |
 | Commands | All FFI in `main.rs`, organized by domain |
 | Scanning | Single-pass streaming with batch processing (100 files) |
+| Export | Manual sidecar (.txt/.lrc) and embedded metadata export |
 
 **Key Dependencies:** `tauri`, `rusqlite`+`rusqlite_migration`, `lofty`, `kira`, `reqwest`, `rayon`, `xxhash-rust`
 
@@ -114,6 +115,32 @@ struct Player {
 
 Background loop (40ms) in `main.rs` emits `player-state` event.
 
+### Export Module (`export.rs`)
+
+Manual lyrics export to sidecar files (`.txt`, `.lrc`) and embedded metadata.
+
+```rust
+pub enum ExportFormat {
+    Txt,        // Plain text sidecar file
+    Lrc,        // Synced LRC sidecar file
+    Embedded,   // Embedded in audio metadata (MP3/FLAC)
+}
+
+pub struct ExportResult {
+    pub format: ExportFormat,
+    pub path: Option<PathBuf>,
+    pub success: bool,
+    pub message: String,
+}
+```
+
+**Key Functions:**
+- `export_track()` - Export a single track to multiple formats
+- `export_track_format()` - Export to a specific format
+- `embed_lyrics()` - Embed lyrics into MP3 (ID3v2 USLT/SYLT) or FLAC (Vorbis comments)
+
+**Note:** Sidecar exports overwrite existing files silently. Embedded exports use `lofty` for tag writing.
+
 ### LRCLIB API (`lrclib/`)
 
 **Endpoints:** search, get, get_by_id, publish, flag, request_challenge
@@ -160,6 +187,8 @@ Background loop (40ms) in `main.rs` emits `player-state` event.
 | `save_lyrics(id, plain?, synced?, lyricsfile?)` | Save edits (prefers `lyricsfile`) |
 | `publish_lyrics(title, album, artist, duration, plain?, synced?, lyricsfile?)` | Upload to LRCLIB (with PoW; accepts Lyricsfile-only payloads) |
 | `export_lyrics(track_id, formats, lyricsfile?)` | Manual export to `.txt`, `.lrc`, or embedded tags |
+| `export_track_lyrics(track_id, formats)` | Export single track, returns summary for mass export |
+| `get_track_ids_with_lyrics()` | Get all track IDs that have lyrics for mass export |
 | `flag_lyrics()` | Report to LRCLIB (with PoW) |
 
 ### Playback & Config
@@ -177,6 +206,8 @@ Background loop (40ms) in `main.rs` emits `player-state` event.
 | `reload-track-id` | track_id | Request refresh |
 | `publish-lyrics-progress` | Status | Publishing updates |
 | `flag-lyrics-progress` | Status | Flagging updates |
+| `export-progress` | `{ trackId, status, message }` | Export progress for single track |
+| `export-complete` | `{ exported, skipped, errors }` | Mass export complete |
 
 ## Configuration
 

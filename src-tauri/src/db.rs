@@ -1263,3 +1263,23 @@ pub fn add_album_tx(
     ))?;
     Ok(row_id)
 }
+
+/// Get track IDs that have lyrics (for mass export)
+pub fn get_track_ids_with_lyrics(db: &Connection) -> Result<Vec<i64>> {
+    let mut statement = db.prepare(indoc! {"
+      SELECT tracks.id
+      FROM tracks
+      WHERE tracks.has_plain_lyrics = true
+         OR tracks.has_synced_lyrics = true
+      ORDER BY tracks.artist_id ASC, tracks.album_id ASC, tracks.track_number ASC NULLS LAST
+    "})?;
+
+    let mut rows = statement.query([])?;
+    let mut track_ids: Vec<i64> = Vec::new();
+
+    while let Some(row) = rows.next()? {
+        track_ids.push(row.get("id")?);
+    }
+
+    Ok(track_ids)
+}

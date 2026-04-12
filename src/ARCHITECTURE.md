@@ -41,6 +41,7 @@ Module-level ref composables (singletons by design):
 | `useGlobalState()` | `isHotkey`, `themeMode`, `lrclibInstance` |
 | `usePlayer()` | `playingTrack`, `status`, `duration`, `progress`, `volume`. Listens to `player-state` events |
 | `useDownloader()` | Download queue, progress. Loop started by App.vue at boot |
+| `useExporter()` | Mass export queue, progress. Used by ExportViewer modal |
 | `useSearchLibrary()` | Search text, filters |
 | `useSearchLyrics()` | Search modal state |
 | `useEditLyrics()` / `useEditLyricsV2()` | Edit modal state |
@@ -70,9 +71,10 @@ Module-level ref composables (singletons by design):
 - **Edit/Publish**:
   - *Legacy*: `EditLyrics.vue` — CodeMirror + sync toolbar
   - *V2*: `EditLyricsV2.vue` — CodeMirror + interactive synced view + word timing lane. Synced line selection keeps the active row in view while navigating or syncing, and the word timing lane supports dragging the first word boundary to update the line start while keeping the current lane window stable until selection changes; line timestamp edits do not automatically shift existing word timings. Header actions use a split save dropdown (`EditLyricsV2HeaderActions.vue`) with `Save`, `Save and Publish`, and manual export for `.txt`, `.lrc`, and embedded lyrics. V2 publish is isolated in `useEditLyricsV2Publish.js` + `EditLyricsV2PublishModal.vue`, and V2 export is isolated in `useEditLyricsV2Export.js`; both send serialized Lyricsfile payloads.
+- **Export (Mass)**: `LibraryHeader.vue` has an export button (with dropdown) that emits `exportAllLyrics` → `Library.vue` opens `ExportViewer.vue` modal → `useExporter()` composable manages queue → invokes `export_track_lyrics` command per track. Exports to `.txt`, `.lrc`, and/or embedded metadata.
 - **My LRCLIB**: User workflows (preview, edit, publish, flag) in `my-lrclib/`
 
-Utils: `src/utils/` (parsing, linting), Composables: `composables/edit-lyrics/`, `composables/edit-lyrics-v2/`
+Utils: `src/utils/` (parsing, linting), Composables: `composables/edit-lyrics/`, `composables/edit-lyrics-v2/`, `composables/export.js`
 
 ## Technical Details
 

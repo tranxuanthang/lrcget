@@ -45,14 +45,25 @@ pub enum ExportFormat {
     Embedded,
 }
 
+/// Status of an export operation
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase", tag = "type", content = "message")]
+pub enum ExportStatus {
+    /// Export was successful
+    Success,
+    /// Export was skipped (e.g., no lyrics available for this format)
+    Skipped(String),
+    /// Export failed with an error
+    Error(String),
+}
+
 /// Result of an export operation
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ExportResult {
     pub format: ExportFormat,
     pub path: Option<PathBuf>,
-    pub success: bool,
-    pub message: String,
+    pub status: ExportStatus,
 }
 
 /// Build the file path for a lyrics sidecar file
@@ -108,9 +119,17 @@ fn export_txt(
     track: &PersistentTrack,
     parsed: &ParsedLyricsfile,
 ) -> Result<ExportResult, ExportError> {
-    let content = generate_txt_content(parsed).ok_or_else(|| {
-        ExportError::InvalidData("No plain lyrics available for export".to_string())
-    })?;
+    let content = match generate_txt_content(parsed) {
+        Some(content) => content,
+        None => {
+            // Not an error - just no plain lyrics available
+            return Ok(ExportResult {
+                format: ExportFormat::Txt,
+                path: None,
+                status: ExportStatus::Skipped("no plain lyrics available".to_string()),
+            });
+        }
+    };
 
     let txt_path = build_sidecar_path(&track.file_path, "txt")?;
 
@@ -125,8 +144,7 @@ fn export_txt(
     Ok(ExportResult {
         format: ExportFormat::Txt,
         path: Some(txt_path),
-        success: true,
-        message: "Plain lyrics exported successfully".to_string(),
+        status: ExportStatus::Success,
     })
 }
 
@@ -135,9 +153,17 @@ fn export_lrc(
     track: &PersistentTrack,
     parsed: &ParsedLyricsfile,
 ) -> Result<ExportResult, ExportError> {
-    let content = generate_lrc_content(parsed).ok_or_else(|| {
-        ExportError::InvalidData("No synced lyrics available for export".to_string())
-    })?;
+    let content = match generate_lrc_content(parsed) {
+        Some(content) => content,
+        None => {
+            // Not an error - just no synced lyrics available
+            return Ok(ExportResult {
+                format: ExportFormat::Lrc,
+                path: None,
+                status: ExportStatus::Skipped("no synced lyrics available".to_string()),
+            });
+        }
+    };
 
     let lrc_path = build_sidecar_path(&track.file_path, "lrc")?;
 
@@ -152,8 +178,7 @@ fn export_lrc(
     Ok(ExportResult {
         format: ExportFormat::Lrc,
         path: Some(lrc_path),
-        success: true,
-        message: "Synced lyrics exported successfully".to_string(),
+        status: ExportStatus::Success,
     })
 }
 
@@ -175,8 +200,7 @@ fn export_embedded(
     Ok(ExportResult {
         format: ExportFormat::Embedded,
         path: Some(PathBuf::from(&track.file_path)),
-        success: true,
-        message: "Lyrics embedded into audio file".to_string(),
+        status: ExportStatus::Success,
     })
 }
 
@@ -194,8 +218,7 @@ pub fn export_track(
             Err(e) => results.push(ExportResult {
                 format: *format,
                 path: None,
-                success: false,
-                message: e.to_string(),
+                status: ExportStatus::Error(e.to_string()),
             }),
         }
     }

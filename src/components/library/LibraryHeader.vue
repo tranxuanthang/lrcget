@@ -100,6 +100,7 @@
         theme="lrcget-dropdown"
         placement="bottom-end"
         class="h-full aspect-square"
+        @show="refreshEmbedConfig"
       >
         <button
           class="button button-normal h-full aspect-square rounded-full"
@@ -132,11 +133,12 @@
               </CheckboxButton>
             </label>
 
-            <label class="dropdown-item">
+            <label class="dropdown-item" :class="{ 'opacity-50 cursor-not-allowed': !tryEmbedLyrics }">
               <CheckboxButton
                 v-model="embedIntoTrack"
                 name="embed-into-track"
                 id="embed-into-track"
+                :disabled="!tryEmbedLyrics"
               >
                 <span class="dropdown-label"
                   >Embed into track (best-effort)</span
@@ -220,7 +222,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from "vue";
+import { ref, computed, onMounted } from "vue";
 import DownloadMultiple from "~icons/mdi/download-multiple";
 import Loading from "~icons/mdi/loading";
 import Check from "~icons/mdi/check";
@@ -249,6 +251,14 @@ const emit = defineEmits([
 const exportPlainText = ref(false);
 const exportSyncedLrc = ref(false);
 const embedIntoTrack = ref(false);
+const tryEmbedLyrics = ref(false);
+
+const refreshEmbedConfig = async () => {
+  const config = await invoke("get_config");
+  tryEmbedLyrics.value = config.try_embed_lyrics;
+};
+
+onMounted(refreshEmbedConfig);
 
 const hasSelectedExportFormat = computed(
   () => exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value,
