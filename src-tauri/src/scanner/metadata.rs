@@ -92,7 +92,7 @@ impl TrackMetadata {
 
         // Album artist is optional, fallback to artist
         let album_artist = tag
-            .get_string(&lofty::tag::ItemKey::AlbumArtist)
+            .get_string(lofty::tag::ItemKey::AlbumArtist)
             .map(|s| s.to_string())
             .unwrap_or_else(|| artist.clone());
 

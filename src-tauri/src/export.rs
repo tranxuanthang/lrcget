@@ -343,7 +343,7 @@ fn insert_sylt_frame(id3v2: &mut Id3v2Tag, synced_lyrics: &str) -> Result<()> {
             synced_lyrics_vec,
         );
 
-        let sylt_frame_byte = sylt_frame.as_bytes()?;
+        let sylt_frame_byte = sylt_frame.as_bytes(WriteOptions::default())?;
         let sylt_frame_id = FrameId::new("SYLT")?;
         id3v2.insert(Frame::Binary(BinaryFrame::new(
             sylt_frame_id,
