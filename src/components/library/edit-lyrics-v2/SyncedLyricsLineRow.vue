@@ -20,7 +20,7 @@
       </button>
       <button
         v-show="isLineControlsVisible"
-        class="button button-normal p-1 rounded-full text-sm h-6 w-6"
+        class="button button-primary p-1 rounded-full text-sm h-6 w-6"
         title="Sync line to current playback"
         @click.stop="emit('sync-line', index)"
       >
@@ -64,7 +64,7 @@
       @blur="emit('save-edit')"
       @keydown.enter.prevent="emit('save-edit')"
       @keydown.esc.prevent="emit('cancel-edit')"
-    >
+    />
 
     <div
       v-else
@@ -78,13 +78,16 @@
           v-for="(word, wordIndex) in line.words"
           :key="wordIndex"
           class="whitespace-pre-wrap"
-          :class="{ 'text-yellow-500 dark:text-yellow-400': wordIndex === currentWordIndex }"
+          :class="{
+            'text-yellow-500 dark:text-yellow-400':
+              wordIndex === currentWordIndex,
+          }"
         >
           {{ word.text }}
         </span>
       </template>
       <template v-else>
-        {{ line.text || ' ' }}
+        {{ line.text || " " }}
       </template>
     </div>
 
@@ -100,106 +103,110 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
-import Play from '~icons/mdi/play'
-import Equal from '~icons/mdi/equal'
-import Minus from '~icons/mdi/minus'
-import Plus from '~icons/mdi/plus'
-import Close from '~icons/mdi/close'
+import { computed, ref } from "vue";
+import Play from "~icons/mdi/play";
+import Equal from "~icons/mdi/equal";
+import Minus from "~icons/mdi/minus";
+import Plus from "~icons/mdi/plus";
+import Close from "~icons/mdi/close";
 const props = defineProps({
   index: {
     type: Number,
-    required: true
+    required: true,
   },
   line: {
     type: Object,
-    required: true
+    required: true,
   },
   rowClass: {
     type: String,
-    default: 'bg-transparent'
+    default: "bg-transparent",
   },
   isLineControlsVisible: {
     type: Boolean,
-    default: false
+    default: false,
   },
   isLinePlaying: {
     type: Boolean,
-    default: false
+    default: false,
   },
   isEditing: {
     type: Boolean,
-    default: false
+    default: false,
   },
   editingText: {
     type: String,
-    default: ''
+    default: "",
   },
   timestampText: {
     type: String,
-    default: ''
+    default: "",
   },
   setLineInputRef: {
     type: Function,
-    required: true
+    required: true,
   },
   progressMs: {
     type: Number,
-    default: 0
-  }
-})
+    default: 0,
+  },
+});
 
 const emit = defineEmits([
-  'mouseenter',
-  'mouseleave',
-  'select',
-  'play-line',
-  'sync-line',
-  'rewind-line',
-  'forward-line',
-  'delete-line',
-  'start-edit',
-  'save-edit',
-  'cancel-edit',
-  'update:editing-text'
-])
+  "mouseenter",
+  "mouseleave",
+  "select",
+  "play-line",
+  "sync-line",
+  "rewind-line",
+  "forward-line",
+  "delete-line",
+  "start-edit",
+  "save-edit",
+  "cancel-edit",
+  "update:editing-text",
+]);
 
-const rowElement = ref(null)
+const rowElement = ref(null);
 
 const editingTextProxy = computed({
   get: () => props.editingText,
-  set: (value) => emit('update:editing-text', value)
-})
+  set: (value) => emit("update:editing-text", value),
+});
 
 // Check if line has word-by-word synced data
 const hasWordSync = computed(() => {
-  return props.line?.words && Array.isArray(props.line.words) && props.line.words.length > 0
-})
+  return (
+    props.line?.words &&
+    Array.isArray(props.line.words) &&
+    props.line.words.length > 0
+  );
+});
 
 // Determine the currently playing word index based on progressMs
 const currentWordIndex = computed(() => {
   if (!hasWordSync.value || !props.isLinePlaying || !props.line.words) {
-    return -1
+    return -1;
   }
 
-  const words = props.line.words
+  const words = props.line.words;
   for (let i = 0; i < words.length; i++) {
-    const word = words[i]
-    const nextWord = words[i + 1]
+    const word = words[i];
+    const nextWord = words[i + 1];
 
     // Check if current time falls within this word's time window
-    const wordStart = word.start_ms
-    const wordEnd = nextWord ? nextWord.start_ms : Infinity
+    const wordStart = word.start_ms;
+    const wordEnd = nextWord ? nextWord.start_ms : Infinity;
 
     if (props.progressMs >= wordStart && props.progressMs < wordEnd) {
-      return i
+      return i;
     }
   }
 
-  return -1
-})
+  return -1;
+});
 
 defineExpose({
-  rowElement
-})
+  rowElement,
+});
 </script>

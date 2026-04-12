@@ -3,11 +3,12 @@
     <div class="flex-none flex">
       <VTooltip theme="lrcget-tooltip">
         <button
-          class="button text-sm px-5 py-1.5 h-8 w-24 rounded-l-full rounded-r-none border-r"
+          class="button text-sm px-5 h-8 w-24 rounded-l-full rounded-r-none border-r inline-flex items-center justify-center gap-1.5"
           :class="{ 'button-primary': isDirty, 'button-disabled': !isDirty }"
           :disabled="!isDirty"
           @click="emit('save')"
         >
+          <ContentSave class="text-base" />
           Save
         </button>
 
@@ -77,10 +78,10 @@
 
     <VTooltip theme="lrcget-tooltip">
       <button
-        class="button text-sm px-3 py-1.5 h-8 rounded-full button-normal"
+        class="button text-sm px-3 py-1.5 h-8 rounded-full button-normal inline-flex items-center justify-center"
         @click="emit('debug')"
       >
-        Debug
+        <Bug class="text-base" />
       </button>
 
       <template #popper>
@@ -93,6 +94,8 @@
 <script setup>
 import { ref } from "vue";
 import ChevronDown from "~icons/mdi/chevron-down";
+import ContentSave from "~icons/mdi/content-save";
+import Bug from "~icons/mdi/bug";
 import CheckboxButton from "@/components/common/CheckboxButton.vue";
 
 const emit = defineEmits(["save", "save-and-publish", "debug"]);
