@@ -23,7 +23,11 @@
         </template>
       </VTooltip>
 
-      <VDropdown theme="lrcget-dropdown" placement="bottom-start" @show="refreshEmbedConfig">
+      <VDropdown
+        theme="lrcget-dropdown"
+        placement="bottom-start"
+        @show="refreshEmbedConfig"
+      >
         <button
           class="button text-sm px-2 py-1.5 h-8 rounded-r-full rounded-l-none button-normal"
           type="button"
@@ -70,29 +74,36 @@
               </CheckboxButton>
             </label>
 
-            <label class="dropdown-item" :class="{ 'opacity-50 cursor-not-allowed': !tryEmbedLyrics }">
+            <label
+              class="dropdown-item"
+              :class="{ 'opacity-50 cursor-not-allowed': !tryEmbedLyrics }"
+            >
               <CheckboxButton
                 v-model="embedIntoTrack"
                 name="embed-into-track"
                 id="embed-into-track"
                 :disabled="!tryEmbedLyrics"
               >
-                <span class="dropdown-label"
-                  >Embed into track (best-effort)</span
-                >
+                <span class="dropdown-label">Embed into track</span>
               </CheckboxButton>
             </label>
 
             <div class="px-2 py-2">
               <button
                 class="button w-full text-sm h-8 rounded"
-                :class="hasSelectedExportFormat && !isExporting ? 'button-primary' : 'button-disabled'"
+                :class="
+                  hasSelectedExportFormat && !isExporting
+                    ? 'button-primary'
+                    : 'button-disabled'
+                "
                 :disabled="!hasSelectedExportFormat || isExporting"
                 type="button"
                 @click="handleExportClick"
                 v-close-popper
               >
-                {{ isExporting ? 'Saving and exporting...' : 'Save and export' }}
+                {{
+                  isExporting ? "Saving and exporting..." : "Save and export"
+                }}
               </button>
             </div>
           </div>
@@ -137,9 +148,9 @@ const refreshEmbedConfig = async () => {
 
 onMounted(refreshEmbedConfig);
 
-const hasSelectedExportFormat = computed(() => (
-  exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value
-));
+const hasSelectedExportFormat = computed(
+  () => exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value,
+);
 
 const handleExportClick = () => {
   if (!hasSelectedExportFormat.value) {

@@ -133,16 +133,17 @@
               </CheckboxButton>
             </label>
 
-            <label class="dropdown-item" :class="{ 'opacity-50 cursor-not-allowed': !tryEmbedLyrics }">
+            <label
+              class="dropdown-item"
+              :class="{ 'opacity-50 cursor-not-allowed': !tryEmbedLyrics }"
+            >
               <CheckboxButton
                 v-model="embedIntoTrack"
                 name="embed-into-track"
                 id="embed-into-track"
                 :disabled="!tryEmbedLyrics"
               >
-                <span class="dropdown-label"
-                  >Embed into track (best-effort)</span
-                >
+                <span class="dropdown-label">Embed into track</span>
               </CheckboxButton>
             </label>
 

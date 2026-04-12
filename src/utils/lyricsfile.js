@@ -246,16 +246,16 @@ export const normalizeLrclibLyrics = (item) => {
   }
 }
 
-export const serializeLyricsfile = ({ track, plainLyrics, syncedLines, syncedLyrics, baseDocument }) => {
+export const serializeLyricsfile = ({ track, plainLyrics, syncedLines, syncedLyrics, baseDocument, isInstrumental: forceInstrumental }) => {
   const normalizedPlain = normalizeNonEmpty(plainLyrics)
   const normalizedSynced = normalizeNonEmpty(syncedLyrics)
   const normalizedSyncedLines = cloneSyncedLines(syncedLines)
 
-  if (!normalizedPlain && normalizedSyncedLines.length === 0 && !normalizedSynced) {
+  if (!normalizedPlain && normalizedSyncedLines.length === 0 && !normalizedSynced && !forceInstrumental) {
     return null
   }
 
-  const isInstrumental = normalizedSynced ? isInstrumentalLyrics(normalizedSynced) : false
+  const isInstrumental = forceInstrumental || (normalizedSynced ? isInstrumentalLyrics(normalizedSynced) : false)
   const baseMetadata = baseDocument?.metadata || {}
   const baseLines = Array.isArray(baseDocument?.lines) ? baseDocument.lines : []
   const baseLrc = linesToLrc(baseLines)

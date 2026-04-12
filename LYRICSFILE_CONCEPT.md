@@ -135,6 +135,82 @@ lines: []
 plain: ""  # Empty or omitted
 ```
 
+### 4. Word-Synced Lyrics
+```yaml
+version: "1.0"
+metadata:
+  title: "Shape of You"
+  artist: "Ed Sheeran"
+  duration_ms: 235000
+
+lines:
+  - text: "The club isn't the best place to find a lover"
+    start_ms: 12450
+    end_ms: 18200
+    words:
+      - text: "The "
+        start_ms: 12450
+        end_ms: 12900
+      - text: "club "
+        start_ms: 12900
+        end_ms: 13500
+      - text: "isn't "
+        start_ms: 13500
+        end_ms: 14200
+      - text: "the "
+        start_ms: 14200
+        end_ms: 14600
+      - text: "best "
+        start_ms: 14600
+        end_ms: 15200
+      - text: "place "
+        start_ms: 15200
+        end_ms: 15800
+      - text: "to "
+        start_ms: 15800
+        end_ms: 16200
+      - text: "find "
+        start_ms: 16200
+        end_ms: 16800
+      - text: "a "
+        start_ms: 16800
+        end_ms: 17100
+      - text: "lover"
+        start_ms: 17100
+        end_ms: 18200
+  - text: "So the bar is where I go"
+    start_ms: 18500
+    end_ms: 22100
+    words:
+      - text: "So "
+        start_ms: 18500
+        end_ms: 19000
+      - text: "the "
+        start_ms: 19000
+        end_ms: 19400
+      - text: "bar "
+        start_ms: 19400
+        end_ms: 20000
+      - text: "is "
+        start_ms: 20000
+        end_ms: 20400
+      - text: "where "
+        start_ms: 20400
+        end_ms: 21000
+      - text: "I "
+        start_ms: 21000
+        end_ms: 21400
+      - text: "go"
+        start_ms: 21400
+        end_ms: 22100
+
+plain: |
+  [Verse 1]
+  The club isn't the best place to find a lover
+  So the bar is where I go
+```
+*Note: Word objects include trailing spaces in `text` (except the last word) to allow proper reconstruction of the full line. Each word has its own `start_ms` for karaoke-style highlighting.*
+
 ---
 
 ## Rules

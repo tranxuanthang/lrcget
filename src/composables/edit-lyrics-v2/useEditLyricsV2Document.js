@@ -14,6 +14,7 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
   const isDirty = ref(false)
   const selectedSyncedLineIndex = ref(-1)
   const isSyncedLineEditing = ref(false)
+  const isInstrumental = ref(false)
 
   const ensureSelectedSyncedLine = () => {
     if (syncedLines.value.length === 0) {
@@ -58,6 +59,7 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     // Load synced lines independently from plain lyrics
     // This allows users to have different structures (e.g., annotations, empty lines)
     syncedLines.value = parsed.syncedLines.map((line) => normalizeSyncedLine(line))
+    isInstrumental.value = parsed.isInstrumental
 
     console.log('syncedLines', syncedLines.value)
     lyricsfileDocument.value = parsed.document
@@ -196,6 +198,11 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     }))
   }
 
+  const setInstrumental = (value) => {
+    isInstrumental.value = Boolean(value)
+    isDirty.value = true
+  }
+
   const saveLyrics = async () => {
     if (!editingTrack.value) {
       return false
@@ -210,7 +217,8 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
         track: editingTrack.value,
         plainLyrics: plainLyrics.value,
         syncedLines: syncedLines.value,
-        baseDocument: lyricsfileDocument.value
+        baseDocument: lyricsfileDocument.value,
+        isInstrumental: isInstrumental.value
       })
 
       await invoke('save_lyrics', {
@@ -271,6 +279,7 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     hasPlainLyrics,
     selectedLineExists,
     currentPlayingSyncedLineIndex,
+    isInstrumental,
     initializeLyrics,
     updatePlainLyrics,
     updateSyncedLines,
@@ -285,6 +294,7 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     saveLyrics,
     ensureSelectedSyncedLine,
     updateLineText,
-    eraseWordTimings
+    eraseWordTimings,
+    setInstrumental
   }
 }

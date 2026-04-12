@@ -72,7 +72,7 @@ Source of truth:
 
 Derived publish payload:
 
-- `lyricsfile = serializeLyricsfile({ track, plainLyrics, syncedLines, baseDocument })`
+- `lyricsfile = serializeLyricsfile({ track, plainLyrics, syncedLines, baseDocument, isInstrumental })`
 
 ### Publish rule
 
@@ -129,6 +129,7 @@ Inputs:
 - `plainLyrics`
 - `syncedLines`
 - `lyricsfileDocument`
+- `isInstrumental`
 - `saveLyrics`
 
 Suggested actions:

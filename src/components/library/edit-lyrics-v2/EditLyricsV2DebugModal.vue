@@ -4,12 +4,17 @@
     :esc-to-close="true"
     :click-to-close="true"
     content-class="w-full h-[90vh] max-w-screen-lg"
-    body-class="p-0"
+    body-class="h-full p-0"
     @close="emit('close')"
   >
     <div class="h-full flex flex-col relative">
-      <div class="grow min-h-0 overflow-auto bg-black text-green-400 text-sm p-4 select-text">
-        <pre class="font-mono whitespace-pre-wrap break-words overflow-x-auto select-text">{{ content }}</pre>
+      <div
+        class="grow h-full overflow-auto bg-black text-green-400 text-sm p-4 select-text"
+      >
+        <pre
+          class="font-mono whitespace-pre-wrap break-words overflow-x-auto select-text"
+          >{{ content }}</pre
+        >
       </div>
       <button
         class="absolute bottom-4 right-4 button text-sm px-3 py-1.5 h-8 rounded-full button-normal"
@@ -17,7 +22,7 @@
       >
         <span class="flex items-center gap-1">
           <ContentCopy class="text-base" />
-          {{ copied ? 'Copied!' : 'Copy' }}
+          {{ copied ? "Copied!" : "Copy" }}
         </span>
       </button>
     </div>
@@ -25,33 +30,33 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import ContentCopy from '~icons/mdi/content-copy'
-import BaseModal from '@/components/common/BaseModal.vue'
+import { ref } from "vue";
+import ContentCopy from "~icons/mdi/content-copy";
+import BaseModal from "@/components/common/BaseModal.vue";
 
 defineProps({
   content: {
     type: String,
-    required: true
-  }
-})
+    required: true,
+  },
+});
 
-const emit = defineEmits(['close'])
+const emit = defineEmits(["close"]);
 
-const copied = ref(false)
+const copied = ref(false);
 
 async function copyToClipboard() {
-  const content = document.querySelector('.bg-black pre')?.innerText
-  if (!content) return
+  const content = document.querySelector(".bg-black pre")?.innerText;
+  if (!content) return;
 
   try {
-    await navigator.clipboard.writeText(content)
-    copied.value = true
+    await navigator.clipboard.writeText(content);
+    copied.value = true;
     setTimeout(() => {
-      copied.value = false
-    }, 2000)
+      copied.value = false;
+    }, 2000);
   } catch (err) {
-    console.error('Failed to copy:', err)
+    console.error("Failed to copy:", err);
   }
 }
 </script>

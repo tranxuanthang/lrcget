@@ -8,6 +8,7 @@ export function useEditLyricsV2Publish({
   plainLyrics,
   syncedLines,
   lyricsfileDocument,
+  isInstrumental,
   saveLyrics
 }) {
   const { open: openPublishModalRaw, close: closePublishModal, patchOptions: patchPublishModalOptions } = useModal({
@@ -28,7 +29,8 @@ export function useEditLyricsV2Publish({
       track: editingTrack.value,
       plainLyrics: plainLyrics.value,
       syncedLines: syncedLines.value,
-      baseDocument: lyricsfileDocument.value
+      baseDocument: lyricsfileDocument.value,
+      isInstrumental: isInstrumental.value
     }) || ''
   })
 
