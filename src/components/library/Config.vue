@@ -120,10 +120,12 @@
 import { invoke } from '@tauri-apps/api/core'
 import { ref, watch } from 'vue'
 import { useGlobalState } from '../../composables/global-state'
+import { usePlayer } from '@/composables/player.js'
 import RadioButton from '@/components/common/RadioButton.vue'
 import CheckboxButton from '@/components/common/CheckboxButton.vue'
 
 const { setThemeMode, setLrclibInstance } = useGlobalState()
+const { volume } = usePlayer()
 
 const emit = defineEmits(['close', 'refreshLibrary', 'manageDirectories'])
 
@@ -143,6 +145,7 @@ const save = async () => {
     tryEmbedLyrics: tryEmbedLyrics.value,
     themeMode: editingThemeMode.value,
     lrclibInstance: editingLrclibInstance.value,
+    volume: volume.value,
   })
   setThemeMode(editingThemeMode.value)
   setLrclibInstance(editingLrclibInstance.value)

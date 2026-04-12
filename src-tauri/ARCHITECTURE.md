@@ -82,6 +82,8 @@ trait ServiceAccess {
 
 **Migration v10:** Added indexed lyrics-presence booleans on `tracks` (`has_plain_lyrics`, `has_synced_lyrics`, `has_word_synced_lyrics`) used for filtering
 
+**Migration v11:** Added `volume` column to `config_data` for persisting player volume level
+
 **Indexes:** All `*_lower` columns + `content_hash`, `scan_status`, `modified_time+file_size` (fingerprint) + lyrics-presence indexes
 
 ### File Scanning (`scanner/`)
@@ -114,6 +116,11 @@ struct Player {
 ```
 
 Background loop (40ms) in `main.rs` emits `player-state` event.
+
+Volume persistence:
+- Player initializes with volume from `config_data` on startup
+- `set_volume()` command updates both the player and persists to config
+- Frontend receives volume updates via `player-state` events
 
 ### Export Module (`export.rs`)
 
@@ -158,7 +165,7 @@ pub struct ExportResult {
 
 **PersistentArtist:** id, name, tracks_count
 
-**PersistentConfig:** skip_synced, skip_plain, show_line_count, try_embed, theme_mode, lrclib_instance
+**PersistentConfig:** skip_synced, skip_plain, show_line_count, try_embed, theme_mode, lrclib_instance, volume
 
 ## Commands
 
@@ -192,8 +199,9 @@ pub struct ExportResult {
 | `flag_lyrics()` | Report to LRCLIB (with PoW) |
 
 ### Playback & Config
-- `play_track()`, `pause/resume_track()`, `seek_track()`, `stop_track()`, `set_volume()`
+- `play_track()`, `pause/resume_track()`, `seek_track()`, `stop_track()`, `set_volume()` (persists volume to config)
 - `get/set_directories()`, `get/set_config()`, `get_init()`
+- Volume is loaded from config on startup and auto-saved when changed via `set_volume()`
 - `open_devtools()`, `drain_notifications()`
 
 ## Events (Backend → Frontend)

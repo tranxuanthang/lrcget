@@ -1,0 +1,1 @@
+ALTER TABLE config_data ADD volume REAL DEFAULT 1.0;

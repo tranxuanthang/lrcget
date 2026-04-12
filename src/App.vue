@@ -40,12 +40,14 @@ import { invoke } from '@tauri-apps/api/core'
 import { ModalsContainer } from 'vue-final-modal'
 import { useGlobalState } from './composables/global-state'
 import { useDownloader } from '@/composables/downloader.js'
+import { usePlayer } from '@/composables/player.js'
 import { useToast } from 'vue-toastification'
 
 const appWindow = getCurrentWebviewWindow()
 const toast = useToast()
 const { themeMode, setThemeMode, setLrclibInstance } = useGlobalState()
 const { downloadNext } = useDownloader()
+const { setVolume } = usePlayer()
 
 const loading = ref(true)
 const init = ref(false)
@@ -92,6 +94,9 @@ const loadGlobalState = async () => {
   const config = await invoke('get_config')
   setThemeMode(config.theme_mode)
   setLrclibInstance(config.lrclib_instance)
+  // Set initial volume from config (default to 1.0 if not set)
+  const volume = config.volume !== undefined ? config.volume : 1.0
+  setVolume(volume)
 }
 
 const drainNotifications = async () => {

@@ -197,6 +197,7 @@ async fn set_config(
     try_embed_lyrics: bool,
     theme_mode: &str,
     lrclib_instance: &str,
+    volume: f64,
     app_state: State<'_, AppState>,
 ) -> Result<(), String> {
     let conn_guard = app_state.db.lock().unwrap();
@@ -208,6 +209,7 @@ async fn set_config(
         try_embed_lyrics,
         theme_mode,
         lrclib_instance,
+        volume,
         conn,
     )
     .map_err(|err| err.to_string())?;
@@ -1102,12 +1104,18 @@ fn stop_track(app_state: tauri::State<AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn set_volume(volume: f64, app_state: tauri::State<AppState>) -> Result<(), String> {
+fn set_volume(volume: f64, app_state: tauri::State<AppState>, app_handle: AppHandle) -> Result<(), String> {
     let mut player_guard = app_state.player.lock().map_err(|e| e.to_string())?;
 
     if let Some(ref mut player) = *player_guard {
         player.set_volume(volume);
     }
+    drop(player_guard);
+
+    // Persist volume to config
+    app_handle
+        .db(|db| db::set_volume_config(volume, db))
+        .map_err(|err| err.to_string())?;
 
     Ok(())
 }
@@ -1143,7 +1151,13 @@ async fn main() {
             let db = db::initialize_database(&handle).expect("Database initialize should succeed");
             *app_state.db.lock().unwrap() = Some(db);
 
-            let maybe_player = Player::new();
+            // Load config to get initial volume
+            let initial_volume = handle
+                .db(|db| db::get_config(db))
+                .map(|config| config.volume)
+                .unwrap_or(1.0);
+
+            let maybe_player = Player::new(initial_volume);
             match maybe_player {
                 Ok(player) => {
                     *app_state.player.lock().unwrap() = Some(player);

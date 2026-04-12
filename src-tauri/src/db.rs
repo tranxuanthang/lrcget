@@ -200,7 +200,8 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
         show_line_count,
         try_embed_lyrics,
         theme_mode,
-        lrclib_instance
+        lrclib_instance,
+        volume
       FROM config_data
       LIMIT 1
     "})?;
@@ -212,6 +213,7 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
             try_embed_lyrics: r.get("try_embed_lyrics")?,
             theme_mode: r.get("theme_mode")?,
             lrclib_instance: r.get("lrclib_instance")?,
+            volume: r.get("volume")?,
         })
     })?;
     Ok(row)
@@ -224,6 +226,7 @@ pub fn set_config(
     try_embed_lyrics: bool,
     theme_mode: &str,
     lrclib_instance: &str,
+    volume: f64,
     db: &Connection,
 ) -> Result<()> {
     let mut statement = db.prepare(indoc! {"
@@ -234,7 +237,8 @@ pub fn set_config(
         show_line_count = ?,
         try_embed_lyrics = ?,
         theme_mode = ?,
-        lrclib_instance = ?
+        lrclib_instance = ?,
+        volume = ?
       WHERE 1
     "})?;
     statement.execute((
@@ -244,7 +248,14 @@ pub fn set_config(
         try_embed_lyrics,
         theme_mode,
         lrclib_instance,
+        volume,
     ))?;
+    Ok(())
+}
+
+pub fn set_volume_config(volume: f64, db: &Connection) -> Result<()> {
+    let mut statement = db.prepare("UPDATE config_data SET volume = ? WHERE 1")?;
+    statement.execute([volume])?;
     Ok(())
 }
 
