@@ -38,15 +38,15 @@ src/
 
 Module-level ref composables (singletons by design):
 
-| Composable                              | Purpose                                                                                      |
-| --------------------------------------- | -------------------------------------------------------------------------------------------- |
-| `useGlobalState()`                      | `isHotkey`, `themeMode`, `lrclibInstance`                                                    |
-| `usePlayer()`                           | `playingTrack`, `status`, `duration`, `progress`, `volume`. Listens to `player-state` events |
-| `useDownloader()`                       | Download queue, progress. Loop started by App.vue at boot                                    |
-| `useExporter()`                         | Mass export queue, progress. Used by ExportViewer modal                                      |
-| `useSearchLibrary()`                    | Search text, filters                                                                         |
-| `useSearchLyrics()`                     | Search modal state                                                                           |
-| `useEditLyrics()` / `useEditLyricsV2()` | Edit modal state                                                                             |
+| Composable                              | Purpose                                                                                                                                                                         |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `useGlobalState()`                      | `isHotkey`, `themeMode`, `lrclibInstance`                                                                                                                                       |
+| `usePlayer()`                           | `playingTrack`, `status`, `duration`, `progress`, `volume`. Supports both library tracks (with `id`) and file-based tracks (with `file_path`). Listens to `player-state` events |
+| `useDownloader()`                       | Download queue, progress. Loop started by App.vue at boot                                                                                                                       |
+| `useExporter()`                         | Mass export queue, progress. Used by ExportViewer modal                                                                                                                         |
+| `useSearchLibrary()`                    | Search text, filters                                                                                                                                                            |
+| `useSearchLyrics()`                     | Search modal state                                                                                                                                                              |
+| `useEditLyrics()` / `useEditLyricsV2()` | Edit modal state                                                                                                                                                                |
 
 **Boot Flow**: `main.js` → Vue app init → `App.vue` checks `get_init()` → shows `ChooseDirectory.vue` (setup) or `Library.vue` (main). Loads config, applies theme, starts downloader loop.
 
@@ -90,6 +90,26 @@ Utils: `src/utils/` (parsing, linting), Composables: `composables/edit-lyrics/`,
 **Icons**: Icons are imported directly per-file from `~icons/mdi/*` (powered by `unplugin-icons` in `vite.config.js`). Avoid adding `mdue`; use MDI icon imports instead.
 
 **Utilities**: `src/utils/` — duration formatting, line counts, lyric parsing/linting, Lyricsfile YAML helpers (including LRCLIB payload normalization for lyricsfile-first responses).
+
+### Playback System
+
+The player supports two types of tracks via a unified `PlayableTrack` type:
+
+| Track Source       | Required Fields | Backend Command                               |
+| ------------------ | --------------- | --------------------------------------------- |
+| Library (Database) | `id`            | `play_track({ trackId: id, ...metadata })`    |
+| File Picker        | `file_path`     | `play_track({ filePath: path, ...metadata })` |
+
+**`usePlayer().playTrack(track)`** automatically detects the track source:
+
+- If `track.id` is present → Database track, fetches full data from SQLite
+- If only `track.file_path` is present → File-based track, metadata extracted from file or provided directly
+
+This enables the V2 lyrics editor to support playback for:
+
+- Scanned library tracks (full features)
+- Arbitrary files from file picker (full features)
+- Tracks without audio (disabled playback, manual timestamp editing only)
 
 ## Constraints
 

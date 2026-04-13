@@ -7,7 +7,7 @@ use kira::{
     AudioManager, AudioManagerSettings, Decibels, DefaultBackend, Tween,
 };
 
-use crate::persistent_entities::PersistentTrack;
+use crate::persistent_entities::PlayableTrack;
 use serde::Serialize;
 
 #[derive(Serialize)]
@@ -25,7 +25,7 @@ pub struct Player {
     #[serde(skip)]
     sound_handle: Option<StreamingSoundHandle<FromFileError>>,
     #[serde(skip)]
-    pub track: Option<PersistentTrack>,
+    pub track: Option<PlayableTrack>,
     pub status: PlayerStatus,
     pub progress: f64,
     pub duration: f64,
@@ -70,7 +70,7 @@ impl Player {
         }
     }
 
-    pub fn play(&mut self, track: PersistentTrack) -> Result<()> {
+    pub fn play(&mut self, track: PlayableTrack) -> Result<()> {
         let _ = self.stop();
         self.track = Some(track);
 

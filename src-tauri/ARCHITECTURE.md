@@ -109,11 +109,13 @@ trait ServiceAccess {
 struct Player {
     manager: AudioManager,              // Kira
     sound_handle: Option<StreamingSoundHandle>,
-    track: Option<PersistentTrack>,
+    track: Option<PlayableTrack>,      // Unified type for DB and file-based tracks
     status: PlayerStatus,               // Playing/Paused/Stopped
     progress: f64, duration: f64, volume: f64,
 }
 ```
+
+The player uses `PlayableTrack` to support both library tracks (from database) and arbitrary tracks (from file picker). This enables playback of tracks not present in the library database.
 
 Background loop (40ms) in `main.rs` emits `player-state` event.
 
@@ -161,6 +163,12 @@ pub struct ExportResult {
 
 **PersistentTrack:** id, file_path, file_name, title, album_name, artist_name, album_id, artist_id, image_path, track_number, txt_lyrics, lrc_lyrics, lyricsfile, duration, instrumental
 
+**PlayableTrack:** A unified type for playback that works with both database tracks and arbitrary file-based tracks. Used by the `Player` to support:
+- Library tracks (from database): `id` is `Some(track_id)`
+- File picker tracks: `id` is `None`, metadata provided directly
+
+Implements `From<PersistentTrack>` for seamless conversion from database entities.
+
 **PersistentAlbum:** id, name, artist_name, tracks_count
 
 **PersistentArtist:** id, name, tracks_count
@@ -202,7 +210,8 @@ pub struct ExportResult {
 | `prepare_search_query(title)` | Prepare search query by removing brackets and normalizing |
 
 ### Playback & Config
-- `play_track()`, `pause/resume_track()`, `seek_track()`, `stop_track()`, `set_volume()` (persists volume to config)
+- `play_track(track_id?, file_path?, title?, album_name?, artist_name?, album_artist_name?, duration?)` - Unified playback for both library tracks (via `track_id`) and file-based tracks (via `file_path` with metadata)
+- `pause/resume_track()`, `seek_track()`, `stop_track()`, `set_volume()` (persists volume to config)
 - `get/set_directories()`, `get/set_config()`, `get_init()`
 - Volume is loaded from config on startup and auto-saved when changed via `set_volume()`
 - `open_devtools()`, `drain_notifications()`

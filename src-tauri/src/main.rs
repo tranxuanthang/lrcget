@@ -14,7 +14,7 @@ pub mod scanner;
 pub mod state;
 pub mod utils;
 
-use persistent_entities::{PersistentAlbum, PersistentArtist, PersistentConfig, PersistentTrack};
+use persistent_entities::{PersistentAlbum, PersistentArtist, PersistentConfig, PersistentTrack, PlayableTrack};
 use player::Player;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
@@ -1007,19 +1007,69 @@ async fn flag_lyrics(
 }
 
 #[tauri::command]
-fn play_track(
-    track_id: i64,
-    app_state: tauri::State<AppState>,
+async fn play_track(
+    track_id: Option<i64>,
+    file_path: Option<String>,
+    title: Option<String>,
+    album_name: Option<String>,
+    artist_name: Option<String>,
+    album_artist_name: Option<String>,
+    duration: Option<f64>,
+    app_state: State<'_, AppState>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
-    let track = app_handle
-        .db(|db| db::get_track_by_id(track_id, db))
-        .map_err(|err| err.to_string())?;
+    let playable_track: PlayableTrack = if let Some(id) = track_id {
+        // Database track - fetch and convert
+        let db_track = app_handle
+            .db(|db| db::get_track_by_id(id, db))
+            .map_err(|err| err.to_string())?;
+        PlayableTrack::from(db_track)
+    } else if let Some(path) = file_path {
+        // File-based track - create from metadata
+        let path_obj = std::path::Path::new(&path);
+        let file_name = path_obj
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("Unknown")
+            .to_string();
+
+        // Extract metadata from file if not provided
+        let (resolved_title, resolved_duration) = if title.is_none() || duration.is_none() {
+            match scanner::metadata::TrackMetadata::from_path(path_obj) {
+                Ok(metadata) => (
+                    title.unwrap_or(metadata.title),
+                    duration.unwrap_or(metadata.duration),
+                ),
+                Err(_) => (
+                    title.unwrap_or_else(|| file_name.clone()),
+                    duration.unwrap_or(0.0),
+                ),
+            }
+        } else {
+            (title.unwrap(), duration.unwrap())
+        };
+
+        PlayableTrack {
+            id: None,
+            file_path: path,
+            file_name,
+            title: resolved_title,
+            album_name: album_name.unwrap_or_default(),
+            artist_name: artist_name.unwrap_or_default(),
+            album_artist_name,
+            image_path: None,
+            track_number: None,
+            duration: resolved_duration,
+            instrumental: false,
+            lyricsfile: None,
+        }
+    } else {
+        return Err("Either track_id or file_path must be provided".to_string());
+    };
 
     let mut player_guard = app_state.player.lock().unwrap();
-
     if let Some(ref mut player) = *player_guard {
-        player.play(track).map_err(|err| err.to_string())?;
+        player.play(playable_track).map_err(|err| err.to_string())?;
     }
 
     Ok(())

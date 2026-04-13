@@ -25,7 +25,31 @@ listen('reload-track-id', async event => {
 export function usePlayer() {
   const playTrack = track => {
     playingTrack.value = track
-    invoke('play_track', { trackId: track.id })
+
+    // Determine if this is a database track or a file-based track
+    if (track.id !== undefined && track.id !== null) {
+      // Database track - use track_id
+      invoke('play_track', {
+        trackId: track.id,
+        filePath: null,
+        title: track.title,
+        albumName: track.album_name,
+        artistName: track.artist_name,
+        albumArtistName: track.album_artist_name,
+        duration: track.duration,
+      })
+    } else if (track.file_path) {
+      // File-based track (from file picker) - use file_path with metadata
+      invoke('play_track', {
+        trackId: null,
+        filePath: track.file_path,
+        title: track.title,
+        albumName: track.album_name,
+        artistName: track.artist_name,
+        albumArtistName: track.album_artist_name,
+        duration: track.duration,
+      })
+    }
   }
 
   const pause = () => {
