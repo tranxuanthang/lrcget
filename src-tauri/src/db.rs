@@ -1294,3 +1294,102 @@ pub fn get_track_ids_with_lyrics(db: &Connection) -> Result<Vec<i64>> {
 
     Ok(track_ids)
 }
+
+/// Find tracks by metadata for matching against LRCLIB tracks
+pub fn find_tracks_by_metadata(
+    title: &str,
+    artist_name: Option<&str>,
+    album_name: Option<&str>,
+    duration: Option<f64>,
+    db: &Connection,
+) -> Result<Vec<PersistentTrack>> {
+    let normalized_title = prepare_input(title);
+    let normalized_artist = artist_name.map(prepare_input);
+    let normalized_album = album_name.map(prepare_input);
+
+    // Build the query based on available metadata
+    // We search using normalized (name_lower) fields for case-insensitive matching
+    let mut conditions = vec!["tracks.title_lower = ?"];
+    let mut params: Vec<Box<dyn rusqlite::ToSql>> = vec![Box::new(normalized_title.clone())];
+
+    if let Some(ref artist) = normalized_artist {
+        conditions.push("artists.name_lower = ?");
+        params.push(Box::new(artist.clone()));
+    }
+
+    if let Some(ref album) = normalized_album {
+        conditions.push("albums.name_lower = ?");
+        params.push(Box::new(album.clone()));
+    }
+
+    if let Some(dur) = duration {
+        conditions.push("ABS(tracks.duration - ?) <= 2.0");
+        params.push(Box::new(dur));
+    }
+
+    let where_clause = conditions.join(" AND ");
+
+    let query = format!(
+        indoc! {r#"
+        SELECT
+            tracks.id,
+            tracks.file_path,
+            tracks.file_name,
+            tracks.title,
+            artists.name AS artist_name,
+            tracks.artist_id,
+            albums.name AS album_name,
+            albums.album_artist_name,
+            tracks.album_id,
+            tracks.duration,
+            tracks.track_number,
+            albums.image_path,
+            tracks.txt_lyrics,
+            tracks.lrc_lyrics,
+            lyricsfiles.lyricsfile,
+            tracks.instrumental
+        FROM tracks
+        JOIN albums ON tracks.album_id = albums.id
+        JOIN artists ON tracks.artist_id = artists.id
+        LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
+        WHERE {}
+        ORDER BY tracks.title_lower ASC
+    "#},
+        where_clause
+    );
+
+    let mut statement = db.prepare(&query)?;
+
+    // Convert params to rusqlite params
+    let param_refs: Vec<&dyn rusqlite::ToSql> = params.iter().map(|p| p.as_ref()).collect();
+
+    let mut rows = statement.query(param_refs.as_slice())?;
+    let mut tracks: Vec<PersistentTrack> = Vec::new();
+
+    while let Some(row) = rows.next()? {
+        let is_instrumental: Option<bool> = row.get("instrumental")?;
+
+        let track = PersistentTrack {
+            id: row.get("id")?,
+            file_path: row.get("file_path")?,
+            file_name: row.get("file_name")?,
+            title: row.get("title")?,
+            artist_name: row.get("artist_name")?,
+            artist_id: row.get("artist_id")?,
+            album_name: row.get("album_name")?,
+            album_artist_name: row.get("album_artist_name")?,
+            album_id: row.get("album_id")?,
+            duration: row.get("duration")?,
+            track_number: row.get("track_number")?,
+            txt_lyrics: row.get("txt_lyrics")?,
+            lrc_lyrics: row.get("lrc_lyrics")?,
+            lyricsfile: row.get("lyricsfile")?,
+            image_path: row.get("image_path")?,
+            instrumental: is_instrumental.unwrap_or(false),
+        };
+
+        tracks.push(track);
+    }
+
+    Ok(tracks)
+}

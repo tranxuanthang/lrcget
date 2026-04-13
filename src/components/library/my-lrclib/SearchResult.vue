@@ -115,6 +115,7 @@ import { normalizeLrclibLyrics } from '@/utils/lyricsfile.js'
 import EditLyrics from './EditLyrics.vue'
 import PreviewLyrics from './PreviewLyrics.vue'
 import FlagLyrics from './FlagLyrics.vue'
+import AssociateTrackModal from './AssociateTrackModal.vue'
 import { useModal } from 'vue-final-modal'
 
 const toast = useToast()
@@ -177,6 +178,36 @@ const { open: openFlagLyricsModal, close: closeFlagLyricsModal } = useModal({
   },
 })
 
+const associateModalLrclibTrack = ref(null)
+const associateModalRefreshedTrack = ref(null)
+
+const { open: openAssociateTrackModal, close: closeAssociateTrackModal } = useModal({
+  component: AssociateTrackModal,
+  attrs: {
+    lrclibTrack: associateModalLrclibTrack,
+    onClose() {
+      closeAssociateTrackModal()
+    },
+    onClosed() {
+      associateModalLrclibTrack.value = null
+      associateModalRefreshedTrack.value = null
+    },
+    onSelectTrack(track) {
+      // User selected a library track - open V2 editor (placeholder)
+      openEditLyricsV2WithTrack(track, associateModalRefreshedTrack.value)
+    },
+    onSelectFile(fileMetadata) {
+      // User selected a file - open V2 editor (placeholder)
+      openEditLyricsV2WithFile(fileMetadata, associateModalRefreshedTrack.value)
+    },
+    onEditLite() {
+      // Open legacy editor without audio
+      editingTrack.value = associateModalRefreshedTrack.value
+      openEditLyricsModal()
+    },
+  },
+})
+
 onMounted(async () => {
   const config = await invoke('get_config')
   showLineCount.value = config.show_line_count
@@ -215,15 +246,31 @@ const setEditingTrack = async track => {
   isOpeningTrack.value = true
   try {
     const refreshedTrack = await invoke('retrieve_lyrics_by_id', { id: track.id })
-    editingTrack.value = refreshedTrack
-    openEditLyricsModal()
-    isOpeningTrack.value = false
+
+    // Show association modal
+    associateModalLrclibTrack.value = track
+    associateModalRefreshedTrack.value = refreshedTrack
+    openAssociateTrackModal()
   } catch (error) {
     toast.error('An error occurred while opening the lyrics. Please try again.')
     console.error(error)
   } finally {
     isOpeningTrack.value = false
   }
+}
+
+const openEditLyricsV2WithTrack = (localTrack, lrclibTrack) => {
+  // TODO: Phase 4 - Open EditLyricsV2 with local track and LRCLIB lyrics
+  // For now, fall back to legacy editor
+  editingTrack.value = lrclibTrack
+  openEditLyricsModal()
+}
+
+const openEditLyricsV2WithFile = (fileMetadata, lrclibTrack) => {
+  // TODO: Phase 4 - Open EditLyricsV2 with file and LRCLIB lyrics
+  // For now, fall back to legacy editor
+  editingTrack.value = lrclibTrack
+  openEditLyricsModal()
 }
 
 const flagLyrics = async track => {

@@ -197,6 +197,9 @@ pub struct ExportResult {
 | `export_track_lyrics(track_id, formats)` | Export single track, returns summary for mass export |
 | `get_track_ids_with_lyrics()` | Get all track IDs that have lyrics for mass export |
 | `flag_lyrics()` | Report to LRCLIB (with PoW) |
+| `find_matching_tracks(title, album, artist, duration?)` | Find local tracks matching LRCLIB metadata (for My LRCLIB edit flow) |
+| `get_audio_metadata(filePath)` | Extract metadata from audio file (for file picker) |
+| `prepare_search_query(title)` | Prepare search query by removing brackets and normalizing |
 
 ### Playback & Config
 - `play_track()`, `pause/resume_track()`, `seek_track()`, `stop_track()`, `set_volume()` (persists volume to config)
@@ -222,6 +225,60 @@ pub struct ExportResult {
 **tauri.conf.json:** Window 1024x768 min, CSP for asset protocol + media
 
 **Cargo.toml:** Rust 2021, Tauri v2 (dialog, shell, global-shortcut, os plugins)
+
+## Track Matching (`find_matching_tracks`)
+
+Backend command for finding local tracks that match LRCLIB metadata. Uses `prepare_input()` normalization for case-insensitive matching.
+
+**Algorithm:**
+1. **Strong Match**: Title + Artist + Album match (via `prepare_input()` normalization) AND duration within ±2 seconds (if provided)
+2. **Partial Match**: Title matches, returned if no strong matches found
+
+**Types:**
+```rust
+enum MatchQuality { Strong, Partial }
+struct MatchingTrack {
+    #[serde(flatten)]
+    track: PersistentTrack,
+    match_quality: MatchQuality,
+}
+```
+
+**DB Function:** `db::find_tracks_by_metadata()` searches using normalized `*_lower` columns for case-insensitive matching.
+
+**Note:** The frontend currently uses a simpler approach with `get_tracks` + client-side filtering in `AssociateTrackModal.vue`.
+
+## Audio Metadata Extraction (`get_audio_metadata`)
+
+Extracts metadata from an audio file path using the existing scanner logic. Used by the file picker in the track association flow.
+
+**Returns:**
+```rust
+struct AudioMetadataResponse {
+    file_path: String,
+    file_name: String,
+    title: String,
+    album: String,
+    artist: String,
+    album_artist: String,
+    duration: f64,
+    track_number: Option<u32>,
+}
+```
+
+**Implementation:** Reuses `scanner::metadata::TrackMetadata::from_path()` from the scanning module.
+
+## Search Query Preparation (`prepare_search_query`)
+
+Prepares a search query from track title by:
+1. Removing content inside `()` and `[]` brackets (including the brackets)
+2. Applying `prepare_input()` normalization (lowercase, secular normalization, special char removal, whitespace collapsing)
+
+**Example:**
+- Input: `title="Love The Way You Lie (Remix) [Explicit]"`
+- Output: `"love the way you lie"`
+
+Used by `AssociateTrackModal.vue` to prefill the search input when associating LRCLIB tracks with local tracks.
 
 ## Notes
 

@@ -22,3 +22,14 @@ pub fn strip_timestamp(synced_lyrics: &str) -> String {
     let plain_lyrics = re.replace_all(synced_lyrics, "");
     plain_lyrics.to_string()
 }
+
+/// Prepare search input by removing bracketed content and normalizing
+/// Removes content inside () and [] brackets, then applies prepare_input
+pub fn prepare_search_input(title: &str) -> String {
+    // Remove content inside () and [] brackets (including the brackets)
+    let re = Regex::new(r"[\(\[][^\)\]]*[\]\)]").unwrap();
+    let cleaned = re.replace_all(title, "");
+
+    // Apply standard prepare_input normalization
+    prepare_input(&cleaned)
+}

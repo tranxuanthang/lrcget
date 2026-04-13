@@ -79,6 +79,7 @@ Module-level ref composables (singletons by design):
   - _V2 Instrumental Support_: Tracks can be marked as instrumental via `PlainLyricsEmptyState.vue` or `SyncedLyricsEmptyState.vue`. When marked, the plain/synced tab switcher is disabled and a centered popup appears with an "Unmark as instrumental" button. The instrumental state is stored in the `lyricsfile` metadata and managed by `useEditLyricsV2Document.js`.
 - **Export (Mass)**: `LibraryHeader.vue` has an export button (with dropdown) that emits `exportAllLyrics` → `Library.vue` opens `ExportViewer.vue` modal → `useExporter()` composable manages queue → invokes `export_track_lyrics` command per track. Exports to `.txt`, `.lrc`, and/or embedded metadata.
 - **My LRCLIB**: User workflows (preview, edit, publish, flag) in `my-lrclib/`
+- **Track Association (My LRCLIB Edit Flow)**: When editing lyrics from My LRCLIB search results, `AssociateTrackModal.vue` presents a simple search interface for finding local tracks: (1) search and select from library tracks, (2) pick an audio file from the computer, or (3) edit without audio (limited features, opens legacy editor). The `get_audio_metadata` backend command extracts metadata from selected files using the existing scanner logic.
 
 Utils: `src/utils/` (parsing, linting), Composables: `composables/edit-lyrics/`, `composables/edit-lyrics-v2/`, `composables/export.js`
 

@@ -36,11 +36,18 @@ async fn find_matching_tracks(
 ) -> Result<Vec<PersistentTrack>, String>
 ```
 
-**Matching Strategy** (in order of reliability):
+**Matching Strategy:**
 
-1. **Exact match** (title_lower + artist_lower + album_lower)
-2. **Duration-based fuzzy match** (if duration provided, match within ±5s + similar title)
-3. **Title-only match** (if no exact match found)
+**Strong/Exact Match Criteria:**
+
+- Title + Artist + Album all normalized through `prepare_input()` (from `src-tauri/src/utils.rs`)
+- AND duration is within ±2 seconds (if duration is provided)
+
+**Match Results Priority:**
+
+1. **Strong matches** - Pass all criteria above
+2. **Partial matches** - Title matches but artist/album differ
+3. **All results returned** - Frontend decides how to present them
 
 **New DB Functions** (`src-tauri/src/db.rs`):
 
@@ -106,13 +113,26 @@ async fn select_audio_file(app_handle: AppHandle) -> Result<Option<String>, Stri
 }
 ```
 
+**New Command: `get_audio_metadata`**
+
+```rust
+#[tauri::command]
+async fn get_audio_metadata(file_path: String) -> Result<TrackMetadata, String> {
+    // Reuse existing scanner/metadata.rs logic
+    // Extract full metadata: title, artist, album, duration, etc.
+}
+```
+
 **File Picker Flow:**
 
 1. User clicks "Choose audio file..."
 2. Open Tauri dialog with audio file filters (`.mp3`, `.flac`, `.ogg`, `.m4a`, etc.)
-3. On selection, extract metadata via `scanner/metadata.rs`
+3. On selection, extract **full metadata** via `get_audio_metadata` (reusing scanner logic)
 4. Show preview: "Selected: filename (Duration: X:XX)"
-5. User confirms → Create temporary track object for editing
+5. **Metadata Mismatch Warning:** If extracted metadata doesn't match the LRCLIB track:
+   - Show warning dialog: "The selected file's metadata doesn't match the lyrics. Continue anyway?"
+   - Options: "Continue" / "Pick Different File" / "Cancel"
+6. User confirms → Create temporary track object for editing
 
 ---
 
@@ -229,6 +249,19 @@ const setEditingTrack = async lrclibTrack => {
 
 ---
 
+### Phase 7: Lyrics Saving (No Track Association)
+
+**Lyricsfiles Table:**
+
+The `lyricsfiles` table is designed to not require a track association. When editing in "lrclib-lite" mode (no audio file):
+
+- **Save to `lyricsfiles` table:** YES - fully supported
+- **Save to sidecar file:** NO - no associated track file
+- **Save to embedded metadata:** NO - no audio file to embed into
+- **Publish to LRCLIB:** YES - primary use case for lite mode
+
+---
+
 ## File Structure Changes
 
 ```
@@ -238,7 +271,7 @@ src/
 │       ├── my-lrclib/
 │       │   ├── SearchResult.vue          # Modified
 │       │   ├── AssociateTrackModal.vue   # NEW
-│       │   └── EditLyrics.vue            # Keep for fallback/legacy
+│       │   └── EditLyrics.vue            # REMOVE (migrate to V2)
 │       └── EditLyricsV2.vue              # Modified for mode support
 ├── composables/
 │   └── edit-lyrics-v2/
@@ -247,6 +280,8 @@ src/
 src-tauri/
 └── src/
     ├── db.rs                             # Add find_tracks_by_metadata
+    ├── scanner/
+    │   └── metadata.rs                   # Reuse for get_audio_metadata
     └── main.rs                           # Add new commands
 ```
 
@@ -258,75 +293,71 @@ src-tauri/
 2. **High:** Association modal UI
 3. **Medium:** V2 editor mode adaptations
 4. **Medium:** File picker integration
-5. **Low:** Polish (auto-association logic, UI refinements)
+5. **Low:** Metadata mismatch warning dialog
+6. **Low:** Remove legacy `EditLyrics.vue`
 
 ---
 
-## Open Questions
+## Design Decisions
 
 ### 1. Matching Confidence Threshold
 
-What constitutes a "strong match"?
+**Strong Match Definition:**
 
-- Same title + artist?
-- Duration within ±5 seconds?
-- All three: title + artist + duration?
+- Title + Artist + Album all normalized through `prepare_input()` (case-insensitive, special chars removed)
+- AND duration is within ±2 seconds
+- Uses exact matching on normalized strings
 
 ### 2. File Picker Scope
 
-Should users be able to pick:
+Users can pick:
 
-- Any audio file on their computer?
-- Only within already-scanned directories?
-- Either, with preference for scanned directories?
+- Any audio file on their computer (via file picker)
+- OR choose from already-scanned library tracks
+- Both options presented in the association modal
 
 ### 3. Metadata Extraction for New Files
 
-When user picks a new file, should we:
+**Full metadata extraction** using existing scanner logic:
 
-- Just read duration (quick)?
-- Full metadata extraction (slower, more accurate matching)?
-- Show loading state during extraction?
+- Title, artist, album, duration, track number, etc.
+- If metadata doesn't match LRCLIB track → show warning dialog
+- User can choose to continue anyway or pick a different file
 
 ### 4. "Edit Without Audio" Features
 
-Which features to keep in lite mode?
-
-| Feature                  | Keep? | Notes                        |
-| ------------------------ | ----- | ---------------------------- |
-| Timestamp manual editing | Yes   | User can type timestamps     |
-| Word timing editing      | Yes   | But no playback verification |
-| Publish to LRCLIB        | Yes   | Primary use case             |
-| Save to local library    | No    | No associated track          |
-| Plain/synced tabs        | Yes   | Full editing capability      |
-| Import from plain        | Yes   | Useful for creating synced   |
+| Feature                  | Keep? | Notes                         |
+| ------------------------ | ----- | ----------------------------- |
+| Timestamp manual editing | Yes   | User can type timestamps      |
+| Word timing editing      | Yes   | But no playback verification  |
+| Publish to LRCLIB        | Yes   | Primary use case              |
+| Save to `lyricsfiles`    | Yes   | Table supports no track assoc |
+| Save to sidecar file     | No    | No associated track file      |
+| Plain/synced tabs        | Yes   | Full editing capability       |
+| Import from plain        | Yes   | Useful for creating synced    |
 
 ### 5. Backward Compatibility
 
-Should we keep the legacy `EditLyrics.vue` for My LRCLIB as a:
+**Legacy `EditLyrics.vue`:**
 
-- Fallback if V2 fails?
-- User preference toggle?
-- Remove entirely (migrate to V2)?
+- Remove entirely after V2 migration is complete
+- No fallback needed - V2 with lite mode covers all use cases
 
 ### 6. Multiple Matches UI
 
-If 5+ tracks match, should we:
+**Edge case handling:**
 
-- Show a searchable dropdown instead of radio buttons?
-- Limit to top 5 matches + "show more"?
-- Show album art thumbnails for easier identification?
+- Multiple strong matches should be rare
+- For simplicity: choose the first result
+- Can be improved later if needed
 
 ### 7. Audio File Metadata Command
 
-Do we need a new command to extract metadata from an arbitrary file path?
+**Reuse existing scanner logic:**
 
-```rust
-#[tauri::command]
-async fn get_audio_metadata(file_path: String) -> Result<TrackMetadata, String>
-```
-
-Or should we reuse existing scanner logic?
+- `scanner/metadata.rs` already handles metadata extraction
+- Create `get_audio_metadata` command that calls existing logic
+- No new metadata parsing code needed
 
 ---
 
@@ -337,8 +368,54 @@ Or should we reuse existing scanner logic?
 - File picker reference implementation in `src/components/ChooseDirectory.vue`
 - LRCLIB track metadata structure: `name`, `artistName`, `albumName`, `duration`
 - Local track metadata structure: `title`, `artist_name`, `album_name`, `duration`, `file_path`
+- The `prepare_input()` function in `utils.rs` handles: lowercase, secular normalization, special char removal, whitespace collapsing
+
+---
+
+## TODO
+
+- [x] Add TODO and history sections to plan
+- [x] Phase 1: Create track matching backend (`find_matching_tracks` command)
+  - [x] Add `find_tracks_by_metadata` function in `src-tauri/src/db.rs`
+  - [x] Add `find_matching_tracks` command in `src-tauri/src/main.rs`
+  - [x] Run `cargo check` to verify compilation
+- [x] Phase 2: Create "Associate Track" modal (Vue)
+  - [x] Create simplified `AssociateTrackModal.vue` component
+    - Search input with client-side filtering
+    - Results list (max 10)
+    - Footer with "Choose file...", "Edit without audio", "Edit with audio" buttons
+  - [x] Add `get_audio_metadata` backend command for file picker
+  - [x] Update `SearchResult.vue` to show modal on edit click
+  - [x] Add `prepare_search_query` backend command
+  - [x] Prefill search with normalized title (brackets removed)
+- [ ] Phase 3: File picker integration
+- [ ] Phase 4: V2 Editor adaptations
+- [ ] Phase 5: Unified editor entry point
+- [ ] Phase 6: Update My LRCLIB flow
+- [ ] Phase 7: Lyrics saving without track association
+- [ ] Remove legacy `EditLyrics.vue`
+
+## History
+
+**2026-04-13:** Plan created, Phase 1 implementation completed
+
+- Added `find_tracks_by_metadata()` DB function for metadata-based track search
+- Added `find_matching_tracks` Tauri command with strong/partial match quality
+- Added `MatchingTrack` and `MatchQuality` types for structured results
+- Added `Clone` derive to `PersistentTrack` for frontend use
+- All code compiles successfully with `cargo check`
+
+**2026-04-13:** Phase 2 implementation completed
+
+- Created `AssociateTrackModal.vue` with track matching UI
+- Added `get_audio_metadata` backend command for file metadata extraction
+- Updated `SearchResult.vue` with new editing flow:
+  - Auto-opens V2 editor on single strong match (placeholder for Phase 4)
+  - Shows association modal for multiple matches or no matches
+  - Supports "Edit Without Audio" fallback to legacy editor
+- Added `AudioMetadataResponse` struct for file picker integration
 
 ---
 
 _Created: April 2026_
-_Status: Planning Phase_
+_Status: In Progress - Phase 3 Ready (File Picker & V2 Integration)_

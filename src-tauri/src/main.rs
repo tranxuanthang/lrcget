@@ -54,6 +54,37 @@ enum ExportLyricsFormat {
     Embedded,
 }
 
+/// Match quality for track matching results
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+enum MatchQuality {
+    Strong,
+    Partial,
+}
+
+/// Track matching result with quality information
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MatchingTrack {
+    #[serde(flatten)]
+    track: PersistentTrack,
+    match_quality: MatchQuality,
+}
+
+/// Audio metadata extracted from a file (for file picker)
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AudioMetadataResponse {
+    pub file_path: String,
+    pub file_name: String,
+    pub title: String,
+    pub album: String,
+    pub artist: String,
+    pub album_artist: String,
+    pub duration: f64,
+    pub track_number: Option<u32>,
+}
+
 impl From<ExportLyricsFormat> for export::ExportFormat {
     fn from(value: ExportLyricsFormat) -> Self {
         match value {
@@ -320,6 +351,92 @@ async fn get_track(
     let track = library::get_track(track_id, conn).map_err(|err| err.to_string())?;
 
     Ok(track)
+}
+
+#[tauri::command]
+async fn find_matching_tracks(
+    title: String,
+    album_name: String,
+    artist_name: String,
+    duration: Option<f64>,
+    app_state: State<'_, AppState>,
+) -> Result<Vec<MatchingTrack>, String> {
+    let conn_guard = app_state.db.lock().unwrap();
+    let conn = conn_guard.as_ref().unwrap();
+
+    // First, try to find tracks with all criteria (strong match)
+    let strong_matches = db::find_tracks_by_metadata(
+        &title,
+        Some(&artist_name),
+        Some(&album_name),
+        duration,
+        conn,
+    )
+    .map_err(|err| err.to_string())?;
+
+    // If we have strong matches, return them
+    if !strong_matches.is_empty() {
+        return Ok(strong_matches
+            .into_iter()
+            .map(|track| MatchingTrack {
+                track,
+                match_quality: MatchQuality::Strong,
+            })
+            .collect());
+    }
+
+    // Otherwise, search for partial matches (title only match with duration if provided)
+    let partial_matches =
+        db::find_tracks_by_metadata(&title, None, None, duration, conn).map_err(|err| err.to_string())?;
+
+    // Filter out tracks where artist or album don't match at all (still partial but relevant)
+    let normalized_artist = utils::prepare_input(&artist_name);
+    let normalized_album = utils::prepare_input(&album_name);
+
+    let partial_results: Vec<MatchingTrack> = partial_matches
+        .into_iter()
+        .map(|track| {
+            let track_artist_normalized = utils::prepare_input(&track.artist_name);
+            let track_album_normalized = utils::prepare_input(&track.album_name);
+
+            // Check if artist or album matches (case-insensitive via normalization)
+            let _artist_matches = track_artist_normalized == normalized_artist;
+            let _album_matches = track_album_normalized == normalized_album;
+
+            // It's a partial match if title matches and at least one of artist/album matches
+            // or if we have no duration filter and just title matches
+            MatchingTrack {
+                track,
+                match_quality: MatchQuality::Partial,
+            }
+        })
+        .collect();
+
+    Ok(partial_results)
+}
+
+#[tauri::command]
+async fn get_audio_metadata(file_path: String) -> Result<AudioMetadataResponse, String> {
+    let path = std::path::Path::new(&file_path);
+
+    let metadata = scanner::metadata::TrackMetadata::from_path(path)
+        .map_err(|err| err.to_string())?;
+
+    Ok(AudioMetadataResponse {
+        file_path: metadata.file_path,
+        file_name: metadata.file_name,
+        title: metadata.title,
+        album: metadata.album,
+        artist: metadata.artist,
+        album_artist: metadata.album_artist,
+        duration: metadata.duration,
+        track_number: metadata.track_number,
+    })
+}
+
+#[tauri::command]
+async fn prepare_search_query(title: String) -> Result<String, String> {
+    Ok(utils::prepare_search_input(&title))
 }
 
 #[tauri::command]
@@ -1269,6 +1386,9 @@ async fn main() {
             set_volume,
             open_devtools,
             drain_notifications,
+            find_matching_tracks,
+            get_audio_metadata,
+            prepare_search_query,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

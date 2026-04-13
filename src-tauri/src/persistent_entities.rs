@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-#[derive(Serialize)]
+#[derive(Clone, Serialize)]
 pub struct PersistentTrack {
     pub id: i64,
     pub file_path: String,
