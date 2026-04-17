@@ -796,6 +796,7 @@ struct PrepareLyricsfileResult {
     pub plain_lyrics: String,
     pub synced_lyrics: String,
     pub is_instrumental: bool,
+    pub exists_in_db: bool,
 }
 
 #[tauri::command]
@@ -826,6 +827,7 @@ async fn prepare_lrclib_lyricsfile(
             plain_lyrics: parsed.plain_lyrics.unwrap_or_default(),
             synced_lyrics: parsed.synced_lyrics.unwrap_or_default(),
             is_instrumental: parsed.is_instrumental,
+            exists_in_db: true,
         });
     }
 
@@ -881,6 +883,75 @@ async fn prepare_lrclib_lyricsfile(
         plain_lyrics: parsed.plain_lyrics.unwrap_or_default(),
         synced_lyrics: parsed.synced_lyrics.unwrap_or_default(),
         is_instrumental: parsed.is_instrumental,
+        exists_in_db: false,
+    })
+}
+
+#[tauri::command]
+async fn refresh_lrclib_lyricsfile(
+    lrclib_id: i64,
+    app_handle: AppHandle,
+) -> Result<PrepareLyricsfileResult, String> {
+    // Get config for LRCLIB instance URL
+    let config = app_handle
+        .db(|db: &Connection| db::get_config(db))
+        .map_err(|err| err.to_string())?;
+
+    let lrclib_instance = config.lrclib_instance;
+
+    // Fetch fresh data from LRCLIB API (always re-download)
+    let lrclib_response = lrclib::get_by_id::request_raw(lrclib_id, &lrclib_instance)
+        .await
+        .map_err(|err| err.to_string())?;
+
+    // Extract metadata from LRCLIB response
+    let title = lrclib_response.name.unwrap_or_default();
+    let album_name = lrclib_response.album_name.unwrap_or_default();
+    let artist_name = lrclib_response.artist_name.unwrap_or_default();
+    let duration = lrclib_response.duration.unwrap_or(0.0);
+
+    // Build or use existing lyricsfile content
+    let lyricsfile_content = if let Some(lyricsfile) = lrclib_response.lyricsfile {
+        // LRCLIB provided a lyricsfile, use it directly
+        lyricsfile
+    } else {
+        // Need to build lyricsfile from plain/synced lyrics
+        let metadata =
+            lyricsfile::LyricsfileTrackMetadata::new(&title, &album_name, &artist_name, duration);
+
+        let plain = lrclib_response.plain_lyrics.as_deref();
+        let synced = lrclib_response.synced_lyrics.as_deref();
+
+        lyricsfile::build_lyricsfile(&metadata, plain, synced)
+            .ok_or("Failed to build lyricsfile from LRCLIB response")?
+    };
+
+    // Parse for return values
+    let parsed = lyricsfile::parse_lyricsfile(&lyricsfile_content).map_err(|e| e.to_string())?;
+
+    // Save to database (will update existing if lrclib_instance + lrclib_id match)
+    let lyricsfile_id = app_handle
+        .db(|db: &Connection| {
+            db::upsert_lyricsfile_for_lrclib(
+                &lrclib_instance,
+                lrclib_id,
+                &title,
+                &album_name,
+                &artist_name,
+                duration,
+                &lyricsfile_content,
+                db,
+            )
+        })
+        .map_err(|err| err.to_string())?;
+
+    Ok(PrepareLyricsfileResult {
+        lyricsfile_id,
+        lyricsfile: lyricsfile_content,
+        plain_lyrics: parsed.plain_lyrics.unwrap_or_default(),
+        synced_lyrics: parsed.synced_lyrics.unwrap_or_default(),
+        is_instrumental: parsed.is_instrumental,
+        exists_in_db: true, // After refresh, it definitely exists
     })
 }
 
@@ -1552,6 +1623,7 @@ async fn main() {
             get_audio_metadata,
             prepare_search_query,
             prepare_lrclib_lyricsfile,
+            refresh_lrclib_lyricsfile,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -396,9 +396,11 @@ Users can pick:
 - [x] Phase 4: LRCLIB lyricsfile integration
   - [x] Migration 12: Add `lrclib_instance` and `lrclib_id` columns to `lyricsfiles` table
   - [x] Add `prepare_lrclib_lyricsfile` command to fetch/create standalone lyricsfiles
+  - [x] Add `refresh_lrclib_lyricsfile` command to force re-download from LRCLIB
   - [x] Update `save_lyrics` command to support standalone lyricsfiles
   - [x] Update `AssociateTrackModal.vue` - remove "Edit without audio" option
   - [x] Update `SearchResult.vue` - use `prepare_lrclib_lyricsfile` command
+  - [x] Create `LyricsfileConflictModal.vue` - ask user to redownload or continue when lyrics already exist
   - [x] Update `EditLyricsV2.vue` - accept `lyricsfileId` and `initialLyricsfile` props
   - [x] Update `useEditLyricsV2Document.js` - support initialization from external lyricsfile
 - [ ] Phase 5: Remove legacy `EditLyrics.vue` (after testing)

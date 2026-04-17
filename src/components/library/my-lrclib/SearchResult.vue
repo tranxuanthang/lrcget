@@ -116,6 +116,7 @@ import EditLyrics from './EditLyrics.vue'
 import PreviewLyrics from './PreviewLyrics.vue'
 import FlagLyrics from './FlagLyrics.vue'
 import AssociateTrackModal from './AssociateTrackModal.vue'
+import LyricsfileConflictModal from './LyricsfileConflictModal.vue'
 import EditLyricsV2 from '../EditLyricsV2.vue'
 import { useModal } from 'vue-final-modal'
 
@@ -225,6 +226,36 @@ const { open: openAssociateTrackModal, close: closeAssociateTrackModal } = useMo
   },
 })
 
+// Conflict modal state
+const conflictModalLrclibId = ref(null)
+const conflictModalExistingResult = ref(null)
+
+const { open: openConflictModal, close: closeConflictModal } = useModal({
+  component: LyricsfileConflictModal,
+  attrs: {
+    lrclibId: conflictModalLrclibId,
+    existingResult: conflictModalExistingResult,
+    onClose() {
+      closeConflictModal()
+    },
+    onClosed() {
+      conflictModalLrclibId.value = null
+      conflictModalExistingResult.value = null
+    },
+    onRedownload(result) {
+      // User chose to redownload - proceed with refreshed data
+      proceedToAssociateTrackModal(conflictModalLrclibTrack.value, result)
+    },
+    onContinue(result) {
+      // User chose to continue with existing - proceed with existing data
+      proceedToAssociateTrackModal(conflictModalLrclibTrack.value, result)
+    },
+  },
+})
+
+// Store the track temporarily while showing conflict modal
+const conflictModalLrclibTrack = ref(null)
+
 onMounted(async () => {
   const config = await invoke('get_config')
   showLineCount.value = config.show_line_count
@@ -259,17 +290,30 @@ const setShowingTrack = async track => {
   }
 }
 
+const proceedToAssociateTrackModal = (track, result) => {
+  // Set the data and open associate modal
+  associateModalLrclibTrack.value = track
+  associateModalLyricsfileId.value = result.lyricsfileId
+  associateModalInitialLyricsfile.value = result.lyricsfile
+  openAssociateTrackModal()
+}
+
 const setEditingTrack = async track => {
   isOpeningTrack.value = true
   try {
     // Prepare lyricsfile from LRCLIB (fetches or gets from cache)
     const result = await invoke('prepare_lrclib_lyricsfile', { lrclibId: track.id })
 
-    // Show association modal
-    associateModalLrclibTrack.value = track
-    associateModalLyricsfileId.value = result.lyricsfileId
-    associateModalInitialLyricsfile.value = result.lyricsfile
-    openAssociateTrackModal()
+    if (result.existsInDb) {
+      // Lyrics already exist - show conflict modal
+      conflictModalLrclibTrack.value = track
+      conflictModalLrclibId.value = track.id
+      conflictModalExistingResult.value = result
+      openConflictModal()
+    } else {
+      // New lyrics - proceed directly to associate modal
+      proceedToAssociateTrackModal(track, result)
+    }
   } catch (error) {
     toast.error('An error occurred while opening the lyrics. Please try again.')
     console.error(error)

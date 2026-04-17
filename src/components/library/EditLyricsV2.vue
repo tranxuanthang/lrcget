@@ -139,16 +139,30 @@ import { useGlobalState } from '@/composables/global-state.js'
 import { usePlayer } from '@/composables/player.js'
 
 const props = defineProps({
-  track: {
+  // Audio source for playback (library track or file-based track)
+  audioSource: {
     type: Object,
     default: null,
   },
+  // Source type: 'track' for normal library editing, 'lrclib' for LRCLIB flow
+  source: {
+    type: String,
+    default: 'track',
+    validator: (value) => ['track', 'lrclib'].includes(value),
+  },
+  // For LRCLIB flow: standalone lyricsfile ID
   lyricsfileId: {
     type: Number,
     default: null,
   },
-  initialLyricsfile: {
+  // For LRCLIB flow: initial lyricsfile content
+  lyricsfileContent: {
     type: String,
+    default: null,
+  },
+  // For LRCLIB flow: lyricsfile metadata (title, artist, album, duration_ms)
+  lyricsfileMetadata: {
+    type: Object,
     default: null,
   },
 })
