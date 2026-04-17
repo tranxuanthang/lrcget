@@ -12,7 +12,7 @@ const createEmptySyncedLine = () => ({
   words: [],
 })
 
-export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
+export function useEditLyricsV2Document({ editingTrack, progress, toast, lyricsfileId }) {
   const plainLyrics = ref('')
   const syncedLines = ref([])
   const lyricsfileDocument = ref(null)
@@ -48,7 +48,7 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
     isSyncedLineEditing.value = value
   }
 
-  const initializeLyrics = () => {
+  const initializeLyrics = (initialLyricsfile = null) => {
     const track = editingTrack.value
     if (!track) {
       plainLyrics.value = ''
@@ -58,7 +58,9 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
       return
     }
 
-    const parsed = parseLyricsfile(track.lyricsfile)
+    // Use provided initialLyricsfile, or fall back to track.lyricsfile
+    const lyricsfileContent = initialLyricsfile ?? track.lyricsfile ?? ''
+    const parsed = parseLyricsfile(lyricsfileContent)
 
     plainLyrics.value = parsed.plainLyrics
     // Load synced lines independently from plain lyrics
@@ -226,10 +228,24 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast }) {
         isInstrumental: isInstrumental.value,
       })
 
-      await invoke('save_lyrics', {
-        trackId: editingTrack.value.id,
-        lyricsfile,
-      })
+      // Determine if this is a library track or a standalone lyricsfile
+      const isLibraryTrack = !!editingTrack.value.id
+
+      if (isLibraryTrack) {
+        // Library track: use track_id
+        await invoke('save_lyrics', {
+          trackId: editingTrack.value.id,
+          lyricsfileId: null,
+          lyricsfile,
+        })
+      } else {
+        // Standalone lyricsfile: use lyricsfile_id
+        await invoke('save_lyrics', {
+          trackId: null,
+          lyricsfileId: lyricsfileId.value,
+          lyricsfile,
+        })
+      }
 
       const parsed = parseLyricsfile(lyricsfile)
       // Preserve independent synced lines structure after save

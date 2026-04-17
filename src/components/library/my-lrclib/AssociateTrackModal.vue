@@ -88,24 +88,14 @@
           <span>Choose file...</span>
         </button>
 
-        <div class="flex gap-2">
-          <button
-            class="button px-4 py-2 rounded-full text-sm"
-            :class="canEditWithoutAudio ? 'button-warning' : 'button-disabled'"
-            :disabled="!canEditWithoutAudio"
-            @click="editWithoutAudio"
-          >
-            Edit without audio
-          </button>
-          <button
-            class="button px-4 py-2 rounded-full text-sm"
-            :class="canEditWithAudio ? 'button-primary' : 'button-disabled'"
-            :disabled="!canEditWithAudio"
-            @click="editWithAudio"
-          >
-            Edit with audio
-          </button>
-        </div>
+        <button
+          class="button px-4 py-2 rounded-full text-sm"
+          :class="canEditWithAudio ? 'button-primary' : 'button-disabled'"
+          :disabled="!canEditWithAudio"
+          @click="editWithAudio"
+        >
+          Edit with audio
+        </button>
       </div>
     </template>
   </BaseModal>
@@ -131,7 +121,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['close', 'selectTrack', 'selectFile', 'editLite'])
+const emit = defineEmits(['close', 'selectTrack', 'selectFile'])
 
 const toast = useToast()
 
@@ -178,7 +168,6 @@ const filteredTracks = computed(() => {
 })
 
 const canEditWithAudio = computed(() => selectedTrack.value !== null)
-const canEditWithoutAudio = computed(() => true) // Always available
 
 // Load all tracks on mount
 const loadTracks = async () => {
@@ -232,10 +221,5 @@ const editWithAudio = () => {
     emit('selectTrack', selectedTrack.value)
     emit('close')
   }
-}
-
-const editWithoutAudio = () => {
-  emit('editLite')
-  emit('close')
 }
 </script>

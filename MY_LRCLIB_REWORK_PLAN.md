@@ -383,17 +383,25 @@ Users can pick:
   - [x] Create simplified `AssociateTrackModal.vue` component
     - Search input with client-side filtering
     - Results list (max 10)
-    - Footer with "Choose file...", "Edit without audio", "Edit with audio" buttons
+    - Footer with "Choose file..." and "Edit with audio" buttons
   - [x] Add `get_audio_metadata` backend command for file picker
   - [x] Update `SearchResult.vue` to show modal on edit click
   - [x] Add `prepare_search_query` backend command
   - [x] Prefill search with normalized title (brackets removed)
-- [ ] Phase 3: File picker integration
-- [ ] Phase 4: V2 Editor adaptations
-- [ ] Phase 5: Unified editor entry point
-- [ ] Phase 6: Update My LRCLIB flow
-- [ ] Phase 7: Lyrics saving without track association
-- [ ] Remove legacy `EditLyrics.vue`
+- [x] Phase 3: Unified PlayableTrack type for player
+  - [x] Add `PlayableTrack` type to `persistent_entities.rs`
+  - [x] Update `Player` to use `PlayableTrack` instead of `PersistentTrack`
+  - [x] Create unified `play_track` command supporting both library and file-based tracks
+  - [x] Update frontend `player.js` composable
+- [x] Phase 4: LRCLIB lyricsfile integration
+  - [x] Migration 12: Add `lrclib_instance` and `lrclib_id` columns to `lyricsfiles` table
+  - [x] Add `prepare_lrclib_lyricsfile` command to fetch/create standalone lyricsfiles
+  - [x] Update `save_lyrics` command to support standalone lyricsfiles
+  - [x] Update `AssociateTrackModal.vue` - remove "Edit without audio" option
+  - [x] Update `SearchResult.vue` - use `prepare_lrclib_lyricsfile` command
+  - [x] Update `EditLyricsV2.vue` - accept `lyricsfileId` and `initialLyricsfile` props
+  - [x] Update `useEditLyricsV2Document.js` - support initialization from external lyricsfile
+- [ ] Phase 5: Remove legacy `EditLyrics.vue` (after testing)
 
 ## History
 
@@ -415,7 +423,29 @@ Users can pick:
   - Supports "Edit Without Audio" fallback to legacy editor
 - Added `AudioMetadataResponse` struct for file picker integration
 
+**2026-04-17:** Phase 3 & 4 implementation completed
+
+- Added `PlayableTrack` unified type for supporting both library and file-based tracks in player
+- Updated `play_track` command to accept either `track_id` or `file_path` with metadata
+- Migration 12: Added `lrclib_instance` and `lrclib_id` columns to `lyricsfiles` table
+- Added `prepare_lrclib_lyricsfile` backend command:
+  - Checks local cache by LRCLIB instance + ID
+  - Fetches from LRCLIB API if not cached
+  - Converts LRCLIB response to Lyricsfile format (uses provided lyricsfile or builds from plain/synced)
+  - Saves to database with NULL track_id (standalone)
+  - Returns lyricsfile_id + parsed content
+- Added DB functions: `get_lyricsfile_by_lrclib`, `upsert_lyricsfile_for_lrclib`, `update_lyricsfile_by_id`
+- Updated `save_lyrics` command to accept optional `track_id` and `lyricsfile_id`:
+  - Library tracks: update both track and lyricsfile
+  - Standalone lyricsfiles: update lyricsfile only
+- Frontend changes:
+  - Removed "Edit without audio" option from `AssociateTrackModal.vue`
+  - Updated `SearchResult.vue` to use `prepare_lrclib_lyricsfile` and pass data to V2 editor
+  - Updated `EditLyricsV2.vue` to accept `track`, `lyricsfileId`, and `initialLyricsfile` props
+  - Updated `useEditLyricsV2Document.js` to handle standalone lyricsfiles
+  - Updated `useEditLyricsV2.js` with `setEditingTrack` function
+
 ---
 
 _Created: April 2026_
-_Status: In Progress - Phase 3 Ready (File Picker & V2 Integration)_
+_Status: In Progress - Ready for Testing_

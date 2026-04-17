@@ -138,11 +138,26 @@ import { useEditLyricsV2SyncedHotkeys } from '@/composables/edit-lyrics-v2/useEd
 import { useGlobalState } from '@/composables/global-state.js'
 import { usePlayer } from '@/composables/player.js'
 
+const props = defineProps({
+  track: {
+    type: Object,
+    default: null,
+  },
+  lyricsfileId: {
+    type: Number,
+    default: null,
+  },
+  initialLyricsfile: {
+    type: String,
+    default: null,
+  },
+})
+
 const emit = defineEmits(['close'])
 
 const { disableHotkey, enableHotkey } = useGlobalState()
 const { status, duration, progress, playingTrack, playTrack, pause, resume, seek } = usePlayer()
-const { editingTrack } = useEditLyricsV2()
+const { editingTrack, setEditingTrack } = useEditLyricsV2()
 const toast = useToast()
 
 const progressMs = computed(() => Math.max(0, Math.round(progress.value * 1000)))
@@ -174,7 +189,7 @@ const {
   ensureSelectedSyncedLine,
   updateLineText,
   setInstrumental,
-} = useEditLyricsV2Document({ editingTrack, progress, toast })
+} = useEditLyricsV2Document({ editingTrack, progress, toast, lyricsfileId: props.lyricsfileId })
 
 const codemirrorStyle = ref({
   fontSize: 1.0,
@@ -248,7 +263,12 @@ const handleWordTimingEdited = async ({ startMs }) => {
   const seekTo = Number.isFinite(startMs) ? startMs / 1000 : progress.value
 
   // Ensure we're playing the editing track
-  if (!playingTrack.value || playingTrack.value.id !== editingTrack.value?.id) {
+  const isLibraryTrack = !!editingTrack.value?.id
+  const isPlayingCorrectTrack = isLibraryTrack
+    ? playingTrack.value?.id === editingTrack.value?.id
+    : playingTrack.value?.file_path === editingTrack.value?.file_path
+
+  if (!playingTrack.value || !isPlayingCorrectTrack) {
     await playTrack(editingTrack.value)
   } else if (status.value === 'paused') {
     resume()
@@ -320,13 +340,28 @@ const { bindHotkeys, unbindHotkeys } = useEditLyricsV2Hotkeys({
 onMounted(() => {
   disableHotkey()
 
+  // Set the editing track from props
+  if (props.track) {
+    setEditingTrack(props.track)
+  }
+
   if (!editingTrack.value) {
     return
   }
 
-  initializeLyrics()
+  // Initialize lyrics - use initialLyricsfile from props if available
+  initializeLyrics(props.initialLyricsfile)
 
-  if (!playingTrack.value || playingTrack.value.id !== editingTrack.value.id) {
+  // Handle playback
+  const isLibraryTrack = !!editingTrack.value.id
+  if (isLibraryTrack) {
+    // Library track: check by ID
+    if (!playingTrack.value || playingTrack.value.id !== editingTrack.value.id) {
+      playTrack(editingTrack.value)
+      pause()
+    }
+  } else if (editingTrack.value.file_path) {
+    // File-based track: always play since it's a new file
     playTrack(editingTrack.value)
     pause()
   }

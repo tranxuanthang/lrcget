@@ -74,7 +74,7 @@ trait ServiceAccess {
 | `artists` | name, name_lower (search) |
 | `albums` | name, album_artist_name, image_path |
 | `tracks` | file_path, title, duration, lrc_lyrics, txt_lyrics, instrumental, has_plain_lyrics, has_synced_lyrics, has_word_synced_lyrics |
-| `lyricsfiles` | Persisted YAML lyrics (decoupled from tracks) |
+| `lyricsfiles` | Persisted YAML lyrics (decoupled from tracks). Contains track metadata (title, album, artist, duration) and optional LRCLIB source fields (`lrclib_instance`, `lrclib_id`). `track_id` is NULL for standalone LRCLIB lyrics without local track association. |
 
 **Migration v8 (scanning):** Added `file_size`, `modified_time`, `content_hash`, `scan_status`
 
@@ -84,7 +84,9 @@ trait ServiceAccess {
 
 **Migration v11:** Added `volume` column to `config_data` for persisting player volume level
 
-**Indexes:** All `*_lower` columns + `content_hash`, `scan_status`, `modified_time+file_size` (fingerprint) + lyrics-presence indexes
+**Migration v12:** Added `lrclib_instance` and `lrclib_id` columns to `lyricsfiles` table for tracking remote LRCLIB lyrics sources. Enables editing lyrics from LRCLIB without requiring a local track association.
+
+**Indexes:** All `*_lower` columns + `content_hash`, `scan_status`, `modified_time+file_size` (fingerprint) + lyrics-presence indexes + LRCLIB composite index (`lrclib_instance`, `lrclib_id`)
 
 ### File Scanning (`scanner/`)
 
@@ -199,7 +201,8 @@ Implements `From<PersistentTrack>` for seamless conversion from database entitie
 | `retrieve_lyrics/by_id()` | Get raw LRCLIB response |
 | `search_lyrics()` | Search LRCLIB database |
 | `apply_lyrics()` | Save a selected LRCLIB result into database-backed lyrics storage |
-| `save_lyrics(id, plain?, synced?, lyricsfile?)` | Save edits (prefers `lyricsfile`) |
+| `prepare_lrclib_lyricsfile(lrclib_id)` | Get or create lyricsfile from LRCLIB. Checks local cache first, fetches from API if needed. Saves to `lyricsfiles` table with `lrclib_instance` + `lrclib_id`. Returns `lyricsfile_id` + content. |
+| `save_lyrics(track_id?, lyricsfile_id?, plain?, synced?, lyricsfile?)` | Save lyrics edits. For library tracks: provide `track_id`. For standalone LRCLIB lyrics: provide `lyricsfile_id`. Prefers `lyricsfile` format. |
 | `publish_lyrics(title, album, artist, duration, plain?, synced?, lyricsfile?)` | Upload to LRCLIB (with PoW; accepts Lyricsfile-only payloads) |
 | `export_lyrics(track_id, formats, lyricsfile?)` | Manual export to `.txt`, `.lrc`, or embedded tags |
 | `export_track_lyrics(track_id, formats)` | Export single track, returns summary for mass export |

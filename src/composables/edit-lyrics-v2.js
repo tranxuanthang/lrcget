@@ -5,6 +5,10 @@ import EditLyricsV2 from '@/components/library/EditLyricsV2.vue'
 const editingTrack = ref(null)
 
 export function useEditLyricsV2() {
+  const setEditingTrack = track => {
+    editingTrack.value = track
+  }
+
   const editLyricsV2 = track => {
     editingTrack.value = track
     openModal()
@@ -13,6 +17,7 @@ export function useEditLyricsV2() {
   const { open: openModal, close: closeModal } = useModal({
     component: EditLyricsV2,
     attrs: {
+      track: editingTrack,
       onClose() {
         closeModal()
       },
@@ -24,6 +29,7 @@ export function useEditLyricsV2() {
 
   return {
     editingTrack,
+    setEditingTrack,
     editLyricsV2,
   }
 }

@@ -787,20 +787,115 @@ async fn search_lyrics(
     Ok(response)
 }
 
+/// Result of preparing a lyricsfile from LRCLIB
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct PrepareLyricsfileResult {
+    pub lyricsfile_id: i64,
+    pub lyricsfile: String,
+    pub plain_lyrics: String,
+    pub synced_lyrics: String,
+    pub is_instrumental: bool,
+}
+
+#[tauri::command]
+async fn prepare_lrclib_lyricsfile(
+    lrclib_id: i64,
+    app_handle: AppHandle,
+) -> Result<PrepareLyricsfileResult, String> {
+    // Get config for LRCLIB instance URL
+    let config = app_handle
+        .db(|db: &Connection| db::get_config(db))
+        .map_err(|err| err.to_string())?;
+
+    let lrclib_instance = config.lrclib_instance;
+
+    // Check if we already have this lyricsfile in the database
+    let existing = app_handle
+        .db(|db: &Connection| {
+            db::get_lyricsfile_by_lrclib(&lrclib_instance, lrclib_id, db)
+        })
+        .map_err(|err| err.to_string())?;
+
+    if let Some((lyricsfile_id, lyricsfile)) = existing {
+        // Already exists, parse and return
+        let parsed = lyricsfile::parse_lyricsfile(&lyricsfile).map_err(|e| e.to_string())?;
+        return Ok(PrepareLyricsfileResult {
+            lyricsfile_id,
+            lyricsfile,
+            plain_lyrics: parsed.plain_lyrics.unwrap_or_default(),
+            synced_lyrics: parsed.synced_lyrics.unwrap_or_default(),
+            is_instrumental: parsed.is_instrumental,
+        });
+    }
+
+    // Fetch from LRCLIB API
+    let lrclib_response = lrclib::get_by_id::request_raw(lrclib_id, &lrclib_instance)
+        .await
+        .map_err(|err| err.to_string())?;
+
+    // Extract metadata from LRCLIB response
+    let title = lrclib_response.name.unwrap_or_default();
+    let album_name = lrclib_response.album_name.unwrap_or_default();
+    let artist_name = lrclib_response.artist_name.unwrap_or_default();
+    let duration = lrclib_response.duration.unwrap_or(0.0);
+
+    // Build or use existing lyricsfile content
+    let lyricsfile_content = if let Some(lyricsfile) = lrclib_response.lyricsfile {
+        // LRCLIB provided a lyricsfile, use it directly
+        lyricsfile
+    } else {
+        // Need to build lyricsfile from plain/synced lyrics
+        let metadata =
+            lyricsfile::LyricsfileTrackMetadata::new(&title, &album_name, &artist_name, duration);
+
+        let plain = lrclib_response.plain_lyrics.as_deref();
+        let synced = lrclib_response.synced_lyrics.as_deref();
+
+        lyricsfile::build_lyricsfile(&metadata, plain, synced)
+            .ok_or("Failed to build lyricsfile from LRCLIB response")?
+    };
+
+    // Parse for return values
+    let parsed = lyricsfile::parse_lyricsfile(&lyricsfile_content).map_err(|e| e.to_string())?;
+
+    // Save to database (track_id will be NULL)
+    let lyricsfile_id = app_handle
+        .db(|db: &Connection| {
+            db::upsert_lyricsfile_for_lrclib(
+                &lrclib_instance,
+                lrclib_id,
+                &title,
+                &album_name,
+                &artist_name,
+                duration,
+                &lyricsfile_content,
+                db,
+            )
+        })
+        .map_err(|err| err.to_string())?;
+
+    Ok(PrepareLyricsfileResult {
+        lyricsfile_id,
+        lyricsfile: lyricsfile_content,
+        plain_lyrics: parsed.plain_lyrics.unwrap_or_default(),
+        synced_lyrics: parsed.synced_lyrics.unwrap_or_default(),
+        is_instrumental: parsed.is_instrumental,
+    })
+}
+
 #[tauri::command]
 async fn save_lyrics(
-    track_id: i64,
+    track_id: Option<i64>,
+    lyricsfile_id: Option<i64>,
     plain_lyrics: Option<String>,
     synced_lyrics: Option<String>,
     lyricsfile: Option<String>,
     app_handle: AppHandle,
 ) -> Result<String, String> {
-    let track = app_handle
-        .db(|db| db::get_track_by_id(track_id, db))
-        .map_err(|err| err.to_string())?;
-
     let provided_lyricsfile = lyricsfile.filter(|content| !content.trim().is_empty());
 
+    // Parse the lyricsfile content to get plain/synced/is_instrumental
     let (plain_lyrics, synced_lyrics, is_instrumental) = if let Some(lyricsfile_content) =
         provided_lyricsfile.as_deref()
     {
@@ -823,50 +918,67 @@ async fn save_lyrics(
         )
     };
 
-    if is_instrumental {
-        app_handle
-            .db(|db: &Connection| db::update_track_instrumental(track.id, db))
+    // If we have a track_id, update the track as well
+    if let Some(id) = track_id {
+        let track = app_handle
+            .db(|db| db::get_track_by_id(id, db))
             .map_err(|err| err.to_string())?;
-    } else if !synced_lyrics.is_empty() {
-        app_handle
-            .db(|db: &Connection| {
-                db::update_track_synced_lyrics(track.id, &synced_lyrics, &plain_lyrics, db)
-            })
-            .map_err(|err| err.to_string())?;
-    } else if !plain_lyrics.is_empty() {
-        app_handle
-            .db(|db: &Connection| db::update_track_plain_lyrics(track.id, &plain_lyrics, db))
-            .map_err(|err| err.to_string())?;
-    } else {
-        app_handle
-            .db(|db: &Connection| db::update_track_null_lyrics(track.id, db))
-            .map_err(|err| err.to_string())?;
-    }
 
-    if let Some(lyricsfile_content) = provided_lyricsfile {
-        app_handle
-            .db(|db: &Connection| {
-                db::upsert_lyricsfile_for_track(
-                    track.id,
-                    &track.title,
-                    &track.album_name,
-                    &track.artist_name,
-                    track.duration,
-                    &lyricsfile_content,
-                    db,
-                )
-            })
-            .map_err(|err| err.to_string())?;
-    } else {
-        persist_lyricsfile_for_track(
-            &app_handle,
-            &track,
-            Some(plain_lyrics.as_str()),
-            Some(synced_lyrics.as_str()),
-        )?;
-    }
+        if is_instrumental {
+            app_handle
+                .db(|db: &Connection| db::update_track_instrumental(track.id, db))
+                .map_err(|err| err.to_string())?;
+        } else if !synced_lyrics.is_empty() {
+            app_handle
+                .db(|db: &Connection| {
+                    db::update_track_synced_lyrics(track.id, &synced_lyrics, &plain_lyrics, db)
+                })
+                .map_err(|err| err.to_string())?;
+        } else if !plain_lyrics.is_empty() {
+            app_handle
+                .db(|db: &Connection| db::update_track_plain_lyrics(track.id, &plain_lyrics, db))
+                .map_err(|err| err.to_string())?;
+        } else {
+            app_handle
+                .db(|db: &Connection| db::update_track_null_lyrics(track.id, db))
+                .map_err(|err| err.to_string())?;
+        }
 
-    app_handle.emit("reload-track-id", track_id).unwrap();
+        // Update the lyricsfile record, associating it with this track
+        if let Some(ref lyricsfile_content) = provided_lyricsfile {
+            app_handle
+                .db(|db: &Connection| {
+                    db::upsert_lyricsfile_for_track(
+                        track.id,
+                        &track.title,
+                        &track.album_name,
+                        &track.artist_name,
+                        track.duration,
+                        lyricsfile_content,
+                        db,
+                    )
+                })
+                .map_err(|err| err.to_string())?;
+        } else {
+            persist_lyricsfile_for_track(
+                &app_handle,
+                &track,
+                Some(plain_lyrics.as_str()),
+                Some(synced_lyrics.as_str()),
+            )?;
+        }
+
+        app_handle.emit("reload-track-id", id).unwrap();
+    } else if let Some(id) = lyricsfile_id {
+        // Standalone lyricsfile update (no track association)
+        if let Some(lyricsfile_content) = provided_lyricsfile {
+            app_handle
+                .db(|db: &Connection| db::update_lyricsfile_by_id(id, &lyricsfile_content, db))
+                .map_err(|err| err.to_string())?;
+        }
+    } else {
+        return Err("Either track_id or lyricsfile_id must be provided".to_string());
+    }
 
     Ok("Lyrics saved successfully".to_owned())
 }
@@ -1439,6 +1551,7 @@ async fn main() {
             find_matching_tracks,
             get_audio_metadata,
             prepare_search_query,
+            prepare_lrclib_lyricsfile,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

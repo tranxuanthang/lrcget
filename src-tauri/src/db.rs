@@ -517,6 +517,125 @@ pub fn delete_lyricsfile_by_track_id(track_id: i64, db: &Connection) -> Result<(
     Ok(())
 }
 
+/// Get lyricsfile by LRCLIB instance and ID
+/// Returns (lyricsfile_id, lyricsfile_content) if found
+pub fn get_lyricsfile_by_lrclib(
+    lrclib_instance: &str,
+    lrclib_id: i64,
+    db: &Connection,
+) -> Result<Option<(i64, String)>> {
+    let result = db
+        .query_row(
+            "SELECT id, lyricsfile FROM lyricsfiles WHERE lrclib_instance = ? AND lrclib_id = ?",
+            [lrclib_instance, &lrclib_id.to_string()],
+            |row| {
+                let id: i64 = row.get(0)?;
+                let lyricsfile: String = row.get(1)?;
+                Ok((id, lyricsfile))
+            },
+        )
+        .optional()?;
+    Ok(result)
+}
+
+/// Upsert lyricsfile for LRCLIB track (standalone, no track association)
+/// Returns the lyricsfile_id
+pub fn upsert_lyricsfile_for_lrclib(
+    lrclib_instance: &str,
+    lrclib_id: i64,
+    track_title: &str,
+    track_album_name: &str,
+    track_artist_name: &str,
+    track_duration: f64,
+    lyricsfile: &str,
+    db: &Connection,
+) -> Result<i64> {
+    db.execute(
+        indoc! {"
+        INSERT INTO lyricsfiles (
+            lrclib_instance,
+            lrclib_id,
+            track_title,
+            track_title_lower,
+            track_album_name,
+            track_album_name_lower,
+            track_artist_name,
+            track_artist_name_lower,
+            track_duration,
+            lyricsfile,
+            created_at,
+            updated_at
+        )
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        ON CONFLICT(lrclib_instance, lrclib_id) DO UPDATE SET
+            track_title = excluded.track_title,
+            track_title_lower = excluded.track_title_lower,
+            track_album_name = excluded.track_album_name,
+            track_album_name_lower = excluded.track_album_name_lower,
+            track_artist_name = excluded.track_artist_name,
+            track_artist_name_lower = excluded.track_artist_name_lower,
+            track_duration = excluded.track_duration,
+            lyricsfile = excluded.lyricsfile,
+            updated_at = CURRENT_TIMESTAMP
+    "},
+        (
+            lrclib_instance,
+            lrclib_id,
+            track_title,
+            prepare_input(track_title),
+            track_album_name,
+            prepare_input(track_album_name),
+            track_artist_name,
+            prepare_input(track_artist_name),
+            track_duration,
+            lyricsfile,
+        ),
+    )?;
+
+    // Get the inserted/updated row ID
+    let lyricsfile_id = db.query_row(
+        "SELECT id FROM lyricsfiles WHERE lrclib_instance = ? AND lrclib_id = ?",
+        [lrclib_instance, &lrclib_id.to_string()],
+        |row| row.get(0),
+    )?;
+
+    Ok(lyricsfile_id)
+}
+
+/// Update lyricsfile content by ID (for standalone lyricsfiles without track association)
+pub fn update_lyricsfile_by_id(
+    lyricsfile_id: i64,
+    lyricsfile: &str,
+    db: &Connection,
+) -> Result<()> {
+    db.execute(
+        "UPDATE lyricsfiles SET lyricsfile = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (lyricsfile, lyricsfile_id),
+    )?;
+    Ok(())
+}
+
+/// Get lyricsfile by ID
+/// Returns (lyricsfile_id, track_id, lyricsfile_content) if found
+pub fn get_lyricsfile_by_id(
+    lyricsfile_id: i64,
+    db: &Connection,
+) -> Result<Option<(i64, Option<i64>, String)>> {
+    let result = db
+        .query_row(
+            "SELECT id, track_id, lyricsfile FROM lyricsfiles WHERE id = ?",
+            [lyricsfile_id],
+            |row| {
+                let id: i64 = row.get(0)?;
+                let track_id: Option<i64> = row.get(1)?;
+                let lyricsfile: String = row.get(2)?;
+                Ok((id, track_id, lyricsfile))
+            },
+        )
+        .optional()?;
+    Ok(result)
+}
+
 pub fn get_tracks(db: &Connection) -> Result<Vec<PersistentTrack>> {
     let query = indoc! {"
       SELECT

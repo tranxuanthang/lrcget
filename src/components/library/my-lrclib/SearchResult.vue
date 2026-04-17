@@ -116,6 +116,7 @@ import EditLyrics from './EditLyrics.vue'
 import PreviewLyrics from './PreviewLyrics.vue'
 import FlagLyrics from './FlagLyrics.vue'
 import AssociateTrackModal from './AssociateTrackModal.vue'
+import EditLyricsV2 from '../EditLyricsV2.vue'
 import { useModal } from 'vue-final-modal'
 
 const toast = useToast()
@@ -132,6 +133,8 @@ const loading = ref(false)
 const isOpeningTrack = ref(false)
 const showingTrack = ref(null)
 const editingTrack = ref(null)
+const editingLyricsfileId = ref(null)
+const editingInitialLyricsfile = ref(null)
 const flagLyricsTrack = ref(null)
 const showLineCount = ref(true)
 
@@ -168,6 +171,23 @@ const { open: openEditLyricsModal, close: closeEditLyricsModal } = useModal({
   },
 })
 
+const { open: openEditLyricsV2Modal, close: closeEditLyricsV2Modal } = useModal({
+  component: EditLyricsV2,
+  attrs: {
+    track: editingTrack,
+    lyricsfileId: editingLyricsfileId,
+    initialLyricsfile: editingInitialLyricsfile,
+    onClose() {
+      closeEditLyricsV2Modal()
+    },
+    onClosed() {
+      editingTrack.value = null
+      editingLyricsfileId.value = null
+      editingInitialLyricsfile.value = null
+    },
+  },
+})
+
 const { open: openFlagLyricsModal, close: closeFlagLyricsModal } = useModal({
   component: FlagLyrics,
   attrs: {
@@ -179,7 +199,8 @@ const { open: openFlagLyricsModal, close: closeFlagLyricsModal } = useModal({
 })
 
 const associateModalLrclibTrack = ref(null)
-const associateModalRefreshedTrack = ref(null)
+const associateModalLyricsfileId = ref(null)
+const associateModalInitialLyricsfile = ref(null)
 
 const { open: openAssociateTrackModal, close: closeAssociateTrackModal } = useModal({
   component: AssociateTrackModal,
@@ -190,20 +211,16 @@ const { open: openAssociateTrackModal, close: closeAssociateTrackModal } = useMo
     },
     onClosed() {
       associateModalLrclibTrack.value = null
-      associateModalRefreshedTrack.value = null
+      associateModalLyricsfileId.value = null
+      associateModalInitialLyricsfile.value = null
     },
     onSelectTrack(track) {
-      // User selected a library track - open V2 editor (placeholder)
-      openEditLyricsV2WithTrack(track, associateModalRefreshedTrack.value)
+      // User selected a library track - open V2 editor
+      openEditLyricsV2WithTrack(track)
     },
     onSelectFile(fileMetadata) {
-      // User selected a file - open V2 editor (placeholder)
-      openEditLyricsV2WithFile(fileMetadata, associateModalRefreshedTrack.value)
-    },
-    onEditLite() {
-      // Open legacy editor without audio
-      editingTrack.value = associateModalRefreshedTrack.value
-      openEditLyricsModal()
+      // User selected a file - open V2 editor
+      openEditLyricsV2WithFile(fileMetadata)
     },
   },
 })
@@ -245,11 +262,13 @@ const setShowingTrack = async track => {
 const setEditingTrack = async track => {
   isOpeningTrack.value = true
   try {
-    const refreshedTrack = await invoke('retrieve_lyrics_by_id', { id: track.id })
+    // Prepare lyricsfile from LRCLIB (fetches or gets from cache)
+    const result = await invoke('prepare_lrclib_lyricsfile', { lrclibId: track.id })
 
     // Show association modal
     associateModalLrclibTrack.value = track
-    associateModalRefreshedTrack.value = refreshedTrack
+    associateModalLyricsfileId.value = result.lyricsfileId
+    associateModalInitialLyricsfile.value = result.lyricsfile
     openAssociateTrackModal()
   } catch (error) {
     toast.error('An error occurred while opening the lyrics. Please try again.')
@@ -259,18 +278,20 @@ const setEditingTrack = async track => {
   }
 }
 
-const openEditLyricsV2WithTrack = (localTrack, lrclibTrack) => {
-  // TODO: Phase 4 - Open EditLyricsV2 with local track and LRCLIB lyrics
-  // For now, fall back to legacy editor
-  editingTrack.value = lrclibTrack
-  openEditLyricsModal()
+const openEditLyricsV2WithTrack = localTrack => {
+  // Open EditLyricsV2 with local track and LRCLIB lyrics
+  editingTrack.value = localTrack
+  editingLyricsfileId.value = associateModalLyricsfileId.value
+  editingInitialLyricsfile.value = associateModalInitialLyricsfile.value
+  openEditLyricsV2Modal()
 }
 
-const openEditLyricsV2WithFile = (fileMetadata, lrclibTrack) => {
-  // TODO: Phase 4 - Open EditLyricsV2 with file and LRCLIB lyrics
-  // For now, fall back to legacy editor
-  editingTrack.value = lrclibTrack
-  openEditLyricsModal()
+const openEditLyricsV2WithFile = fileMetadata => {
+  // Open EditLyricsV2 with file and LRCLIB lyrics
+  editingTrack.value = fileMetadata
+  editingLyricsfileId.value = associateModalLyricsfileId.value
+  editingInitialLyricsfile.value = associateModalInitialLyricsfile.value
+  openEditLyricsV2Modal()
 }
 
 const flagLyrics = async track => {
