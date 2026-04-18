@@ -4,7 +4,7 @@ import EditLyricsV2PublishModal from '@/components/library/edit-lyrics-v2/EditLy
 import { serializeLyricsfile } from '@/utils/lyricsfile.js'
 
 export function useEditLyricsV2Publish({
-  editingTrack,
+  audioSource,
   plainLyrics,
   syncedLines,
   lyricsfileDocument,
@@ -25,13 +25,17 @@ export function useEditLyricsV2Publish({
   })
 
   const serializedLyricsfile = computed(() => {
-    if (!editingTrack.value) {
-      return ''
+    // Build track data from audioSource for serialization
+    const trackData = {
+      title: audioSource.value?.title ?? 'Unknown',
+      artist_name: audioSource.value?.artist_name ?? 'Unknown',
+      album_name: audioSource.value?.album_name ?? '',
+      duration: audioSource.value?.duration ?? 0,
     }
 
     return (
       serializeLyricsfile({
-        track: editingTrack.value,
+        track: trackData,
         plainLyrics: plainLyrics.value,
         syncedLines: syncedLines.value,
         baseDocument: lyricsfileDocument.value,
@@ -41,13 +45,17 @@ export function useEditLyricsV2Publish({
   })
 
   const openPublishModal = () => {
-    if (!editingTrack.value) {
-      return
+    // Build track data from audioSource for the modal
+    const trackData = {
+      title: audioSource.value?.title ?? 'Unknown',
+      artist_name: audioSource.value?.artist_name ?? 'Unknown',
+      album_name: audioSource.value?.album_name ?? '',
+      duration: audioSource.value?.duration ?? 0,
     }
 
     patchPublishModalOptions({
       attrs: {
-        track: editingTrack.value,
+        track: trackData,
         lyricsfile: serializedLyricsfile.value,
       },
     })

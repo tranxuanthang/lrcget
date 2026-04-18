@@ -12,7 +12,7 @@ const createEmptySyncedLine = () => ({
   words: [],
 })
 
-export function useEditLyricsV2Document({ editingTrack, progress, toast, lyricsfileId }) {
+export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, progress, toast }) {
   const plainLyrics = ref('')
   const syncedLines = ref([])
   const lyricsfileDocument = ref(null)
@@ -48,18 +48,9 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast, lyricsf
     isSyncedLineEditing.value = value
   }
 
-  const initializeLyrics = (initialLyricsfile = null) => {
-    const track = editingTrack.value
-    if (!track) {
-      plainLyrics.value = ''
-      syncedLines.value = []
-      lyricsfileDocument.value = null
-      isDirty.value = false
-      return
-    }
-
-    // Use provided initialLyricsfile, or fall back to track.lyricsfile
-    const lyricsfileContent = initialLyricsfile ?? track.lyricsfile ?? ''
+  const initializeLyrics = () => {
+    // Get lyrics content from lyricsfile prop, or empty string if none
+    const lyricsfileContent = lyricsfile.value?.content ?? ''
     const parsed = parseLyricsfile(lyricsfileContent)
 
     plainLyrics.value = parsed.plainLyrics
@@ -68,7 +59,6 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast, lyricsf
     syncedLines.value = parsed.syncedLines.map(line => normalizeSyncedLine(line))
     isInstrumental.value = parsed.isInstrumental
 
-    console.log('syncedLines', syncedLines.value)
     lyricsfileDocument.value = parsed.document
     isDirty.value = false
     isSyncedLineEditing.value = false
@@ -211,17 +201,23 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast, lyricsf
   }
 
   const saveLyrics = async () => {
-    if (!editingTrack.value) {
-      return false
-    }
-
     if (!isDirty.value) {
       return true
     }
 
     try {
-      const lyricsfile = serializeLyricsfile({
-        track: editingTrack.value,
+      // Build track data from audioSource for serialization
+      const trackData = {
+        title: audioSource.value?.title ?? lyricsfile?.value?.metadata?.title ?? 'Unknown',
+        artist_name:
+          audioSource.value?.artist_name ?? lyricsfile?.value?.metadata?.artist ?? 'Unknown',
+        album_name: audioSource.value?.album_name ?? lyricsfile?.value?.metadata?.album ?? '',
+        duration:
+          audioSource.value?.duration ?? lyricsfile?.value?.metadata?.duration_ms / 1000 ?? 0,
+      }
+
+      const serializedContent = serializeLyricsfile({
+        track: trackData,
         plainLyrics: plainLyrics.value,
         syncedLines: syncedLines.value,
         baseDocument: lyricsfileDocument.value,
@@ -229,25 +225,32 @@ export function useEditLyricsV2Document({ editingTrack, progress, toast, lyricsf
       })
 
       // Determine if this is a library track or a standalone lyricsfile
-      const isLibraryTrack = !!editingTrack.value.id
+      // trackId is passed separately from audioSource to handle temporary associations
+      // where a library track might be used for playback but the lyricsfile should not
+      // be associated with the track (e.g., LRCLIB Browser flow)
+      const isLibraryTrack = trackId?.value !== null && trackId?.value !== undefined
 
       if (isLibraryTrack) {
-        // Library track: use track_id
+        // Library track: pass track_id (lyricsfile_id can be null if no lyricsfile exists yet)
         await invoke('save_lyrics', {
-          trackId: editingTrack.value.id,
-          lyricsfileId: null,
-          lyricsfile,
+          trackId: trackId.value,
+          lyricsfileId: lyricsfile?.value?.id ?? null,
+          lyricsfile: serializedContent,
         })
       } else {
-        // Standalone lyricsfile: use lyricsfile_id
+        // Standalone lyricsfile: pass lyricsfile_id (must not be null)
+        const standaloneLyricsfileId = lyricsfile?.value?.id
+        if (!standaloneLyricsfileId) {
+          throw new Error('Standalone lyricsfile must have an ID')
+        }
         await invoke('save_lyrics', {
           trackId: null,
-          lyricsfileId: lyricsfileId.value,
-          lyricsfile,
+          lyricsfileId: standaloneLyricsfileId,
+          lyricsfile: serializedContent,
         })
       }
 
-      const parsed = parseLyricsfile(lyricsfile)
+      const parsed = parseLyricsfile(serializedContent)
       // Preserve independent synced lines structure after save
       // Don't re-sync to plain lyrics to maintain separate structures
       syncedLines.value = parsed.syncedLines.map(line => normalizeSyncedLine(line))

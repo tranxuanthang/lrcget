@@ -18,6 +18,7 @@ pub struct PlayableTrack {
     pub duration: f64,
     pub instrumental: bool,
     pub lyricsfile: Option<String>,
+    pub lyricsfile_id: Option<i64>, // ID from lyricsfiles table
 }
 
 impl From<PersistentTrack> for PlayableTrack {
@@ -35,6 +36,7 @@ impl From<PersistentTrack> for PlayableTrack {
             duration: track.duration,
             instrumental: track.instrumental,
             lyricsfile: track.lyricsfile,
+            lyricsfile_id: track.lyricsfile_id,
         }
     }
 }
@@ -55,6 +57,7 @@ pub struct PersistentTrack {
     pub txt_lyrics: Option<String>,
     pub lrc_lyrics: Option<String>,
     pub lyricsfile: Option<String>,
+    pub lyricsfile_id: Option<i64>, // ID from lyricsfiles table (null if no lyricsfile exists)
     pub duration: f64,
     pub instrumental: bool,
 }

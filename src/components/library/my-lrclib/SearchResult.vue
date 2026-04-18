@@ -112,7 +112,6 @@ import { countLines } from '@/utils/count-lines.js'
 import { humanDuration } from '@/utils/human-duration.js'
 import { useToast } from 'vue-toastification'
 import { normalizeLrclibLyrics } from '@/utils/lyricsfile.js'
-import EditLyrics from './EditLyrics.vue'
 import PreviewLyrics from './PreviewLyrics.vue'
 import FlagLyrics from './FlagLyrics.vue'
 import AssociateTrackModal from './AssociateTrackModal.vue'
@@ -133,9 +132,9 @@ const tracks = ref([])
 const loading = ref(false)
 const isOpeningTrack = ref(false)
 const showingTrack = ref(null)
-const editingTrack = ref(null)
-const editingLyricsfileId = ref(null)
-const editingInitialLyricsfile = ref(null)
+const editingAudioSource = ref(null)
+const editingLyricsfile = ref(null)
+const editingTrackId = ref(null)
 const flagLyricsTrack = ref(null)
 const showLineCount = ref(true)
 
@@ -159,32 +158,19 @@ const { open: openPreviewModal, close: closePreviewModal } = useModal({
   },
 })
 
-const { open: openEditLyricsModal, close: closeEditLyricsModal } = useModal({
-  component: EditLyrics,
-  attrs: {
-    editingTrack: editingTrack,
-    onClose() {
-      closeEditLyricsModal()
-    },
-    onClosed() {
-      editingTrack.value = null
-    },
-  },
-})
-
 const { open: openEditLyricsV2Modal, close: closeEditLyricsV2Modal } = useModal({
   component: EditLyricsV2,
   attrs: {
-    track: editingTrack,
-    lyricsfileId: editingLyricsfileId,
-    initialLyricsfile: editingInitialLyricsfile,
+    audioSource: editingAudioSource,
+    lyricsfile: editingLyricsfile,
+    trackId: editingTrackId,
     onClose() {
       closeEditLyricsV2Modal()
     },
     onClosed() {
-      editingTrack.value = null
-      editingLyricsfileId.value = null
-      editingInitialLyricsfile.value = null
+      editingAudioSource.value = null
+      editingLyricsfile.value = null
+      editingTrackId.value = null
     },
   },
 })
@@ -324,17 +310,40 @@ const setEditingTrack = async track => {
 
 const openEditLyricsV2WithTrack = localTrack => {
   // Open EditLyricsV2 with local track and LRCLIB lyrics
-  editingTrack.value = localTrack
-  editingLyricsfileId.value = associateModalLyricsfileId.value
-  editingInitialLyricsfile.value = associateModalInitialLyricsfile.value
+  editingAudioSource.value = {
+    type: 'library',
+    id: localTrack.id,
+    file_path: localTrack.file_path,
+    duration: localTrack.duration,
+    title: localTrack.title,
+    artist_name: localTrack.artist_name,
+    album_name: localTrack.album_name,
+  }
+  editingLyricsfile.value = {
+    id: associateModalLyricsfileId.value,
+    content: associateModalInitialLyricsfile.value,
+  }
+  // trackId is null for temporary associations - the lyricsfile should not be associated with this track
+  editingTrackId.value = null
   openEditLyricsV2Modal()
 }
 
 const openEditLyricsV2WithFile = fileMetadata => {
   // Open EditLyricsV2 with file and LRCLIB lyrics
-  editingTrack.value = fileMetadata
-  editingLyricsfileId.value = associateModalLyricsfileId.value
-  editingInitialLyricsfile.value = associateModalInitialLyricsfile.value
+  editingAudioSource.value = {
+    type: 'file',
+    file_path: fileMetadata.file_path,
+    duration: fileMetadata.duration,
+    title: fileMetadata.title,
+    artist_name: fileMetadata.artist_name,
+    album_name: fileMetadata.album_name,
+  }
+  editingLyricsfile.value = {
+    id: associateModalLyricsfileId.value,
+    content: associateModalInitialLyricsfile.value,
+  }
+  // trackId is null for file-based tracks (not library tracks)
+  editingTrackId.value = null
   openEditLyricsV2Modal()
 }
 

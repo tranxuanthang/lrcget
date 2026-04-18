@@ -12,6 +12,7 @@ pub struct LyricsPresence {
     pub has_plain_lyrics: bool,
     pub has_synced_lyrics: bool,
     pub has_word_synced_lyrics: bool,
+    pub is_instrumental: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -182,7 +183,10 @@ pub fn lyrics_presence_from_lyricsfile(lyricsfile: &str) -> Result<LyricsPresenc
     let is_instrumental = document.metadata.instrumental;
 
     if is_instrumental {
-        return Ok(LyricsPresence::default());
+        return Ok(LyricsPresence {
+            is_instrumental: true,
+            ..LyricsPresence::default()
+        });
     }
 
     let has_synced_lyrics = !document.lines.is_empty();
@@ -201,6 +205,7 @@ pub fn lyrics_presence_from_lyricsfile(lyricsfile: &str) -> Result<LyricsPresenc
         has_plain_lyrics,
         has_synced_lyrics,
         has_word_synced_lyrics,
+        is_instrumental: false,
     })
 }
 

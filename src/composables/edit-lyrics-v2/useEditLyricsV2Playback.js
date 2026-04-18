@@ -1,5 +1,5 @@
 export function useEditLyricsV2Playback({
-  editingTrack,
+  audioSource,
   syncedLines,
   progress,
   playingTrack,
@@ -8,16 +8,26 @@ export function useEditLyricsV2Playback({
   resume,
   seek,
 }) {
+  // Helper to check if the playing track matches the audio source
+  const isPlayingCorrectTrack = () => {
+    if (!playingTrack.value || !audioSource.value) {
+      return false
+    }
+    return audioSource.value.type === 'library'
+      ? playingTrack.value.id === audioSource.value.id
+      : playingTrack.value.file_path === audioSource.value.file_path
+  }
+
   const playLine = async lineIndex => {
-    if (!editingTrack.value) {
+    if (!audioSource.value) {
       return
     }
 
     const lineStartMs = syncedLines.value[lineIndex]?.start_ms
     const seekTo = Number.isFinite(lineStartMs) ? lineStartMs / 1000 : progress.value
 
-    if (!playingTrack.value || playingTrack.value.id !== editingTrack.value.id) {
-      await playTrack(editingTrack.value)
+    if (!isPlayingCorrectTrack()) {
+      await playTrack(audioSource.value)
     } else if (status.value === 'paused') {
       resume()
     }
@@ -31,8 +41,8 @@ export function useEditLyricsV2Playback({
       return
     }
 
-    if (editingTrack.value) {
-      playTrack(editingTrack.value)
+    if (audioSource.value) {
+      playTrack(audioSource.value)
     }
   }
 

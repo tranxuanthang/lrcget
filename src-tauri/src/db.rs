@@ -43,115 +43,50 @@ pub fn initialize_database(app_handle: &AppHandle) -> Result<Connection, rusqlit
     Ok(db)
 }
 
-fn derive_lyrics_presence_from_legacy(
-    plain_lyrics: Option<&str>,
-    synced_lyrics: Option<&str>,
-    instrumental: bool,
-) -> LyricsPresence {
-    if instrumental {
-        return LyricsPresence::default();
-    }
-
-    let has_plain_lyrics = plain_lyrics
-        .map(str::trim)
-        .map(|plain| !plain.is_empty())
-        .unwrap_or(false);
-    let has_synced_lyrics = synced_lyrics
-        .map(str::trim)
-        .map(|synced| !synced.is_empty() && !crate::lyricsfile::is_instrumental_lyrics(synced))
-        .unwrap_or(false);
-
-    LyricsPresence {
-        has_plain_lyrics,
-        has_synced_lyrics,
-        has_word_synced_lyrics: false,
-    }
-}
-
-fn set_track_lyrics_presence(
-    track_id: i64,
-    presence: LyricsPresence,
-    db: &Connection,
-) -> Result<()> {
-    db.execute(
-        "UPDATE tracks SET has_plain_lyrics = ?, has_synced_lyrics = ?, has_word_synced_lyrics = ? WHERE id = ?",
-        (
-            presence.has_plain_lyrics,
-            presence.has_synced_lyrics,
-            presence.has_word_synced_lyrics,
-            track_id,
-        ),
-    )?;
-
-    Ok(())
-}
-
-fn set_track_lyrics_presence_tx(
-    track_id: i64,
-    presence: LyricsPresence,
-    tx: &rusqlite::Transaction,
-) -> Result<()> {
-    tx.execute(
-        "UPDATE tracks SET has_plain_lyrics = ?, has_synced_lyrics = ?, has_word_synced_lyrics = ? WHERE id = ?",
-        (
-            presence.has_plain_lyrics,
-            presence.has_synced_lyrics,
-            presence.has_word_synced_lyrics,
-            track_id,
-        ),
-    )?;
-
-    Ok(())
-}
-
+// Backfill lyrics presence data from lyricsfile content
+// This updates lyricsfiles records that may not have presence fields set
 pub fn backfill_track_lyrics_presence(db: &Connection) -> Result<()> {
     let mut select_statement = db.prepare(indoc! {"
       SELECT
-        tracks.id,
-        tracks.txt_lyrics,
-        tracks.lrc_lyrics,
-        tracks.instrumental,
+        lyricsfiles.id,
         lyricsfiles.lyricsfile
-      FROM tracks
-      LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
+      FROM lyricsfiles
+      WHERE lyricsfiles.has_plain_lyrics = 0
+         AND lyricsfiles.has_synced_lyrics = 0
+         AND lyricsfiles.has_word_synced_lyrics = 0
     "})?;
 
     let mut rows = select_statement.query([])?;
     let mut updates: Vec<(i64, LyricsPresence)> = Vec::new();
 
     while let Some(row) = rows.next()? {
-        let track_id: i64 = row.get("id")?;
-        let txt_lyrics: Option<String> = row.get("txt_lyrics")?;
-        let lrc_lyrics: Option<String> = row.get("lrc_lyrics")?;
-        let is_instrumental: Option<bool> = row.get("instrumental")?;
-        let lyricsfile: Option<String> = row.get("lyricsfile")?;
-        let instrumental = is_instrumental.unwrap_or(false);
+        let lyricsfile_id: i64 = row.get("id")?;
+        let lyricsfile_content: Option<String> = row.get("lyricsfile")?;
 
-        let presence = match lyricsfile
+        let presence = match lyricsfile_content
             .as_deref()
             .map(str::trim)
             .filter(|content| !content.is_empty())
         {
-            Some(lyricsfile_content) => lyrics_presence_from_lyricsfile(lyricsfile_content)
-                .unwrap_or_else(|_| {
-                    derive_lyrics_presence_from_legacy(
-                        txt_lyrics.as_deref(),
-                        lrc_lyrics.as_deref(),
-                        instrumental,
-                    )
-                }),
-            None => derive_lyrics_presence_from_legacy(
-                txt_lyrics.as_deref(),
-                lrc_lyrics.as_deref(),
-                instrumental,
-            ),
+            Some(content) => lyrics_presence_from_lyricsfile(content).unwrap_or_default(),
+            None => LyricsPresence::default(),
         };
 
-        updates.push((track_id, presence));
+        updates.push((lyricsfile_id, presence));
     }
 
-    for (track_id, presence) in updates {
-        set_track_lyrics_presence(track_id, presence, db)?;
+    // Update lyricsfiles records with calculated presence
+    for (lyricsfile_id, presence) in updates {
+        db.execute(
+            "UPDATE lyricsfiles SET has_plain_lyrics = ?, has_synced_lyrics = ?, has_word_synced_lyrics = ?, instrumental = ? WHERE id = ?",
+            (
+                presence.has_plain_lyrics,
+                presence.has_synced_lyrics,
+                presence.has_word_synced_lyrics,
+                presence.is_instrumental,
+                lyricsfile_id,
+            ),
+        )?;
     }
 
     Ok(())
@@ -293,21 +228,20 @@ pub fn get_track_by_id(id: i64, db: &Connection) -> Result<PersistentTrack> {
     let query = indoc! {"
     SELECT
       tracks.id,
-      file_path,
-      file_name,
-      title,
+      tracks.file_path,
+      tracks.file_name,
+      tracks.title,
       artists.name AS artist_name,
       tracks.artist_id,
       albums.name AS album_name,
       albums.album_artist_name,
-      album_id,
-      duration,
-      track_number,
+      tracks.album_id,
+      tracks.duration,
+      tracks.track_number,
       albums.image_path,
-      txt_lyrics,
-      lrc_lyrics,
+      lyricsfiles.id AS lyricsfile_id,
       lyricsfiles.lyricsfile,
-      instrumental
+      COALESCE(lyricsfiles.instrumental, 0) AS instrumental
     FROM tracks
     JOIN albums ON tracks.album_id = albums.id
     JOIN artists ON tracks.artist_id = artists.id
@@ -318,7 +252,7 @@ pub fn get_track_by_id(id: i64, db: &Connection) -> Result<PersistentTrack> {
 
     let mut statement = db.prepare(query)?;
     let row = statement.query_row([id], |row| {
-        let is_instrumental: Option<bool> = row.get("instrumental")?;
+        let is_instrumental: bool = row.get("instrumental")?;
 
         Ok(PersistentTrack {
             id: row.get("id")?,
@@ -332,71 +266,15 @@ pub fn get_track_by_id(id: i64, db: &Connection) -> Result<PersistentTrack> {
             album_id: row.get("album_id")?,
             duration: row.get("duration")?,
             track_number: row.get("track_number")?,
-            txt_lyrics: row.get("txt_lyrics")?,
-            lrc_lyrics: row.get("lrc_lyrics")?,
+            txt_lyrics: None,
+            lrc_lyrics: None,
             lyricsfile: row.get("lyricsfile")?,
+            lyricsfile_id: row.get("lyricsfile_id")?,
             image_path: row.get("image_path")?,
-            instrumental: is_instrumental.unwrap_or(false),
+            instrumental: is_instrumental,
         })
     })?;
     Ok(row)
-}
-
-pub fn update_track_synced_lyrics(
-    id: i64,
-    synced_lyrics: &str,
-    plain_lyrics: &str,
-    db: &Connection,
-) -> Result<PersistentTrack> {
-    let presence =
-        derive_lyrics_presence_from_legacy(Some(plain_lyrics), Some(synced_lyrics), false);
-
-    let mut statement = db.prepare(
-        "UPDATE tracks SET lrc_lyrics = ?, txt_lyrics = ?, instrumental = false, has_plain_lyrics = ?, has_synced_lyrics = ?, has_word_synced_lyrics = ? WHERE id = ?",
-    )?;
-    statement.execute((
-        synced_lyrics,
-        plain_lyrics,
-        presence.has_plain_lyrics,
-        presence.has_synced_lyrics,
-        presence.has_word_synced_lyrics,
-        id,
-    ))?;
-
-    Ok(get_track_by_id(id, db)?)
-}
-
-pub fn update_track_plain_lyrics(
-    id: i64,
-    plain_lyrics: &str,
-    db: &Connection,
-) -> Result<PersistentTrack> {
-    let presence = derive_lyrics_presence_from_legacy(Some(plain_lyrics), None, false);
-
-    let mut statement = db.prepare(
-        "UPDATE tracks SET txt_lyrics = ?, lrc_lyrics = null, instrumental = false, has_plain_lyrics = ?, has_synced_lyrics = false, has_word_synced_lyrics = false WHERE id = ?",
-    )?;
-    statement.execute((plain_lyrics, presence.has_plain_lyrics, id))?;
-
-    Ok(get_track_by_id(id, db)?)
-}
-
-pub fn update_track_null_lyrics(id: i64, db: &Connection) -> Result<PersistentTrack> {
-    let mut statement = db.prepare(
-        "UPDATE tracks SET txt_lyrics = null, lrc_lyrics = null, instrumental = false, has_plain_lyrics = false, has_synced_lyrics = false, has_word_synced_lyrics = false WHERE id = ?",
-    )?;
-    statement.execute([id])?;
-
-    Ok(get_track_by_id(id, db)?)
-}
-
-pub fn update_track_instrumental(id: i64, db: &Connection) -> Result<PersistentTrack> {
-    let mut statement = db.prepare(
-        "UPDATE tracks SET txt_lyrics = null, lrc_lyrics = ?, instrumental = true, has_plain_lyrics = false, has_synced_lyrics = false, has_word_synced_lyrics = false WHERE id = ?",
-    )?;
-    statement.execute(params!["[au: instrumental]", id])?;
-
-    Ok(get_track_by_id(id, db)?)
 }
 
 pub fn upsert_lyricsfile_for_track(
@@ -422,10 +300,14 @@ pub fn upsert_lyricsfile_for_track(
             track_artist_name_lower,
             track_duration,
             lyricsfile,
+            has_plain_lyrics,
+            has_synced_lyrics,
+            has_word_synced_lyrics,
+            instrumental,
             created_at,
             updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT(track_id) DO UPDATE SET
             track_title = excluded.track_title,
             track_title_lower = excluded.track_title_lower,
@@ -435,6 +317,10 @@ pub fn upsert_lyricsfile_for_track(
             track_artist_name_lower = excluded.track_artist_name_lower,
             track_duration = excluded.track_duration,
             lyricsfile = excluded.lyricsfile,
+            has_plain_lyrics = excluded.has_plain_lyrics,
+            has_synced_lyrics = excluded.has_synced_lyrics,
+            has_word_synced_lyrics = excluded.has_word_synced_lyrics,
+            instrumental = excluded.instrumental,
             updated_at = CURRENT_TIMESTAMP
     "},
         (
@@ -447,10 +333,12 @@ pub fn upsert_lyricsfile_for_track(
             prepare_input(track_artist_name),
             track_duration,
             lyricsfile,
+            presence.has_plain_lyrics,
+            presence.has_synced_lyrics,
+            presence.has_word_synced_lyrics,
+            presence.is_instrumental,
         ),
     )?;
-
-    set_track_lyrics_presence(track_id, presence, db)?;
 
     Ok(())
 }
@@ -478,10 +366,14 @@ pub fn upsert_lyricsfile_for_track_tx(
             track_artist_name_lower,
             track_duration,
             lyricsfile,
+            has_plain_lyrics,
+            has_synced_lyrics,
+            has_word_synced_lyrics,
+            instrumental,
             created_at,
             updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT(track_id) DO UPDATE SET
             track_title = excluded.track_title,
             track_title_lower = excluded.track_title_lower,
@@ -491,6 +383,10 @@ pub fn upsert_lyricsfile_for_track_tx(
             track_artist_name_lower = excluded.track_artist_name_lower,
             track_duration = excluded.track_duration,
             lyricsfile = excluded.lyricsfile,
+            has_plain_lyrics = excluded.has_plain_lyrics,
+            has_synced_lyrics = excluded.has_synced_lyrics,
+            has_word_synced_lyrics = excluded.has_word_synced_lyrics,
+            instrumental = excluded.instrumental,
             updated_at = CURRENT_TIMESTAMP
     "},
         (
@@ -503,17 +399,18 @@ pub fn upsert_lyricsfile_for_track_tx(
             prepare_input(track_artist_name),
             track_duration,
             lyricsfile,
+            presence.has_plain_lyrics,
+            presence.has_synced_lyrics,
+            presence.has_word_synced_lyrics,
+            presence.is_instrumental,
         ),
     )?;
-
-    set_track_lyrics_presence_tx(track_id, presence, tx)?;
 
     Ok(())
 }
 
 pub fn delete_lyricsfile_by_track_id(track_id: i64, db: &Connection) -> Result<()> {
     db.execute("DELETE FROM lyricsfiles WHERE track_id = ?", [track_id])?;
-    set_track_lyrics_presence(track_id, LyricsPresence::default(), db)?;
     Ok(())
 }
 
@@ -550,6 +447,9 @@ pub fn upsert_lyricsfile_for_lrclib(
     lyricsfile: &str,
     db: &Connection,
 ) -> Result<i64> {
+    // Calculate presence fields from lyricsfile content
+    let presence = lyrics_presence_from_lyricsfile(lyricsfile)?;
+
     db.execute(
         indoc! {"
         INSERT INTO lyricsfiles (
@@ -563,10 +463,14 @@ pub fn upsert_lyricsfile_for_lrclib(
             track_artist_name_lower,
             track_duration,
             lyricsfile,
+            has_plain_lyrics,
+            has_synced_lyrics,
+            has_word_synced_lyrics,
+            instrumental,
             created_at,
             updated_at
         )
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         ON CONFLICT(lrclib_instance, lrclib_id) DO UPDATE SET
             track_title = excluded.track_title,
             track_title_lower = excluded.track_title_lower,
@@ -576,6 +480,10 @@ pub fn upsert_lyricsfile_for_lrclib(
             track_artist_name_lower = excluded.track_artist_name_lower,
             track_duration = excluded.track_duration,
             lyricsfile = excluded.lyricsfile,
+            has_plain_lyrics = excluded.has_plain_lyrics,
+            has_synced_lyrics = excluded.has_synced_lyrics,
+            has_word_synced_lyrics = excluded.has_word_synced_lyrics,
+            instrumental = excluded.instrumental,
             updated_at = CURRENT_TIMESTAMP
     "},
         (
@@ -589,6 +497,10 @@ pub fn upsert_lyricsfile_for_lrclib(
             prepare_input(track_artist_name),
             track_duration,
             lyricsfile,
+            presence.has_plain_lyrics,
+            presence.has_synced_lyrics,
+            presence.has_word_synced_lyrics,
+            presence.is_instrumental,
         ),
     )?;
 
@@ -608,9 +520,19 @@ pub fn update_lyricsfile_by_id(
     lyricsfile: &str,
     db: &Connection,
 ) -> Result<()> {
+    // Calculate presence fields from lyricsfile content
+    let presence = lyrics_presence_from_lyricsfile(lyricsfile)?;
+
     db.execute(
-        "UPDATE lyricsfiles SET lyricsfile = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
-        (lyricsfile, lyricsfile_id),
+        "UPDATE lyricsfiles SET lyricsfile = ?, has_plain_lyrics = ?, has_synced_lyrics = ?, has_word_synced_lyrics = ?, instrumental = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (
+            lyricsfile,
+            presence.has_plain_lyrics,
+            presence.has_synced_lyrics,
+            presence.has_word_synced_lyrics,
+            presence.is_instrumental,
+            lyricsfile_id,
+        ),
     )?;
     Ok(())
 }
@@ -639,22 +561,22 @@ pub fn get_lyricsfile_by_id(
 pub fn get_tracks(db: &Connection) -> Result<Vec<PersistentTrack>> {
     let query = indoc! {"
       SELECT
-          tracks.id, file_path, file_name, title,
+          tracks.id, tracks.file_path, tracks.file_name, tracks.title,
           artists.name AS artist_name, tracks.artist_id,
-          albums.name AS album_name, albums.album_artist_name, album_id, duration, track_number,
-          albums.image_path, txt_lyrics, lrc_lyrics, lyricsfiles.lyricsfile, instrumental
+          albums.name AS album_name, albums.album_artist_name, tracks.album_id, tracks.duration, tracks.track_number,
+          albums.image_path, lyricsfiles.id AS lyricsfile_id, lyricsfiles.lyricsfile, COALESCE(lyricsfiles.instrumental, 0) AS instrumental
       FROM tracks
       JOIN albums ON tracks.album_id = albums.id
       JOIN artists ON tracks.artist_id = artists.id
       LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
-      ORDER BY title_lower ASC
+      ORDER BY tracks.title_lower ASC
   "};
     let mut statement = db.prepare(query)?;
     let mut rows = statement.query([])?;
     let mut tracks: Vec<PersistentTrack> = Vec::new();
 
     while let Some(row) = rows.next()? {
-        let is_instrumental: Option<bool> = row.get("instrumental")?;
+        let is_instrumental: bool = row.get("instrumental")?;
 
         let track = PersistentTrack {
             id: row.get("id")?,
@@ -668,11 +590,12 @@ pub fn get_tracks(db: &Connection) -> Result<Vec<PersistentTrack>> {
             album_id: row.get("album_id")?,
             duration: row.get("duration")?,
             track_number: row.get("track_number")?,
-            txt_lyrics: row.get("txt_lyrics")?,
-            lrc_lyrics: row.get("lrc_lyrics")?,
+            txt_lyrics: None,
+            lrc_lyrics: None,
             lyricsfile: row.get("lyricsfile")?,
+            lyricsfile_id: row.get("lyricsfile_id")?,
             image_path: row.get("image_path")?,
-            instrumental: is_instrumental.unwrap_or(false),
+            instrumental: is_instrumental,
         };
 
         tracks.push(track);
@@ -688,23 +611,30 @@ pub fn get_track_ids(
     no_lyrics: bool,
     db: &Connection,
 ) -> Result<Vec<i64>> {
-    let base_query = "SELECT id FROM tracks";
+    // Join with lyricsfiles table and use COALESCE to handle tracks without lyricsfiles
+    let base_query = indoc! {"
+        SELECT tracks.id 
+        FROM tracks 
+        LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
+    "};
 
-    let mut included_categories: Vec<&str> = Vec::new();
+    let mut included_categories: Vec<String> = Vec::new();
     if synced_lyrics {
-        included_categories.push("(has_synced_lyrics = true AND instrumental = false)");
+        included_categories.push(
+            "(COALESCE(lyricsfiles.has_synced_lyrics, 0) = 1 AND COALESCE(lyricsfiles.instrumental, 0) = 0)".to_string(),
+        );
     }
     if plain_lyrics {
         included_categories.push(
-            "(has_plain_lyrics = true AND has_synced_lyrics = false AND instrumental = false)",
+            "(COALESCE(lyricsfiles.has_plain_lyrics, 0) = 1 AND COALESCE(lyricsfiles.has_synced_lyrics, 0) = 0 AND COALESCE(lyricsfiles.instrumental, 0) = 0)".to_string(),
         );
     }
     if instrumental {
-        included_categories.push("instrumental = true");
+        included_categories.push("COALESCE(lyricsfiles.instrumental, 0) = 1".to_string());
     }
     if no_lyrics {
         included_categories.push(
-            "(has_plain_lyrics = false AND has_synced_lyrics = false AND instrumental = false)",
+            "(COALESCE(lyricsfiles.has_plain_lyrics, 0) = 0 AND COALESCE(lyricsfiles.has_synced_lyrics, 0) = 0 AND COALESCE(lyricsfiles.instrumental, 0) = 0)".to_string(),
         );
     }
 
@@ -716,7 +646,10 @@ pub fn get_track_ids(
         format!(" WHERE ({})", included_categories.join(" OR "))
     };
 
-    let full_query = format!("{}{} ORDER BY title_lower ASC", base_query, where_clause);
+    let full_query = format!(
+        "{}{} ORDER BY tracks.title_lower ASC",
+        base_query, where_clause
+    );
 
     let mut statement = db.prepare(&full_query)?;
     let mut rows = statement.query([])?;
@@ -742,26 +675,29 @@ pub fn get_search_track_ids(
       FROM tracks
       JOIN artists ON tracks.artist_id = artists.id
       JOIN albums ON tracks.album_id = albums.id
+      LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
       WHERE (artists.name_lower LIKE ?
       OR albums.name_lower LIKE ?
       OR tracks.title_lower LIKE ?)
     "};
 
-    let mut included_categories: Vec<&str> = Vec::new();
+    let mut included_categories: Vec<String> = Vec::new();
     if synced_lyrics {
-        included_categories.push("(has_synced_lyrics = true AND instrumental = false)");
+        included_categories.push(
+            "(COALESCE(lyricsfiles.has_synced_lyrics, 0) = 1 AND COALESCE(lyricsfiles.instrumental, 0) = 0)".to_string(),
+        );
     }
     if plain_lyrics {
         included_categories.push(
-            "(has_plain_lyrics = true AND has_synced_lyrics = false AND instrumental = false)",
+            "(COALESCE(lyricsfiles.has_plain_lyrics, 0) = 1 AND COALESCE(lyricsfiles.has_synced_lyrics, 0) = 0 AND COALESCE(lyricsfiles.instrumental, 0) = 0)".to_string(),
         );
     }
     if instrumental {
-        included_categories.push("instrumental = true");
+        included_categories.push("COALESCE(lyricsfiles.instrumental, 0) = 1".to_string());
     }
     if no_lyrics {
         included_categories.push(
-            "(has_plain_lyrics = false AND has_synced_lyrics = false AND instrumental = false)",
+            "(COALESCE(lyricsfiles.has_plain_lyrics, 0) = 0 AND COALESCE(lyricsfiles.has_synced_lyrics, 0) = 0 AND COALESCE(lyricsfiles.instrumental, 0) = 0)".to_string(),
         );
     }
 
@@ -773,7 +709,10 @@ pub fn get_search_track_ids(
         format!(" AND ({})", included_categories.join(" OR "))
     };
 
-    let full_query = format!("{}{} ORDER BY title_lower ASC", base_query, where_clause);
+    let full_query = format!(
+        "{}{} ORDER BY tracks.title_lower ASC",
+        base_query, where_clause
+    );
 
     let mut statement = db.prepare(&full_query)?;
     let formatted_query_str = format!("%{}%", prepare_input(query_str));
@@ -923,33 +862,32 @@ pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<Persistent
     let mut statement = db.prepare(indoc! {"
     SELECT
       tracks.id,
-      file_path,
-      file_name,
-      title,
+      tracks.file_path,
+      tracks.file_name,
+      tracks.title,
       artists.name AS artist_name,
       tracks.artist_id,
       albums.name AS album_name,
       albums.album_artist_name,
-      album_id,
-      duration,
-      track_number,
+      tracks.album_id,
+      tracks.duration,
+      tracks.track_number,
       albums.image_path,
-      txt_lyrics,
-      lrc_lyrics,
+      lyricsfiles.id AS lyricsfile_id,
       lyricsfiles.lyricsfile,
-      instrumental
+      COALESCE(lyricsfiles.instrumental, 0) AS instrumental
     FROM tracks
     JOIN albums ON tracks.album_id = albums.id
     JOIN artists ON tracks.artist_id = artists.id
     LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
     WHERE tracks.album_id = ?
-    ORDER BY track_number ASC
+    ORDER BY tracks.track_number ASC
   "})?;
     let mut rows = statement.query([album_id])?;
     let mut tracks: Vec<PersistentTrack> = Vec::new();
 
     while let Some(row) = rows.next()? {
-        let is_instrumental: Option<bool> = row.get("instrumental")?;
+        let is_instrumental: bool = row.get("instrumental")?;
 
         let track = PersistentTrack {
             id: row.get("id")?,
@@ -963,11 +901,12 @@ pub fn get_album_tracks(album_id: i64, db: &Connection) -> Result<Vec<Persistent
             artist_id: row.get("artist_id")?,
             duration: row.get("duration")?,
             track_number: row.get("track_number")?,
-            txt_lyrics: row.get("txt_lyrics")?,
-            lrc_lyrics: row.get("lrc_lyrics")?,
+            txt_lyrics: None,
+            lrc_lyrics: None,
             lyricsfile: row.get("lyricsfile")?,
+            lyricsfile_id: row.get("lyricsfile_id")?,
             image_path: row.get("image_path")?,
-            instrumental: is_instrumental.unwrap_or(false),
+            instrumental: is_instrumental,
         };
 
         tracks.push(track);
@@ -986,14 +925,15 @@ pub fn get_album_track_ids(
       SELECT tracks.id
       FROM tracks
       JOIN albums ON tracks.album_id = albums.id
+      LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
       WHERE tracks.album_id = ?"};
 
     let lyrics_conditions = match (without_plain_lyrics, without_synced_lyrics) {
         (true, true) => {
-            " AND has_plain_lyrics = false AND has_synced_lyrics = false AND tracks.instrumental = false"
+            " AND COALESCE(lyricsfiles.has_plain_lyrics, 0) = 0 AND COALESCE(lyricsfiles.has_synced_lyrics, 0) = 0 AND COALESCE(lyricsfiles.instrumental, 0) = 0"
         }
-        (true, false) => " AND has_plain_lyrics = false AND tracks.instrumental = false",
-        (false, true) => " AND has_synced_lyrics = false AND tracks.instrumental = false",
+        (true, false) => " AND COALESCE(lyricsfiles.has_plain_lyrics, 0) = 0 AND COALESCE(lyricsfiles.instrumental, 0) = 0",
+        (false, true) => " AND COALESCE(lyricsfiles.has_synced_lyrics, 0) = 0 AND COALESCE(lyricsfiles.instrumental, 0) = 0",
         (false, false) => "",
     };
 
@@ -1015,21 +955,21 @@ pub fn get_album_track_ids(
 
 pub fn get_artist_tracks(artist_id: i64, db: &Connection) -> Result<Vec<PersistentTrack>> {
     let mut statement = db.prepare(indoc! {"
-      SELECT tracks.id, file_path, file_name, title, artists.name AS artist_name,
-        tracks.artist_id, albums.name AS album_name, albums.album_artist_name, album_id, duration, track_number,
-        albums.image_path, txt_lyrics, lrc_lyrics, lyricsfiles.lyricsfile, instrumental
+      SELECT tracks.id, tracks.file_path, tracks.file_name, tracks.title, artists.name AS artist_name,
+        tracks.artist_id, albums.name AS album_name, albums.album_artist_name, tracks.album_id, tracks.duration, tracks.track_number,
+        albums.image_path, lyricsfiles.id AS lyricsfile_id, lyricsfiles.lyricsfile, COALESCE(lyricsfiles.instrumental, 0) AS instrumental
       FROM tracks
       JOIN albums ON tracks.album_id = albums.id
       JOIN artists ON tracks.artist_id = artists.id
       LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
       WHERE tracks.artist_id = ?
-      ORDER BY album_name_lower ASC, track_number ASC
+      ORDER BY albums.name_lower ASC, tracks.track_number ASC
   "})?;
     let mut rows = statement.query([artist_id])?;
     let mut tracks: Vec<PersistentTrack> = Vec::new();
 
     while let Some(row) = rows.next()? {
-        let is_instrumental: Option<bool> = row.get("instrumental")?;
+        let is_instrumental: bool = row.get("instrumental")?;
 
         let track = PersistentTrack {
             id: row.get("id")?,
@@ -1043,11 +983,12 @@ pub fn get_artist_tracks(artist_id: i64, db: &Connection) -> Result<Vec<Persiste
             album_id: row.get("album_id")?,
             duration: row.get("duration")?,
             track_number: row.get("track_number")?,
-            txt_lyrics: row.get("txt_lyrics")?,
-            lrc_lyrics: row.get("lrc_lyrics")?,
+            txt_lyrics: None,
+            lrc_lyrics: None,
             lyricsfile: row.get("lyricsfile")?,
+            lyricsfile_id: row.get("lyricsfile_id")?,
             image_path: row.get("image_path")?,
-            instrumental: is_instrumental.unwrap_or(false),
+            instrumental: is_instrumental,
         };
 
         tracks.push(track);
@@ -1067,14 +1008,15 @@ pub fn get_artist_track_ids(
       FROM tracks
       JOIN albums ON tracks.album_id = albums.id
       JOIN artists ON tracks.artist_id = artists.id
+      LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
       WHERE tracks.artist_id = ?"};
 
     let lyrics_conditions = match (without_plain_lyrics, without_synced_lyrics) {
         (true, true) => {
-            " AND has_plain_lyrics = false AND has_synced_lyrics = false AND tracks.instrumental = false"
+            " AND COALESCE(lyricsfiles.has_plain_lyrics, 0) = 0 AND COALESCE(lyricsfiles.has_synced_lyrics, 0) = 0 AND COALESCE(lyricsfiles.instrumental, 0) = 0"
         }
-        (true, false) => " AND has_plain_lyrics = false AND tracks.instrumental = false",
-        (false, true) => " AND has_synced_lyrics = false AND tracks.instrumental = false",
+        (true, false) => " AND COALESCE(lyricsfiles.has_plain_lyrics, 0) = 0 AND COALESCE(lyricsfiles.instrumental, 0) = 0",
+        (false, true) => " AND COALESCE(lyricsfiles.has_synced_lyrics, 0) = 0 AND COALESCE(lyricsfiles.instrumental, 0) = 0",
         (false, false) => "",
     };
 
@@ -1267,9 +1209,10 @@ pub fn update_track_path_and_fingerprint_tx(
 }
 
 /// Insert a new track from metadata during scan
+/// Note: Lyrics are stored separately in the lyricsfiles table via upsert_lyricsfile_for_track_tx
 pub fn insert_track_from_metadata_tx(
     metadata: &crate::scanner::metadata::TrackMetadata,
-    lyrics: &crate::scanner::metadata::LyricsInfo,
+    _lyrics: &crate::scanner::metadata::LyricsInfo,
     file_size: i64,
     modified_time: i64,
     content_hash: &str,
@@ -1279,20 +1222,8 @@ pub fn insert_track_from_metadata_tx(
 ) -> Result<i64> {
     use crate::utils::prepare_input;
 
-    // Check if instrumental
-    let instrumental = lyrics
-        .lrc_lyrics
-        .as_ref()
-        .map_or(false, |l| l.contains("[au:") && l.contains("instrumental"));
-
-    let presence = derive_lyrics_presence_from_legacy(
-        lyrics.txt_lyrics.as_deref(),
-        lyrics.lrc_lyrics.as_deref(),
-        instrumental,
-    );
-
     tx.execute(
-        "INSERT INTO tracks (file_path, file_name, title, title_lower, album_id, artist_id, duration, track_number, file_size, modified_time, content_hash, scan_status, txt_lyrics, lrc_lyrics, instrumental, has_plain_lyrics, has_synced_lyrics, has_word_synced_lyrics) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+        "INSERT INTO tracks (file_path, file_name, title, title_lower, album_id, artist_id, duration, track_number, file_size, modified_time, content_hash, scan_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
         params![
             &metadata.file_path,
             &metadata.file_name,
@@ -1306,12 +1237,6 @@ pub fn insert_track_from_metadata_tx(
             modified_time,
             content_hash,
             SCAN_STATUS_PROCESSED,
-            lyrics.txt_lyrics.as_ref(),
-            lyrics.lrc_lyrics.as_ref(),
-            instrumental,
-            presence.has_plain_lyrics,
-            presence.has_synced_lyrics,
-            presence.has_word_synced_lyrics,
         ],
     )?;
 
@@ -1399,8 +1324,9 @@ pub fn get_track_ids_with_lyrics(db: &Connection) -> Result<Vec<i64>> {
     let mut statement = db.prepare(indoc! {"
       SELECT tracks.id
       FROM tracks
-      WHERE tracks.has_plain_lyrics = true
-         OR tracks.has_synced_lyrics = true
+      JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
+      WHERE lyricsfiles.has_plain_lyrics = 1
+         OR lyricsfiles.has_synced_lyrics = 1
       ORDER BY tracks.artist_id ASC, tracks.album_id ASC, tracks.track_number ASC NULLS LAST
     "})?;
 
@@ -1463,10 +1389,9 @@ pub fn find_tracks_by_metadata(
             tracks.duration,
             tracks.track_number,
             albums.image_path,
-            tracks.txt_lyrics,
-            tracks.lrc_lyrics,
+            lyricsfiles.id AS lyricsfile_id,
             lyricsfiles.lyricsfile,
-            tracks.instrumental
+            COALESCE(lyricsfiles.instrumental, 0) AS instrumental
         FROM tracks
         JOIN albums ON tracks.album_id = albums.id
         JOIN artists ON tracks.artist_id = artists.id
@@ -1486,7 +1411,7 @@ pub fn find_tracks_by_metadata(
     let mut tracks: Vec<PersistentTrack> = Vec::new();
 
     while let Some(row) = rows.next()? {
-        let is_instrumental: Option<bool> = row.get("instrumental")?;
+        let is_instrumental: bool = row.get("instrumental")?;
 
         let track = PersistentTrack {
             id: row.get("id")?,
@@ -1500,11 +1425,12 @@ pub fn find_tracks_by_metadata(
             album_id: row.get("album_id")?,
             duration: row.get("duration")?,
             track_number: row.get("track_number")?,
-            txt_lyrics: row.get("txt_lyrics")?,
-            lrc_lyrics: row.get("lrc_lyrics")?,
+            txt_lyrics: None,
+            lrc_lyrics: None,
             lyricsfile: row.get("lyricsfile")?,
+            lyricsfile_id: row.get("lyricsfile_id")?,
             image_path: row.get("image_path")?,
-            instrumental: is_instrumental.unwrap_or(false),
+            instrumental: is_instrumental,
         };
 
         tracks.push(track);

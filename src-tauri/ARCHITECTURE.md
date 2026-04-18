@@ -73,8 +73,8 @@ trait ServiceAccess {
 | `config_data` | Settings (embed, skip flags, theme, LRCLIB instance) |
 | `artists` | name, name_lower (search) |
 | `albums` | name, album_artist_name, image_path |
-| `tracks` | file_path, title, duration, lrc_lyrics, txt_lyrics, instrumental, has_plain_lyrics, has_synced_lyrics, has_word_synced_lyrics |
-| `lyricsfiles` | Persisted YAML lyrics (decoupled from tracks). Contains track metadata (title, album, artist, duration) and optional LRCLIB source fields (`lrclib_instance`, `lrclib_id`). `track_id` is NULL for standalone LRCLIB lyrics without local track association. |
+| `tracks` | file_path, title, duration, lrc_lyrics, txt_lyrics |
+| `lyricsfiles` | Persisted YAML lyrics (decoupled from tracks). Contains track metadata (title, album, artist, duration), presence fields (`has_plain_lyrics`, `has_synced_lyrics`, `has_word_synced_lyrics`, `instrumental`), and optional LRCLIB source fields (`lrclib_instance`, `lrclib_id`). `track_id` is NULL for standalone LRCLIB lyrics without local track association. |
 
 **Migration v8 (scanning):** Added `file_size`, `modified_time`, `content_hash`, `scan_status`
 
@@ -85,6 +85,10 @@ trait ServiceAccess {
 **Migration v11:** Added `volume` column to `config_data` for persisting player volume level
 
 **Migration v12:** Added `lrclib_instance` and `lrclib_id` columns to `lyricsfiles` table for tracking remote LRCLIB lyrics sources. Enables editing lyrics from LRCLIB without requiring a local track association.
+
+**Migration v13:** Added `has_plain_lyrics`, `has_synced_lyrics`, `has_word_synced_lyrics`, `instrumental` columns to `lyricsfiles` table. This moves the source of truth for lyrics presence to the `lyricsfiles` table, enabling filtering based on lyricsfile content for both library tracks and standalone LRCLIB lyrics.
+
+**Migration v14:** Recreates the `tracks` table without deprecated lyrics columns (`txt_lyrics`, `lrc_lyrics`, `instrumental`, `has_plain_lyrics`, `has_synced_lyrics`, `has_word_synced_lyrics`). All lyrics data is now stored exclusively in the `lyricsfiles` table. Forces a library reset.
 
 **Indexes:** All `*_lower` columns + `content_hash`, `scan_status`, `modified_time+file_size` (fingerprint) + lyrics-presence indexes + LRCLIB composite index (`lrclib_instance`, `lrclib_id`)
 
@@ -295,7 +299,24 @@ Used by `AssociateTrackModal.vue` to prefill the search input when associating L
 
 ## Notes
 
-- **Lyrics Storage:** `lyricsfiles` table is the persistence source of truth; sidecar files and embedded tags are manual exports
-- **Filtering Source of Truth:** Lyrics filters now use derived `tracks.has_*_lyrics` booleans (from Lyricsfile content), not null checks on `txt_lyrics`/`lrc_lyrics`
-- **Instrumental:** `[au: instrumental]` marker in lrc_lyrics
+- **Lyrics Storage:** `lyricsfiles` table is the sole persistence source of truth; sidecar files and embedded tags are manual exports. The `tracks` table no longer contains `txt_lyrics` or `lrc_lyrics` columns as of migration v14.
+- **Filtering Source of Truth:** Lyrics filters use `lyricsfiles.has_*_lyrics` booleans (via LEFT JOIN with COALESCE)
+- **Instrumental:** `[au: instrumental]` marker in lrc_lyrics, stored as `instrumental = true` in lyricsfiles table
 - **Security:** PoW for LRCLIB writes, user-agent in requests, DB in app_data_dir
+
+## Deprecated Code Cleanup
+
+The following deprecated functions were removed from `db.rs` (no longer used):
+- `set_track_lyrics_presence()` / `set_track_lyrics_presence_tx()` - No-ops after presence fields moved to `lyricsfiles` table
+- `update_track_synced_lyrics()` - Replaced by `upsert_lyricsfile_for_track()`
+- `update_track_plain_lyrics()` - Replaced by `upsert_lyricsfile_for_track()`
+- `update_track_null_lyrics()` - Replaced by `delete_lyricsfile_by_track_id()`
+- `update_track_instrumental()` - Replaced by `upsert_lyricsfile_for_track()` with instrumental lyricsfile content
+- `derive_lyrics_presence_from_legacy()` - No longer needed; presence is calculated from lyricsfile content via `lyrics_presence_from_lyricsfile()`
+
+**Scanning Changes:**
+- `insert_track_from_metadata_tx()` no longer stores `txt_lyrics`, `lrc_lyrics`, `instrumental`, or presence fields in the `tracks` table
+- Embedded lyrics are now exclusively stored in the `lyricsfiles` table via `upsert_lyricsfile_for_track_tx()`
+- The tracks table schema for new databases (post-reset) will not include these deprecated columns
+
+**Migration v14:** Uses `ALTER TABLE DROP COLUMN` (SQLite 3.35.0+) to remove deprecated columns: `txt_lyrics`, `lrc_lyrics`, `instrumental`, `has_plain_lyrics`, `has_synced_lyrics`, `has_word_synced_lyrics`. Drops related indexes and forces a library reset.

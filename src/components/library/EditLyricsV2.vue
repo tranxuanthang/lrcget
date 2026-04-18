@@ -119,7 +119,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref, watch } from 'vue'
+import { computed, onMounted, onUnmounted, ref, toRef, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import { useModal } from 'vue-final-modal'
 import BaseModal from '@/components/common/BaseModal.vue'
@@ -128,7 +128,6 @@ import EditLyricsV2HeaderActions from '@/components/library/edit-lyrics-v2/EditL
 import EditLyricsV2PlayerBar from '@/components/library/edit-lyrics-v2/EditLyricsV2PlayerBar.vue'
 import PlainLyricsCodeEditor from '@/components/library/edit-lyrics-v2/PlainLyricsCodeEditor.vue'
 import SyncedLyricsEditor from '@/components/library/edit-lyrics-v2/SyncedLyricsEditor.vue'
-import { useEditLyricsV2 } from '@/composables/edit-lyrics-v2.js'
 import { useEditLyricsV2Document } from '@/composables/edit-lyrics-v2/useEditLyricsV2Document.js'
 import { useEditLyricsV2Hotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2Hotkeys.js'
 import { useEditLyricsV2Publish } from '@/composables/edit-lyrics-v2/useEditLyricsV2Publish.js'
@@ -140,29 +139,24 @@ import { usePlayer } from '@/composables/player.js'
 
 const props = defineProps({
   // Audio source for playback (library track or file-based track)
+  // Format: { type: 'library'|'file', id?, file_path?, duration?, title?, artist_name?, album_name?, ... }
   audioSource: {
     type: Object,
-    default: null,
+    required: true,
   },
-  // Source type: 'track' for normal library editing, 'lrclib' for LRCLIB flow
-  source: {
-    type: String,
-    default: 'track',
-    validator: (value) => ['track', 'lrclib'].includes(value),
-  },
-  // For LRCLIB flow: standalone lyricsfile ID
-  lyricsfileId: {
-    type: Number,
-    default: null,
-  },
-  // For LRCLIB flow: initial lyricsfile content
-  lyricsfileContent: {
-    type: String,
-    default: null,
-  },
-  // For LRCLIB flow: lyricsfile metadata (title, artist, album, duration_ms)
-  lyricsfileMetadata: {
+  // Lyricsfile object for editing operations (save, debug, publish)
+  // Format: { id?, content, metadata?: { title, artist, album, duration_ms } }
+  // For library tracks, id is null and content comes from track.lyricsfile
+  // For standalone lyricsfiles, id is the lyricsfiles table record ID
+  lyricsfile: {
     type: Object,
+    default: null,
+  },
+  // Track ID for save operations. Set for library tracks, null for temporary associations
+  // This is separate from audioSource to handle the case where a library track is temporarily
+  // associated with a standalone lyricsfile (e.g., LRCLIB Browser flow)
+  trackId: {
+    type: Number,
     default: null,
   },
 })
@@ -171,8 +165,12 @@ const emit = defineEmits(['close'])
 
 const { disableHotkey, enableHotkey } = useGlobalState()
 const { status, duration, progress, playingTrack, playTrack, pause, resume, seek } = usePlayer()
-const { editingTrack, setEditingTrack } = useEditLyricsV2()
 const toast = useToast()
+
+// Convert props to refs for composables
+const audioSourceRef = toRef(props, 'audioSource')
+const lyricsfileRef = toRef(props, 'lyricsfile')
+const trackIdRef = toRef(props, 'trackId')
 
 const progressMs = computed(() => Math.max(0, Math.round(progress.value * 1000)))
 
@@ -203,14 +201,20 @@ const {
   ensureSelectedSyncedLine,
   updateLineText,
   setInstrumental,
-} = useEditLyricsV2Document({ editingTrack, progress, toast, lyricsfileId: props.lyricsfileId })
+} = useEditLyricsV2Document({
+  audioSource: audioSourceRef,
+  lyricsfile: lyricsfileRef,
+  trackId: trackIdRef,
+  progress,
+  toast,
+})
 
 const codemirrorStyle = ref({
   fontSize: 1.0,
 })
 
 const { saveAndPublish, serializedLyricsfile } = useEditLyricsV2Publish({
-  editingTrack,
+  audioSource: audioSourceRef,
   plainLyrics,
   syncedLines,
   lyricsfileDocument,
@@ -219,14 +223,14 @@ const { saveAndPublish, serializedLyricsfile } = useEditLyricsV2Publish({
 })
 
 const { exportLyrics, isExporting } = useEditLyricsV2Export({
-  editingTrack,
+  audioSource: audioSourceRef,
   saveLyrics,
   serializedLyricsfile,
   toast,
 })
 
 const { playLine, resumeOrPlay } = useEditLyricsV2Playback({
-  editingTrack,
+  audioSource: audioSourceRef,
   syncedLines,
   progress,
   playingTrack,
@@ -276,14 +280,14 @@ const handleWordTimingEdited = async ({ startMs }) => {
   // Auto-replay from the beginning of the edited line for instant verification
   const seekTo = Number.isFinite(startMs) ? startMs / 1000 : progress.value
 
-  // Ensure we're playing the editing track
-  const isLibraryTrack = !!editingTrack.value?.id
-  const isPlayingCorrectTrack = isLibraryTrack
-    ? playingTrack.value?.id === editingTrack.value?.id
-    : playingTrack.value?.file_path === editingTrack.value?.file_path
+  // Ensure we're playing the correct audio source
+  const isPlayingCorrectTrack =
+    audioSourceRef.value.type === 'library'
+      ? playingTrack.value?.id === audioSourceRef.value.id
+      : playingTrack.value?.file_path === audioSourceRef.value.file_path
 
   if (!playingTrack.value || !isPlayingCorrectTrack) {
-    await playTrack(editingTrack.value)
+    await playTrack(audioSourceRef.value)
   } else if (status.value === 'paused') {
     resume()
   }
@@ -322,8 +326,7 @@ const resetCodemirrorFontSize = () => {
 }
 
 const debugModalContent = computed(() => {
-  if (!editingTrack.value) return ''
-  return serializedLyricsfile.value
+  return serializedLyricsfile.value || ''
 })
 
 const { open: openDebugModal, close: closeDebugModal } = useModal({
@@ -337,11 +340,11 @@ const { open: openDebugModal, close: closeDebugModal } = useModal({
 })
 
 const modalTitle = computed(() => {
-  if (!editingTrack.value) {
-    return 'Edit lyrics (v2)'
-  }
-
-  return `${editingTrack.value.title} - ${editingTrack.value.artist_name}`
+  const title =
+    audioSourceRef.value?.title || lyricsfileRef.value?.metadata?.title || 'Unknown Title'
+  const artist =
+    audioSourceRef.value?.artist_name || lyricsfileRef.value?.metadata?.artist || 'Unknown Artist'
+  return `${title} - ${artist}`
 })
 
 const { bindHotkeys, unbindHotkeys } = useEditLyricsV2Hotkeys({
@@ -354,29 +357,17 @@ const { bindHotkeys, unbindHotkeys } = useEditLyricsV2Hotkeys({
 onMounted(() => {
   disableHotkey()
 
-  // Set the editing track from props
-  if (props.track) {
-    setEditingTrack(props.track)
-  }
+  // Initialize lyrics from props
+  initializeLyrics()
 
-  if (!editingTrack.value) {
-    return
-  }
+  // Handle playback - ensure correct audio source is loaded
+  const isPlayingCorrectTrack =
+    audioSourceRef.value?.type === 'library'
+      ? playingTrack.value?.id === audioSourceRef.value?.id
+      : playingTrack.value?.file_path === audioSourceRef.value?.file_path
 
-  // Initialize lyrics - use initialLyricsfile from props if available
-  initializeLyrics(props.initialLyricsfile)
-
-  // Handle playback
-  const isLibraryTrack = !!editingTrack.value.id
-  if (isLibraryTrack) {
-    // Library track: check by ID
-    if (!playingTrack.value || playingTrack.value.id !== editingTrack.value.id) {
-      playTrack(editingTrack.value)
-      pause()
-    }
-  } else if (editingTrack.value.file_path) {
-    // File-based track: always play since it's a new file
-    playTrack(editingTrack.value)
+  if (!playingTrack.value || !isPlayingCorrectTrack) {
+    playTrack(audioSourceRef.value)
     pause()
   }
 

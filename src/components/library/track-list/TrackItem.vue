@@ -25,7 +25,7 @@
     >
       <div v-if="track">
         <div class="font-bold text-sm text-brave-20 flex items-center dark:text-brave-95">
-          <Equalizer v-if="isPlaying && status === 'playing' && !editingTrack" class="mr-1" />
+          <Equalizer v-if="isPlaying && status === 'playing' && !editingAudioSource" class="mr-1" />
           <span>{{ track.title }}</span>
         </div>
 
@@ -88,7 +88,7 @@
         <button class="track-button" @click="searchLyrics(track)">
           <TextSearch />
         </button>
-        <button class="track-button" @click="editLyrics(track)">
+        <button class="track-button" @click="openEditLyricsV2(track)">
           <PlaylistEdit />
         </button>
       </div>
@@ -115,7 +115,7 @@ import { usePlayer } from '@/composables/player.js'
 const { playTrack, playingTrack, status, pause, resume } = usePlayer()
 
 const { searchLyrics } = useSearchLyrics()
-const { editLyricsV2: editLyrics, editingTrack } = useEditLyricsV2()
+const { editLyricsV2, editingAudioSource } = useEditLyricsV2()
 const props = defineProps(['trackId', 'isShowTrackNumber'])
 const track = ref(null)
 
@@ -142,6 +142,24 @@ const lyricsStatus = computed(() => {
   }
   return null
 })
+
+const openEditLyricsV2 = track => {
+  const audioSource = {
+    type: 'library',
+    id: track.id,
+    file_path: track.file_path,
+    duration: track.duration,
+    title: track.title,
+    artist_name: track.artist_name,
+    album_name: track.album_name,
+  }
+  const lyricsfile = {
+    id: track.lyricsfile_id ?? null, // Use the lyricsfile ID from the database (null if no lyricsfile exists)
+    content: track.lyricsfile ?? '',
+  }
+  // Pass trackId for library tracks - this tells the save function to associate the lyricsfile with this track
+  editLyricsV2({ audioSource, lyricsfile, trackId: track.id })
+}
 
 onMounted(async () => {
   track.value = await invoke('get_track', { trackId: props.trackId })
