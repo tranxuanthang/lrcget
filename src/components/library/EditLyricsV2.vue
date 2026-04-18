@@ -186,6 +186,7 @@ const {
   selectedLineExists,
   currentPlayingSyncedLineIndex,
   isInstrumental,
+  serializedLyricsfile,
   initializeLyrics,
   updatePlainLyrics,
   updateSyncedLines,
@@ -213,12 +214,10 @@ const codemirrorStyle = ref({
   fontSize: 1.0,
 })
 
-const { saveAndPublish, serializedLyricsfile } = useEditLyricsV2Publish({
+const { saveAndPublish } = useEditLyricsV2Publish({
   audioSource: audioSourceRef,
-  plainLyrics,
-  syncedLines,
-  lyricsfileDocument,
-  isInstrumental,
+  lyricsfileDocument: lyricsfileDocument,
+  serializedLyricsfile,
   saveLyrics,
 })
 

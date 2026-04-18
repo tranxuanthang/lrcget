@@ -8,9 +8,13 @@
     <div>Lyrics for this track were previously downloaded.</div>
 
     <template #footer>
-      <div class="flex justify-end gap-2">
+      <div class="w-full flex justify-end gap-2">
         <button
-          class="button button-normal px-4 py-2 rounded-full text-sm"
+          class="button px-4 h-8 rounded-full text-sm"
+          :class="{
+            'button-normal': !isLoading,
+            'button-disabled': isLoading
+          }"
           :disabled="isLoading"
           @click="redownload"
         >
@@ -19,7 +23,7 @@
           Redownload
         </button>
         <button
-          class="button button-primary px-4 py-2 rounded-full text-sm"
+          class="button button-primary px-4 h-8 rounded-full text-sm"
           @click="continueEditing"
         >
           <Pencil class="mr-1" />

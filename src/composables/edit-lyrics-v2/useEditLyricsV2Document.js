@@ -51,6 +51,8 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
   const initializeLyrics = () => {
     // Get lyrics content from lyricsfile prop, or empty string if none
     const lyricsfileContent = lyricsfile.value?.content ?? ''
+
+    console.log(lyricsfileContent)
     const parsed = parseLyricsfile(lyricsfileContent)
 
     plainLyrics.value = parsed.plainLyrics
@@ -60,6 +62,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     isInstrumental.value = parsed.isInstrumental
 
     lyricsfileDocument.value = parsed.document
+    console.log(lyricsfileDocument.value)
     isDirty.value = false
     isSyncedLineEditing.value = false
     ensureSelectedSyncedLine()
@@ -206,23 +209,13 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     }
 
     try {
-      // Build track data from audioSource for serialization
-      const trackData = {
-        title: audioSource.value?.title ?? lyricsfile?.value?.metadata?.title ?? 'Unknown',
-        artist_name:
-          audioSource.value?.artist_name ?? lyricsfile?.value?.metadata?.artist ?? 'Unknown',
-        album_name: audioSource.value?.album_name ?? lyricsfile?.value?.metadata?.album ?? '',
-        duration:
-          audioSource.value?.duration ?? lyricsfile?.value?.metadata?.duration_ms / 1000 ?? 0,
-      }
+      const serializedContent = serializedLyricsfile.value
 
-      const serializedContent = serializeLyricsfile({
-        track: trackData,
-        plainLyrics: plainLyrics.value,
-        syncedLines: syncedLines.value,
-        baseDocument: lyricsfileDocument.value,
-        isInstrumental: isInstrumental.value,
-      })
+      // serializedLyricsfile returns empty string if there's nothing to serialize
+      // In that case, we treat it as a successful save (nothing to save)
+      if (!serializedContent) {
+        return true
+      }
 
       // Determine if this is a library track or a standalone lyricsfile
       // trackId is passed separately from audioSource to handle temporary associations
@@ -265,6 +258,35 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
   }
 
   const hasPlainLyrics = computed(() => plainLyrics.value.trim().length > 0)
+
+  // Compute serialized lyricsfile content for export, publish, and debug
+  const serializedLyricsfile = computed(() => {
+    // Build track data for serialization
+    // Prefer existing lyricsfile metadata first, then fall back to audioSource/track data
+    const trackData = {
+      title: lyricsfileDocument?.value?.metadata?.title ?? audioSource.value?.title ?? null,
+      artist_name:
+        lyricsfileDocument?.value?.metadata?.artist ?? audioSource.value?.artist_name ?? null,
+      album_name: lyricsfileDocument?.value?.metadata?.album ?? audioSource.value?.album_name ?? null,
+      duration:
+        (lyricsfileDocument?.value?.metadata?.duration_ms != null
+          ? lyricsfileDocument.value.metadata.duration_ms / 1000
+          : null) ?? audioSource.value?.duration ?? null,
+    }
+
+    console.log(lyricsfileDocument.value)
+    console.log(trackData)
+
+    return (
+      serializeLyricsfile({
+        track: trackData,
+        plainLyrics: plainLyrics.value,
+        syncedLines: syncedLines.value,
+        baseDocument: lyricsfileDocument.value,
+        isInstrumental: isInstrumental.value,
+      }) || ''
+    )
+  })
 
   const selectedLineExists = computed(
     () =>
@@ -309,6 +331,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     selectedLineExists,
     currentPlayingSyncedLineIndex,
     isInstrumental,
+    serializedLyricsfile,
     initializeLyrics,
     updatePlainLyrics,
     updateSyncedLines,

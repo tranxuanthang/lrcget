@@ -1,14 +1,10 @@
-import { computed } from 'vue'
 import { useModal } from 'vue-final-modal'
 import EditLyricsV2PublishModal from '@/components/library/edit-lyrics-v2/EditLyricsV2PublishModal.vue'
-import { serializeLyricsfile } from '@/utils/lyricsfile.js'
 
 export function useEditLyricsV2Publish({
   audioSource,
-  plainLyrics,
-  syncedLines,
   lyricsfileDocument,
-  isInstrumental,
+  serializedLyricsfile,
   saveLyrics,
 }) {
   const {
@@ -24,33 +20,18 @@ export function useEditLyricsV2Publish({
     },
   })
 
-  const serializedLyricsfile = computed(() => {
-    // Build track data from audioSource for serialization
-    const trackData = {
-      title: audioSource.value?.title ?? 'Unknown',
-      artist_name: audioSource.value?.artist_name ?? 'Unknown',
-      album_name: audioSource.value?.album_name ?? '',
-      duration: audioSource.value?.duration ?? 0,
-    }
-
-    return (
-      serializeLyricsfile({
-        track: trackData,
-        plainLyrics: plainLyrics.value,
-        syncedLines: syncedLines.value,
-        baseDocument: lyricsfileDocument.value,
-        isInstrumental: isInstrumental.value,
-      }) || ''
-    )
-  })
-
   const openPublishModal = () => {
-    // Build track data from audioSource for the modal
+    // Build track data for the modal
+    // Prefer existing lyricsfile metadata first, then fall back to audioSource/track data
     const trackData = {
-      title: audioSource.value?.title ?? 'Unknown',
-      artist_name: audioSource.value?.artist_name ?? 'Unknown',
-      album_name: audioSource.value?.album_name ?? '',
-      duration: audioSource.value?.duration ?? 0,
+      title: lyricsfileDocument?.value?.metadata?.title ?? audioSource.value?.title ?? null,
+      artist_name:
+        lyricsfileDocument?.value?.metadata?.artist ?? audioSource.value?.artist_name ?? null,
+      album_name: lyricsfileDocument?.value?.metadata?.album ?? audioSource.value?.album_name ?? null,
+      duration:
+        (lyricsfileDocument?.value?.metadata?.duration_ms != null
+          ? lyricsfileDocument.value.metadata.duration_ms / 1000
+          : null) ?? audioSource.value?.duration ?? null,
     }
 
     patchPublishModalOptions({
@@ -75,6 +56,5 @@ export function useEditLyricsV2Publish({
   return {
     saveAndPublish,
     openPublishModal,
-    serializedLyricsfile,
   }
 }
