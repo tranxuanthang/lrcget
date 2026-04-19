@@ -60,11 +60,11 @@
           </button>
           <button
             class="button button-normal text-xs px-2 py-1 rounded flex items-center gap-1"
-            title="Distribute word timings evenly"
-            @click="handleDistributeEvenly"
+            title="Reset word timings to default state"
+            @click="handleResetWords"
           >
-            <Undo class="w-3.5 h-3.5" />
-            <span>Redistribute</span>
+            <Close class="w-3.5 h-3.5" />
+            <span>Reset</span>
           </button>
         </div>
       </div>
@@ -72,7 +72,8 @@
       <!-- Timeline with word segments -->
       <div
         ref="timelineElement"
-        class="relative flex-1 bg-brave-98 dark:bg-brave-5 rounded border border-brave-80 dark:border-brave-25"
+        class="relative flex-1 bg-brave-98 dark:bg-brave-5 rounded border border-brave-80 dark:border-brave-25 transition-opacity duration-200"
+        :class="{ 'opacity-50': !hasActualWords }"
         @click="handleTimelineClick"
       >
         <!-- Timeline grid lines (every 500ms) -->
@@ -149,12 +150,12 @@
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
 import Equal from '~icons/mdi/equal'
 import Play from '~icons/mdi/play'
-import Undo from '~icons/mdi/undo'
+import Close from '~icons/mdi/close'
 import SyncedWordTimingSegment from '@/components/library/edit-lyrics-v2/SyncedWordTimingSegment.vue'
 import { useEditLyricsV2WordBoundaryDrag } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordBoundaryDrag.js'
 import { useEditLyricsV2WordTimingHotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordTimingHotkeys.js'
 import { formatTimestampMs } from '@/utils/lyricsfile.js'
-import { ensureLineWords, distributeWordTimings } from '@/utils/word-tokenizer.js'
+import { ensureLineWords, distributeWordTimings, hasValidWords } from '@/utils/word-tokenizer.js'
 
 const props = defineProps({
   selectedLine: {
@@ -201,6 +202,11 @@ const hasLineEndTime = computed(() => {
 
 const isWordSyncAvailable = computed(() => {
   return hasLineContent.value && hasLineStartTime.value && hasLineEndTime.value
+})
+
+// Check if the line has actual saved words (not auto-generated)
+const hasActualWords = computed(() => {
+  return hasValidWords(props.selectedLine)
 })
 
 const actualLineEndMs = computed(() => {
@@ -376,31 +382,18 @@ watch(
   { immediate: true }
 )
 
-const handleDistributeEvenly = () => {
+const handleResetWords = () => {
   if (!isWordSyncAvailable.value) return
 
-  const currentWords = words.value
-  if (currentWords.length === 0) return
-
-  const newWords = distributeWordTimings(
-    currentWords,
-    props.selectedLine.start_ms,
-    actualLineEndMs.value
-  )
-
+  // Clear the words object entirely - this will make the timeline
+  // appear with balanced words but reduced opacity (auto-generated state)
   emit('update:words', {
     lineIndex: props.selectedLineIndex,
-    words: newWords,
+    words: undefined,
   })
 
-  // Reset selected boundary to first after distribute evenly
+  // Reset selected boundary to first after reset
   resetBoundarySelection()
-
-  // Emit event to trigger auto-replay from the beginning of the edited line
-  emit('word-timing-edited', {
-    lineIndex: props.selectedLineIndex,
-    startMs: props.selectedLine?.start_ms,
-  })
 }
 
 const handleTimelineClick = event => {

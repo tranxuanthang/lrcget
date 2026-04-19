@@ -4,7 +4,7 @@
     :esc-to-close="false"
     content-class="w-full h-[95vh] max-w-screen-lg"
     :title="modalTitle"
-    @close="emit('close')"
+    @close="handleClose"
   >
     <template #titleLeft>
       <EditLyricsV2HeaderActions
@@ -125,6 +125,7 @@ import { computed, onMounted, onUnmounted, ref, toRef, watch } from 'vue'
 import { useToast } from 'vue-toastification'
 import { useModal } from 'vue-final-modal'
 import BaseModal from '@/components/common/BaseModal.vue'
+import ConfirmModal from '@/components/common/ConfirmModal.vue'
 import EditLyricsV2DebugModal from '@/components/library/edit-lyrics-v2/EditLyricsV2DebugModal.vue'
 import EditLyricsV2HeaderActions from '@/components/library/edit-lyrics-v2/EditLyricsV2HeaderActions.vue'
 import EditLyricsV2PlayerBar from '@/components/library/edit-lyrics-v2/EditLyricsV2PlayerBar.vue'
@@ -341,6 +342,31 @@ const { open: openDebugModal, close: closeDebugModal } = useModal({
     },
   },
 })
+
+const { open: openConfirmModal, close: closeConfirmModal } = useModal({
+  component: ConfirmModal,
+  attrs: {
+    title: 'Unsaved Changes',
+    message: 'You have unsaved changes. Are you sure you want to close?',
+    confirmText: 'Discard Changes',
+    cancelText: 'Cancel',
+    onConfirm() {
+      closeConfirmModal()
+      emit('close')
+    },
+    onCancel() {
+      closeConfirmModal()
+    },
+  },
+})
+
+const handleClose = () => {
+  if (isDirty.value) {
+    openConfirmModal()
+  } else {
+    emit('close')
+  }
+}
 
 const modalTitle = computed(() => {
   const title =
