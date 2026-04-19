@@ -23,9 +23,9 @@
       </span>
     </div>
 
-    <div v-else-if="!hasNextLineStartTime" class="flex items-center justify-center h-full">
+    <div v-else-if="!hasLineEndTime" class="flex items-center justify-center h-full">
       <span class="text-sm text-brave-50 dark:text-brave-70 italic">
-        Sync the next line to define the timing window
+        Set the line end timestamp to define the timing window
       </span>
     </div>
 
@@ -195,32 +195,23 @@ const hasLineStartTime = computed(() => {
   return props.selectedLine && Number.isFinite(props.selectedLine.start_ms)
 })
 
-const hasNextLineStartTime = computed(() => {
-  if (!props.selectedLine || props.selectedLineIndex < 0) return false
-
-  if (props.selectedLineIndex + 1 >= props.allLines.length) {
-    return false
-  }
-
-  const nextLine = props.allLines[props.selectedLineIndex + 1]
-  return Number.isFinite(nextLine?.start_ms)
+const hasLineEndTime = computed(() => {
+  return props.selectedLine && Number.isFinite(props.selectedLine.end_ms)
 })
 
 const isWordSyncAvailable = computed(() => {
-  return hasLineContent.value && hasLineStartTime.value && hasNextLineStartTime.value
+  return hasLineContent.value && hasLineStartTime.value && hasLineEndTime.value
 })
 
 const actualLineEndMs = computed(() => {
   if (!props.selectedLine) return 0
 
-  if (props.selectedLineIndex >= 0 && props.selectedLineIndex + 1 < props.allLines.length) {
-    const nextLine = props.allLines[props.selectedLineIndex + 1]
-    if (Number.isFinite(nextLine?.start_ms)) {
-      return nextLine.start_ms
-    }
+  // Use the line's own end_ms if available
+  if (Number.isFinite(props.selectedLine.end_ms)) {
+    return props.selectedLine.end_ms
   }
 
-  // Fallback for last line
+  // Fallback: start_ms + 2000ms
   if (Number.isFinite(props.selectedLine.start_ms)) {
     return props.selectedLine.start_ms + 2000
   }

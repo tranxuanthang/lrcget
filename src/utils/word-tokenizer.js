@@ -195,7 +195,7 @@ export function distributeWordTimings(words, startMs, endMs) {
 }
 
 /**
- * Get line end time (from next line or fallback)
+ * Get line end time (from line's own end_ms or fallback)
  * @param {Array} lines - All synced lines
  * @param {number} lineIndex - Current line index
  * @returns {number} End time in ms
@@ -206,16 +206,10 @@ export function getLineEndTime(lines, lineIndex) {
   }
 
   const line = lines[lineIndex]
+
+  // Prefer the line's own end_ms
   if (Number.isFinite(line?.end_ms)) {
     return line.end_ms
-  }
-
-  // Try to get start time of next line
-  if (lineIndex + 1 < lines.length) {
-    const nextLine = lines[lineIndex + 1]
-    if (Number.isFinite(nextLine?.start_ms)) {
-      return nextLine.start_ms
-    }
   }
 
   // Fallback: line start + 2000ms

@@ -106,6 +106,9 @@
         @sync-line="syncLineToCurrentProgress"
         @rewind-line="rewindLineBy100"
         @forward-line="forwardLineBy100"
+        @sync-end="syncEndToCurrentProgress"
+        @rewind-end="rewindEndBy100"
+        @forward-end="forwardEndBy100"
         @delete-line="deleteSyncedLine"
         @add-line-at="addSyncedLineAt"
         @import-lines-from-plain="importSyncedLinesFromPlain"
@@ -198,6 +201,9 @@ const {
   syncLineToCurrentProgress,
   rewindLineBy100: rewindLineTimestampBy100,
   forwardLineBy100: forwardLineTimestampBy100,
+  syncEndToCurrentProgress,
+  rewindEndBy100,
+  forwardEndBy100,
   saveLyrics,
   ensureSelectedSyncedLine,
   updateLineText,

@@ -181,6 +181,42 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     shiftLineTimestampBy(lineIndex, 100)
   }
 
+  const syncEndToCurrentProgress = lineIndex => {
+    if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+      return
+    }
+
+    const newEndMs = Math.max(0, Math.round(progress.value * 1000))
+
+    withUpdatedLine(lineIndex, line => ({
+      ...line,
+      end_ms: newEndMs,
+    }))
+  }
+
+  const shiftEndTimestampBy = (lineIndex, offsetMs) => {
+    if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+      return
+    }
+
+    const currentEndMs = syncedLines.value[lineIndex]?.end_ms
+    const baseEndMs = Number.isFinite(currentEndMs) ? currentEndMs : 0
+    const newEndMs = Math.max(0, Math.round(baseEndMs + offsetMs))
+
+    withUpdatedLine(lineIndex, line => ({
+      ...line,
+      end_ms: newEndMs,
+    }))
+  }
+
+  const rewindEndBy100 = lineIndex => {
+    shiftEndTimestampBy(lineIndex, -100)
+  }
+
+  const forwardEndBy100 = lineIndex => {
+    shiftEndTimestampBy(lineIndex, 100)
+  }
+
   const updateLineText = (lineIndex, newText) => {
     if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
       return
@@ -343,6 +379,9 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     syncLineToCurrentProgress,
     rewindLineBy100,
     forwardLineBy100,
+    syncEndToCurrentProgress,
+    rewindEndBy100,
+    forwardEndBy100,
     saveLyrics,
     ensureSelectedSyncedLine,
     updateLineText,

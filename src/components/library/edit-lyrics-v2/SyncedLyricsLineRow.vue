@@ -7,7 +7,7 @@
     @mouseleave="emit('mouseleave')"
     @click="emit('select', index)"
   >
-    <div class="flex items-center gap-1 w-[7.5rem]">
+    <div class="flex items-center gap-1 w-[3.5rem]">
       <button
         v-show="isLineControlsVisible"
         class="button p-1 rounded-full text-sm h-6 w-6"
@@ -26,33 +26,31 @@
       >
         <Equal />
       </button>
+    </div>
+
+    <div class="relative flex-none">
       <button
-        v-show="isLineControlsVisible"
-        class="button p-1 rounded-full text-sm h-6 w-6"
-        :class="line.start_ms ? 'button-normal' : 'button-disabled'"
-        :disabled="!line.start_ms"
+        v-show="isLineControlsVisible && line.start_ms"
+        class="button p-0.5 rounded-full text-xs h-5 w-5 bg-brave-90 dark:bg-brave-20 text-brave-25 dark:text-brave-99 absolute -left-1.5 top-1/2 -translate-y-1/2 z-10"
         title="Rewind line by 100ms"
         @click.stop="emit('rewind-line', index)"
       >
         <Minus />
       </button>
+      <div
+        class="px-3 py-0.5 text-xs font-mono rounded-full bg-brave-90 dark:bg-brave-20 text-brave-25 dark:text-brave-99 min-w-[5.75rem] text-center"
+        :class="{ 'font-bold': isLinePlaying }"
+      >
+        {{ timestampText }}
+      </div>
       <button
-        v-show="isLineControlsVisible"
-        class="button p-1 rounded-full text-sm h-6 w-6"
-        :class="line.start_ms ? 'button-normal' : 'button-disabled'"
-        :disabled="!line.start_ms"
+        v-show="isLineControlsVisible && line.start_ms"
+        class="button p-0.5 rounded-full text-xs h-5 w-5 bg-brave-90 dark:bg-brave-20 text-brave-25 dark:text-brave-99 absolute -right-1.5 top-1/2 -translate-y-1/2 z-10"
         title="Forward line by 100ms"
         @click.stop="emit('forward-line', index)"
       >
         <Plus />
       </button>
-    </div>
-
-    <div
-      class="flex-none px-2 py-0.5 text-xs font-mono rounded-full bg-brave-90 dark:bg-brave-20 text-brave-25 dark:text-brave-99 min-w-[5.75rem] text-center"
-      :class="{ 'font-bold': isLinePlaying }"
-    >
-      {{ timestampText }}
     </div>
 
     <input
@@ -90,14 +88,53 @@
       </template>
     </div>
 
-    <button
-      v-show="isLineControlsVisible"
-      class="button button-normal p-1 rounded-full text-sm"
-      title="Delete line"
-      @click.stop="emit('delete-line', index)"
-    >
-      <Close />
-    </button>
+    <div class="flex-none flex gap-3">
+      <div class="relative flex items-center">
+        <button
+          v-show="isLineControlsVisible && line.end_ms"
+          class="button p-0.5 rounded-full text-xs h-5 w-5 bg-cyan-100 text-cyan-800  dark:bg-cyan-800 dark:text-white absolute -left-1.5 top-1/2 -translate-y-1/2 z-10"
+          title="Rewind end timestamp by 100ms"
+          @click.stop="emit('rewind-end', index)"
+        >
+          <Minus />
+        </button>
+        <div
+          v-show="isLineControlsVisible"
+          class="px-3 py-0.5 text-xs font-mono rounded-full bg-cyan-100 dark:bg-cyan-800 text-cyan-800 dark:text-white min-w-[5.75rem] text-center"
+          :class="{ 'opacity-50': !line.end_ms }"
+        >
+          {{ endTimestampText }}
+        </div>
+        <button
+          v-show="isLineControlsVisible && line.end_ms"
+          class="button p-0.5 rounded-full text-xs h-5 w-5 bg-cyan-100 text-cyan-800  dark:bg-cyan-800 dark:text-white absolute -right-1.5 top-1/2 -translate-y-1/2 z-10"
+          title="Forward end timestamp by 100ms"
+          @click.stop="emit('forward-end', index)"
+        >
+          <Plus />
+        </button>
+      </div>
+
+      <button
+        v-show="isLineControlsVisible"
+        class="button bg-cyan-100 text-cyan-800 hover:bg-cyan-200 dark:bg-cyan-800 dark:text-white hover:dark:bg-cyan-700 p-1 rounded-full text-sm h-6 w-6 mr-4"
+        title="Sync end timestamp to current playback"
+        @click.stop="emit('sync-end', index)"
+      >
+        <Equal />
+      </button>
+    </div>
+
+    <div class="flex items-center gap-1 w-[3.5rem] justify-end">
+      <button
+        v-show="isLineControlsVisible"
+        class="button button-normal p-1 rounded-full text-sm h-6 w-6"
+        title="Delete line"
+        @click.stop="emit('delete-line', index)"
+      >
+        <Close />
+      </button>
+    </div>
   </div>
 </template>
 
@@ -141,6 +178,10 @@ const props = defineProps({
     type: String,
     default: '',
   },
+  endTimestampText: {
+    type: String,
+    default: '',
+  },
   setLineInputRef: {
     type: Function,
     required: true,
@@ -164,6 +205,9 @@ const emit = defineEmits([
   'save-edit',
   'cancel-edit',
   'update:editing-text',
+  'sync-end',
+  'rewind-end',
+  'forward-end',
 ])
 
 const rowElement = ref(null)

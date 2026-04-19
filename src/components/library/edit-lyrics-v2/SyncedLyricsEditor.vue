@@ -38,6 +38,7 @@
             :is-editing="editingLineIndex === index"
             :editing-text="editingText"
             :timestamp-text="formatTimestampMs(line.start_ms)"
+            :end-timestamp-text="formatTimestampMs(line.end_ms)"
             :set-line-input-ref="setLineInputRef"
             :progress-ms="progressMs"
             @mouseenter="hoveredLineIndex = index"
@@ -47,6 +48,9 @@
             @sync-line="handleSyncLine"
             @rewind-line="handleRewindLine"
             @forward-line="handleForwardLine"
+            @sync-end="handleSyncEnd"
+            @rewind-end="handleRewindEnd"
+            @forward-end="handleForwardEnd"
             @delete-line="handleDeleteLine"
             @start-edit="startEditingLine"
             @save-edit="saveEditingLine"
@@ -120,6 +124,9 @@ const emit = defineEmits([
   'sync-line',
   'rewind-line',
   'forward-line',
+  'sync-end',
+  'rewind-end',
+  'forward-end',
   'delete-line',
   'add-line-at',
   'import-lines-from-plain',
@@ -226,6 +233,18 @@ const handleRewindLine = index => {
 
 const handleForwardLine = index => {
   emitLineAction('forward-line', index)
+}
+
+const handleSyncEnd = index => {
+  emitLineAction('sync-end', index)
+}
+
+const handleRewindEnd = index => {
+  emitLineAction('rewind-end', index)
+}
+
+const handleForwardEnd = index => {
+  emitLineAction('forward-end', index)
 }
 
 const handleDeleteLine = index => {
