@@ -229,6 +229,62 @@ async fn uninitialize_library(app_state: State<'_, AppState>) -> Result<(), Stri
     Ok(())
 }
 
+/// Full wipe and rescan of the library.
+/// Clears tracks, albums, artists tables, deletes lyricsfiles with track associations,
+/// resets init flag, and performs a full rescan.
+#[tauri::command]
+async fn full_scan_library(
+    app_state: State<'_, AppState>,
+    app_handle: AppHandle,
+    use_hash_detection: Option<bool>,
+) -> Result<scanner::models::ScanResult, String> {
+    // Step 1: Full wipe - clear all library data and reset init flag
+    {
+        let conn_guard = app_state.db.lock().unwrap();
+        let conn = conn_guard.as_ref().unwrap();
+        library::full_wipe_library(conn).map_err(|err| err.to_string())?;
+    }
+
+    // Step 2: Get directories
+    let directories = {
+        let conn_guard = app_state.db.lock().unwrap();
+        let conn = conn_guard.as_ref().unwrap();
+        db::get_directories(conn).map_err(|err| err.to_string())?
+    };
+
+    // Determine detection method (default to Hash for reliability)
+    let detection_method = if use_hash_detection.unwrap_or(true) {
+        scanner::scan::DetectionMethod::Hash
+    } else {
+        scanner::scan::DetectionMethod::Metadata
+    };
+
+    // Clone app_handle for use in the closure
+    let app_handle_clone = app_handle.clone();
+
+    // Step 3: Run full scan
+    let scan_result = tokio::task::block_in_place(|| {
+        let mut conn_guard = app_state.db.lock().unwrap();
+        let conn = conn_guard.as_mut().unwrap();
+
+        scanner::scan_library(
+            &directories,
+            conn,
+            &|progress| {
+                // Emit progress directly (synchronous)
+                let _ = app_handle_clone.emit("scan-progress", progress);
+            },
+            detection_method,
+        )
+    })
+    .map_err(|err| err.to_string())?;
+
+    // Emit completion event
+    let _ = app_handle.emit("scan-complete", &scan_result);
+
+    Ok(scan_result)
+}
+
 #[tauri::command]
 async fn scan_library(
     app_state: State<'_, AppState>,
@@ -1471,6 +1527,7 @@ async fn main() {
             get_config,
             set_config,
             uninitialize_library,
+            full_scan_library,
             scan_library,
             get_tracks,
             get_track_ids,

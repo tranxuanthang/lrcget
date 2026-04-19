@@ -9,6 +9,16 @@ pub fn uninitialize_library(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
+/// Full wipe of library data including associated lyricsfiles.
+/// Clears tracks, albums, artists tables, deletes lyricsfiles with track associations,
+/// and resets the init flag to trigger a full rescan.
+pub fn full_wipe_library(conn: &Connection) -> Result<()> {
+    db::clean_library(conn)?;
+    db::delete_lyricsfiles_with_tracks(conn)?;
+    db::set_init(false, conn)?;
+    Ok(())
+}
+
 pub fn get_tracks(conn: &Connection) -> Result<Vec<PersistentTrack>> {
     db::get_tracks(conn)
 }

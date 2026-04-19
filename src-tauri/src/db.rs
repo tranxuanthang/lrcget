@@ -414,6 +414,13 @@ pub fn delete_lyricsfile_by_track_id(track_id: i64, db: &Connection) -> Result<(
     Ok(())
 }
 
+/// Delete all lyricsfiles associated with tracks (where track_id IS NOT NULL)
+/// This preserves standalone LRCLIB lyrics that aren't linked to local tracks
+pub fn delete_lyricsfiles_with_tracks(db: &Connection) -> Result<()> {
+    db.execute("DELETE FROM lyricsfiles WHERE track_id IS NOT NULL", ())?;
+    Ok(())
+}
+
 /// Get lyricsfile by LRCLIB instance and ID
 /// Returns (lyricsfile_id, lyricsfile_content) if found
 pub fn get_lyricsfile_by_lrclib(

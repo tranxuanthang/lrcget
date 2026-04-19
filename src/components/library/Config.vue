@@ -103,7 +103,10 @@
       </div>
 
       <div class="flex flex-col gap-1">
-        <a href="#" class="link" @click="refreshLibrary">Refresh my library for new changes...</a>
+        <a href="#" class="link hidden" @click="refreshLibrary">Scan for new and modified tracks...</a>
+        <a href="#" class="link text-red-600 dark:text-red-400" @click="fullScanLibrary"
+          >Reset library and perform full scan...</a
+        >
         <a href="#" class="link" @click="manageDirectories"
           >Add and remove scanning directories...</a
         >
@@ -127,7 +130,7 @@ import CheckboxButton from '@/components/common/CheckboxButton.vue'
 const { setThemeMode, setLrclibInstance } = useGlobalState()
 const { volume } = usePlayer()
 
-const emit = defineEmits(['close', 'refreshLibrary', 'manageDirectories'])
+const emit = defineEmits(['close', 'refreshLibrary', 'fullScanLibrary', 'manageDirectories'])
 
 const downloadLyricsFor = ref('all')
 const skipTracksWithSyncedLyrics = ref(true)
@@ -154,6 +157,11 @@ const save = async () => {
 
 const refreshLibrary = () => {
   emit('refreshLibrary')
+  emit('close')
+}
+
+const fullScanLibrary = () => {
+  emit('fullScanLibrary')
   emit('close')
 }
 

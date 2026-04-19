@@ -99,6 +99,9 @@ const { open: openConfigModal, close: closeConfigModal } = useModal({
     onRefreshLibrary() {
       refreshLibrary()
     },
+    onFullScanLibrary() {
+      fullScanLibrary()
+    },
     onManageDirectories() {
       emit('manageDirectories')
     },
@@ -210,6 +213,25 @@ const scanLibrary = async (isRefresh = false) => {
 
 const refreshLibrary = async () => {
   await scanLibrary(true)
+}
+
+const fullScanLibrary = async () => {
+  isLoading.value = true
+  isScanning.value = true
+  scanProgress.value = null
+  scanResult.value = null
+
+  try {
+    await setupScanListeners()
+    // Full scan with hash detection for accuracy
+    await invoke('full_scan_library', { useHashDetection: true })
+  } catch (error) {
+    console.error(error)
+    toast.error(`Unknown error happened when performing full library scan. Error: ${error}`)
+    isScanning.value = false
+    isLoading.value = false
+    emit('scanComplete')
+  }
 }
 
 onMounted(async () => {

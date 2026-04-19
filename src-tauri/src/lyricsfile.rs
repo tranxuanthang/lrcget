@@ -220,6 +220,8 @@ fn parse_lrc_lines(synced_lyrics: &str) -> Vec<LyricsfileLine> {
         Err(_) => return Vec::new(),
     };
 
+    println!("lyrics: {:?}", lyrics);
+
     let timed_lines = lyrics.get_timed_lines();
 
     timed_lines
@@ -252,7 +254,7 @@ fn lines_to_lrc(lines: &[LyricsfileLine]) -> Option<String> {
         };
 
         output.push_str(&format!(
-            "{}{}\n",
+            "{} {}\n",
             format_lrc_timestamp(line.start_ms),
             text
         ));
@@ -265,9 +267,9 @@ fn format_lrc_timestamp(timestamp_ms: i64) -> String {
     let safe_ms = timestamp_ms.max(0);
     let minutes = safe_ms / 60000;
     let seconds = (safe_ms % 60000) / 1000;
-    let milliseconds = safe_ms % 1000;
+    let centiseconds = (safe_ms % 1000) / 10;
 
-    format!("[{:02}:{:02}.{:03}]", minutes, seconds, milliseconds)
+    format!("[{:02}:{:02}.{:02}]", minutes, seconds, centiseconds)
 }
 
 fn duration_to_ms(duration: f64) -> Option<i64> {
