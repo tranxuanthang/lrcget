@@ -152,10 +152,27 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
 
     const newStartMs = Math.max(0, Math.round(progress.value * 1000))
 
-    withUpdatedLine(lineIndex, line => ({
-      ...line,
-      start_ms: newStartMs,
-    }))
+    // Update the current line's start_ms and optionally set previous line's end_ms
+    const prevLineIndex = lineIndex - 1
+    const shouldSetPrevEndMs =
+      prevLineIndex >= 0 && !Number.isFinite(syncedLines.value[prevLineIndex]?.end_ms)
+
+    syncedLines.value = syncedLines.value.map((line, index) => {
+      if (index === lineIndex) {
+        return {
+          ...line,
+          start_ms: newStartMs,
+        }
+      }
+      if (index === prevLineIndex && shouldSetPrevEndMs) {
+        return {
+          ...line,
+          end_ms: newStartMs,
+        }
+      }
+      return line
+    })
+    isDirty.value = true
   }
 
   const shiftLineTimestampBy = (lineIndex, offsetMs) => {
