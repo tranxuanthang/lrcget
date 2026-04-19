@@ -97,7 +97,6 @@
         :model-value="syncedLines"
         :can-import-from-plain="hasPlainLyrics"
         :selected-line-index="selectedSyncedLineIndex"
-        :playing-line-index="currentPlayingSyncedLineIndex"
         :progress-ms="progressMs"
         @update:model-value="updateSyncedLines"
         @update:selected-line-index="selectSyncedLine"
@@ -187,7 +186,6 @@ const {
   isSyncedLineEditing,
   hasPlainLyrics,
   selectedLineExists,
-  currentPlayingSyncedLineIndex,
   isInstrumental,
   serializedLyricsfile,
   initializeLyrics,

@@ -34,7 +34,6 @@
             :index="index"
             :row-class="rowClass(index)"
             :is-line-controls-visible="isLineControlsVisible(index)"
-            :is-line-playing="isLinePlaying(index)"
             :is-editing="editingLineIndex === index"
             :editing-text="editingText"
             :timestamp-text="formatTimestampMs(line.start_ms)"
@@ -100,10 +99,6 @@ const props = defineProps({
     required: true,
   },
   selectedLineIndex: {
-    type: Number,
-    default: -1,
-  },
-  playingLineIndex: {
     type: Number,
     default: -1,
   },
@@ -208,8 +203,6 @@ const selectLine = index => {
 
 const isLineControlsVisible = index =>
   hoveredLineIndex.value === index || props.selectedLineIndex === index
-
-const isLinePlaying = index => props.playingLineIndex === index
 
 const emitLineAction = (eventName, index, selectBefore = true) => {
   if (selectBefore) {

@@ -331,23 +331,6 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
       selectedSyncedLineIndex.value < syncedLines.value.length
   )
 
-  const currentPlayingSyncedLineIndex = computed(() => {
-    if (!Number.isFinite(progress.value) || syncedLines.value.length === 0) {
-      return -1
-    }
-
-    const progressMs = Math.max(0, Math.round(progress.value * 1000))
-
-    for (let index = syncedLines.value.length - 1; index >= 0; index -= 1) {
-      const startMs = syncedLines.value[index]?.start_ms
-      if (Number.isFinite(startMs) && startMs <= progressMs) {
-        return index
-      }
-    }
-
-    return -1
-  })
-
   watch(
     syncedLines,
     () => {
@@ -365,7 +348,6 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     isSyncedLineEditing,
     hasPlainLyrics,
     selectedLineExists,
-    currentPlayingSyncedLineIndex,
     isInstrumental,
     serializedLyricsfile,
     initializeLyrics,

@@ -162,10 +162,6 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
-  isLinePlaying: {
-    type: Boolean,
-    default: false,
-  },
   isEditing: {
     type: Boolean,
     default: false,
@@ -212,6 +208,25 @@ const emit = defineEmits([
 
 const rowElement = ref(null)
 
+// Determine if this line is currently playing based on its own time range
+const isLinePlaying = computed(() => {
+  if (!Number.isFinite(props.line?.start_ms)) {
+    return false
+  }
+
+  const startMs = props.line.start_ms
+  const endMs = props.line?.end_ms
+
+  // If end_ms is set, check if progress is within [start_ms, end_ms)
+  if (Number.isFinite(endMs)) {
+    return props.progressMs >= startMs && props.progressMs < endMs
+  }
+
+  // If no end_ms, use the old behavior: playing if progress >= start_ms
+  // (This handles the case where end_ms hasn't been set yet)
+  return props.progressMs >= startMs
+})
+
 const editingTextProxy = computed({
   get: () => props.editingText,
   set: value => emit('update:editing-text', value),
@@ -224,18 +239,30 @@ const hasWordSync = computed(() => {
 
 // Determine the currently playing word index based on progressMs
 const currentWordIndex = computed(() => {
-  if (!hasWordSync.value || !props.isLinePlaying || !props.line.words) {
+  if (!hasWordSync.value || !props.line.words) {
+    return -1
+  }
+
+  // Check if we're within the line's time range
+  if (!isLinePlaying.value) {
     return -1
   }
 
   const words = props.line.words
+  const lineEndMs = props.line?.end_ms
+
   for (let i = 0; i < words.length; i++) {
     const word = words[i]
     const nextWord = words[i + 1]
 
     // Check if current time falls within this word's time window
     const wordStart = word.start_ms
-    const wordEnd = nextWord ? nextWord.start_ms : Infinity
+    // Use next word's start_ms, or line's end_ms, or Infinity as fallback
+    const wordEnd = nextWord
+      ? nextWord.start_ms
+      : Number.isFinite(lineEndMs)
+        ? lineEndMs
+        : Infinity
 
     if (props.progressMs >= wordStart && props.progressMs < wordEnd) {
       return i
