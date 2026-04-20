@@ -109,6 +109,26 @@ trait ServiceAccess {
 
 **Performance:** 100K files HDD ~30-90s faster, SSD ~5-10s faster; Memory ~10MB vs ~200MB old
 
+### Orphaned Lyricsfile Reattachment
+
+When tracks are deleted from the library, their associated `lyricsfiles` records are retained (via `ON DELETE SET NULL`). When the same track is re-added during a library scan, the system automatically reattaches these orphaned lyricsfiles instead of requiring re-import from embedded metadata or sidecar files.
+
+**Matching Criteria:**
+- Exact match on normalized `track_artist_name_lower` + `track_title_lower` + `track_album_name_lower`
+- Duration must be within ±2 seconds
+- Only considers lyricsfiles where `track_id IS NULL` (orphaned)
+
+**Process during `insert_new_track()`:**
+1. Extract metadata from audio file
+2. Query for matching orphaned lyricsfile via `db::find_orphaned_lyricsfile_tx()`
+3. If found: reattach via `db::reattach_lyricsfile_to_track_tx()`, skip embedded lyrics import
+4. If not found: proceed with normal embedded/sidecar lyrics import
+
+**Benefits:**
+- Preserves lyrics edits when tracks are temporarily removed and re-added
+- Avoids redundant re-import from sidecar files
+- Works for both previously-deleted tracks and standalone LRCLIB lyrics
+
 ### Audio Player (`player.rs`)
 
 ```rust

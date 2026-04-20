@@ -270,27 +270,42 @@ fn insert_new_track(
         tx,
     )?;
 
-    let lyricsfile_track_metadata = LyricsfileTrackMetadata::new(
+    // Check for orphaned lyricsfile before importing embedded lyrics
+    let orphaned_lyricsfile = db::find_orphaned_lyricsfile_tx(
         &metadata.title,
-        &metadata.album,
         &metadata.artist,
+        &metadata.album,
         metadata.duration,
-    );
+        tx,
+    )?;
 
-    if let Some(lyricsfile) = build_lyricsfile(
-        &lyricsfile_track_metadata,
-        lyrics.txt_lyrics.as_deref(),
-        lyrics.lrc_lyrics.as_deref(),
-    ) {
-        db::upsert_lyricsfile_for_track_tx(
-            track_id,
+    if let Some(lyricsfile_id) = orphaned_lyricsfile {
+        // Reattach orphaned lyricsfile to this track
+        db::reattach_lyricsfile_to_track_tx(lyricsfile_id, track_id, tx)?;
+    } else {
+        // No orphaned lyricsfile found, import embedded lyrics as usual
+        let lyricsfile_track_metadata = LyricsfileTrackMetadata::new(
             &metadata.title,
             &metadata.album,
             &metadata.artist,
             metadata.duration,
-            &lyricsfile,
-            tx,
-        )?;
+        );
+
+        if let Some(lyricsfile) = build_lyricsfile(
+            &lyricsfile_track_metadata,
+            lyrics.txt_lyrics.as_deref(),
+            lyrics.lrc_lyrics.as_deref(),
+        ) {
+            db::upsert_lyricsfile_for_track_tx(
+                track_id,
+                &metadata.title,
+                &metadata.album,
+                &metadata.artist,
+                metadata.duration,
+                &lyricsfile,
+                tx,
+            )?;
+        }
     }
 
     Ok(())

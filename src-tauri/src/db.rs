@@ -1340,6 +1340,55 @@ pub fn get_track_ids_with_lyrics(db: &Connection) -> Result<Vec<i64>> {
     Ok(track_ids)
 }
 
+/// Find orphaned lyricsfiles by track metadata (for reattachment during scan)
+/// Returns the lyricsfile_id if found, None otherwise
+/// Matches on normalized title, artist, album, and duration within ±2 seconds
+pub fn find_orphaned_lyricsfile_tx(
+    title: &str,
+    artist_name: &str,
+    album_name: &str,
+    duration: f64,
+    tx: &rusqlite::Transaction,
+) -> Result<Option<i64>> {
+    let result = tx
+        .query_row(
+            indoc! {"
+                SELECT id FROM lyricsfiles
+                WHERE track_id IS NULL
+                  AND track_title_lower = ?
+                  AND track_artist_name_lower = ?
+                  AND track_album_name_lower = ?
+                  AND ABS(track_duration - ?) <= 2.0
+                LIMIT 1
+            "},
+            [
+                prepare_input(title),
+                prepare_input(artist_name),
+                prepare_input(album_name),
+                duration.to_string(),
+            ],
+            |row| {
+                let id: i64 = row.get(0)?;
+                Ok(id)
+            },
+        )
+        .optional()?;
+    Ok(result)
+}
+
+/// Reattach an orphaned lyricsfile to a track
+pub fn reattach_lyricsfile_to_track_tx(
+    lyricsfile_id: i64,
+    track_id: i64,
+    tx: &rusqlite::Transaction,
+) -> Result<()> {
+    tx.execute(
+        "UPDATE lyricsfiles SET track_id = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?",
+        (track_id, lyricsfile_id),
+    )?;
+    Ok(())
+}
+
 /// Find tracks by metadata for matching against LRCLIB tracks
 pub fn find_tracks_by_metadata(
     title: &str,
