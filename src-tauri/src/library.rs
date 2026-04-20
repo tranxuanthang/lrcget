@@ -9,12 +9,12 @@ pub fn uninitialize_library(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Full wipe of library data including associated lyricsfiles.
-/// Clears tracks, albums, artists tables, deletes lyricsfiles with track associations,
-/// and resets the init flag to trigger a full rescan.
+/// Full wipe of library data.
+/// Clears tracks, albums, artists tables and resets the init flag to trigger a full rescan.
+/// Associated lyricsfiles are preserved (track_id is set to NULL via foreign key constraint)
+/// for potential reattachment on rescan.
 pub fn full_wipe_library(conn: &Connection) -> Result<()> {
     db::clean_library(conn)?;
-    db::delete_lyricsfiles_with_tracks(conn)?;
     db::set_init(false, conn)?;
     Ok(())
 }

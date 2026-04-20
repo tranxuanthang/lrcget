@@ -230,8 +230,8 @@ async fn uninitialize_library(app_state: State<'_, AppState>) -> Result<(), Stri
 }
 
 /// Full wipe and rescan of the library.
-/// Clears tracks, albums, artists tables, deletes lyricsfiles with track associations,
-/// resets init flag, and performs a full rescan.
+/// Clears tracks, albums, artists tables, resets init flag, and performs a full rescan.
+/// Associated lyricsfiles are preserved (track_id set to NULL) for potential reattachment.
 #[tauri::command]
 async fn full_scan_library(
     app_state: State<'_, AppState>,
