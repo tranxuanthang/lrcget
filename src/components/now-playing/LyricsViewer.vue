@@ -30,9 +30,9 @@
                 :key="index"
                 class="transition"
                 :class="{
-                  'font-bold text-brave-50 dark:text-brave-95': currentIndex === index,
-                  'text-brave-50 hover:text-brave-40 hover:cursor-pointer dark:text-brave-80 dark:hover:text-brave-90':
-                    currentIndex !== index,
+                  'font-bold text-brave-30 dark:text-brave-95': isLinePlaying(line, index),
+                  'text-brave-30/70 hover:text-brave-30/80 hover:cursor-pointer dark:text-brave-95/70 dark:hover:text-brave-95/80':
+                    !isLinePlaying(line, index),
                 }"
                 @click="onLineClick(line)"
               >
@@ -43,8 +43,8 @@
                     class="whitespace-pre-wrap"
                     :class="{
                       'text-yellow-500 dark:text-yellow-400':
-                        currentIndex === index &&
-                        isWordPlaying(syncedLines, index, wordIndex, progress * 1000),
+                        isLinePlaying(line, index) &&
+                        isWordPlaying(syncedLines, index, wordIndex, progressMs),
                     }"
                     >{{ word.text }}</span
                   >
@@ -94,17 +94,17 @@
             :key="currentLyrics"
             class="flex w-full justify-center items-center text-brave-30 dark:text-brave-95 text-sm grow font-bold"
           >
-            <template v-if="hasWordSync(syncedLines, currentIndex)">
+            <template v-if="hasWordSync(syncedLines, primaryPlayingLineIndex)">
               <span
-                v-for="(word, wordIndex) in getLineWords(syncedLines, currentIndex)"
+                v-for="(word, wordIndex) in getLineWords(syncedLines, primaryPlayingLineIndex)"
                 :key="wordIndex"
                 class="whitespace-pre-wrap"
                 :class="{
                   'text-yellow-500 dark:text-yellow-400': isWordPlaying(
                     syncedLines,
-                    currentIndex,
+                    primaryPlayingLineIndex,
                     wordIndex,
-                    progress * 1000
+                    progressMs
                   ),
                 }"
                 >{{ word.text }}</span
@@ -130,7 +130,6 @@ import { parseLyricsfile } from '@/utils/lyricsfile.js'
 const props = defineProps(['duration', 'progress', 'lyricsfile'])
 const emit = defineEmits(['lyricsClicked'])
 
-const currentIndex = ref(null)
 const expanded = ref(false)
 const currentLineElementOffset = ref(null)
 const copied = ref(false)
@@ -149,15 +148,55 @@ const syncedLines = computed(() => {
   return parsedLyricsfile.value.syncedLines || []
 })
 
+const progressMs = computed(() => (props.progress ?? 0) * 1000)
+
+// Check if a line is currently playing based on its own time range
+const isLinePlaying = (line, index) => {
+  if (!line || !Number.isFinite(line.start_ms)) {
+    return false
+  }
+  const lineStart = line.start_ms
+  const lineEnd = Number.isFinite(line.end_ms)
+    ? line.end_ms
+    : (syncedLines.value[index + 1]?.start_ms ?? Infinity)
+  return progressMs.value >= lineStart && progressMs.value < lineEnd
+}
+
+// For minimal view: find the primary playing line (prioritize by start time if multiple overlap)
+const primaryPlayingLineIndex = computed(() => {
+  const lines = syncedLines.value
+  if (!lines || lines.length === 0) {
+    return -1
+  }
+
+  // Find all lines that are currently playing
+  const playingIndices = []
+  for (let i = 0; i < lines.length; i++) {
+    if (isLinePlaying(lines[i], i)) {
+      playingIndices.push(i)
+    }
+  }
+
+  if (playingIndices.length === 0) {
+    // No line is playing, find the most recent past line
+    for (let i = lines.length - 1; i >= 0; i--) {
+      if (progressMs.value >= lines[i].start_ms) {
+        return i
+      }
+    }
+    return -1
+  }
+
+  // Return the line with the latest start time (most recently started)
+  return playingIndices[playingIndices.length - 1]
+})
+
 const currentLyrics = computed(() => {
-  if (
-    currentIndex.value === null ||
-    currentIndex.value < 0 ||
-    currentIndex.value >= syncedLines.value.length
-  ) {
+  const index = primaryPlayingLineIndex.value
+  if (index === null || index < 0 || index >= syncedLines.value.length) {
     return '…'
   }
-  const line = syncedLines.value[currentIndex.value]
+  const line = syncedLines.value[index]
   return line?.text || '…'
 })
 
@@ -210,37 +249,9 @@ const isWordPlaying = (lines, lineIndex, wordIndex, progressMs) => {
   return getCurrentWordIndex(line, progressMs) === wordIndex
 }
 
-const findCurrentLineIndex = progressMs => {
-  const lines = syncedLines.value
-  if (!lines || lines.length === 0) {
-    return -1
-  }
-
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i]
-    const nextLine = lines[i + 1]
-    const lineStart = line.start_ms
-    const lineEnd = nextLine ? nextLine.start_ms : Infinity
-
-    if (progressMs >= lineStart && progressMs < lineEnd) {
-      return i
-    }
-  }
-
-  return -1
-}
-
-const expand = () => {
-  expanded.value = !expanded.value
-  nextTick(() => {
-    updateCurrentLineElementOffset(currentIndex.value)
-  })
-}
-
-const updateCurrentLineElementOffset = newCurrentIndex => {
-  if (newCurrentIndex === null) {
-    newCurrentIndex = -1
-  }
+// For expanded view scrolling: use the primary playing line for scroll position
+const updateCurrentLineElementOffset = () => {
+  const newCurrentIndex = primaryPlayingLineIndex.value
 
   if (newCurrentIndex === -1) {
     currentLineElementOffset.value = null
@@ -250,7 +261,9 @@ const updateCurrentLineElementOffset = newCurrentIndex => {
   const fullLyricsContainerEl = document.getElementById('full-lyrics-container')
   if (fullLyricsContainerEl) {
     const currentLyricsLine = Array.from(fullLyricsContainerEl.children)[newCurrentIndex]
-    currentLineElementOffset.value = currentLyricsLine.offsetTop
+    if (currentLyricsLine) {
+      currentLineElementOffset.value = currentLyricsLine.offsetTop
+    }
   }
 }
 
@@ -261,6 +274,13 @@ const fullViewTransform = computed(() => {
 
   return `translateY(calc(50% - 2.5em - ${currentLineElementOffset.value}px))`
 })
+
+const expand = () => {
+  expanded.value = !expanded.value
+  nextTick(() => {
+    updateCurrentLineElementOffset()
+  })
+}
 
 const onLineClick = line => {
   emit('lyricsClicked', { timestamp: line.start_ms / 1000 })
@@ -280,21 +300,11 @@ const onCopy = async () => {
 
 watch(
   () => props.progress,
-  newProgress => {
-    if (!syncedLines.value || syncedLines.value.length === 0) {
-      currentIndex.value = -1
-      return
-    }
-
-    const progressMs = newProgress * 1000
-    currentIndex.value = findCurrentLineIndex(progressMs)
+  () => {
+    updateCurrentLineElementOffset()
   },
   { immediate: true }
 )
-
-watch(currentIndex, newCurrentIndex => {
-  updateCurrentLineElementOffset(newCurrentIndex)
-})
 </script>
 
 <style scoped>
