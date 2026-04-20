@@ -103,7 +103,9 @@
       </div>
 
       <div class="flex flex-col gap-1">
-        <a href="#" class="link hidden" @click="refreshLibrary">Scan for new and modified tracks...</a>
+        <a href="#" class="link hidden" @click="refreshLibrary"
+          >Scan for new and modified tracks...</a
+        >
         <a href="#" class="link text-red-600 dark:text-red-400" @click="fullScanLibrary"
           >Reset library and perform full scan...</a
         >

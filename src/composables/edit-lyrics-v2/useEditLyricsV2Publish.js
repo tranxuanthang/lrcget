@@ -27,11 +27,14 @@ export function useEditLyricsV2Publish({
       title: lyricsfileDocument?.value?.metadata?.title ?? audioSource.value?.title ?? null,
       artist_name:
         lyricsfileDocument?.value?.metadata?.artist ?? audioSource.value?.artist_name ?? null,
-      album_name: lyricsfileDocument?.value?.metadata?.album ?? audioSource.value?.album_name ?? null,
+      album_name:
+        lyricsfileDocument?.value?.metadata?.album ?? audioSource.value?.album_name ?? null,
       duration:
         (lyricsfileDocument?.value?.metadata?.duration_ms != null
           ? lyricsfileDocument.value.metadata.duration_ms / 1000
-          : null) ?? audioSource.value?.duration ?? null,
+          : null) ??
+        audioSource.value?.duration ??
+        null,
     }
 
     patchPublishModalOptions({

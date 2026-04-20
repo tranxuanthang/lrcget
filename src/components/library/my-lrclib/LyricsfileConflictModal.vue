@@ -13,7 +13,7 @@
           class="button px-4 h-8 rounded-full text-sm"
           :class="{
             'button-normal': !isLoading,
-            'button-disabled': isLoading
+            'button-disabled': isLoading,
           }"
           :disabled="isLoading"
           @click="redownload"

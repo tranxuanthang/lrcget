@@ -38,15 +38,15 @@ src/
 
 Module-level ref composables (singletons by design):
 
-| Composable                              | Purpose                                                                                                                                                                         |
-| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `useGlobalState()`                      | `isHotkey`, `themeMode`, `lrclibInstance`                                                                                                                                       |
-| `usePlayer()`                           | `playingTrack`, `status`, `duration`, `progress`, `volume`. Supports both library tracks (with `id`) and file-based tracks (with `file_path`). Listens to `player-state` events |
-| `useDownloader()`                       | Download queue, progress. Loop started by App.vue at boot                                                                                                                       |
-| `useExporter()`                         | Mass export queue, progress. Used by ExportViewer modal                                                                                                                         |
-| `useSearchLibrary()`                    | Search text, filters                                                                                                                                                            |
-| `useSearchLyrics()`                     | Search modal state                                                                                                                                                              |
-| `useEditLyricsV2()` | Edit lyrics modal state |
+| Composable           | Purpose                                                                                                                                                                         |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `useGlobalState()`   | `isHotkey`, `themeMode`, `lrclibInstance`                                                                                                                                       |
+| `usePlayer()`        | `playingTrack`, `status`, `duration`, `progress`, `volume`. Supports both library tracks (with `id`) and file-based tracks (with `file_path`). Listens to `player-state` events |
+| `useDownloader()`    | Download queue, progress. Loop started by App.vue at boot                                                                                                                       |
+| `useExporter()`      | Mass export queue, progress. Used by ExportViewer modal                                                                                                                         |
+| `useSearchLibrary()` | Search text, filters                                                                                                                                                            |
+| `useSearchLyrics()`  | Search modal state                                                                                                                                                              |
+| `useEditLyricsV2()`  | Edit lyrics modal state                                                                                                                                                         |
 
 **Boot Flow**: `main.js` → Vue app init → `App.vue` checks `get_init()` → shows `ChooseDirectory.vue` (setup) or `Library.vue` (main). Loads config, applies theme, starts downloader loop.
 
@@ -61,6 +61,7 @@ Module-level ref composables (singletons by design):
 **Modals**: `Config.vue`, `About.vue`, `DownloadViewer.vue`
 
 **Common Components**:
+
 - `BaseModal.vue` — Reusable modal wrapper using Vue Final Modal with consistent styling
 - `ConfirmModal.vue` — Simple confirmation modal for user actions (e.g., confirming close on unsaved changes)
 

@@ -92,7 +92,7 @@
       <div class="relative flex items-center">
         <button
           v-show="isLineControlsVisible && line.end_ms"
-          class="button p-0.5 rounded-full text-xs h-5 w-5 bg-cyan-100 text-cyan-800  dark:bg-cyan-800 dark:text-white absolute -left-1.5 top-1/2 -translate-y-1/2 z-10"
+          class="button p-0.5 rounded-full text-xs h-5 w-5 bg-cyan-100 text-cyan-800 dark:bg-cyan-800 dark:text-white absolute -left-1.5 top-1/2 -translate-y-1/2 z-10"
           title="Rewind end timestamp by 100ms"
           @click.stop="emit('rewind-end', index)"
         >
@@ -107,7 +107,7 @@
         </div>
         <button
           v-show="isLineControlsVisible && line.end_ms"
-          class="button p-0.5 rounded-full text-xs h-5 w-5 bg-cyan-100 text-cyan-800  dark:bg-cyan-800 dark:text-white absolute -right-1.5 top-1/2 -translate-y-1/2 z-10"
+          class="button p-0.5 rounded-full text-xs h-5 w-5 bg-cyan-100 text-cyan-800 dark:bg-cyan-800 dark:text-white absolute -right-1.5 top-1/2 -translate-y-1/2 z-10"
           title="Forward end timestamp by 100ms"
           @click.stop="emit('forward-end', index)"
         >
@@ -258,11 +258,7 @@ const currentWordIndex = computed(() => {
     // Check if current time falls within this word's time window
     const wordStart = word.start_ms
     // Use next word's start_ms, or line's end_ms, or Infinity as fallback
-    const wordEnd = nextWord
-      ? nextWord.start_ms
-      : Number.isFinite(lineEndMs)
-        ? lineEndMs
-        : Infinity
+    const wordEnd = nextWord ? nextWord.start_ms : Number.isFinite(lineEndMs) ? lineEndMs : Infinity
 
     if (props.progressMs >= wordStart && props.progressMs < wordEnd) {
       return i
