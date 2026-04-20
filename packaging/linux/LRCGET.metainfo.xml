@@ -39,6 +39,18 @@
   <url type="bugtracker">https://github.com/tranxuanthang/lrcget/issues</url>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="2.0.0" date="2026-04-21">
+      <description>
+        <ul>
+          <li>Add support for Lyricsfile - open and modern lyrics format in YAML syntax</li>
+          <li>New lyrics editor with word-sync support</li>
+          <li>Incremental scanning of library tracks</li>
+          <li>Independent internal lyrics database without touching tracks' directories, with optional, separate lyrics export feature</li>
+          <li>Persistent volume slider state</li>
+          <li>Update node and cargo dependencies</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.2" date="2025-11-18">
       <description>
         <ul>
