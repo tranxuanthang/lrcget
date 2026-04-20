@@ -11,13 +11,13 @@ rust-version = "1.81"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [build-dependencies]
-tauri-build = { version = "2", features = [] }
+tauri-build = { version = "2.5.6", features = [] }
 
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_yaml = "0.9"
-tauri = { version = "2", features = [ "protocol-asset", "devtools"] }
+tauri = { version = "2.10.1", features = [ "protocol-asset", "devtools"] }
 globwalk = "0.9.1"
 reqwest = { version = "0.12.7", features = ["json"] }
 lofty = "0.24.0"
@@ -38,9 +38,9 @@ symphonia = { version = "0.5.4", features = ["all"] }
 regex = "1.10.4"
 lrc = "0.1.8"
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
-tauri-plugin-os = "2"
-tauri-plugin-shell = "2"
-tauri-plugin-dialog = "2"
+tauri-plugin-os = "2.3.2"
+tauri-plugin-shell = "2.3.5"
+tauri-plugin-dialog = "2.7.0"
 
 [features]
 # by default Tauri runs in production mode
@@ -75,4 +75,4 @@ opt-level = 3
 opt-level = 3
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
-tauri-plugin-global-shortcut = "2"
+tauri-plugin-global-shortcut = "2.3.1"
