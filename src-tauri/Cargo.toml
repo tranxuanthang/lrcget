@@ -36,7 +36,6 @@ data-encoding = "2.4.0"
 kira = "0.12.0"
 symphonia = { version = "0.5.4", features = ["all"] }
 regex = "1.10.4"
-lrc = "0.1.8"
 xxhash-rust = { version = "0.8", features = ["xxh3"] }
 tauri-plugin-os = "2.3.2"
 tauri-plugin-shell = "2.3.5"

@@ -1,4 +1,5 @@
 use crate::lyricsfile::ParsedLyricsfile;
+use crate::parser::lrc::parse_lrc;
 use crate::persistent_entities::PersistentTrack;
 use anyhow::{Context, Result};
 use lofty::config::WriteOptions;
@@ -10,7 +11,6 @@ use lofty::id3::v2::{
 };
 use lofty::mpeg::MpegFile;
 use lofty::TextEncoding;
-use lrc::Lyrics;
 use serde::Serialize;
 use std::fs::{remove_file, write};
 use std::io::Seek;
@@ -358,13 +358,12 @@ fn insert_sylt_frame(id3v2: &mut Id3v2Tag, synced_lyrics: &str) -> Result<()> {
 
 /// Convert synced LRC lyrics to SYLT vector format
 fn synced_lyrics_to_sylt_vec(synced_lyrics: &str) -> Result<Vec<(u32, String)>> {
-    let lyrics = Lyrics::from_str(synced_lyrics)
-        .map_err(|e| anyhow::anyhow!("Failed to parse LRC: {}", e))?;
-    let lyrics_vec = lyrics.get_timed_lines();
+    let parsed = parse_lrc(synced_lyrics);
 
-    let converted_lyrics: Vec<(u32, String)> = lyrics_vec
+    let converted_lyrics: Vec<(u32, String)> = parsed
+        .timed_lines
         .iter()
-        .map(|(time_tag, text)| (time_tag.get_timestamp() as u32, text.to_string()))
+        .map(|timed_line| (timed_line.timestamp_ms as u32, timed_line.text.clone()))
         .collect();
 
     Ok(converted_lyrics)

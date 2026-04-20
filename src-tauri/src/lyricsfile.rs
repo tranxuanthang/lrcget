@@ -1,7 +1,7 @@
+use crate::parser::lrc::{parse_lrc, format_timestamp};
 use crate::persistent_entities::PersistentTrack;
 use crate::utils::strip_timestamp;
 use anyhow::Result;
-use lrc::Lyrics;
 use serde::{Deserialize, Serialize};
 
 pub const LYRICSFILE_VERSION: &str = "1.0";
@@ -215,26 +215,21 @@ pub fn is_instrumental_lyrics(lyrics: &str) -> bool {
 }
 
 fn parse_lrc_lines(synced_lyrics: &str) -> Vec<LyricsfileLine> {
-    let lyrics = match Lyrics::from_str(synced_lyrics) {
-        Ok(lyrics) => lyrics,
-        Err(_) => return Vec::new(),
-    };
+    let parsed = parse_lrc(synced_lyrics);
 
-    println!("lyrics: {:?}", lyrics);
-
-    let timed_lines = lyrics.get_timed_lines();
-
-    timed_lines
+    parsed
+        .timed_lines
         .iter()
         .enumerate()
-        .map(|(index, (timestamp, text))| {
-            let start_ms = timestamp.get_timestamp() as i64;
-            let end_ms = timed_lines
+        .map(|(index, timed_line)| {
+            let start_ms = timed_line.timestamp_ms;
+            let end_ms = parsed
+                .timed_lines
                 .get(index + 1)
-                .map(|(next_timestamp, _)| next_timestamp.get_timestamp() as i64);
+                .map(|next_line| next_line.timestamp_ms);
 
             LyricsfileLine {
-                text: text.to_string(),
+                text: timed_line.text.clone(),
                 start_ms,
                 end_ms,
                 words: Vec::new(),
@@ -253,23 +248,10 @@ fn lines_to_lrc(lines: &[LyricsfileLine]) -> Option<String> {
             line.text.clone()
         };
 
-        output.push_str(&format!(
-            "{} {}\n",
-            format_lrc_timestamp(line.start_ms),
-            text
-        ));
+        output.push_str(&format!("{} {}\n", format_timestamp(line.start_ms), text));
     }
 
     normalize_non_empty(Some(output.as_str()))
-}
-
-fn format_lrc_timestamp(timestamp_ms: i64) -> String {
-    let safe_ms = timestamp_ms.max(0);
-    let minutes = safe_ms / 60000;
-    let seconds = (safe_ms % 60000) / 1000;
-    let centiseconds = (safe_ms % 1000) / 10;
-
-    format!("[{:02}:{:02}.{:02}]", minutes, seconds, centiseconds)
 }
 
 fn duration_to_ms(duration: f64) -> Option<i64> {

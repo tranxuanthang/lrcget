@@ -14,7 +14,7 @@
 | Scanning | Single-pass streaming with batch processing (100 files) |
 | Export | Manual sidecar (.txt/.lrc) and embedded metadata export |
 
-**Key Dependencies:** `tauri`, `rusqlite`+`rusqlite_migration`, `lofty`, `kira`, `reqwest`, `rayon`, `xxhash-rust`
+**Key Dependencies:** `tauri`, `rusqlite`+`rusqlite_migration`, `lofty`, `kira`, `reqwest`, `rayon`, `xxhash-rust`, `regex` (for LRC parsing)
 
 ## Project Structure
 
@@ -30,6 +30,8 @@ src-tauri/
 │   │   ├── hasher.rs        # xxhash3 content hashing
 │   │   ├── metadata.rs      # Audio metadata extraction
 │   │   └── models.rs        # ScanResult, ScanProgress
+│   ├── parser/              # File format parsers
+│   │   └── lrc.rs           # LRC lyrics parser (replaces lrc crate)
 │   ├── export.rs            # Manual sidecar/embed export helpers
 │   ├── lyricsfile.rs        # YAML lyricsfile helpers
 │   ├── player.rs            # Kira audio playback
@@ -175,6 +177,43 @@ pub struct ExportResult {
 - `embed_lyrics()` - Embed lyrics into MP3 (ID3v2 USLT/SYLT) or FLAC (Vorbis comments)
 
 **Note:** Sidecar exports overwrite existing files silently. Embedded exports use `lofty` for tag writing.
+
+### LRC Parser (`parser/lrc.rs`)
+
+Lightweight LRC (LyRiCs) format parser that replaces the external `lrc` crate. Supports timestamp tags with 1-3 digit precision for milliseconds.
+
+**Problem with `lrc` crate:** The original crate only supported 1-2 digit fractional seconds (centiseconds) and silently ignored lines with 3-digit milliseconds, causing data loss when parsing LRC files like `[01:35.492] Line text`.
+
+**Solution:** Custom parser with flexible timestamp parsing:
+- `[mm:ss.x]` - 1 digit = deciseconds (×100ms)
+- `[mm:ss.xx]` - 2 digits = centiseconds (×10ms)
+- `[mm:ss.xxx]` - 3 digits = milliseconds (×1ms)
+
+```rust
+pub struct TimedLine {
+    pub timestamp_ms: i64,
+    pub text: String,
+}
+
+pub struct ParsedLrc {
+    pub timed_lines: Vec<TimedLine>,
+    pub id_tags: Vec<(String, String)>,
+}
+
+pub fn parse_lrc(input: &str) -> ParsedLrc;
+pub fn is_instrumental_lrc(input: &str) -> bool;
+pub fn format_timestamp(timestamp_ms: i64) -> String;
+```
+
+**Features:**
+- Multiple timestamps per line: `[00:01.00][00:03.00] Repeated text`
+- ID tags: `[ti:Title]`, `[ar:Artist]`, `[au:instrumental]`
+- Automatic sorting by timestamp
+- Instrumental detection via `[au:instrumental]` marker
+
+**Used by:**
+- `lyricsfile.rs` - Parsing embedded LRC lyrics during import
+- `export.rs` - Converting LRC to SYLT format for MP3 embedding
 
 ### LRCLIB API (`lrclib/`)
 
