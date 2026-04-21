@@ -12,8 +12,12 @@
           <div
             v-for="virtualRow in virtualRows"
             :key="virtualRow.index"
-            class="group flex flex-col w-full absolute top-0 left-0"
+            class="group flex flex-col"
             :style="{
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              width: '100%',
               height: `${virtualRow.size}px`,
               transform: `translateY(${virtualRow.start}px)`,
             }"
@@ -31,11 +35,9 @@
 </template>
 
 <script setup>
-import DownloadMultiple from '~icons/mdi/download-multiple'
 import { ref, computed, onMounted, watch } from 'vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
 import ArtistItem from './artist-list/ArtistItem.vue'
 import ArtistTrackList from './artist-list/ArtistTrackList.vue'
 

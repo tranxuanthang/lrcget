@@ -107,7 +107,7 @@ import { useSearchLyrics } from '../../../composables/search-lyrics.js'
 import { useEditLyricsV2 } from '../../../composables/edit-lyrics-v2.js'
 import Equalizer from '@/components/icons/Equalizer.vue'
 import { parseLyricsfile } from '@/utils/lyricsfile.js'
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { usePlayer } from '@/composables/player.js'
@@ -161,15 +161,23 @@ const openEditLyricsV2 = track => {
   editLyricsV2({ audioSource, lyricsfile, trackId: track.id })
 }
 
+let unlisten = null
+
 onMounted(async () => {
   track.value = await invoke('get_track', { trackId: props.trackId })
 
-  listen('reload-track-id', async event => {
+  unlisten = await listen('reload-track-id', async event => {
     const payload = event.payload
-    if (track.value.id === payload) {
+    if (track.value && track.value.id === payload) {
       track.value = await invoke('get_track', { trackId: props.trackId })
     }
   })
+})
+
+onUnmounted(() => {
+  if (unlisten) {
+    unlisten()
+  }
 })
 </script>
 

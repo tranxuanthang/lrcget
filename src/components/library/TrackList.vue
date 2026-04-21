@@ -15,7 +15,7 @@
           <div
             v-for="virtualRow in virtualRows"
             :key="virtualRow.index"
-            class="group flex flex-col w-full"
+            class="group flex flex-col"
             :style="{
               position: 'absolute',
               top: 0,
