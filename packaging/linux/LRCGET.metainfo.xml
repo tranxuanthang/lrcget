@@ -42,12 +42,13 @@
     <release version="2.0.0" date="2026-04-21">
       <description>
         <ul>
-          <li>Add support for Lyricsfile - open and modern lyrics format in YAML syntax</li>
-          <li>New lyrics editor with word-sync support</li>
-          <li>Incremental scanning of library tracks</li>
-          <li>Independent internal lyrics database without touching tracks' directories, with optional, separate lyrics export feature</li>
+          <li>Add support for Lyricsfile — an open, extensible lyrics format in YAML syntax</li>
+          <li>Brand new lyrics editor with word-by-word sync support</li>
+          <li>Incremental scanning support</li>
+          <li>Export lyrics is now optional</li>
           <li>Persistent volume slider state</li>
-          <li>Update node and cargo dependencies</li>
+          <li>Update dependencies</li>
+          <li>Other minor improvements</li>
         </ul>
       </description>
     </release>

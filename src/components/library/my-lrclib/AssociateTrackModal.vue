@@ -1,6 +1,6 @@
 <template>
   <BaseModal
-    title="Associate track"
+    title="Choose a reference track"
     content-class="w-full max-w-xl h-full max-h-[80vh]"
     body-class="flex flex-col h-full"
     :close-button="true"
