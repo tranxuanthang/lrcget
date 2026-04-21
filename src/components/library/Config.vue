@@ -10,7 +10,7 @@
         <label class="group-label mb-4">Common</label>
 
         <div class="flex flex-col mb-4">
-          <label class="block mb-2 child-label">Download lyrics for</label>
+          <label class="block mb-2 child-label">Download lyrics for:</label>
 
           <RadioButton
             id="download-lyrics-for-all"
@@ -19,7 +19,7 @@
             name="download-lyrics-for"
             value="all"
           >
-            Download lyrics for all songs
+            All tracks (overwrite existing lyrics)
           </RadioButton>
 
           <RadioButton
@@ -29,7 +29,7 @@
             name="download-lyrics-for"
             value="skipSynced"
           >
-            Download lyrics for songs without synced lyrics
+            Only tracks without synced lyrics
           </RadioButton>
 
           <RadioButton
@@ -39,17 +39,18 @@
             name="download-lyrics-for"
             value="skipPlain"
           >
-            Download lyrics for songs without plain or synced lyrics
+            Only tracks without any lyrics
           </RadioButton>
         </div>
 
-        <div class="flex flex-col mb-4">
+        <!-- Total lines number should always show in search result, this configuration is not necessary -->
+        <!-- <div class="flex flex-col mb-4">
           <label class="block mb-2 child-label">Search settings</label>
 
           <CheckboxButton id="show-line-count" v-model="showLineCount" name="show-line-count">
             Show the number of lines a lyric file has in the search menu
           </CheckboxButton>
-        </div>
+        </div> -->
 
         <div class="flex flex-col mb-4">
           <label class="block mb-2 child-label">Theme mode</label>
@@ -92,7 +93,7 @@
         <div class="flex items-start">
           <CheckboxButton id="try-embed-lyrics" v-model="tryEmbedLyrics" name="try-embed-lyrics">
             <div class="flex flex-col">
-              <span class="mb-0.5">Try to embed the lyrics to the track files when possible</span>
+              <span class="mb-0.5">Enable embed lyrics option</span>
               <span class="text-xs text-yellow-700 dark:text-yellow-400"
                 >This option could corrupt your track files. Make sure to backup your library before
                 enabling it.</span
@@ -106,7 +107,7 @@
         <a href="#" class="link hidden" @click="refreshLibrary"
           >Scan for new and modified tracks...</a
         >
-        <a href="#" class="link text-red-600 dark:text-red-400" @click="fullScanLibrary"
+        <a href="#" class="link" @click="fullScanLibrary"
           >Reset library and perform full scan...</a
         >
         <a href="#" class="link" @click="manageDirectories"
