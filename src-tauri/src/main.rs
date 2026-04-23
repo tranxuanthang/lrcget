@@ -954,9 +954,6 @@ async fn save_lyrics(
     app_handle: AppHandle,
 ) -> Result<String, String> {
     let lyricsfile = lyricsfile.trim();
-    if lyricsfile.is_empty() {
-        return Err("Lyricsfile content cannot be empty".to_string());
-    }
 
     // Parse the lyricsfile content to validate it
     let _parsed = lyricsfile::parse_lyricsfile(lyricsfile).map_err(|err| err.to_string())?;

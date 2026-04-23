@@ -92,10 +92,19 @@ struct LyricsfileWord {
     end_ms: Option<i64>,
 }
 
+fn null_as_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Default + serde::Deserialize<'de>,
+{
+    let opt = Option::<T>::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_default())
+}
+
 #[derive(Debug, Deserialize)]
 struct ParsedLyricsfileDocument {
     metadata: ParsedLyricsfileMetadata,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "null_as_default")]
     lines: Vec<LyricsfileLine>,
     plain: Option<String>,
 }

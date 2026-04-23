@@ -258,15 +258,6 @@ export const serializeLyricsfile = ({
   const normalizedSynced = normalizeNonEmpty(syncedLyrics)
   const normalizedSyncedLines = cloneSyncedLines(syncedLines)
 
-  if (
-    !normalizedPlain &&
-    normalizedSyncedLines.length === 0 &&
-    !normalizedSynced &&
-    !forceInstrumental
-  ) {
-    return null
-  }
-
   const isInstrumental =
     forceInstrumental || (normalizedSynced ? isInstrumentalLyrics(normalizedSynced) : false)
   const baseMetadata = baseDocument?.metadata || {}
@@ -288,8 +279,8 @@ export const serializeLyricsfile = ({
   }
 
   const plain = isInstrumental
-    ? undefined
-    : normalizedPlain || normalizeNonEmpty(stripTimestamp(normalizedSynced || '')) || undefined
+    ? null
+    : normalizedPlain || normalizeNonEmpty(stripTimestamp(normalizedSynced || '')) || null
 
   const metadata = {
     title: track?.title || baseMetadata.title || '',
@@ -318,7 +309,7 @@ export const serializeLyricsfile = ({
   return YAML.stringify({
     version: LYRICSFILE_VERSION,
     metadata,
-    lines,
+    lines: lines.length > 0 ? lines : null,
     plain,
   })
 }

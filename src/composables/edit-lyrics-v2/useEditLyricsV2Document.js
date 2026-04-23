@@ -264,12 +264,6 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     try {
       const serializedContent = serializedLyricsfile.value
 
-      // serializedLyricsfile returns empty string if there's nothing to serialize
-      // In that case, we treat it as a successful save (nothing to save)
-      if (!serializedContent) {
-        return true
-      }
-
       // Determine if this is a library track or a standalone lyricsfile
       // trackId is passed separately from audioSource to handle temporary associations
       // where a library track might be used for playback but the lyricsfile should not
