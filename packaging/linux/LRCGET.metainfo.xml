@@ -39,6 +39,16 @@
   <url type="bugtracker">https://github.com/tranxuanthang/lrcget/issues</url>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="2.0.1" date="2026-04-24">
+      <description>
+        <ul>
+          <li>Lyrics editor no longer blocks saving when both plain and synced lyrics are empty.</li>
+          <li>Added ability to import synced lyrics from an .lrc file (via file picker) or directly from clipboard into the lyrics editor.</li>
+          <li>Removed dead code and refactored the mass lyrics exporter to use a background queue (similar to the downloader). You can now close the export modal and reopen it later via the header button to check progress.</li>
+          <li>Reduced memory overhead during mass download and export operations by limiting log buffers and removing unnecessary reactive arrays that are causing memory leaks.</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.0.0" date="2026-04-21">
       <description>
         <ul>
