@@ -7,15 +7,13 @@
   >
     <div class="flex flex-col items-center justify-center gap-1">
       <div class="w-full bg-brave-95 h-1 rounded">
-        <div
-          class="bg-brave-30 h-1 transition-all duration-300"
-          :style="{ width: progressWidth }"
-        />
+        <div class="bg-brave-30 h-1" :style="{ width: progressWidth }" />
       </div>
       <div class="text-[0.7rem] text-brave-30/60 dark:text-brave-95/60 flex gap-3">
         <span>{{ exportedCount }} EXPORTED</span>
         <span>{{ skippedCount }} SKIPPED</span>
         <span>{{ errorCount }} ERRORS</span>
+        <span>{{ totalCount }} TOTAL</span>
       </div>
     </div>
 
@@ -76,7 +74,6 @@ const {
   skippedCount,
   errorCount,
   totalCount,
-  currentTrack,
   log,
   startOver,
   stopExporting,

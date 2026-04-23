@@ -1,4 +1,4 @@
-import { computed, ref } from 'vue'
+import { computed, markRaw, ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { useToast } from 'vue-toastification'
@@ -8,10 +8,6 @@ const toast = useToast()
 const delay = time => new Promise(resolve => setTimeout(resolve, time))
 
 const exportQueue = ref([])
-const exportedItems = ref([])
-const skippedItems = ref([])
-const errorItems = ref([])
-const currentTrack = ref(null)
 const log = ref([])
 const exportedCount = ref(0)
 const skippedCount = ref(0)
@@ -28,8 +24,8 @@ let unlistenProgress = null
 let unlistenComplete = null
 
 const addLog = logObj => {
-  log.value.unshift(logObj)
-  if (log.value.length > 1000) {
+  log.value.unshift(markRaw(logObj))
+  if (log.value.length > 100) {
     log.value.pop()
   }
 }
@@ -62,7 +58,7 @@ const exportTrack = async track => {
         title: track.title,
         artistName: track.artist_name,
         message: result.message || 'Export failed',
-        details: result.details,
+        // details: result.details,
       })
       errorCount.value++
     } else if (hasExported) {
@@ -71,7 +67,7 @@ const exportTrack = async track => {
         title: track.title,
         artistName: track.artist_name,
         message: result.message || `Exported to ${result.exported} format(s)`,
-        details: result.details,
+        // details: result.details,
       })
       exportedCount.value++
     } else if (hasSkipped) {
@@ -80,7 +76,7 @@ const exportTrack = async track => {
         title: track.title,
         artistName: track.artist_name,
         message: result.message || 'Skipped: no lyrics available for selected formats',
-        details: result.details,
+        // details: result.details,
       })
       skippedCount.value++
     } else {
@@ -89,7 +85,7 @@ const exportTrack = async track => {
         title: track.title,
         artistName: track.artist_name,
         message: result.message || 'Nothing to export',
-        details: result.details,
+        // details: result.details,
       })
       skippedCount.value++
     }
@@ -106,9 +102,6 @@ const exportTrack = async track => {
     })
     errorCount.value++
   }
-
-  exportedItems.value.push(currentTrack.value)
-  currentTrack.value = null
 }
 
 const exportNext = async () => {
@@ -116,12 +109,13 @@ const exportNext = async () => {
     const trackId = exportQueue.value.shift()
     try {
       const track = await invoke('get_track', { trackId: trackId })
-      currentTrack.value = track
       await exportTrack(track)
     } catch (error) {
       console.error('Failed to get track for export:', error)
       errorCount.value++
     }
+
+    await delay(1)
   }
 
   // Export complete
@@ -201,35 +195,27 @@ const addToQueue = (trackIds, formats) => {
 
 const startOver = () => {
   exportQueue.value = []
-  exportedItems.value = []
-  skippedItems.value = []
-  errorItems.value = []
   log.value = []
   exportedCount.value = 0
   skippedCount.value = 0
   errorCount.value = 0
   totalCount.value = 0
-  currentTrack.value = null
   isExporting.value = false
 }
 
 const stopExporting = () => {
-  exportQueue.value = []
-  isExporting.value = false
-  currentTrack.value = null
+  startOver()
 }
 
 export function useExporter() {
   return {
     isExporting,
     exportQueue,
-    exportedItems,
     exportProgress,
     exportedCount,
     skippedCount,
     errorCount,
     totalCount,
-    currentTrack,
     log,
     addToQueue,
     startOver,

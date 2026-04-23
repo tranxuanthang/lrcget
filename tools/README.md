@@ -48,6 +48,9 @@ python generate_fake_music.py -n 10000 --no-faker
 
 # Show every file created
 python generate_fake_music.py -n 100 -v
+
+# Generate with synced lyrics files
+python generate_fake_music.py -n 500 --lrc
 ```
 
 ## Command Line Arguments
@@ -62,6 +65,7 @@ python generate_fake_music.py -n 100 -v
 | `--audio-type` |       | silent       | silent or white_noise       |
 | `--batch-size` |       | 1000         | Progress update interval    |
 | `--verbose`    | `-v`  | False        | Show each file created      |
+| `--lrc`        |       | False        | Generate .lrc lyrics files  |
 
 ## File Size
 

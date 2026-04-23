@@ -12,6 +12,7 @@
       <div class="text-[0.7rem] text-brave-30/60 dark:text-brave-95/60 flex gap-3">
         <span>{{ successCount }} FOUND</span>
         <span>{{ failureCount }} NOT FOUND</span>
+        <span>{{ totalCount }} TOTAL</span>
       </div>
     </div>
 

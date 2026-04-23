@@ -99,9 +99,40 @@ def sanitize_filename(name: str) -> str:
     return name[:100]
 
 
+def generate_lrc_lines(duration_seconds: int, faker_instance=None) -> str:
+    """Generate fake LRC lyrics lines."""
+    if faker_instance is None:
+        lines = [
+            "Blue sky calling",
+            "Night falls slowly",
+            "Dreams of tomorrow",
+            "Heart beats faster",
+            "Walking alone",
+            "Rivers run deep",
+            "Shadows dancing",
+            "Light in the dark",
+            "Whispers in wind",
+            "Endless journey",
+        ]
+    else:
+        lines = [faker_instance.sentence(nb_words=random.randint(3, 6)).rstrip('.') for _ in range(10)]
+
+    num_lines = random.randint(5, min(15, max(5, duration_seconds // 3)))
+    selected = [random.choice(lines) for _ in range(num_lines)]
+
+    # Spread lines evenly across the duration
+    lrc_lines = []
+    for i, line in enumerate(selected):
+        seconds = int((i + 1) * duration_seconds / (num_lines + 1))
+        minutes, secs = divmod(seconds, 60)
+        lrc_lines.append(f"[{minutes:02d}:{secs:02d}.00]{line}")
+
+    return "\n".join(lrc_lines)
+
+
 def generate_single_file(args) -> tuple:
     """Generate a single fake music file."""
-    file_index, output_dir, duration_range, use_faker = args
+    file_index, output_dir, duration_range, use_faker, generate_lrc = args
     
     try:
         # Generate metadata
@@ -140,6 +171,13 @@ def generate_single_file(args) -> tuple:
         # Write file
         with open(filepath, 'wb') as f:
             f.write(audio_data)
+        
+        # Generate LRC file if requested
+        if generate_lrc:
+            lrc_content = generate_lrc_lines(duration, faker if use_faker else None)
+            lrc_path = filepath.with_suffix('.lrc')
+            with open(lrc_path, 'w', encoding='utf-8') as f:
+                f.write(lrc_content)
         
         # Add metadata using mutagen
         try:
@@ -228,6 +266,12 @@ Examples:
         help='Show detailed progress'
     )
     
+    parser.add_argument(
+        '--lrc',
+        action='store_true',
+        help='Also generate a corresponding .lrc file next to each music file'
+    )
+    
     args = parser.parse_args()
     
     # Validate arguments
@@ -275,7 +319,7 @@ Examples:
     
     # Prepare work items
     work_items = [
-        (i, str(output_path), args.duration, use_faker)
+        (i, str(output_path), args.duration, use_faker, args.lrc)
         for i in range(args.num_files)
     ]
     

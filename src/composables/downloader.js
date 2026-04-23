@@ -1,24 +1,19 @@
-import { computed, ref } from 'vue'
+import { computed, markRaw, ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const delay = time => new Promise((resolve, reject) => setTimeout(resolve, time))
 
 const downloadQueue = ref([])
-const downloadedItems = ref([])
-const currentItem = ref(null)
 const log = ref([])
 const successCount = ref(0)
 const failureCount = ref(0)
+const downloadedCount = ref(0)
 const isDownloading = ref(false)
 const totalCount = ref(0)
 
-const downloadedCount = computed(() => {
-  return downloadedItems.value.length
-})
-
 const addLog = logObj => {
-  log.value.unshift(logObj)
-  if (log.value.length > 1000) {
+  log.value.unshift(markRaw(logObj))
+  if (log.value.length > 100) {
     log.value.pop()
   }
 }
@@ -47,8 +42,7 @@ const downloadLyrics = async track => {
     failureCount.value++
   }
 
-  downloadedItems.value.push(currentItem.value)
-  currentItem.value = null
+  downloadedCount.value++
 }
 
 const downloadNext = async () => {
@@ -60,13 +54,18 @@ const downloadNext = async () => {
 
     const trackId = downloadQueue.value.shift()
     const track = await invoke('get_track', { trackId: trackId })
-    currentItem.value = track
     await downloadLyrics(track)
+
+    await delay(1)
   }
 }
 
 const downloadProgress = computed(() => {
-  if (!downloadQueue.value) {
+  if (!isDownloading.value) {
+    return 0.0
+  }
+
+  if (totalCount.value === 0) {
     return 0.0
   }
 
@@ -90,29 +89,23 @@ const addToQueue = trackIds => {
 }
 
 const startOver = () => {
-  downloadedItems.value = []
+  downloadQueue.value = []
   log.value = []
   successCount.value = 0
   failureCount.value = 0
+  downloadedCount.value = 0
   totalCount.value = 0
   isDownloading.value = false
 }
 
 const stopDownloading = () => {
-  downloadQueue.value = []
-  downloadedItems.value = []
-  log.value = []
-  successCount.value = 0
-  failureCount.value = 0
-  totalCount.value = 0
-  isDownloading.value = false
+  startOver()
 }
 
 export function useDownloader() {
   return {
     isDownloading,
     downloadQueue,
-    downloadedItems,
     downloadProgress,
     successCount,
     failureCount,
