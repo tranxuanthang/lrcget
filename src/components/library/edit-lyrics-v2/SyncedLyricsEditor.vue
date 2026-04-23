@@ -77,6 +77,8 @@
       v-if="modelValue.length === 0"
       :can-import-from-plain="canImportFromPlain"
       @import-lines-from-plain="handleImportLinesFromPlain"
+      @import-lrc-file="emit('import-lrc-file')"
+      @paste-lrc="emit('paste-lrc')"
       @add-line-at="handleAddLineAt"
       @mark-as-instrumental="handleMarkAsInstrumental"
     />
@@ -125,6 +127,8 @@ const emit = defineEmits([
   'delete-line',
   'add-line-at',
   'import-lines-from-plain',
+  'import-lrc-file',
+  'paste-lrc',
   'editing-state-change',
   'update:words',
   'word-timing-edited',

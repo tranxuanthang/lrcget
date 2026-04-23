@@ -19,6 +19,18 @@
         </button>
         <button
           class="button button-normal px-2 py-1 text-xs rounded-full"
+          @click="emit('import-lrc-file')"
+        >
+          Import LRC file
+        </button>
+        <button
+          class="button button-normal px-2 py-1 text-xs rounded-full"
+          @click="emit('paste-lrc')"
+        >
+          Paste LRC content
+        </button>
+        <button
+          class="button button-normal px-2 py-1 text-xs rounded-full"
           @click="emit('add-line-at', 0)"
         >
           Add line manually
@@ -42,5 +54,5 @@ defineProps({
   },
 })
 
-const emit = defineEmits(['import-lines-from-plain', 'add-line-at', 'mark-as-instrumental'])
+const emit = defineEmits(['import-lines-from-plain', 'import-lrc-file', 'paste-lrc', 'add-line-at', 'mark-as-instrumental'])
 </script>

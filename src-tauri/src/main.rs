@@ -1450,6 +1450,12 @@ fn drain_notifications(app_state: tauri::State<AppState>) -> Vec<Notify> {
     notifications
 }
 
+#[tauri::command]
+async fn read_text_file(file_path: String) -> Result<String, String> {
+    std::fs::read_to_string(&file_path)
+        .map_err(|err| format!("Failed to read file: {}", err))
+}
+
 #[tokio::main]
 async fn main() {
     tauri::Builder::default()
@@ -1457,6 +1463,7 @@ async fn main() {
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_os::init())
+        .plugin(tauri_plugin_clipboard_manager::init())
         .manage(AppState {
             db: Default::default(),
             player: Default::default(),
@@ -1567,6 +1574,7 @@ async fn main() {
             prepare_search_query,
             prepare_lrclib_lyricsfile,
             refresh_lrclib_lyricsfile,
+            read_text_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

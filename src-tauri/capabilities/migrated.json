@@ -59,6 +59,8 @@
     "os:allow-exe-extension",
     "os:allow-locale",
     "os:allow-hostname",
-    "os:default"
+    "os:default",
+    "clipboard-manager:default",
+    "clipboard-manager:allow-read-text"
   ]
 }

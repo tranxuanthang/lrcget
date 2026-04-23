@@ -111,6 +111,8 @@
         @delete-line="deleteSyncedLine"
         @add-line-at="addSyncedLineAt"
         @import-lines-from-plain="importSyncedLinesFromPlain"
+        @import-lrc-file="handleImportLrcFile"
+        @paste-lrc="handlePasteLrc"
         @update:words="updateLineWords"
         @word-timing-edited="handleWordTimingEdited"
         @update-line-text="handleUpdateLineText"
@@ -139,6 +141,10 @@ import { useEditLyricsV2Export } from '@/composables/edit-lyrics-v2/useEditLyric
 import { useEditLyricsV2SyncedHotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedHotkeys.js'
 import { useGlobalState } from '@/composables/global-state.js'
 import { usePlayer } from '@/composables/player.js'
+import { open } from '@tauri-apps/plugin-dialog'
+import { readText } from '@tauri-apps/plugin-clipboard-manager'
+import { invoke } from '@tauri-apps/api/core'
+import { parseLrcLines } from '@/utils/lyricsfile.js'
 
 const props = defineProps({
   // Audio source for playback (library track or file-based track)
@@ -278,6 +284,60 @@ const updateLineWords = ({ lineIndex, words, lineStartMs }) => {
 
 const handleUpdateLineText = (lineIndex, newText) => {
   updateLineText(lineIndex, newText)
+}
+
+const handleImportLrcFile = async () => {
+  try {
+    const filePath = await open({
+      multiple: false,
+      directory: false,
+      filters: [
+        { name: 'LRC Files', extensions: ['lrc'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+    })
+
+    if (!filePath) {
+      return
+    }
+
+    const content = await invoke('read_text_file', { filePath })
+    const parsedLines = parseLrcLines(content)
+
+    if (parsedLines.length === 0) {
+      toast.error('No valid synced lines found in the selected file')
+      return
+    }
+
+    updateSyncedLines(parsedLines)
+    toast.success(`Imported ${parsedLines.length} synced lines`)
+  } catch (error) {
+    console.error(error)
+    toast.error(error?.toString?.() || 'Failed to import LRC file')
+  }
+}
+
+const handlePasteLrc = async () => {
+  try {
+    const text = await readText()
+    if (!text || !text.trim()) {
+      toast.error('Clipboard is empty')
+      return
+    }
+
+    const parsedLines = parseLrcLines(text)
+
+    if (parsedLines.length === 0) {
+      toast.error('No valid synced lines found in clipboard')
+      return
+    }
+
+    updateSyncedLines(parsedLines)
+    toast.success(`Imported ${parsedLines.length} synced lines`)
+  } catch (error) {
+    console.error(error)
+    toast.error(error?.toString?.() || 'Failed to paste LRC from clipboard')
+  }
 }
 
 const handleWordTimingEdited = async ({ startMs }) => {

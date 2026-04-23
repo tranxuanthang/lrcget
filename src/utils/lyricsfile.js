@@ -51,7 +51,7 @@ const parseLrcTimestamp = token => {
   return (minutes * 60 + seconds) * 1000 + fractionMs
 }
 
-const parseLrcLines = syncedLyrics => {
+export const parseLrcLines = syncedLyrics => {
   const normalized = normalizeLrcText(syncedLyrics)
   if (!normalized) {
     return []
@@ -71,7 +71,7 @@ const parseLrcLines = syncedLyrics => {
       }
 
       return {
-        text: match[2] || '',
+        text: (match[2] || '').trim(),
         start_ms: startMs,
         words: [],
       }

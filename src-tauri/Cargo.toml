@@ -40,6 +40,7 @@ xxhash-rust = { version = "0.8", features = ["xxh3"] }
 tauri-plugin-os = "2.3.2"
 tauri-plugin-shell = "2.3.5"
 tauri-plugin-dialog = "2.7.0"
+tauri-plugin-clipboard-manager = "2.3.2"
 
 [features]
 # by default Tauri runs in production mode
