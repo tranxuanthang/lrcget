@@ -18,19 +18,15 @@
   </description>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/10ad5770672a2b078019bf9844872a875ba7026f/screenshots/02.png</image>
+      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/9b31a9fd80b35ce6b885043ad787cf236ad9685d/screenshots/01.png</image>
       <caption>Music playing with synced lyrics</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/10ad5770672a2b078019bf9844872a875ba7026f/screenshots/03.png</image>
-      <caption>Searching for lyrics</caption>
-    </screenshot>
-    <screenshot>
-      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/10ad5770672a2b078019bf9844872a875ba7026f/screenshots/04.png</image>
+      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/9b31a9fd80b35ce6b885043ad787cf236ad9685d/screenshots/02.png</image>
       <caption>Downloading lyrics</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/10ad5770672a2b078019bf9844872a875ba7026f/screenshots/04.png</image>
+      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/9b31a9fd80b35ce6b885043ad787cf236ad9685d/screenshots/03.png</image>
       <caption>Editing lyrics</caption>
     </screenshot>
   </screenshots>
