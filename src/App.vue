@@ -40,6 +40,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { ModalsContainer } from 'vue-final-modal'
 import { useGlobalState } from './composables/global-state'
 import { useDownloader } from '@/composables/downloader.js'
+import { useExporter } from '@/composables/export.js'
 import { usePlayer } from '@/composables/player.js'
 import { useToast } from 'vue-toastification'
 
@@ -47,6 +48,7 @@ const appWindow = getCurrentWebviewWindow()
 const toast = useToast()
 const { themeMode, setThemeMode, setLrclibInstance } = useGlobalState()
 const { downloadNext } = useDownloader()
+const { exportNext } = useExporter()
 const { setVolume } = usePlayer()
 
 const loading = ref(true)
@@ -87,6 +89,7 @@ onMounted(async () => {
   await loadGlobalState()
   darkModeHandle(themeMode.value)
   downloadNext()
+  exportNext()
   drainNotifications()
 })
 

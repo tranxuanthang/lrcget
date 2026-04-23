@@ -1,9 +1,5 @@
 import { computed, markRaw, ref } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { listen } from '@tauri-apps/api/event'
-import { useToast } from 'vue-toastification'
-
-const toast = useToast()
 
 const delay = time => new Promise(resolve => setTimeout(resolve, time))
 
@@ -19,9 +15,6 @@ const exportFormats = ref({
   syncedLrc: false,
   embedIntoTrack: false,
 })
-
-let unlistenProgress = null
-let unlistenComplete = null
 
 const addLog = logObj => {
   log.value.unshift(markRaw(logObj))
@@ -105,22 +98,25 @@ const exportTrack = async track => {
 }
 
 const exportNext = async () => {
-  while (isExporting.value && exportQueue.value.length > 0) {
+  while (true) {
+    if (exportQueue.value.length === 0) {
+      await delay(1000)
+      continue
+    }
+
     const trackId = exportQueue.value.shift()
     try {
       const track = await invoke('get_track', { trackId: trackId })
       await exportTrack(track)
     } catch (error) {
+      if (!isExporting.value) {
+        continue
+      }
       console.error('Failed to get track for export:', error)
       errorCount.value++
     }
 
     await delay(1)
-  }
-
-  // Export complete
-  if (isExporting.value) {
-    isExporting.value = false
   }
 }
 
@@ -141,42 +137,6 @@ const exportProgress = computed(() => {
   return processedCount / totalCount.value
 })
 
-const setupEventListeners = async () => {
-  // Clean up existing listeners
-  if (unlistenProgress) {
-    await unlistenProgress()
-    unlistenProgress = null
-  }
-  if (unlistenComplete) {
-    await unlistenComplete()
-    unlistenComplete = null
-  }
-
-  // Listen for export progress events from backend
-  unlistenProgress = await listen('export-progress', event => {
-    const { trackId, status, message } = event.payload
-    // Frontend already handles progress via exportNext loop
-    // This is for real-time updates if backend handles the loop
-  })
-
-  unlistenComplete = await listen('export-complete', event => {
-    const { exported, skipped, errors } = event.payload
-    isExporting.value = false
-    toast.success(`Export complete: ${exported} exported, ${skipped} skipped, ${errors} errors`)
-  })
-}
-
-const cleanupEventListeners = async () => {
-  if (unlistenProgress) {
-    await unlistenProgress()
-    unlistenProgress = null
-  }
-  if (unlistenComplete) {
-    await unlistenComplete()
-    unlistenComplete = null
-  }
-}
-
 const addToQueue = (trackIds, formats) => {
   isExporting.value = true
   exportFormats.value = formats
@@ -188,9 +148,6 @@ const addToQueue = (trackIds, formats) => {
   totalCount.value += trackIds.length
 
   console.log(`Added ${trackIds.length} tracks to export queue`)
-
-  // Start exporting
-  exportNext()
 }
 
 const startOver = () => {
@@ -220,7 +177,6 @@ export function useExporter() {
     addToQueue,
     startOver,
     stopExporting,
-    setupEventListeners,
-    cleanupEventListeners,
+    exportNext,
   }
 }

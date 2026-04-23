@@ -293,8 +293,7 @@ Implements `From<PersistentTrack>` for seamless conversion from database entitie
 | `reload-track-id` | track_id | Request refresh |
 | `publish-lyrics-progress` | Status | Publishing updates |
 | `flag-lyrics-progress` | Status | Flagging updates |
-| `export-progress` | `{ trackId, status, message }` | Export progress for single track |
-| `export-complete` | `{ exported, skipped, errors }` | Mass export complete |
+
 
 ## Configuration
 

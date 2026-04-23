@@ -76,7 +76,7 @@
         </div>
         <div class="flex gap-1">
           <div>Downloading</div>
-          <div>{{ downloadedCount }}/{{ totalCount }}</div>
+          <div>{{ downloadedCount }}/{{ downloadTotalCount }}</div>
         </div>
       </button>
 
@@ -88,7 +88,7 @@
         <div class="text-sm">
           <Check />
         </div>
-        <span> Downloaded {{ downloadedCount }}/{{ totalCount }} </span>
+        <span> Downloaded {{ downloadedCount }}/{{ downloadTotalCount }} </span>
       </button>
 
       <button
@@ -102,7 +102,28 @@
         <span>Download all lyrics</span>
       </button>
 
+      <button
+        v-if="isExporting && (exportedCount + skippedCount + errorCount) < exportTotalCount"
+        class="button button-working h-full aspect-square rounded-full"
+        @click.prevent="$emit('showExportViewer')"
+      >
+        <div class="animate-spin text-sm">
+          <Loading />
+        </div>
+      </button>
+
+      <button
+        v-else-if="isExporting"
+        class="button button-done h-full aspect-square rounded-full"
+        @click.prevent="$emit('showExportViewer')"
+      >
+        <div class="text-sm">
+          <Check />
+        </div>
+      </button>
+
       <VDropdown
+        v-else
         theme="lrcget-dropdown"
         placement="bottom-end"
         class="h-full aspect-square"
@@ -213,6 +234,7 @@ import FolderMultiple from '~icons/mdi/folder-multiple'
 import Export from '~icons/mdi/export'
 import CheckboxButton from '@/components/common/CheckboxButton.vue'
 import { useDownloader } from '@/composables/downloader.js'
+import { useExporter } from '@/composables/export.js'
 import MiniSearch from './MiniSearch.vue'
 import { invoke } from '@tauri-apps/api/core'
 
@@ -225,6 +247,7 @@ const emit = defineEmits([
   'refreshLibrary',
   'manageDirectories',
   'exportAllLyrics',
+  'showExportViewer',
 ])
 
 const exportPlainText = ref(false)
@@ -255,7 +278,9 @@ const handleExportClick = () => {
   })
 }
 
-const { isDownloading, totalCount, downloadedCount, addToQueue } = useDownloader()
+const { isDownloading, totalCount: downloadTotalCount, downloadedCount, addToQueue } = useDownloader()
+
+const { isExporting, exportedCount, skippedCount, errorCount, totalCount: exportTotalCount } = useExporter()
 
 const isBuildingQueue = ref(false)
 

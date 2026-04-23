@@ -10,6 +10,7 @@
       @uninitialize-library="$emit('uninitializeLibrary')"
       @manage-directories="$emit('manageDirectories')"
       @export-all-lyrics="handleExportAllLyrics"
+      @show-export-viewer="openExportViewer"
     />
 
     <div class="relative grow overflow-hidden">
@@ -128,8 +129,6 @@ const { open: openExportViewer, close: closeExportViewer } = useModal({
 
 const {
   addToQueue: addToExportQueue,
-  setupEventListeners: setupExportListeners,
-  cleanupEventListeners: cleanupExportListeners,
 } = useExporter()
 
 const changeActiveTab = tab => {
@@ -139,7 +138,6 @@ const changeActiveTab = tab => {
 const handleExportAllLyrics = async formats => {
   try {
     openExportViewer()
-    await setupExportListeners()
 
     // Get all track IDs that have lyrics
     const trackIds = await invoke('get_track_ids_with_lyrics')
@@ -256,6 +254,5 @@ watch(
 
 onUnmounted(async () => {
   await cleanupScanListeners()
-  await cleanupExportListeners()
 })
 </script>
