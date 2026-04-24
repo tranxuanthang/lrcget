@@ -30,11 +30,26 @@ pub fn initialize_database(app_handle: &AppHandle) -> Result<Connection, rusqlit
 
     db.pragma_update(None, "journal_mode", "WAL")?;
 
+    let current_version: i64 = db
+        .query_row("PRAGMA user_version;", [], |row| row.get(0))
+        .unwrap_or(-1);
+    println!("[DB Init] Current user_version: {}", current_version);
+
     let migrations = Migrations::from_directory(&MIGRATIONS_DIR)
         .expect("Failed to load migrations from directory");
-    migrations
-        .to_latest(&mut db)
-        .expect("Failed to run database migrations");
+
+    match migrations.to_latest(&mut db) {
+        Ok(()) => {
+            let new_version: i64 = db
+                .query_row("PRAGMA user_version;", [], |row| row.get(0))
+                .unwrap_or(-1);
+            println!("[DB Init] Migrations applied successfully. New user_version: {}", new_version);
+        }
+        Err(e) => {
+            eprintln!("[DB Init] Failed to run database migrations: {:?}", e);
+            panic!("Failed to run database migrations: {}", e);
+        }
+    }
 
     if let Err(error) = backfill_track_lyrics_presence(&db) {
         eprintln!("Failed to backfill track lyrics presence flags: {}", error);
