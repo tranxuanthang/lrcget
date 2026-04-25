@@ -41,26 +41,24 @@ export function useEditLyricsV2Export({ audioSource, saveLyrics, serializedLyric
         lyricsfile: serializedLyricsfile.value,
       })
 
-      const succeeded = results.filter(result => result.success)
-      const failed = results.filter(result => !result.success)
+      const succeeded = results.filter(result => result.status.type === 'success')
+      const failed = results.filter(result => result.status.type !== 'success')
 
       if (succeeded.length > 0 && failed.length === 0) {
         toast.success(
           succeeded.length === 1
-            ? succeeded[0].message
+            ? `Exported to ${succeeded[0].format} successfully.`
             : `Exported ${succeeded.length} lyrics targets successfully.`
         )
         return true
       }
 
       if (succeeded.length > 0) {
-        toast.warning(
-          `Export completed with partial failures: ${failed.map(result => result.message).join('; ')}`
-        )
+        toast.warning(`Export completed with partial failures.`)
         return true
       }
 
-      toast.error(failed.map(result => result.message).join('; '))
+      toast.error(failed.map(result => result.status.message || 'Unknown error').join('; '))
       return false
     } catch (error) {
       console.error(error)
