@@ -38,16 +38,16 @@ Mac Apple Silicon: [LRCGET_2.0.1_aarch64.dmg](https://github.com/tranxuanthang/l
 
 ## Screenshots
 
-![01.png](screenshots/01.png?4)
+![01.png](https://raw.githubusercontent.com/tranxuanthang/lrcget/9e0578bd9411fcc024a56d2f1108701751c5ec3a/screenshots/01.png)
 
 <details>
 <summary>Click to expand more screenshots</summary>
 
-![02.png](screenshots/02.png?4)
+![02.png](https://raw.githubusercontent.com/tranxuanthang/lrcget/9e0578bd9411fcc024a56d2f1108701751c5ec3a/screenshots/02.png)
 
-![03.png](screenshots/03.png?4)
+![03.png](https://raw.githubusercontent.com/tranxuanthang/lrcget/9e0578bd9411fcc024a56d2f1108701751c5ec3a/screenshots/03.png)
 
-![04.png](screenshots/03.png?4)
+![04.png](https://raw.githubusercontent.com/tranxuanthang/lrcget/9e0578bd9411fcc024a56d2f1108701751c5ec3a/screenshots/04.png)
 
 </details>
 

@@ -18,15 +18,19 @@
   </description>
   <screenshots>
     <screenshot type="default">
-      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/9b31a9fd80b35ce6b885043ad787cf236ad9685d/screenshots/01.png</image>
+      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/9e0578bd9411fcc024a56d2f1108701751c5ec3a/screenshots/01.png</image>
       <caption>Music playing with synced lyrics</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/9b31a9fd80b35ce6b885043ad787cf236ad9685d/screenshots/02.png</image>
+      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/9e0578bd9411fcc024a56d2f1108701751c5ec3a/screenshots/02.png</image>
+      <caption>Music playing with expanded synced lyrics viewer and export options dropdown</caption>
+    </screenshot>
+    <screenshot>
+      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/9e0578bd9411fcc024a56d2f1108701751c5ec3a/screenshots/03.png</image>
       <caption>Downloading lyrics</caption>
     </screenshot>
     <screenshot>
-      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/9b31a9fd80b35ce6b885043ad787cf236ad9685d/screenshots/03.png</image>
+      <image>https://raw.githubusercontent.com/tranxuanthang/lrcget/9e0578bd9411fcc024a56d2f1108701751c5ec3a/screenshots/04.png</image>
       <caption>Editing lyrics</caption>
     </screenshot>
   </screenshots>
