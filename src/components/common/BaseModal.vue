@@ -2,7 +2,7 @@
   <VueFinalModal
     class="flex justify-center items-center"
     :content-class="['modal-content p-6 gap-6 flex flex-col min-h-0', contentClass]"
-    overlay-class="bg-brave-1/70 dark:bg-brave-1/70"
+    overlay-class="bg-black/70 dark:bg-black/70"
     overlay-transition="fade"
     content-transition="pop-fade"
     v-bind="$attrs"
@@ -13,7 +13,7 @@
       </div>
 
       <div
-        class="text-lg grow line-clamp-1 overflow-hidden text-brave-30 dark:text-brave-90"
+        class="text-lg grow line-clamp-1 overflow-hidden text-neutral-800 dark:text-neutral-300"
         :class="{ 'text-center': $slots.titleLeft }"
       >
         {{ title }}
@@ -25,7 +25,7 @@
 
       <button
         v-if="closeButton"
-        class="absolute top-1/2 right-0 -translate-y-1/2 flex-none button text-brave-30 dark:text-brave-90 rounded-full h-12 w-12"
+        class="absolute top-1/2 right-0 -translate-y-1/2 flex-none button text-neutral-800 dark:text-neutral-400 rounded-full h-12 w-12"
         @click="emit('close')"
       >
         <Close />

@@ -37,7 +37,7 @@
       </button>
 
       <!-- Create a separator -->
-      <div class="w-[2px] h-[70%] bg-brave-30/30" />
+      <div class="w-[2px] h-[70%] bg-neutral-700/50" />
 
       <button
         class="tab"
@@ -195,24 +195,24 @@
         <template #popper>
           <div class="dropdown-container">
             <button v-close-popper class="dropdown-item" @click="$emit('refreshLibrary')">
-              <Refresh class="text-brave-20 dark:text-brave-90" />
-              <span class="text-brave-20 dark:text-brave-90 text-sm font-bold"
+              <Refresh class="text-neutral-800 dark:text-neutral-300" />
+              <span class="text-neutral-800 dark:text-neutral-300 text-sm font-bold"
                 >Refresh library</span
               >
             </button>
             <button v-close-popper class="dropdown-item" @click="$emit('manageDirectories')">
-              <FolderMultiple class="text-brave-20 dark:text-brave-90" />
-              <span class="text-brave-20 dark:text-brave-90 text-sm font-bold"
+              <FolderMultiple class="text-neutral-800 dark:text-neutral-300" />
+              <span class="text-neutral-800 dark:text-neutral-300 text-sm font-bold"
                 >Manage directories</span
               >
             </button>
             <button v-close-popper class="dropdown-item" @click="$emit('showConfig')">
-              <Cog class="text-brave-20 dark:text-brave-90" />
-              <span class="text-brave-20 dark:text-brave-90 text-sm font-bold">Settings</span>
+              <Cog class="text-neutral-800 dark:text-neutral-300" />
+              <span class="text-neutral-800 dark:text-neutral-300 text-sm font-bold">Settings</span>
             </button>
             <button v-close-popper class="dropdown-item" @click="$emit('showAbout')">
-              <Information class="text-brave-20 dark:text-brave-90" />
-              <span class="text-brave-20 dark:text-brave-90 text-sm font-bold">About</span>
+              <Information class="text-neutral-800 dark:text-neutral-300" />
+              <span class="text-neutral-800 dark:text-neutral-300 text-sm font-bold">About</span>
             </button>
           </div>
         </template>
@@ -309,11 +309,11 @@ const downloadAllLyrics = async () => {
 
 <style scoped>
 .active-tab {
-  @apply text-brave-15 border-brave-15 dark:text-white dark:border-brave-30;
+  @apply text-neutral-900 border-neutral-900 dark:text-white dark:border-neutral-300;
 }
 
 .inactive-tab {
-  @apply text-brave-15/50 hover:text-brave-15/80 border-transparent dark:text-white/50 dark:hover:text-brave-95/80;
+  @apply text-neutral-700/50 hover:text-neutral-700/80 border-transparent dark:text-white/50 dark:hover:text-white/80;
 }
 
 .tab {
@@ -325,14 +325,14 @@ const downloadAllLyrics = async () => {
 }
 
 .dropdown-item {
-  @apply flex items-center px-2 py-1 hover:bg-brave-90 dark:hover:bg-brave-15 rounded cursor-pointer h-8 gap-1 w-full;
+  @apply flex items-center px-2 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded cursor-pointer h-8 gap-1 w-full;
 }
 
 .dropdown-label {
-  @apply text-brave-20 dark:text-brave-90 text-sm font-bold;
+  @apply text-neutral-800 dark:text-neutral-300 text-sm font-bold;
 }
 
 .dropdown-section-label {
-  @apply text-xs uppercase font-bold text-brave-35 dark:text-brave-70 px-2 py-1;
+  @apply text-xs uppercase font-bold text-neutral-900 dark:text-neutral-400 px-2 py-1;
 }
 </style>

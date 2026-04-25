@@ -19,7 +19,7 @@
         </div>
         <div class="flex items-center gap-2">
           <div
-            class="text-sm text-brave-30 dark:text-brave-80 group-hover:text-brave-20 transition"
+            class="text-sm text-neutral-800 dark:text-neutral-500 group-hover:text-neutral-800 transition"
           >
             Found {{ tracks.length }} tracks
           </div>
@@ -30,15 +30,15 @@
         <div
           v-for="result in normalizedTracks"
           :key="result.track.id"
-          class="rounded bg-brave-98 hover:bg-brave-95 dark:bg-brave-5 dark:hover:bg-brave-10 transition px-2 py-1 flex gap-2 justify-between items-center"
+          class="rounded bg-white hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-neutral-800 transition px-2 py-1 flex gap-2 justify-between items-center"
         >
           <div class="flex flex-col gap-1">
             <div class="flex gap-2 items-center">
-              <div class="text-sm font-bold text-brave-30 dark:text-brave-95">
+              <div class="text-sm font-bold text-neutral-800 dark:text-neutral-200">
                 {{ result.track.name }}
               </div>
               <div class="text-[0.65rem] font-bold flex gap-1">
-                <span class="bg-brave-90 text-brave-30 px-1 py-0.5 rounded">{{
+                <span class="bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200 px-1 py-0.5 rounded">{{
                   humanDuration(result.track.duration)
                 }}</span>
                 <template v-if="showLineCount === true">
@@ -65,12 +65,12 @@
                 >
                 <span
                   v-else-if="!!result.lyrics.instrumental"
-                  class="bg-gray-300 text-gray-600 px-1 py-0.5 rounded"
+                  class="bg-gray-300 text-gray-600 dark:bg-neutral-700 dark:text-neutral-300 px-1 py-0.5 rounded"
                   >Instrumental</span
                 >
               </div>
             </div>
-            <div class="text-sm text-brave-35 dark:text-brave-80">
+            <div class="text-sm text-neutral-900 dark:text-neutral-500">
               {{ result.track.albumName }} - {{ result.track.artistName }}
             </div>
           </div>
@@ -93,7 +93,7 @@
 
     <div
       v-if="isOpeningTrack"
-      class="flex items-center justify-center w-full h-full fixed top-0 left-0 bg-white/50 dark:bg-brave-10/50 transition"
+      class="flex items-center justify-center w-full h-full fixed top-0 left-0 bg-white/50 dark:bg-neutral-900/50 transition"
     >
       <Loading class="animate-spin" />
     </div>

@@ -3,12 +3,20 @@
 @tailwind utilities;
 
 body {
-  @apply bg-brave-95 cursor-default;
+  @apply bg-white dark:bg-neutral-950 cursor-default;
+}
+
+:root {
+  --slider-rail: #ffd9e2;
+}
+
+.dark {
+  --slider-rail: #404040;
 }
 
 .titlebar {
   height: 30px;
-  background: #329ea3;
+  background: #171717;
   user-select: none;
   display: flex;
   justify-content: flex-end;
@@ -27,7 +35,7 @@ body {
 }
 
 .titlebar-button:hover {
-  background: #5bbec3;
+  background: #404040;
 }
 
 .button {
@@ -35,37 +43,36 @@ body {
 }
 
 .button-normal {
-  @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70
-  dark:bg-brave-10 dark:text-brave-90
-  dark:hover:bg-brave-20 dark:active:bg-brave-25;
+  @apply bg-neutral-100 hover:bg-neutral-200 text-neutral-900 active:bg-neutral-300
+  dark:bg-neutral-800 dark:text-neutral-100
+  dark:hover:bg-neutral-700 dark:active:bg-neutral-600;
 }
 
 .toolbar .button-normal {
-  @apply dark:bg-brave-5;
-}
-
-.button-warning {
-  @apply bg-yellow-100 hover:bg-yellow-200 text-yellow-800 active:bg-yellow-300;
+  @apply dark:bg-neutral-900;
 }
 
 .button-primary {
-  @apply bg-brave-30 hover:bg-brave-35 text-white active:bg-brave-25 dark:bg-brave-80 dark:hover:bg-brave-90 dark:active:bg-brave-90 dark:text-brave-20;
+  @apply bg-hoa-1100 hover:bg-hoa-1200 text-white active:bg-hoa-1300;
 }
 
 .button-secondary {
-  @apply bg-brave-90 text-brave-30 hover:bg-brave-80 active:bg-brave-70;
+  @apply bg-neutral-100 text-neutral-700 hover:bg-neutral-200 active:bg-neutral-300
+  dark:bg-neutral-800 dark:text-neutral-200 dark:hover:bg-neutral-700;
 }
 
 .button-working {
-  @apply bg-brave-90 hover:bg-brave-80 text-brave-25 active:bg-brave-70;
+  @apply bg-neutral-100 hover:bg-neutral-200 text-neutral-900 active:bg-neutral-300
+  dark:bg-neutral-800 dark:text-neutral-100 dark:hover:bg-neutral-700;
 }
 
 .button-disabled {
-  @apply box-border border-2 border-brave-90 dark:border-brave-20 bg-brave-98 dark:bg-brave-10 text-brave-70 dark:text-brave-20 cursor-not-allowed;
+  @apply box-border border-2 border-neutral-200 dark:border-neutral-700 bg-neutral-50 dark:bg-neutral-800 text-neutral-400 dark:text-neutral-600 cursor-not-allowed;
 }
 
 .button-blend {
-  @apply hover:bg-brave-90 text-brave-25 active:bg-brave-70;
+  @apply hover:bg-neutral-100 text-neutral-900 active:bg-neutral-200
+  dark:hover:bg-neutral-800 dark:text-neutral-100;
 }
 
 .button-done {
@@ -73,50 +80,46 @@ body {
 }
 
 .button-tiny {
-  @apply text-brave-30 hover:bg-brave-30 hover:text-white dark:text-brave-95 rounded p-2 transition;
+  @apply text-neutral-600 hover:bg-neutral-200 hover:text-neutral-900 dark:text-neutral-400 dark:hover:bg-neutral-800 dark:hover:text-neutral-100 rounded p-2 transition;
 }
 
 .link {
-  @apply text-green-800 dark:text-green-400 hover:text-green-900 hover:dark:text-green-200 active:text-green-700 active:dark:text-white transition text-sm;
+  @apply text-hoa-1200 dark:text-hoa-400 hover:text-hoa-1300 hover:dark:text-hoa-300 transition text-sm;
 }
 
 .group-label {
-  @apply font-bold text-brave-30 dark:text-brave-90 block;
+  @apply font-bold text-neutral-900 dark:text-neutral-100 block;
 }
 
 .child-label {
-  @apply text-sm text-brave-35 dark:text-brave-95;
+  @apply text-sm text-neutral-500 dark:text-neutral-400;
 }
 
 .input {
-  @apply bg-brave-98 box-border border border-brave-90 focus:border-brave-80 outline-none
-  text-sm rounded-full transition text-brave-35 placeholder:text-brave-70
-  dark:bg-brave-5 dark:border-brave-30 dark:focus:border-brave-20 dark:text-brave-95
-  dark:placeholder:text-brave-60/50;
+  @apply bg-white box-border border border-neutral-300 focus:border-hoa-1100 outline-none
+  text-sm rounded-full transition text-neutral-900 placeholder:text-neutral-400
+  dark:bg-neutral-900 dark:border-neutral-700 dark:focus:border-hoa-1100 dark:text-neutral-100
+  dark:placeholder:text-neutral-600;
 }
 
 .modal-content .input {
-  @apply dark:bg-brave-10;
+  @apply dark:bg-neutral-800;
 }
 
 .textarea {
-  @apply bg-brave-98 box-border border border-brave-90 focus:border-brave-80 outline-none
-  text-sm rounded-lg transition text-brave-35 placeholder:text-brave-70 resize-none
-  dark:bg-brave-5 dark:border-brave-30 dark:focus:border-brave-20 dark:text-brave-95
-  dark:placeholder:text-brave-60/50;
+  @apply bg-white box-border border border-neutral-300 focus:border-hoa-1100 outline-none
+  text-sm rounded-lg transition text-neutral-900 placeholder:text-neutral-400 resize-none
+  dark:bg-neutral-900 dark:border-neutral-700 dark:focus:border-hoa-1100 dark:text-neutral-100
+  dark:placeholder:text-neutral-600;
 }
 
 .modal-content .textarea {
-  @apply dark:bg-brave-10;
+  @apply dark:bg-neutral-800;
 }
 
 .modal-content {
-  @apply rounded-lg bg-white dark:bg-brave-5 flex flex-col m-2 select-none text-brave-35 dark:text-brave-95;
+  @apply rounded-lg bg-white dark:bg-neutral-900 flex flex-col m-2 select-none text-neutral-900 dark:text-neutral-100;
   overscroll-behavior: contain;
-}
-
-.textarea {
-  @apply bg-brave-98 box-border border border-brave-90 focus:border-brave-80 outline-none text-sm rounded-lg transition text-brave-35 placeholder:text-brave-70 resize-none;
 }
 
 .Vue-Toastification__toast.lrcget-toast {
@@ -183,16 +186,16 @@ body {
 }
 
 .v-popper--theme-lrcget-tooltip .v-popper__inner {
-  background: #ffd9e2;
-  color: #8e004b;
+  background: #f35697;
+  color: #ffffff;
 }
 
 .v-popper--theme-lrcget-tooltip .v-popper__arrow-outer {
-  border-color: #ffd9e2;
+  border-color: #f35697;
 }
 
 .v-popper--theme-lrcget-dropdown .v-popper__inner {
-  @apply bg-brave-95 dark:bg-brave-10 rounded shadow shadow-brave-80 dark:shadow-brave-15;
+  @apply bg-white dark:bg-neutral-800 rounded shadow-lg shadow-neutral-900/10 dark:shadow-black/50;
 }
 
 .v-popper--theme-lrcget-dropdown .v-popper__arrow-outer {
@@ -204,7 +207,7 @@ body {
 }
 
 .codemirror-custom .cm-cursor {
-  @apply border-brave-30 dark:border-brave-90 border-r-[1.2px];
+  @apply border-hoa-1100 dark:border-hoa-400 border-r-[1.2px];
 }
 
 .codemirror-custom .cm-current-lyrics {
@@ -219,23 +222,23 @@ body {
 
 .codemirror-custom .cm-line {
   /* Text folding */
-  @apply text-brave-10 dark:text-brave-90 break-words whitespace-pre-wrap w-full;
+  @apply text-neutral-900 dark:text-neutral-100 break-words whitespace-pre-wrap w-full;
 }
 
 .codemirror-custom .cm-activeLine {
-  @apply bg-brave-80/30 dark:bg-brave-60/30;
+  @apply bg-hoa-200/30 dark:bg-hoa-900/30;
 }
 
 .codemirror-custom .cm-activeLineGutter {
-  @apply bg-brave-80/30 dark:bg-brave-60/30;
+  @apply bg-hoa-200/30 dark:bg-hoa-900/30;
 }
 
 .codemirror-custom .cm-gutters {
-  @apply bg-brave-90 dark:bg-brave-10 text-brave-40 border-r border-brave-90 dark:border-brave-10;
+  @apply bg-neutral-100 dark:bg-neutral-800 text-neutral-500 border-r border-neutral-200 dark:border-neutral-700;
 }
 
 .secondary-page {
-  @apply absolute top-0 left-0 w-full h-full bg-white p-4 shadow-lg overflow-y-auto dark:bg-brave-background-dark text-brave-5 dark:text-brave-95;
+  @apply absolute top-0 left-0 w-full h-full bg-white p-4 shadow-lg overflow-y-auto dark:bg-neutral-950 text-neutral-900 dark:text-neutral-100;
 }
 
 .secondary-page-back-button {

@@ -14,11 +14,11 @@
     >
       <Pause />
     </button>
-    <div class="flex-none w-12 text-xs">
+    <div class="flex-none w-12 text-xs text-neutral-600 dark:text-neutral-400">
       {{ humanDuration(progress) }}
     </div>
     <Seek class="grow" :duration="duration" :progress="progress" @seek="emit('seek', $event)" />
-    <div class="flex-none w-12 text-xs">
+    <div class="flex-none w-12 text-xs text-neutral-600 dark:text-neutral-400">
       {{ humanDuration(duration) }}
     </div>
   </div>

@@ -1,6 +1,6 @@
 <template>
   <BaseModal :title="title" content-class="w-full max-w-sm" :close-button="false">
-    <p class="text-brave-30 dark:text-brave-90">{{ message }}</p>
+    <p class="text-neutral-800 dark:text-neutral-600">{{ message }}</p>
 
     <template #footer>
       <div class="w-full flex justify-end gap-2">

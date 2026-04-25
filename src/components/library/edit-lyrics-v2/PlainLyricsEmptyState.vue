@@ -1,10 +1,10 @@
 <template>
   <div class="absolute bottom-16 left-1/2 -translate-x-1/2 px-3 z-10">
     <div
-      class="w-full max-w-lg rounded-lg border border-brave-90 dark:border-brave-20 bg-brave-98 dark:bg-brave-10 p-5 shadow-lg"
+      class="w-full max-w-lg rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5 shadow-lg"
     >
-      <h3 class="text-base font-semibold">No plain lyrics yet</h3>
-      <p class="text-sm text-brave-45 dark:text-brave-70 mt-1">
+      <h3 class="text-base font-semibold text-neutral-900 dark:text-neutral-200">No plain lyrics yet</h3>
+      <p class="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
         Import from synced lyrics or add plain lyrics manually.
       </p>
 

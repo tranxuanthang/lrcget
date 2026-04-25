@@ -8,13 +8,13 @@
     <template v-if="resolvedLyrics.syncedLyrics && resolvedLyrics.plainLyrics">
       <div class="flex justify-center mb-2">
         <div
-          class="rounded-full p-1 bg-brave-95 text-brave-30 dark:bg-brave-10 dark:text-brave-95 flex justify-center gap-1"
+          class="rounded-full p-1 bg-neutral-50 text-neutral-800 dark:bg-neutral-900 dark:text-neutral-300 flex justify-center gap-1"
         >
           <button
             class="button text-xs w-36 px-3 py-1.5 rounded-full"
             :class="{
-              'bg-brave-30 text-white': lyricsType === 'synced',
-              'hover:bg-brave-90 dark:hover:bg-brave-10': lyricsType !== 'synced',
+              'bg-hoa-1100 text-white': lyricsType === 'synced',
+              'hover:bg-neutral-100 dark:hover:bg-neutral-900': lyricsType !== 'synced',
             }"
             @click="lyricsType = 'synced'"
           >
@@ -23,8 +23,8 @@
           <button
             class="button text-xs w-36 px-3 py-1.5 rounded-full"
             :class="{
-              'bg-brave-30 text-white': lyricsType !== 'synced',
-              'hover:bg-brave-90 dark:hover:bg-brave-10': lyricsType === 'synced',
+              'bg-hoa-1100 text-white': lyricsType !== 'synced',
+              'hover:bg-neutral-100 dark:hover:bg-neutral-900': lyricsType === 'synced',
             }"
             @click="lyricsType = 'plain'"
           >
@@ -42,14 +42,14 @@
 
     <div
       v-else-if="resolvedLyrics.instrumental"
-      class="grow rounded bg-brave-99 text-brave-30 dark:bg-brave-1 dark:text-brave-95 whitespace-pre-line p-4 overflow-scroll italic flex items-center justify-center"
+      class="grow rounded bg-white text-neutral-800 dark:bg-neutral-950 dark:text-neutral-200 whitespace-pre-line p-4 overflow-scroll italic flex items-center justify-center"
     >
       This track is instrumental
     </div>
 
     <div
       v-else
-      class="grow rounded bg-brave-99 text-brave-30 dark:bg-brave-1 dark:text-brave-95 whitespace-pre-line p-4 overflow-scroll italic flex items-center justify-center"
+      class="grow rounded bg-white text-neutral-800 dark:bg-neutral-950 dark:text-neutral-200 whitespace-pre-line p-4 overflow-scroll italic flex items-center justify-center"
     >
       There is currently no lyrics submitted for this track
     </div>

@@ -8,7 +8,7 @@
         <Bug />
       </div>
     </div>
-    <div v-if="!loading" class="grow overflow-hidden bg-white dark:bg-brave-background-dark">
+    <div v-if="!loading" class="grow overflow-hidden bg-white dark:bg-neutral-950">
       <ChooseDirectory
         v-if="!init"
         @progress-step="onProgressStep"

@@ -89,7 +89,7 @@ Utils: `src/utils/` (parsing, linting), Composables: `composables/edit-lyrics-v2
 
 ## Technical Details
 
-**Styling**: Tailwind CSS + custom classes in `style.css`. Palettes (`brave`, `hoa`) from `tailwind.config.cjs`. Dark mode via `html.dark`. Semantic classes: `.button`, `.input`, `.modal-content`, `.link`.
+**Styling**: Tailwind CSS + custom classes in `style.css`. Primary accent palette (`hoa`) from `tailwind.config.cjs`. Structural colors (backgrounds, text, borders) use Tailwind's default `neutral` scale. Dark mode via `html.dark`. Semantic classes: `.button`, `.input`, `.modal-content`, `.link`.
 
 **Icons**: Icons are imported directly per-file from `~icons/mdi/*` (powered by `unplugin-icons` in `vite.config.js`). Avoid adding `mdue`; use MDI icon imports instead.
 

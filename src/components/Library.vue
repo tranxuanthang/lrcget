@@ -27,17 +27,17 @@
   </div>
 
   <div v-else class="flex flex-col justify-center items-center w-full h-full">
-    <div class="animate-spin text-xl text-brave-30">
+    <div class="animate-spin text-xl text-neutral-800">
       <Loading />
     </div>
-    <div v-if="isScanning" class="flex flex-col items-center justify-center text-sm text-brave-40">
+    <div v-if="isScanning" class="flex flex-col items-center justify-center text-sm text-neutral-500">
       <div>Scanning library...</div>
       <div v-if="scanProgress" class="mt-1 font-medium">
         {{ scanProgress.message }}
       </div>
     </div>
 
-    <div v-else class="flex flex-col items-center justify-center text-sm text-brave-40">
+    <div v-else class="flex flex-col items-center justify-center text-sm text-neutral-500">
       <div>Loading library...</div>
     </div>
   </div>

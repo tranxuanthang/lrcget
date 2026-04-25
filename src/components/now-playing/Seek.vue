@@ -5,24 +5,24 @@
     :max="1"
     :interval="0.001"
     :duration="0"
-    :rail-style="{ backgroundColor: '#ffd9e2' }"
+      :rail-style="{ backgroundColor: 'var(--slider-rail)' }"
     :dot-style="{ transition: 'initial' }"
     :tooltip-style="{ zIndex: 200 }"
     tooltip="hover"
     @change="chooseProgress"
   >
     <template #dot="{ pos, index, value, focus, disabled }">
-      <div class="w-full h-full rounded-full bg-brave-30" />
+      <div class="w-full h-full rounded-full bg-hoa-1100" />
     </template>
 
     <template #process="{ start, end }">
-      <div class="absolute h-full rounded-full bg-brave-30" :style="'width: ' + end + '%;'" />
+      <div class="absolute h-full rounded-full bg-hoa-1100" :style="'width: ' + end + '%;'" />
     </template>
 
     <template #tooltip="{ pos, index, value, focus, disabled }">
       <div
         v-if="value !== null"
-        class="text-brave-30 text-[0.6rem] font-bold rounded-lg px-1 py-0.5 bg-brave-90"
+        class="text-neutral-800 text-[0.6rem] font-bold rounded-lg px-1 py-0.5 bg-neutral-100"
       >
         {{ humanDuration(value * props.duration) }}
       </div>

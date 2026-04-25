@@ -8,16 +8,16 @@
       @lyrics-clicked="lyricsClicked"
     />
     <PlainLyricsViewer v-else-if="hasPlainLyrics && !instrumental" :lyricsfile="lyricsfile" />
-    <div v-else class="border-b border-brave-90/50 dark:border-brave-30" />
+    <div v-else class="border-t border-neutral-200/50 dark:border-neutral-800/50" />
     <div
-      class="bg-brave-95 backdrop-blur px-4 py-3 flex-none flex flex-col justify-center items-center gap-3 dark:bg-brave-10"
+      class="bg-neutral-50 backdrop-blur px-4 py-3 flex-none flex flex-col justify-center items-center gap-3 dark:bg-neutral-900"
     >
       <div class="w-full flex gap-1 justify-center items-center">
-        <div class="flex-none w-12 text-xs text-brave-30 dark:text-brave-80">
+        <div class="flex-none w-12 text-xs text-neutral-800 dark:text-neutral-500">
           {{ humanDuration(progress) }}
         </div>
         <Seek class="grow" :duration="duration" :progress="progress" @seek="seek" />
-        <div class="flex-none text-right w-12 text-xs text-brave-30 dark:text-brave-80">
+        <div class="flex-none text-right w-12 text-xs text-neutral-800 dark:text-neutral-500">
           {{ humanDuration(duration) }}
         </div>
       </div>
@@ -25,10 +25,10 @@
       <div class="flex justify-between w-full">
         <div class="basis-1/3 flex-1 grow-0 flex flex-col justify-center items-start gap-0.5">
           <div v-if="playingTrack">
-            <div class="text-xs font-bold text-brave-30 dark:text-brave-95 line-clamp-1">
+            <div class="text-xs font-bold text-neutral-800 dark:text-neutral-200 line-clamp-1">
               {{ playingTrack.title }}
             </div>
-            <div class="text-xs text-brave-40 dark:text-brave-90 line-clamp-1">
+            <div class="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1">
               {{ playingTrack.album_name }} - {{ playingTrack.artist_name }}
             </div>
           </div>

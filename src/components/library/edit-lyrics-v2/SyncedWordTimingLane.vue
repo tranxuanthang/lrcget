@@ -1,30 +1,30 @@
 <template>
   <div
     class="relative flex flex-col px-2 py-2 rounded-lg overflow-hidden h-[5rem] transition-[min-height] duration-200 ease-out"
-    :class="hasSelectedLine ? 'bg-brave-95 dark:bg-brave-10' : 'bg-brave-98 dark:bg-brave-5'"
+    :class="hasSelectedLine ? 'bg-neutral-100 dark:bg-neutral-800' : 'bg-white dark:bg-neutral-950'"
   >
     <!-- Empty state - no line selected -->
     <div v-if="!hasSelectedLine" class="flex items-center justify-center h-full">
-      <span class="text-sm text-brave-50 dark:text-brave-70 italic">
+      <span class="text-sm text-neutral-700 dark:text-neutral-400 italic">
         Select a lyric line to edit word timings
       </span>
     </div>
 
     <!-- Feature not available states -->
     <div v-else-if="!hasLineContent" class="flex items-center justify-center h-full">
-      <span class="text-sm text-brave-50 dark:text-brave-70 italic">
+      <span class="text-sm text-neutral-700 dark:text-neutral-400 italic">
         Add lyrics content to enable word timing
       </span>
     </div>
 
     <div v-else-if="!hasLineStartTime" class="flex items-center justify-center h-full">
-      <span class="text-sm text-brave-50 dark:text-brave-70 italic">
+      <span class="text-sm text-neutral-700 dark:text-neutral-400 italic">
         Sync the line (set start time) to enable word timing
       </span>
     </div>
 
     <div v-else-if="!hasLineEndTime" class="flex items-center justify-center h-full">
-      <span class="text-sm text-brave-50 dark:text-brave-70 italic">
+      <span class="text-sm text-neutral-700 dark:text-neutral-400 italic">
         Set the line end timestamp to define the timing window
       </span>
     </div>
@@ -33,8 +33,8 @@
     <template v-else-if="isWordSyncAvailable">
       <!-- Header with line info -->
       <div class="flex items-center justify-between mb-2 shrink-0">
-        <div class="flex items-center gap-3 text-xs text-brave-40 dark:text-brave-60">
-          <span class="font-mono bg-brave-90 dark:bg-brave-20 px-2 py-0.5 rounded">
+        <div class="flex items-center gap-3 text-xs text-neutral-600 dark:text-neutral-400">
+          <span class="font-mono bg-neutral-200 dark:bg-neutral-700 text-neutral-800 dark:text-neutral-200 px-2 py-0.5 rounded">
             {{ formatTimestampMs(selectedLine.start_ms) }} -
             {{ formatTimestampMs(actualLineEndMs) }}
           </span>
@@ -72,7 +72,7 @@
       <!-- Timeline with word segments -->
       <div
         ref="timelineElement"
-        class="relative flex-1 bg-brave-98 dark:bg-brave-5 rounded border border-brave-80 dark:border-brave-25 transition-opacity duration-200"
+        class="relative flex-1 bg-white dark:bg-neutral-900 rounded border border-neutral-300 dark:border-neutral-600 transition-opacity duration-200"
         :class="{ 'opacity-50': !hasActualWords }"
         @click="handleTimelineClick"
       >
@@ -80,7 +80,7 @@
         <!-- <div class="absolute inset-0 pointer-events-none">
           <template v-for="n in gridLinesCount" :key="n">
             <div
-              class="absolute top-0 bottom-0 w-px bg-brave-80 dark:bg-brave-30 opacity-50"
+              class="absolute top-0 bottom-0 w-px bg-neutral-200 dark:bg-hoa-1100 opacity-50"
               :style="{ left: `${(n / gridLinesCount) * 100}%` }"
             />
           </template>
@@ -111,7 +111,7 @@
           @click="selectBoundary(index)"
         >
           <span
-            class="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2 transition-all duration-150 ease-linear bg-brave-70/70 dark:bg-brave-60/70 group-hover:bg-brave-50 dark:group-hover:bg-brave-70 group-hover:w-[3px] group-hover:ring-1 group-hover:ring-brave-50/25"
+            class="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2 transition-all duration-150 ease-linear bg-neutral-300/70 dark:bg-hoa-1000/70 group-hover:bg-neutral-600 dark:group-hover:bg-neutral-300 group-hover:w-[3px] group-hover:ring-1 group-hover:ring-neutral-500/25"
             :class="getBoundaryLineClass(index)"
           />
         </button>
@@ -122,10 +122,10 @@
           :style="{ left: `${timeToPercent(dragState.currentStartMs)}%` }"
         >
           <div
-            class="absolute top-0 bottom-0 w-[3px] -translate-x-1/2 bg-brave-50 dark:bg-brave-70 ring-1 ring-brave-50/25"
+            class="absolute top-0 bottom-0 w-[3px] -translate-x-1/2 bg-neutral-600 dark:bg-neutral-300 ring-1 ring-neutral-500/25"
           />
           <div
-            class="absolute top-[-0.375rem] left-0 -translate-x-1/2 -translate-y-full px-[0.4rem] py-0.5 rounded-full text-xs leading-4 whitespace-nowrap text-brave-20 bg-brave-80 dark:text-brave-95 dark:bg-brave-30"
+            class="absolute top-[-0.375rem] left-0 -translate-x-1/2 -translate-y-full px-[0.4rem] py-0.5 rounded-full text-xs leading-4 whitespace-nowrap text-neutral-800 bg-neutral-200 dark:text-white dark:bg-hoa-1100"
           >
             {{ formatTimestampMs(dragState.currentStartMs) }}
           </div>
@@ -134,11 +134,11 @@
         <!-- Current playhead indicator -->
         <div
           v-if="progressMs >= lineStartMs && progressMs <= laneEndMs"
-          class="absolute -top-1 bottom-0 w-px bg-brave-40/80 dark:bg-brave-50 z-20 pointer-events-none"
+          class="absolute -top-1 bottom-0 w-px bg-neutral-400 dark:bg-neutral-400 z-20 pointer-events-none"
           :style="{ left: `${playheadPercent}%` }"
         >
           <div
-            class="absolute -top-1 -left-[3px] w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-brave-40/80 dark:border-t-brave-50"
+            class="absolute -top-1 -left-[3px] w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-neutral-400 dark:border-t-neutral-400"
           />
         </div>
       </div>
@@ -335,11 +335,11 @@ const getBoundaryLineClass = index => {
   const isSelected = !dragState.value && selectedBoundaryIndex.value === index
 
   if (isSelected) {
-    return 'bg-brave-60 dark:bg-brave-70 w-[3px] ring-2 ring-brave-70/35'
+    return 'bg-hoa-1000 dark:bg-neutral-300 w-[3px] ring-2 ring-neutral-300/35'
   }
 
   if (isActive) {
-    return 'bg-brave-50 dark:bg-brave-70 w-[3px] ring-1 ring-brave-50/25'
+    return 'bg-neutral-600 dark:bg-neutral-300 w-[3px] ring-1 ring-neutral-500/25'
   }
 
   return ''

@@ -6,14 +6,14 @@
         id="autosearch"
         v-model="autoSearch"
         type="checkbox"
-        class="bg-brave-95 border border-brave-95 focus:border-brave-90 text-gray-900 outline-none text-sm rounded transition block min-w-fit p-1.5"
+        class="bg-neutral-50 border border-neutral-100 focus:border-neutral-200 text-gray-900 outline-none text-sm rounded transition block min-w-fit p-1.5"
       />
     </div>
     <input
       id="searchInput"
       v-model="searchInput"
       type="text"
-      class="bg-brave-95 border border-brave-95 focus:border-brave-90 text-gray-900 outline-none text-sm rounded transition block w-full max-w-2xl p-1.5"
+      class="bg-neutral-50 border border-neutral-100 focus:border-neutral-200 text-gray-900 outline-none text-sm rounded transition block w-full max-w-2xl p-1.5"
       placeholder="Search"
       @keyup.enter="makeSearch"
       @input="handleAutoSearch"

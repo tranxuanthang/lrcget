@@ -7,12 +7,12 @@
       <transition name="slide-fade" mode="out-in">
         <div
           v-if="expanded"
-          class="full-viewer absolute bottom-0 left-0 w-full h-[40vh] bg-brave-95 dark:bg-brave-10 border-t border-brave-90/50 dark:border-brave-10/50 overflow-hidden"
+          class="full-viewer absolute bottom-0 left-0 w-full h-[40vh] bg-neutral-50 dark:bg-neutral-900 border-t border-neutral-200/50 dark:border-neutral-800/50 overflow-hidden"
         >
           <div class="relative h-full">
             <div class="flex justify-center items-center h-6 w-full relative z-10">
               <button
-                class="text-xl text-brave-30 dark:text-brave-80 w-full flex justify-center"
+                class="text-xl text-neutral-800 dark:text-neutral-400 w-full flex justify-center"
                 type="button"
                 @click="expand"
               >
@@ -30,8 +30,8 @@
                 :key="index"
                 class="transition"
                 :class="{
-                  'font-bold text-brave-30 dark:text-brave-95': isLinePlaying(line, index),
-                  'text-brave-30/70 hover:text-brave-30/80 hover:cursor-pointer dark:text-brave-95/70 dark:hover:text-brave-95/80':
+                  'font-bold text-neutral-800 dark:text-neutral-200': isLinePlaying(line, index),
+                  'text-neutral-800/70 hover:text-neutral-800/80 hover:cursor-pointer dark:text-neutral-400/70 dark:hover:text-neutral-300/80':
                     !isLinePlaying(line, index),
                 }"
                 @click="onLineClick(line)"
@@ -56,7 +56,7 @@
             </div>
 
             <button
-              class="z-10 absolute bottom-2 right-2 flex items-center gap-1 px-3 py-1 rounded text-xs font-bold bg-brave-90 text-brave-20 dark:bg-brave-15 dark:text-brave-95 hover:bg-brave-80 dark:hover:bg-brave-20 shadow"
+              class="z-10 absolute bottom-2 right-2 flex items-center gap-1 px-3 py-1 rounded text-xs font-bold bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-300 hover:bg-neutral-200 dark:hover:bg-neutral-700 shadow"
               type="button"
               :aria-label="copied ? 'Copied' : 'Copy'"
               @click.stop="onCopy"
@@ -66,23 +66,23 @@
             </button>
 
             <div
-              class="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-brave-95 dark:from-brave-10 pointer-events-none"
+              class="absolute top-0 left-0 w-full h-10 bg-gradient-to-b from-neutral-50 dark:from-neutral-900 pointer-events-none"
             />
             <div
-              class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-brave-95 dark:from-brave-10 pointer-events-none"
+              class="absolute bottom-0 left-0 w-full h-10 bg-gradient-to-t from-neutral-50 dark:from-neutral-900 pointer-events-none"
             />
           </div>
         </div>
       </transition>
 
       <div
-        class="mini-viewer transition cursor-pointer top-0 left-0 w-full h-12 bg-brave-95 dark:bg-brave-10 border-t border-brave-90/50 dark:border-brave-10/50 flex flex-col"
+        class="mini-viewer transition cursor-pointer top-0 left-0 w-full h-12 bg-neutral-50 dark:bg-neutral-900 border-t border-neutral-200/50 dark:border-neutral-800/50 flex flex-col"
         :class="{ 'invisible opacity-0': expanded }"
         @click="expand"
       >
         <div class="flex justify-center items-center h-4 w-full">
           <button
-            class="text-xl text-brave-30 dark:text-brave-95 w-full flex justify-center"
+            class="text-xl text-neutral-800 dark:text-neutral-400 w-full flex justify-center"
             type="button"
           >
             <DragHorizontal />
@@ -92,7 +92,7 @@
         <transition name="slide-fade" mode="out-in">
           <div
             :key="currentLyrics"
-            class="flex w-full justify-center items-center text-brave-30 dark:text-brave-95 text-sm grow font-bold"
+            class="flex w-full justify-center items-center text-neutral-800 dark:text-neutral-200 text-sm grow font-bold"
           >
             <template v-if="hasWordSync(syncedLines, primaryPlayingLineIndex)">
               <span

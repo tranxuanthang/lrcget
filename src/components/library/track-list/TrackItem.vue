@@ -1,15 +1,15 @@
 <template>
   <div
-    class="flex w-full group hover:bg-brave-98 hover:shadow hover:shadow-brave-95/50 border hover:border-brave-95 transition rounded cursor-default dark:hover:bg-brave-10 dark:hover:border-brave-20 dark:hover:shadow-brave-30/50"
+    class="flex w-full group hover:bg-neutral-50 hover:shadow hover:shadow-neutral-100/50 border hover:border-neutral-100 transition rounded cursor-default dark:hover:bg-neutral-900 dark:hover:border-neutral-700 dark:hover:shadow-black/50"
     :class="{
-      'border-brave-95 bg-brave-99 dark:border-brave-20 dark:bg-brave-5': isPlaying,
+      'border-neutral-100 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900': isPlaying,
       'border-transparent': !isPlaying,
     }"
   >
     <!-- Track number -->
     <div
       v-if="isShowTrackNumber"
-      class="flex-none w-[5%] flex items-center justify-end p-1 pr-2 text-xs text-brave-30/70 dark:text-brave-99 font-bold"
+      class="flex-none w-[5%] flex items-center justify-end p-1 pr-2 text-xs text-neutral-800/70 dark:text-neutral-200 font-bold"
     >
       <div v-if="track && track.track_number">
         {{ track.track_number }}
@@ -24,17 +24,17 @@
       @click="playTrack(track)"
     >
       <div v-if="track">
-        <div class="font-bold text-sm text-brave-20 flex items-center dark:text-brave-95">
+        <div class="font-bold text-sm text-neutral-800 flex items-center dark:text-neutral-200">
           <Equalizer v-if="isPlaying && status === 'playing' && !editingAudioSource" class="mr-1" />
           <span>{{ track.title }}</span>
         </div>
 
         <div class="gap-2 line-clamp-1">
-          <span class="text-sm text-brave-30 transition dark:text-brave-90">{{
+          <span class="text-sm text-neutral-500 transition dark:text-neutral-400">{{
             track.album_name
           }}</span>
-          <span class="text-brave-30 h-full mx-1 flex-none dark:text-brave-90">|</span>
-          <span class="text-sm text-brave-30 transition dark:text-brave-90">{{
+          <span class="text-neutral-500 h-full mx-1 flex-none dark:text-neutral-400">|</span>
+          <span class="text-sm text-neutral-500 transition dark:text-neutral-400">{{
             track.artist_name
           }}</span>
         </div>
@@ -43,7 +43,7 @@
 
     <!-- Duration -->
     <div class="flex-none w-[10%] flex items-center justify-end p-1" @click="playTrack(track)">
-      <div v-if="track" class="text-brave-30 font-bold text-xs text-right dark:text-brave-95">
+      <div v-if="track" class="text-neutral-800 font-bold text-xs text-right dark:text-neutral-400">
         {{ humanDuration(track.duration) }}
       </div>
     </div>
@@ -183,6 +183,6 @@ onUnmounted(() => {
 
 <style scoped>
 .track-button {
-  @apply text-brave-30 hover:bg-brave-30 hover:text-white rounded p-2 transition dark:text-white dark:hover:bg-brave-30;
+  @apply text-neutral-800 hover:bg-hoa-1100 hover:text-white rounded p-2 transition dark:text-white dark:hover:bg-hoa-1100;
 }
 </style>

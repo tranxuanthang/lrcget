@@ -31,21 +31,21 @@
     <div class="relative flex-none">
       <button
         v-show="isLineControlsVisible && line.start_ms"
-        class="button p-0.5 rounded-full text-xs h-5 w-5 bg-brave-90 dark:bg-brave-20 text-brave-25 dark:text-brave-99 absolute -left-1.5 top-1/2 -translate-y-1/2 z-10"
+        class="button p-0.5 rounded-full text-xs h-5 w-5 bg-hoa-100 dark:bg-hoa-1500 text-hoa-800 dark:text-hoa-200 absolute -left-1.5 top-1/2 -translate-y-1/2 z-10"
         title="Rewind line by 100ms"
         @click.stop="emit('rewind-line', index)"
       >
         <Minus />
       </button>
       <div
-        class="px-3 py-0.5 text-xs font-mono rounded-full bg-brave-90 dark:bg-brave-20 text-brave-25 dark:text-brave-99 min-w-[5.75rem] text-center"
+        class="px-3 py-0.5 text-xs font-mono rounded-full bg-hoa-100 dark:bg-hoa-1500 text-hoa-1300 dark:text-hoa-200 min-w-[5.75rem] text-center"
         :class="{ 'font-bold': isLinePlaying }"
       >
         {{ timestampText }}
       </div>
       <button
         v-show="isLineControlsVisible && line.start_ms"
-        class="button p-0.5 rounded-full text-xs h-5 w-5 bg-brave-90 dark:bg-brave-20 text-brave-25 dark:text-brave-99 absolute -right-1.5 top-1/2 -translate-y-1/2 z-10"
+        class="button p-0.5 rounded-full text-xs h-5 w-5 bg-hoa-100 dark:bg-hoa-1500 text-hoa-800 dark:text-hoa-200 absolute -right-1.5 top-1/2 -translate-y-1/2 z-10"
         title="Forward line by 100ms"
         @click.stop="emit('forward-line', index)"
       >
@@ -57,7 +57,7 @@
       v-if="isEditing"
       :ref="setLineInputRef"
       v-model="editingTextProxy"
-      class="grow h-full px-2 rounded-md border border-brave-80 dark:border-brave-25 bg-brave-100 dark:bg-brave-10 outline-none"
+      class="grow h-full px-2 rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 outline-none"
       :class="{ 'font-bold': isLinePlaying }"
       @blur="emit('save-edit')"
       @keydown.enter.prevent="emit('save-edit')"
@@ -67,7 +67,7 @@
     <div
       v-else
       class="grow min-h-7 flex items-center px-2 rounded-md cursor-text"
-      :class="{ 'font-bold': isLinePlaying, 'opacity-80': !isLinePlaying }"
+      :class="isLinePlaying ? 'font-bold text-neutral-900 dark:text-white' : 'text-neutral-600 dark:text-neutral-400'"
       @click="emit('select', index)"
       @dblclick="emit('start-edit', index)"
     >
@@ -77,7 +77,7 @@
           :key="wordIndex"
           class="whitespace-pre-wrap"
           :class="{
-            'text-yellow-500 dark:text-yellow-400': wordIndex === currentWordIndex,
+            'text-yellow-600 dark:text-yellow-300 font-bold': wordIndex === currentWordIndex,
           }"
         >
           {{ word.text }}
@@ -92,7 +92,7 @@
       <div class="relative flex items-center">
         <button
           v-show="isLineControlsVisible && line.end_ms"
-          class="button p-0.5 rounded-full text-xs h-5 w-5 bg-cyan-100 text-cyan-800 dark:bg-cyan-800 dark:text-white absolute -left-1.5 top-1/2 -translate-y-1/2 z-10"
+          class="button p-0.5 rounded-full text-xs h-5 w-5 bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 absolute -left-1.5 top-1/2 -translate-y-1/2 z-10"
           title="Rewind end timestamp by 100ms"
           @click.stop="emit('rewind-end', index)"
         >
@@ -100,14 +100,14 @@
         </button>
         <div
           v-show="isLineControlsVisible"
-          class="px-3 py-0.5 text-xs font-mono rounded-full bg-cyan-100 dark:bg-cyan-800 text-cyan-800 dark:text-white min-w-[5.75rem] text-center"
+          class="px-3 py-0.5 text-xs font-mono rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 min-w-[5.75rem] text-center"
           :class="{ 'opacity-50': !line.end_ms }"
         >
           {{ endTimestampText }}
         </div>
         <button
           v-show="isLineControlsVisible && line.end_ms"
-          class="button p-0.5 rounded-full text-xs h-5 w-5 bg-cyan-100 text-cyan-800 dark:bg-cyan-800 dark:text-white absolute -right-1.5 top-1/2 -translate-y-1/2 z-10"
+          class="button p-0.5 rounded-full text-xs h-5 w-5 bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 absolute -right-1.5 top-1/2 -translate-y-1/2 z-10"
           title="Forward end timestamp by 100ms"
           @click.stop="emit('forward-end', index)"
         >
@@ -117,7 +117,7 @@
 
       <button
         v-show="isLineControlsVisible"
-        class="button bg-cyan-100 text-cyan-800 hover:bg-cyan-200 dark:bg-cyan-800 dark:text-white hover:dark:bg-cyan-700 p-1 rounded-full text-sm h-6 w-6 mr-4"
+        class="button bg-neutral-200 text-neutral-600 hover:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-300 hover:dark:bg-neutral-600 p-1 rounded-full text-sm h-6 w-6 mr-4"
         title="Sync end timestamp to current playback"
         @click.stop="emit('sync-end', index)"
       >

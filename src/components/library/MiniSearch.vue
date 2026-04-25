@@ -3,25 +3,25 @@
     <input
       v-model="searchInput"
       type="text"
-      class="h-full input px-[2rem] py-1.5 pr-1.5 w-[16rem] dark:text-brave-95"
+      class="h-full input px-[2rem] py-1.5 pr-1.5 w-[16rem] dark:text-neutral-200"
       placeholder="Search for tracks..."
       autofocus
     />
     <div class="absolute top-0 left-0 w-[2rem] h-full flex justify-center items-center pl-0.5">
-      <Magnify class="text-brave-30 dark:text-brave-95" />
+      <Magnify class="text-neutral-800 dark:text-neutral-500" />
     </div>
     <div class="absolute top-0 right-0 h-full flex items-center px-1 gap-1">
       <button
         v-if="searchInput !== ''"
-        class="w-[1.5rem] h-[1.5rem] flex justify-center items-center text-brave-30 group-hover:text-brave-20 dark:text-brave-95 dark:hover:text-brave-90 rounded-full"
+          class="w-[1.5rem] h-[1.5rem] flex justify-center items-center text-neutral-800 group-hover:text-neutral-800 dark:text-neutral-500 dark:hover:text-neutral-300 rounded-full"
         @click="searchInput = ''"
       >
         <Close />
       </button>
       <VDropdown theme="lrcget-dropdown" placement="top-start">
         <button
-          class="w-[1.5rem] h-[1.5rem] flex justify-center items-center text-brave-30 group-hover:text-brave-20 dark:text-brave-95 dark:hover:text-brave-90 rounded-full"
-          :class="{ 'bg-brave-80 dark:bg-brave-40': isFilters }"
+        class="w-[1.5rem] h-[1.5rem] flex justify-center items-center text-neutral-800 group-hover:text-neutral-800 dark:text-neutral-500 dark:hover:text-neutral-300 rounded-full"
+          :class="{ 'bg-neutral-200 dark:bg-neutral-700': isFilters }"
         >
           <Filter />
         </button>
@@ -96,14 +96,14 @@ watch(searchInput, debouncedSearch)
 }
 
 .dropdown-item {
-  @apply flex items-center px-2 py-1 hover:bg-brave-90 dark:hover:bg-brave-15 rounded cursor-pointer;
+  @apply flex items-center px-2 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded cursor-pointer;
 }
 
 .dropdown-label {
-  @apply text-brave-20 dark:text-brave-90 text-sm font-bold;
+  @apply text-neutral-800 dark:text-neutral-300 text-sm font-bold;
 }
 
 .dropdown-checkbox {
-  @apply rounded text-brave-primary dark:text-brave-60 focus:ring-brave-primary dark:focus:ring-brave-60 mr-2;
+  @apply rounded text-hoa-1100 dark:text-hoa-1100 focus:ring-hoa-1100 dark:focus:ring-hoa-1100 mr-2;
 }
 </style>

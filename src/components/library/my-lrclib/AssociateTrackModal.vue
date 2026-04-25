@@ -16,11 +16,11 @@
         autofocus
       />
       <div class="absolute top-0 left-0 w-10 h-full flex items-center justify-center">
-        <Magnify class="text-brave-40 dark:text-brave-70" />
+        <Magnify class="text-neutral-500 dark:text-neutral-400" />
       </div>
       <button
         v-if="searchQuery"
-        class="absolute top-0 right-0 w-10 h-full flex items-center justify-center text-brave-40 hover:text-brave-30 dark:text-brave-70 dark:hover:text-brave-80"
+        class="absolute top-0 right-0 w-10 h-full flex items-center justify-center text-neutral-500 hover:text-neutral-800 dark:text-neutral-400 dark:hover:text-neutral-500"
         @click="searchQuery = ''"
       >
         <Close />
@@ -29,7 +29,7 @@
 
     <!-- Loading State -->
     <div v-if="isLoading || isPreparingQuery" class="flex justify-center py-8">
-      <Loading class="animate-spin text-2xl text-brave-30 dark:text-brave-90" />
+      <Loading class="animate-spin text-2xl text-neutral-800 dark:text-neutral-600" />
     </div>
 
     <!-- Results List -->
@@ -43,8 +43,8 @@
         class="w-full text-left px-2 py-1 rounded transition flex items-center gap-1"
         :class="[
           selectedTrack?.id === track.id
-            ? 'bg-brave-30 text-white dark:bg-brave-80'
-            : 'hover:bg-brave-95 dark:hover:bg-brave-10',
+            ? 'bg-hoa-1100 text-white dark:bg-hoa-1100'
+            : 'hover:bg-neutral-50 dark:hover:bg-neutral-800',
         ]"
         @click="selectedTrack = track"
       >
@@ -61,7 +61,7 @@
     <!-- Empty State -->
     <div
       v-else-if="!isPreparingQuery && searchQuery"
-      class="h-full text-center py-8 text-brave-40 dark:text-brave-70"
+      class="h-full text-center py-8 text-neutral-500 dark:text-neutral-400"
     >
       <Magnify class="text-3xl mx-auto mb-2 opacity-50" />
       <div class="text-sm">No tracks found</div>
@@ -69,7 +69,7 @@
 
     <div
       v-else-if="!isPreparingQuery"
-      class="h-full text-center py-8 text-brave-40 dark:text-brave-70"
+      class="h-full text-center py-8 text-neutral-500 dark:text-neutral-400"
     >
       <Music class="text-3xl mx-auto mb-2 opacity-50" />
       <div class="text-sm">Type to search your library</div>

@@ -6,10 +6,10 @@
     @close="checkAndClose"
   >
     <div class="flex flex-col items-center justify-center gap-1">
-      <div class="w-full bg-brave-95 h-1 rounded">
-        <div class="bg-brave-30 h-1" :style="{ width: progressWidth }" />
+      <div class="w-full bg-neutral-50 h-1 rounded">
+        <div class="bg-hoa-1100 h-1" :style="{ width: progressWidth }" />
       </div>
-      <div class="text-[0.7rem] text-brave-30/60 dark:text-brave-95/60 flex gap-3">
+      <div class="text-[0.7rem] text-neutral-500 dark:text-neutral-500 flex gap-3">
         <span>{{ exportedCount }} EXPORTED</span>
         <span>{{ skippedCount }} SKIPPED</span>
         <span>{{ errorCount }} ERRORS</span>
@@ -17,7 +17,7 @@
       </div>
     </div>
 
-    <div class="rounded-lg p-3 bg-brave-98 dark:bg-brave-1 w-full text-xs grow overflow-auto">
+    <div class="rounded-lg p-3 bg-white dark:bg-neutral-950 w-full text-xs grow overflow-auto">
       <div v-for="(logItem, index) in log" :key="index" class="mb-1">
         <div
           :class="{
@@ -33,7 +33,7 @@
         <!-- Show per-format details if available -->
         <div
           v-if="logItem.details && logItem.details.length > 0"
-          class="pl-4 mt-0.5 text-brave-30/70 dark:text-brave-90/70"
+          class="pl-4 mt-0.5 text-neutral-500 dark:text-neutral-500"
         >
           <div
             v-for="detail in logItem.details"
@@ -88,7 +88,7 @@ const getDetailStatusClass = detail => {
   } else if (statusType === 'error') {
     return 'text-red-700 dark:text-red-500'
   }
-  return 'text-brave-30/70 dark:text-brave-90/70'
+  return 'text-neutral-500 dark:text-neutral-500'
 }
 
 const getDetailMessage = detail => {

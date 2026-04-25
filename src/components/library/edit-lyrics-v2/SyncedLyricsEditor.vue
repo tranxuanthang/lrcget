@@ -191,11 +191,11 @@ const scrollLineIntoView = index => {
 
 const rowClass = index => {
   if (props.selectedLineIndex === index || editingLineIndex.value === index) {
-    return 'bg-brave-95 dark:bg-brave-10/60'
+    return 'bg-neutral-100 dark:bg-neutral-800'
   }
 
   if (hoveredLineIndex.value === index) {
-    return 'bg-brave-98 dark:bg-brave-10/30'
+    return 'bg-neutral-50 dark:bg-neutral-800/50'
   }
 
   return 'bg-transparent'

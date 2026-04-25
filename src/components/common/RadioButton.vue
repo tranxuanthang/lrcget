@@ -16,9 +16,9 @@
     >
       <RadioboxMarked
         v-if="modelValue === value"
-        class="w-6 h-6 text-brave-30 dark:text-brave-90"
+        class="w-6 h-6 text-neutral-800 dark:text-neutral-400"
       />
-      <RadioboxBlank v-else class="w-6 h-6 text-brave-30 dark:text-brave-90" />
+      <RadioboxBlank v-else class="w-6 h-6 text-neutral-800 dark:text-neutral-400" />
       <span class="ml-1 child-label">
         <slot />
       </span>

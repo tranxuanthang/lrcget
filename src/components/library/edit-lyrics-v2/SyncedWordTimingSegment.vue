@@ -54,13 +54,24 @@ const isPlaying = computed(() => {
 })
 
 const segmentClass = computed(() => {
-  const baseClasses = ['bg-brave-88 dark:bg-brave-18']
+  const baseClasses = [
+    'bg-neutral-200 dark:bg-neutral-700',
+    'text-neutral-800 dark:text-neutral-300',
+    'border-r',
+    'border-neutral-300',
+    'dark:border-neutral-600',
+  ]
 
   if (isPlaying.value) {
     baseClasses.push(
-      'bg-brave-70 dark:bg-brave-30',
+      'bg-hoa-1100',
+      'dark:bg-hoa-1100',
+      'text-white',
+      'dark:text-white',
       'font-bold',
-      'text-brave-10 dark:text-brave-95'
+      'border-r',
+      'border-hoa-1100',
+      'dark:border-hoa-1100'
     )
   }
 

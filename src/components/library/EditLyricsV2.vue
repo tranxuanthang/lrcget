@@ -51,25 +51,23 @@
     </template>
 
     <div class="grow overflow-hidden flex flex-col gap-2 h-full">
-      <div class="toolbar bg-brave-95 dark:bg-brave-10 rounded-lg">
-        <div class="px-2 py-2">
-          <EditLyricsV2PlayerBar
-            :status="status"
-            :duration="duration"
-            :progress="progress"
-            @play-toggle="resumeOrPlay"
-            @pause="pause"
-            @seek="seek"
-          />
-        </div>
+      <div class="toolbar bg-neutral-100 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700">
+        <EditLyricsV2PlayerBar
+          :status="status"
+          :duration="duration"
+          :progress="progress"
+          @play-toggle="resumeOrPlay"
+          @pause="pause"
+          @seek="seek"
+        />
       </div>
 
       <!-- Instrumental State -->
       <div v-if="isInstrumental" class="absolute bottom-16 left-1/2 -translate-x-1/2 px-3 z-10">
         <div
-          class="w-full max-w-lg rounded-lg border border-brave-90 dark:border-brave-20 bg-brave-98 dark:bg-brave-10 p-5 shadow-lg"
+          class="w-full max-w-lg rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5 shadow-lg"
         >
-          <h3 class="text-base font-semibold">Track is marked as instrumental</h3>
+          <h3 class="text-base font-semibold text-neutral-900 dark:text-neutral-200">Track is marked as instrumental</h3>
           <div class="mt-4 flex flex-wrap gap-2">
             <button
               class="button button-normal px-2 py-1 text-xs rounded-full"

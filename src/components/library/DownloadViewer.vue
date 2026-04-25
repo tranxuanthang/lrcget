@@ -6,17 +6,17 @@
     @close="checkAndClose"
   >
     <div class="flex flex-col items-center justify-center gap-1">
-      <div class="w-full bg-brave-95 h-1 rounded">
-        <div class="bg-brave-30 h-1" :style="{ width: progressWidth }" />
+      <div class="w-full bg-neutral-50 h-1 rounded">
+        <div class="bg-hoa-1100 h-1" :style="{ width: progressWidth }" />
       </div>
-      <div class="text-[0.7rem] text-brave-30/60 dark:text-brave-95/60 flex gap-3">
+      <div class="text-[0.7rem] text-neutral-500 dark:text-neutral-500 flex gap-3">
         <span>{{ successCount }} FOUND</span>
         <span>{{ failureCount }} NOT FOUND</span>
         <span>{{ totalCount }} TOTAL</span>
       </div>
     </div>
 
-    <div class="rounded-lg p-3 bg-brave-98 dark:bg-brave-1 w-full text-xs grow overflow-auto">
+    <div class="rounded-lg p-3 bg-white dark:bg-neutral-950 w-full text-xs grow overflow-auto">
       <div
         v-for="logItem in log"
         :key="logItem.title + logItem.artistName"

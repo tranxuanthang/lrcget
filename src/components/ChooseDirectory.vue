@@ -1,7 +1,7 @@
 <template>
   <div class="flex flex-col w-full h-full justify-center items-center">
     <div class="px-4 py-2 flex flex-col gap-4 flex-none">
-      <div class="text-thin text-xl text-brave-5 dark:text-brave-95">Select directories</div>
+      <div class="text-thin text-xl text-neutral-900 dark:text-neutral-200">Select directories</div>
     </div>
 
     <div class="grow flex flex-col items-center justify-center gap-8 w-full max-w-screen-sm">
@@ -9,7 +9,7 @@
         <div
           v-for="(directory, index) in directories"
           :key="directory"
-          class="w-full bg-brave-90 dark:bg-brave-10 text-brave-5 dark:text-brave-95 font-bold p-4 rounded-lg flex items-center"
+          class="w-full bg-neutral-100 dark:bg-neutral-900 text-neutral-900 dark:text-neutral-200 font-bold p-4 rounded-lg flex items-center"
         >
           <div class="grow">
             {{ directory }}
@@ -23,7 +23,7 @@
         </div>
 
         <button
-          class="w-full bg-brave-95 dark:bg-brave-5 hover:bg-brave-90 hover:dark:bg-brave-10 active:bg-brave-80/50 transition text-brave-5 dark:text-brave-95 font-bold p-4 rounded-lg flex items-center border border-dashed border-brave-70 dark:border-brave-30"
+          class="w-full bg-neutral-50 dark:bg-neutral-900 hover:bg-neutral-100 hover:dark:bg-neutral-800 active:bg-neutral-200/50 transition text-neutral-900 dark:text-neutral-300 font-bold p-4 rounded-lg flex items-center border border-dashed border-neutral-400 dark:border-neutral-600"
           @click.prevent="chooseDirectory"
         >
           <Plus />

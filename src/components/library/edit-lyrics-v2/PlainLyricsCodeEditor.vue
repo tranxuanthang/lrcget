@@ -17,8 +17,8 @@
           :config="{ height: 'auto' }"
         />
 
-        <div v-else class="flex flex-col h-full items-center justify-center text-sm text-brave-40">
-          <div class="animate-spin text-xl text-brave-30">
+        <div v-else class="flex flex-col h-full items-center justify-center text-sm text-neutral-500">
+          <div class="animate-spin text-xl text-neutral-800">
             <Loading />
           </div>
           <div>Loading editor...</div>
@@ -26,7 +26,7 @@
       </div>
     </div>
 
-    <div class="flex flex-col w-fit self-end bg-brave-95 dark:bg-brave-10 rounded-lg">
+    <div class="flex flex-col w-fit self-end bg-neutral-50 dark:bg-neutral-900 rounded-lg">
       <div class="toolbar px-2 py-1 flex items-stretch gap-1">
         <button
           class="button button-normal px-1.5 py-0.5 text-sm rounded-full"

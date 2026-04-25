@@ -59,7 +59,7 @@
 
       <div class="grow overflow-hidden">
         <div v-if="loading" class="flex justify-center items-center h-full">
-          <Loading class="animate-spin text-xl text-brave-30" />
+          <Loading class="animate-spin text-xl text-neutral-800 dark:text-neutral-400" />
         </div>
 
         <div v-else class="flex flex-col h-full gap-2 overflow-auto">
@@ -67,45 +67,45 @@
             <div
               v-for="result in normalizedSearchResult"
               :key="result.item.id"
-              class="rounded bg-brave-98 dark:bg-brave-10 hover:bg-brave-95 hover:dark:bg-brave-10 border border-transparent hover:dark:border-brave-30 transition px-2 py-1 flex gap-2"
+              class="rounded bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition px-2 py-1 flex gap-2"
             >
               <div class="h-full overflow-hidden grow">
                 <div class="font-bold flex gap-1">
-                  <span class="mr-1 text-sm text-brave-30 dark:text-brave-95">{{
+                  <span class="mr-1 text-sm text-neutral-800 dark:text-neutral-200">{{
                     result.item.name
                   }}</span>
                   <template v-if="showLineCount === true">
                     <span
                       v-if="result.lyrics.syncedLyrics"
-                      class="text-blue-200 font-bold text-[0.65rem] bg-blue-800 rounded px-1 py-0.5"
+                      class="text-neutral-800 dark:text-neutral-300 font-bold text-[0.65rem] bg-neutral-200 dark:bg-neutral-700 rounded px-1 py-0.5"
                       >{{ countLines(result.lyrics.syncedLyrics) }} Lines</span
                     >
                     <span
                       v-else-if="result.lyrics.plainLyrics"
-                      class="text-blue-200 font-bold text-[0.65rem] bg-blue-800 rounded px-1 py-0.5"
+                      class="text-neutral-800 dark:text-neutral-300 font-bold text-[0.65rem] bg-neutral-200 dark:bg-neutral-700 rounded px-1 py-0.5"
                       >{{ countLines(result.lyrics.plainLyrics) }} Lines</span
                     >
                   </template>
                   <span
                     v-if="result.lyrics.syncedLyrics"
-                    class="text-green-200 font-bold text-[0.65rem] bg-green-800 rounded px-1 py-0.5"
+                    class="text-white font-bold text-[0.65rem] bg-hoa-1100 rounded px-1 py-0.5"
                     >Synced</span
                   >
                   <span
                     v-else-if="result.lyrics.plainLyrics"
-                    class="text-gray-200 font-bold text-[0.65rem] bg-gray-800 rounded px-1 py-0.5"
+                    class="text-neutral-800 dark:text-neutral-300 font-bold text-[0.65rem] bg-neutral-200 dark:bg-neutral-700 rounded px-1 py-0.5"
                     >Plain</span
                   >
                   <span
                     v-else-if="result.lyrics.instrumental"
-                    class="text-gray-200 font-bold text-[0.65rem] bg-gray-500 rounded px-1 py-0.5"
+                    class="text-neutral-900 dark:text-neutral-200 font-bold text-[0.65rem] bg-neutral-300 dark:bg-neutral-600 rounded px-1 py-0.5"
                     >Instrumental</span
                   >
                   <span
                     v-if="
                       Math.round(result.item.duration) - Math.round(searchingTrack.duration) > 2
                     "
-                    class="text-blue-800 text-[0.75rem]"
+                    class="text-neutral-500 dark:text-neutral-400 text-[0.75rem]"
                   >
                     +{{
                       humanDuration(
@@ -117,7 +117,7 @@
                     v-else-if="
                       Math.round(result.item.duration) - Math.round(searchingTrack.duration) < -2
                     "
-                    class="text-blue-800 text-[0.75rem]"
+                    class="text-neutral-500 dark:text-neutral-400 text-[0.75rem]"
                   >
                     -{{
                       humanDuration(
@@ -126,7 +126,7 @@
                     }}
                   </span>
                 </div>
-                <div class="text-sm text-brave-35 dark:text-brave-90 truncate">
+                <div class="text-sm text-neutral-900 dark:text-neutral-400 truncate">
                   <span>{{ result.item.albumName }}</span> |
                   <span>{{ result.item.artistName }}</span>
                 </div>
@@ -147,7 +147,7 @@
             </div>
           </div>
 
-          <div v-else class="flex justify-center items-center h-full text-sm text-brave-60">
+          <div v-else class="flex justify-center items-center h-full text-sm text-neutral-400">
             There is no lyrics record that matches your search
           </div>
         </div>

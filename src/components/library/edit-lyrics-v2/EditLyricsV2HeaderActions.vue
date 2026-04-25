@@ -15,7 +15,7 @@
         <template #popper>
           <div class="text-xs font-bold">
             Save lyrics
-            <span class="text-[0.65rem] text-brave-30 bg-brave-95 px-1 rounded-full">Ctrl+S</span>
+            <span class="text-[0.65rem] text-neutral-800 bg-neutral-50 px-1 rounded-full">Ctrl+S</span>
           </div>
         </template>
       </VTooltip>
@@ -167,18 +167,18 @@ defineProps({
 }
 
 .dropdown-item {
-  @apply flex items-center px-2 py-1 hover:bg-brave-90 dark:hover:bg-brave-15 rounded cursor-pointer h-8 gap-2 w-full;
+  @apply flex items-center px-2 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded cursor-pointer h-8 gap-2 w-full;
 }
 
 .dropdown-divider {
-  @apply h-px bg-brave-90 dark:bg-brave-15 my-1;
+  @apply h-px bg-neutral-100 dark:bg-neutral-700 my-1;
 }
 
 .dropdown-label {
-  @apply text-brave-20 dark:text-brave-90 text-sm font-bold;
+  @apply text-neutral-800 dark:text-neutral-300 text-sm font-bold;
 }
 
 .dropdown-section-label {
-  @apply text-xs uppercase font-bold text-brave-35 dark:text-brave-70 px-2 py-1;
+  @apply text-xs uppercase font-bold text-neutral-900 dark:text-neutral-400 px-2 py-1;
 }
 </style>

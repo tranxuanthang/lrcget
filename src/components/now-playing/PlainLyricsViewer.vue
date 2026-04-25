@@ -4,14 +4,14 @@
       <transition name="slide-fade" mode="out-in">
         <div
           v-if="expanded"
-          class="full-viewer absolute bottom-0 left-0 w-full h-[40vh] bg-brave-95 dark:bg-brave-10 border-t border-brave-90/50 dark:border-brave-10/50 overflow-hidden"
+          class="full-viewer absolute bottom-0 left-0 w-full h-[40vh] bg-neutral-50 dark:bg-neutral-900 border-t border-neutral-200/50 dark:border-neutral-800/50 overflow-hidden"
         >
           <div
-            class="relative h-full rounded text-center text-brave-50 whitespace-pre flex flex-col"
+            class="relative h-full rounded text-center text-neutral-700 whitespace-pre flex flex-col"
           >
             <div class="flex justify-center items-center h-6 w-full relative z-10">
               <button
-                class="text-xl text-brave-30 w-full flex justify-center"
+                class="text-xl text-neutral-800 w-full flex justify-center"
                 type="button"
                 @click="expand"
               >
@@ -23,7 +23,7 @@
             </div>
 
             <button
-              class="absolute bottom-2 right-2 flex items-center gap-1 px-3 py-1 rounded text-xs font-bold bg-brave-90 text-brave-20 dark:bg-brave-10 dark:text-brave-95 hover:bg-brave-80 dark:hover:bg-brave-20 shadow"
+              class="absolute bottom-2 right-2 flex items-center gap-1 px-3 py-1 rounded text-xs font-bold bg-neutral-100 text-neutral-800 dark:bg-neutral-900 dark:text-neutral-700 hover:bg-neutral-200 dark:hover:bg-neutral-800 shadow"
               type="button"
               :aria-label="copied ? 'Copied' : 'Copy'"
               @click.stop="onCopy"
@@ -36,12 +36,12 @@
       </transition>
 
       <div
-        class="mini-viewer transition cursor-pointer top-0 left-0 w-full h-12 bg-brave-95 dark:bg-brave-10 border-t border-brave-90/50 dark:border-brave-30 flex flex-col"
+        class="mini-viewer transition cursor-pointer top-0 left-0 w-full h-12 bg-neutral-50 dark:bg-neutral-900 border-t border-neutral-200/50 dark:border-neutral-800/50 flex flex-col"
         :class="{ 'invisible opacity-0': expanded }"
         @click="expand"
       >
         <div class="flex justify-center items-center h-4 w-full">
-          <button class="text-xl text-brave-30 w-full flex justify-center" type="button">
+          <button class="text-xl text-neutral-800 w-full flex justify-center" type="button">
             <DragHorizontal />
           </button>
         </div>
@@ -49,7 +49,7 @@
         <transition name="slide-fade" mode="out-in">
           <div
             v-if="!expanded"
-            class="flex w-full justify-center items-center text-brave-30 text-sm grow italic dark:text-brave-90"
+            class="flex w-full justify-center items-center text-neutral-800 text-sm grow italic dark:text-neutral-600"
           >
             [Unsynchronized lyrics]
           </div>
