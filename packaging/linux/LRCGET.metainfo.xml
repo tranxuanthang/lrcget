@@ -35,6 +35,15 @@
   <url type="bugtracker">https://github.com/tranxuanthang/lrcget/issues</url>
   <content_rating type="oars-1.1"/>
   <releases>
+  <release version="2.1.0" date="2026-04-26">
+    <description>
+      <ul>
+        <li>Redesigned the app UI with a cleaner, more neutral color scheme for better contrast and visual hierarchy in both light and dark modes.</li>
+        <li>Sped up Albums and Artists list tabs by adding proper indexes in the database.</li>
+        <li>Fixed individual lyrics export error in the lyrics editor.</li>
+      </ul>
+    </description>
+  </release>
     <release version="2.0.1" date="2026-04-24">
       <description>
         <ul>

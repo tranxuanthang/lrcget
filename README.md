@@ -38,11 +38,18 @@ Mac Apple Silicon: [LRCGET_2.0.1_aarch64.dmg](https://github.com/tranxuanthang/l
 
 ## Screenshots
 
-![01.png](screenshots/01.png?3)
+![01.png](screenshots/01.png?4)
 
-![02.png](screenshots/02.png?3)
+<details>
+<summary>Click to expand more screenshots</summary>
 
-![03.png](screenshots/03.png?3)
+![02.png](screenshots/02.png?4)
+
+![03.png](screenshots/03.png?4)
+
+![04.png](screenshots/03.png?4)
+
+</details>
 
 ## Donation
 
