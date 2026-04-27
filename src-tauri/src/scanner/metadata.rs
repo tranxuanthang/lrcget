@@ -67,8 +67,12 @@ impl TrackMetadata {
 
         // Extract required fields
         let title = tag
-            .title()
-            .ok_or_else(|| MetadataError::MissingField {
+            .title().or_else(|| {
+								match path.file_name() {
+										Some(n) => return Some(n.to_string_lossy()),
+										None => return None,
+								};
+						}).ok_or_else(|| MetadataError::MissingField {
                 field: "title".to_string(),
                 path: file_path.clone(),
             })?
