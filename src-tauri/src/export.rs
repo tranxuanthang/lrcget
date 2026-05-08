@@ -282,32 +282,27 @@ fn embed_lyrics_flac(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) 
 
 /// Embed lyrics into MP3 file using ID3v2 tags
 fn embed_lyrics_mp3(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) -> Result<()> {
-    use lofty::config::ParseOptions;
-    use std::fs::OpenOptions;
+    use lofty::file::TaggedFileExt;
+    use lofty::probe::Probe;
 
-    let mut file_content = OpenOptions::new()
-        .read(true)
-        .write(true)
-        .open(track_path)
-        .context("Failed to open MP3 file")?;
+    let file_probe = Probe::open(track_path).context("Failed to open MP3 file")?;
+    let mut file = file_probe
+        .guess_file_type()
+        .context("Faild to guess file type")?
+        .read()
+        .context("Failed to read MP3 file")?;
+    let mut primary_tag = file.remove(file.primary_tag_type()).unwrap();
+    let mut id3v2: Id3v2Tag = primary_tag.into();
 
-    let mut mp3_file = MpegFile::read_from(&mut file_content, ParseOptions::new())
-        .context("Failed to parse MP3 file")?;
+    // Insert unsynchronized lyrics (USLT)
+    insert_uslt_frame(&mut id3v2, plain_lyrics).context("Failed to insert USLT frame")?;
+    // Insert synchronized lyrics (SYLT)
+    insert_sylt_frame(&mut id3v2, synced_lyrics).context("Failed to insert SYLT frame")?;
 
-    if let Some(id3v2) = mp3_file.id3v2_mut() {
-        // Insert unsynchronized lyrics (USLT)
-        insert_uslt_frame(id3v2, plain_lyrics).context("Failed to insert USLT frame")?;
-
-        // Insert synchronized lyrics (SYLT)
-        insert_sylt_frame(id3v2, synced_lyrics).context("Failed to insert SYLT frame")?;
-
-        file_content
-            .seek(std::io::SeekFrom::Start(0))
-            .context("Failed to seek in MP3 file")?;
-        mp3_file
-            .save_to(&mut file_content, WriteOptions::default())
-            .context("Failed to save MP3 file")?;
-    }
+    primary_tag = id3v2.into();
+    file.insert_tag(primary_tag);
+    file.save_to_path(track_path, WriteOptions::default())
+        .context("Failed to save MP3 file")?;
 
     Ok(())
 }
