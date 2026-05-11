@@ -291,7 +291,9 @@ fn embed_lyrics_mp3(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) -
         .context("Faild to guess file type")?
         .read()
         .context("Failed to read MP3 file")?;
-    let mut primary_tag = file.remove(file.primary_tag_type()).unwrap();
+    let mut primary_tag = file
+        .remove(file.primary_tag_type())
+        .context("Failed to find ID3v2 tag")?;
     let mut id3v2: Id3v2Tag = primary_tag.into();
 
     // Insert unsynchronized lyrics (USLT)
