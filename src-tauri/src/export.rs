@@ -289,7 +289,7 @@ fn embed_lyrics_mp3(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) -
     let file_probe = Probe::open(track_path).context("Failed to open MP3 file")?;
     let mut file = file_probe
         .guess_file_type()
-        .context("Faild to guess file type")?
+        .context("Failed to guess file type")?
         .read()
         .context("Failed to read MP3 file")?;
     let mut primary_tag = file
