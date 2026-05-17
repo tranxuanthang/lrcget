@@ -116,9 +116,8 @@ This enables the V2 lyrics editor to support playback for:
 - Arbitrary files from file picker (full features)
 - Tracks without audio (disabled playback, manual timestamp editing only)
 
-## Constraints
+## Testing
 
-- No Vue Router (tab/modal navigation only)
-- Global composables are singletons by design
-- Prefer Tauri calls over frontend caching
-- Downloader perpetual loop starts once at boot
+**Framework**: Vitest. Run `npm test` (once) or `npm run test:watch` (watch mode).
+
+Tests live next to the source files they exercise (e.g. `word-tokenizer.test.js` for `word-tokenizer.js`). Add tests for any utilities that involve non-trivial branching logic (e.g. parsing, tokenization, transformations). Vue component tests are not yet set up.

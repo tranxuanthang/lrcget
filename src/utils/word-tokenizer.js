@@ -1,10 +1,14 @@
 /**
  * Word tokenization utilities for lyrics text.
  * Handles both Latin scripts (space-delimited) and CJK (character-based).
+ * Also handles Japanese phonetic modifiers:
+ *   - Yōon (small kana: ゃゅょ etc.) — merges backward with preceding character
+ *   - Sokuon (small tsu: っッ) — merges forward with following character
+ *   - Chōonpu (long vowel: ー) — merges backward with preceding character
  */
 
-// CJK Unicode ranges
-const CJK_RANGES = [
+// CJK base character Unicode ranges (ideographs, syllables, kana)
+const CJK_BASE_RANGES = [
   [0x4e00, 0x9fff], // CJK Unified Ideographs
   [0x3040, 0x309f], // Hiragana
   [0x30a0, 0x30ff], // Katakana
@@ -13,24 +17,110 @@ const CJK_RANGES = [
   [0xf900, 0xfaff], // CJK Compatibility Ideographs
   [0xff66, 0xff9f], // Halfwidth Katakana
   [0x31f0, 0x31ff], // Katakana Phonetic Extensions
-  [0x3000, 0x303f], // CJK Symbols and Punctuation
 ]
 
+function isInRanges(code, ranges) {
+  return ranges.some(([start, end]) => code >= start && code <= end)
+}
+
 /**
- * Check if a character is a CJK character
+ * Check if a character is a CJK base character (not punctuation)
  * @param {string} char - Single character
  * @returns {boolean}
  */
-function isCJKChar(char) {
+function isCJKBaseChar(char) {
   if (!char || char.length !== 1) return false
-  const code = char.charCodeAt(0)
-  return CJK_RANGES.some(([start, end]) => code >= start && code <= end)
+  if (isYoon(char) || isSokuon(char) || isChoonpu(char)) return false
+  return isInRanges(char.charCodeAt(0), CJK_BASE_RANGES)
 }
+
+// Opening punctuation that merges with the following CJK token
+const CJK_OPEN_PUNCT = new Set([
+  '\u3008', '\u300a', '\u300c', '\u300e', '\u3010', '\u3014', '\u3016',
+  '\uff08', '\uff3b', '\uff5b', '\uff5f', '\uff62',
+])
+
+// Closing punctuation that merges with the preceding CJK token
+const CJK_CLOSE_PUNCT = new Set([
+  '\u3001', '\u3002', '\u3009', '\u300b', '\u300d', '\u300f', '\u3011',
+  '\u3015', '\u3017',
+  '\uff09', '\uff0c', '\uff0e', '\uff1a', '\uff1b', '\uff1f', '\uff01',
+  '\uff3d', '\uff5d', '\uff60', '\uff63', '\uff64',
+])
+
+/**
+ * Check if a character is CJK opening punctuation
+ * @param {string} char - Single character
+ * @returns {boolean}
+ */
+function isCJKOpenPunct(char) {
+  return CJK_OPEN_PUNCT.has(char)
+}
+
+/**
+ * Check if a character is CJK closing punctuation
+ * @param {string} char - Single character
+ * @returns {boolean}
+ */
+function isCJKClosePunct(char) {
+  return CJK_CLOSE_PUNCT.has(char)
+}
+
+// ---------------------------------------------------------------------------
+// Japanese phonetic modifier characters
+// ---------------------------------------------------------------------------
+
+// Yōon (small kana) — merge backward with preceding character
+const YOON_CHARS = new Set([
+  // Hiragana small kana
+  '\u3083', '\u3085', '\u3087', // ゃ ゅ ょ
+  '\u3041', '\u3043', '\u3045', '\u3047', '\u3049', // ぁ ぃ ぅ ぇ ぉ
+  // Katakana small kana
+  '\u30e3', '\u30e5', '\u30e7', // ャ ュ ョ
+  '\u30a1', '\u30a3', '\u30a5', '\u30a7', '\u30a9', // ァ ィ ゥ ェ ォ
+  // Halfwidth Katakana small kana
+  '\uff6c', '\uff6d', '\uff6e', // ｬ ｭ ｮ
+  '\uff67', '\uff68', '\uff69', '\uff6a', '\uff6b', // ｧ ｨ ｩ ｪ ｫ
+])
+
+// Sokuon (small tsu) — merge forward with following character
+const SOKUON_CHARS = new Set([
+  '\u3063', // っ (hiragana)
+  '\u30c3', // ッ (katakana)
+  '\uff6f', // ｯ (halfwidth katakana)
+])
+
+// Chōonpu (long vowel mark) — merge backward with preceding character
+const CHOONPU_CHARS = new Set([
+  '\u30fc', // ー (fullwidth)
+  '\uff70', // ｰ (halfwidth)
+])
+
+function isYoon(char) {
+  return YOON_CHARS.has(char)
+}
+
+function isSokuon(char) {
+  return SOKUON_CHARS.has(char)
+}
+
+function isChoonpu(char) {
+  return CHOONPU_CHARS.has(char)
+}
+
+function absorbsSokuon(char) {
+  return isCJKBaseChar(char) || isYoon(char) || isChoonpu(char)
+}
+
+// ---------------------------------------------------------------------------
+// Tokenization
+// ---------------------------------------------------------------------------
 
 /**
  * Tokenize text into words.
  * - Latin scripts: space-delimited, preserve trailing spaces in tokens
- * - CJK: each character is a separate token
+ * - CJK: character-based, with punctuation grouped and spaces preserved as trailing
+ * - Japanese: sokuon merges forward, yōon and chōonpu merge backward
  * @param {string} text - Input text to tokenize
  * @returns {Array<{text: string, isCJK: boolean}>} Array of word tokens
  */
@@ -40,51 +130,147 @@ export function tokenizeText(text) {
   }
 
   const tokens = []
-  let currentToken = ''
-  let currentIsCJK = null
+  let buffer = ''
+  let isCJK = false
+  let hasBuffer = false
+  let pendingOpen = ''
+  let pendingSokuon = ''
 
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i]
-    const charIsCJK = isCJKChar(char)
+  function flush() {
+    if (hasBuffer && buffer) {
+      tokens.push({ text: buffer, isCJK })
+    }
+    hasBuffer = false
+    buffer = ''
+  }
 
-    // Start of a new token
-    if (currentIsCJK === null) {
-      currentToken = char
-      currentIsCJK = charIsCJK
-    } else if (charIsCJK === currentIsCJK) {
-      // Continue current token
-      if (charIsCJK) {
-        // CJK: each character is its own token
-        tokens.push({ text: currentToken, isCJK: true })
-        currentToken = char
-      } else {
-        // Latin: accumulate characters
-        currentToken += char
-      }
+  function start(text, type) {
+    flush()
+    buffer = text
+    isCJK = type
+    hasBuffer = true
+  }
+
+  function append(text) {
+    if (!hasBuffer) {
+      hasBuffer = true
+      isCJK = false
+    }
+    buffer += text
+  }
+
+  function appendToLast(text) {
+    const last = tokens.at(-1)
+    if (last?.isCJK) {
+      last.text += text
     } else {
-      // Switch between CJK and Latin
-      if (currentToken) {
-        tokens.push({ text: currentToken, isCJK: currentIsCJK })
-      }
-      currentToken = char
-      currentIsCJK = charIsCJK
+      start(text, true)
     }
   }
 
-  // Push the last token
-  if (currentToken) {
-    tokens.push({ text: currentToken, isCJK: currentIsCJK })
+  function flushSokuon() {
+    if (pendingSokuon) {
+      start(pendingSokuon, true)
+      pendingSokuon = ''
+    }
   }
 
-  // For Latin tokens, split by spaces while preserving trailing spaces
+  for (const char of text) {
+    // Sokuon accumulates — it merges with the following absorbable character
+    if (isSokuon(char)) {
+      pendingSokuon += char
+      continue
+    }
+
+    // If pending sokuon and the next char cannot absorb it, flush it first
+    if (pendingSokuon && !absorbsSokuon(char)) {
+      flushSokuon()
+    }
+
+    const sokuonPrefix = pendingSokuon
+    pendingSokuon = ''
+
+    if (char === ' ') {
+      append(' ')
+      continue
+    }
+
+    const isBase = isCJKBaseChar(char)
+    const isOpen = isCJKOpenPunct(char)
+    const isClose = isCJKClosePunct(char)
+    const isYoonChar = isYoon(char)
+    const isChoonChar = isChoonpu(char)
+
+    if (isOpen) {
+      // Opening punctuation is accumulated and prepended to the next CJK base char.
+      // Flush any pending non-CJK token so the open bracket doesn't get swallowed.
+      if (hasBuffer && !isCJK) flush()
+      pendingOpen += sokuonPrefix + char
+      continue
+    }
+
+    if (isClose) {
+      // Closing punctuation merges with the current CJK token,
+      // or with the previous CJK token if there is no current one.
+      const text = sokuonPrefix + char
+      if (hasBuffer && isCJK) {
+        buffer += text
+      } else if (hasBuffer && !isCJK) {
+        start(text, true)
+      } else {
+        appendToLast(text)
+      }
+      continue
+    }
+
+    if (isBase) {
+      // Each CJK base character starts a new CJK token.
+      // Prepend any accumulated opening punctuation and sokuon.
+      start(pendingOpen + sokuonPrefix + char, true)
+      pendingOpen = ''
+      continue
+    }
+
+    if (isYoonChar || isChoonChar) {
+      // Yōon and chōonpu merge backward with the current or previous CJK token
+      const text = sokuonPrefix + char
+      if (hasBuffer && isCJK) {
+        buffer += text
+      } else if (hasBuffer && !isCJK) {
+        start(text, true)
+      } else {
+        appendToLast(text)
+      }
+      continue
+    }
+
+    // Non-CJK character (Latin, numbers, ASCII symbols, etc.)
+    const full = pendingOpen ? pendingOpen + sokuonPrefix + char : sokuonPrefix + char
+    pendingOpen = ''
+    if (hasBuffer && !isCJK) {
+      buffer += full
+    } else {
+      start(full, false)
+    }
+  }
+
+  flush()
+
+  if (pendingOpen) {
+    appendToLast(pendingOpen)
+  }
+
+  if (pendingSokuon) {
+    appendToLast(pendingSokuon)
+  }
+
+  // For non-CJK tokens, split by spaces while preserving trailing spaces
   const finalTokens = []
   for (const token of tokens) {
     if (token.isCJK) {
       finalTokens.push(token)
     } else {
-      // Split Latin text by spaces
-      const latinTokens = splitLatinText(token.text)
-      for (const lt of latinTokens) {
+      for (const lt of splitLatinText(token.text)) {
         finalTokens.push({ text: lt, isCJK: false })
       }
     }
