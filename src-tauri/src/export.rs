@@ -6,8 +6,8 @@ use lofty::config::WriteOptions;
 use lofty::file::AudioFile;
 use lofty::flac::FlacFile;
 use lofty::id3::v2::{
-    BinaryFrame, Frame, FrameId, Id3v2Tag, SyncTextContentType, SynchronizedTextFrame,
-    TimestampFormat, UnsynchronizedTextFrame,
+    BinaryFrame, CommentFrame, Frame, FrameId, Id3v2Tag, SyncTextContentType,
+    SynchronizedTextFrame, TimestampFormat, UnsynchronizedTextFrame,
 };
 use lofty::mpeg::MpegFile;
 use lofty::TextEncoding;
@@ -296,6 +296,19 @@ fn embed_lyrics_mp3(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) -
         .remove(file.primary_tag_type())
         .context("Failed to find ID3v2 tag")?;
     let mut id3v2: Id3v2Tag = primary_tag.into();
+
+    // Fix malformed COMMENT frames: re-insert with valid language code
+    let removed_comments: Vec<_> = id3v2.remove(&FrameId::new("COMM")?).collect();
+    for frame in removed_comments {
+        if let Frame::Comment(comment) = frame {
+            id3v2.insert(Frame::Comment(CommentFrame::new(
+                comment.encoding,
+                [b'X', b'X', b'X'],
+                comment.description,
+                comment.content,
+            )));
+        }
+    }
 
     // Insert unsynchronized lyrics (USLT)
     insert_uslt_frame(&mut id3v2, plain_lyrics).context("Failed to insert USLT frame")?;
