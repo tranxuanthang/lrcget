@@ -36,12 +36,14 @@ function isCJKBaseChar(char) {
 
 // Opening punctuation that merges with the following CJK token
 const CJK_OPEN_PUNCT = new Set([
+  '\u0028',
   '\u3008', '\u300a', '\u300c', '\u300e', '\u3010', '\u3014', '\u3016',
   '\uff08', '\uff3b', '\uff5b', '\uff5f', '\uff62',
 ])
 
 // Closing punctuation that merges with the preceding CJK token
 const CJK_CLOSE_PUNCT = new Set([
+  '\u0029',
   '\u3001', '\u3002', '\u3009', '\u300b', '\u300d', '\u300f', '\u3011',
   '\u3015', '\u3017',
   '\uff09', '\uff0c', '\uff0e', '\uff1a', '\uff1b', '\uff1f', '\uff01',
@@ -210,13 +212,11 @@ export function tokenizeText(text) {
     }
 
     if (isClose) {
-      // Closing punctuation merges with the current CJK token,
-      // or with the previous CJK token if there is no current one.
+      // Closing punctuation merges with the current buffer (CJK or non-CJK),
+      // or with the previous CJK token if there is no current buffer.
       const text = sokuonPrefix + char
-      if (hasBuffer && isCJK) {
+      if (hasBuffer) {
         buffer += text
-      } else if (hasBuffer && !isCJK) {
-        start(text, true)
       } else {
         appendToLast(text)
       }
@@ -258,10 +258,12 @@ export function tokenizeText(text) {
 
   if (pendingOpen) {
     appendToLast(pendingOpen)
+    flush()
   }
 
   if (pendingSokuon) {
     appendToLast(pendingSokuon)
+    flush()
   }
 
   // For non-CJK tokens, split by spaces while preserving trailing spaces

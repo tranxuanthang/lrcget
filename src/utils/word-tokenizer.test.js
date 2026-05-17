@@ -160,6 +160,47 @@ describe('tokenizeText', () => {
     it('handles CJK square brackets', () => {
       expectTokens('【重要】', ['【重', '要】'])
     })
+
+    it('preserves open punct at end of text after Latin', () => {
+      expectTokens('hello（', ['hello', '（'])
+    })
+
+    it('preserves open punct as sole character', () => {
+      expectTokens('（', ['（'])
+    })
+  })
+
+  describe('CJK punctuation — ASCII parentheses', () => {
+    it("attaches ( to following CJK and ) to preceding CJK", () => {
+      expectTokens('天地空響一夢長 (響一夢長)', [
+        '天', '地', '空', '響', '一', '夢', '長 ',
+        '(響', '一', '夢', '長)',
+      ])
+    })
+
+    it('handles ASCII parens around single CJK char', () => {
+      expectTokens('(あ)', ['(あ)'])
+    })
+
+    it('handles ASCII parens around Latin text', () => {
+      expectTokens('(test)', ['(test)'])
+    })
+
+    it('handles ASCII parens with Latin text around CJK', () => {
+      expectTokens('func(arg)', ['func', '(arg)'])
+    })
+
+    it('handles ASCII paren with space before CJK', () => {
+      expectTokens('長 (響', ['長 ', '(響'])
+    })
+
+    it('handles ASCII parens at start and end', () => {
+      expectTokens('(a)', ['(a)'])
+    })
+
+    it('handles multiple ASCII paren groups', () => {
+      expectTokens('hello (yes) world', ['hello ', '(yes) ', 'world'])
+    })
   })
 
   describe('CJK punctuation — sentence', () => {
@@ -185,6 +226,18 @@ describe('tokenizeText', () => {
 
     it('handles colon and semicolon', () => {
       expectTokens('注：重要；', ['注：', '重', '要；'])
+    })
+
+    it('attaches close punct to non-CJK buffer', () => {
+      expectTokens('hello）', ['hello）'])
+    })
+
+    it('attaches multiple close puncts to non-CJK buffer', () => {
+      expectTokens('AB）CD', ['AB）CD'])
+    })
+
+    it('attaches close punct to non-CJK before CJK', () => {
+      expectTokens('（Chorus）风雨兼程', ['（Chorus）', '风', '雨', '兼', '程'])
     })
   })
 
@@ -244,6 +297,22 @@ describe('tokenizeText', () => {
     it('reconstructs leading and trailing spaces', () => {
       expectReconstruction('  hello  ')
     })
+
+    it('reconstructs close punct after non-CJK', () => {
+      expectReconstruction('hello）')
+    })
+
+    it('reconstructs open punct after non-CJK', () => {
+      expectReconstruction('hello（')
+    })
+
+    it('reconstructs sokuon after non-CJK at end', () => {
+      expectReconstruction('aっ')
+    })
+
+    it('reconstructs ASCII parens with CJK', () => {
+      expectReconstruction('天地空響一夢長 (響一夢長)')
+    })
   })
 
   describe('Japanese phonetic modifiers', () => {
@@ -266,6 +335,10 @@ describe('tokenizeText', () => {
 
       it('handles sokuon at end of text', () => {
         expectTokens('あっ', ['あっ'])
+      })
+
+      it('handles sokuon at end of text after non-CJK', () => {
+        expectTokens('aっ', ['a', 'っ'])
       })
 
       it('handles sokuon at start of text', () => {
