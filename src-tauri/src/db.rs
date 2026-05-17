@@ -58,6 +58,17 @@ pub fn initialize_database(app_handle: &AppHandle) -> Result<Connection, rusqlit
     Ok(db)
 }
 
+/// Check whether FTS5 virtual tables were created successfully.
+/// This is a safety net in case SQLite was compiled without FTS5 support.
+pub fn fts5_enabled(db: &Connection) -> bool {
+    db.query_row(
+        "SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'tracks_fts'",
+        [],
+        |_| Ok(()),
+    )
+    .is_ok()
+}
+
 // Backfill lyrics presence data from lyricsfile content
 // This updates lyricsfiles records that may not have presence fields set
 pub fn backfill_track_lyrics_presence(db: &Connection) -> Result<()> {
@@ -685,16 +696,28 @@ pub fn get_search_track_ids(
     no_lyrics: bool,
     db: &Connection,
 ) -> Result<Vec<i64>> {
-    let base_query = indoc! {"
-      SELECT tracks.id
-      FROM tracks
-      JOIN artists ON tracks.artist_id = artists.id
-      JOIN albums ON tracks.album_id = albums.id
-      LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
-      WHERE (artists.name_lower LIKE ?
-      OR albums.name_lower LIKE ?
-      OR tracks.title_lower LIKE ?)
-    "};
+    let use_fts = fts5_enabled(db);
+
+    let base_query = if use_fts {
+        indoc::indoc! {"
+          SELECT tracks.id
+          FROM tracks_fts
+          JOIN tracks ON tracks_fts.track_id = tracks.id
+          LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
+          WHERE tracks_fts MATCH ?
+        "}
+    } else {
+        indoc::indoc! {"
+          SELECT tracks.id
+          FROM tracks
+          JOIN artists ON tracks.artist_id = artists.id
+          JOIN albums ON tracks.album_id = albums.id
+          LEFT JOIN lyricsfiles ON lyricsfiles.track_id = tracks.id
+          WHERE (artists.name_lower LIKE ?
+          OR albums.name_lower LIKE ?
+          OR tracks.title_lower LIKE ?)
+        "}
+    };
 
     let mut included_categories: Vec<String> = Vec::new();
     if synced_lyrics {
@@ -719,23 +742,35 @@ pub fn get_search_track_ids(
     let where_clause = if included_categories.len() == 4 {
         String::new()
     } else if included_categories.is_empty() {
-        " AND 0".to_string()
+        if use_fts {
+            " AND 0".to_string()
+        } else {
+            " AND 0".to_string()
+        }
     } else {
         format!(" AND ({})", included_categories.join(" OR "))
     };
 
-    let full_query = format!(
-        "{}{} ORDER BY tracks.title_lower ASC",
-        base_query, where_clause
-    );
+    let full_query = if use_fts {
+        format!("{}{} ORDER BY tracks_fts.rank", base_query, where_clause)
+    } else {
+        format!("{}{} ORDER BY tracks.title_lower ASC", base_query, where_clause)
+    };
 
     let mut statement = db.prepare(&full_query)?;
-    let formatted_query_str = format!("%{}%", prepare_input(query_str));
-    let mut rows = statement.query(params![
-        formatted_query_str,
-        formatted_query_str,
-        formatted_query_str
-    ])?;
+
+    let mut rows = if use_fts {
+        let fts_query = crate::utils::build_fts_query(query_str);
+        statement.query(params![fts_query])?
+    } else {
+        let formatted_query_str = format!("%{}%", prepare_input(query_str));
+        statement.query(params![
+            formatted_query_str,
+            formatted_query_str,
+            formatted_query_str
+        ])?
+    };
+
     let mut track_ids: Vec<i64> = Vec::new();
 
     while let Some(row) = rows.next()? {
@@ -814,6 +849,37 @@ pub fn get_album_ids(db: &Connection) -> Result<Vec<i64>> {
     Ok(album_ids)
 }
 
+pub fn get_search_album_ids(query_str: &String, db: &Connection) -> Result<Vec<i64>> {
+    let use_fts = fts5_enabled(db);
+
+    let mut statement = if use_fts {
+        db.prepare(indoc! {"
+          SELECT albums.id
+          FROM albums_fts
+          JOIN albums ON albums_fts.album_id = albums.id
+          WHERE albums_fts MATCH ?
+          ORDER BY albums_fts.rank
+        "})?
+    } else {
+        db.prepare("SELECT id FROM albums WHERE name_lower LIKE ? ORDER BY name_lower ASC")?
+    };
+
+    let mut rows = if use_fts {
+        let fts_query = crate::utils::build_fts_query(query_str);
+        statement.query([fts_query])?
+    } else {
+        let formatted = format!("%{}%", prepare_input(query_str));
+        statement.query([formatted])?
+    };
+
+    let mut album_ids: Vec<i64> = Vec::new();
+    while let Some(row) = rows.next()? {
+        album_ids.push(row.get("id")?);
+    }
+
+    Ok(album_ids)
+}
+
 pub fn get_artists(db: &Connection) -> Result<Vec<PersistentArtist>> {
     let mut statement = db.prepare(indoc! {"
     SELECT artists.id, artists.name AS name, COUNT(tracks.id) AS tracks_count
@@ -866,6 +932,37 @@ pub fn get_artist_ids(db: &Connection) -> Result<Vec<i64>> {
     let mut rows = statement.query([])?;
     let mut artist_ids: Vec<i64> = Vec::new();
 
+    while let Some(row) = rows.next()? {
+        artist_ids.push(row.get("id")?);
+    }
+
+    Ok(artist_ids)
+}
+
+pub fn get_search_artist_ids(query_str: &String, db: &Connection) -> Result<Vec<i64>> {
+    let use_fts = fts5_enabled(db);
+
+    let mut statement = if use_fts {
+        db.prepare(indoc! {"
+          SELECT artists.id
+          FROM artists_fts
+          JOIN artists ON artists_fts.artist_id = artists.id
+          WHERE artists_fts MATCH ?
+          ORDER BY artists_fts.rank
+        "})?
+    } else {
+        db.prepare("SELECT id FROM artists WHERE name_lower LIKE ? ORDER BY name_lower ASC")?
+    };
+
+    let mut rows = if use_fts {
+        let fts_query = crate::utils::build_fts_query(query_str);
+        statement.query([fts_query])?
+    } else {
+        let formatted = format!("%{}%", prepare_input(query_str));
+        statement.query([formatted])?
+    };
+
+    let mut artist_ids: Vec<i64> = Vec::new();
     while let Some(row) = rows.next()? {
         artist_ids.push(row.get("id")?);
     }
@@ -1055,6 +1152,97 @@ pub fn clean_library(db: &Connection) -> Result<()> {
     db.execute("DELETE FROM tracks WHERE 1", ())?;
     db.execute("DELETE FROM albums WHERE 1", ())?;
     db.execute("DELETE FROM artists WHERE 1", ())?;
+    db.execute("DELETE FROM tracks_fts", ())?;
+    db.execute("DELETE FROM albums_fts", ())?;
+    db.execute("DELETE FROM artists_fts", ())?;
+    Ok(())
+}
+
+// ============================================================================
+// FTS5 sync helpers
+// ============================================================================
+
+pub fn insert_track_fts_tx(
+    track_id: i64,
+    title: &str,
+    artist_name: &str,
+    album_name: &str,
+    tx: &rusqlite::Transaction,
+) -> Result<()> {
+    tx.execute(
+        "INSERT INTO tracks_fts (track_id, title, artist_name, album_name) VALUES (?, ?, ?, ?)",
+        (track_id, title, artist_name, album_name),
+    )?;
+    Ok(())
+}
+
+pub fn delete_tracks_fts_by_ids_tx(ids: &[i64], tx: &rusqlite::Transaction) -> Result<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let placeholders: Vec<String> = (0..ids.len()).map(|i| format!("?{}", i + 1)).collect();
+    let query = format!(
+        "DELETE FROM tracks_fts WHERE track_id IN ({})",
+        placeholders.join(", ")
+    );
+    let mut statement = tx.prepare(&query)?;
+    let params: Vec<rusqlite::types::Value> = ids.iter().map(|&id| id.into()).collect();
+    statement.execute(rusqlite::params_from_iter(params.iter()))?;
+    Ok(())
+}
+
+pub fn insert_album_fts_tx(
+    album_id: i64,
+    album_name: &str,
+    album_artist_name: &str,
+    tx: &rusqlite::Transaction,
+) -> Result<()> {
+    tx.execute(
+        "INSERT INTO albums_fts (album_id, album_name, album_artist_name) VALUES (?, ?, ?)",
+        (album_id, album_name, album_artist_name),
+    )?;
+    Ok(())
+}
+
+pub fn delete_albums_fts_by_ids_tx(ids: &[i64], tx: &rusqlite::Transaction) -> Result<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let placeholders: Vec<String> = (0..ids.len()).map(|i| format!("?{}", i + 1)).collect();
+    let query = format!(
+        "DELETE FROM albums_fts WHERE album_id IN ({})",
+        placeholders.join(", ")
+    );
+    let mut statement = tx.prepare(&query)?;
+    let params: Vec<rusqlite::types::Value> = ids.iter().map(|&id| id.into()).collect();
+    statement.execute(rusqlite::params_from_iter(params.iter()))?;
+    Ok(())
+}
+
+pub fn insert_artist_fts_tx(
+    artist_id: i64,
+    artist_name: &str,
+    tx: &rusqlite::Transaction,
+) -> Result<()> {
+    tx.execute(
+        "INSERT INTO artists_fts (artist_id, artist_name) VALUES (?, ?)",
+        (artist_id, artist_name),
+    )?;
+    Ok(())
+}
+
+pub fn delete_artists_fts_by_ids_tx(ids: &[i64], tx: &rusqlite::Transaction) -> Result<()> {
+    if ids.is_empty() {
+        return Ok(());
+    }
+    let placeholders: Vec<String> = (0..ids.len()).map(|i| format!("?{}", i + 1)).collect();
+    let query = format!(
+        "DELETE FROM artists_fts WHERE artist_id IN ({})",
+        placeholders.join(", ")
+    );
+    let mut statement = tx.prepare(&query)?;
+    let params: Vec<rusqlite::types::Value> = ids.iter().map(|&id| id.into()).collect();
+    statement.execute(rusqlite::params_from_iter(params.iter()))?;
     Ok(())
 }
 
@@ -1084,16 +1272,29 @@ pub fn delete_tracks_by_ids(ids: &[i64], conn: &Connection) -> Result<()> {
         return Ok(());
     }
 
-    // Create placeholders for the IN clause
-    let placeholders: Vec<String> = (0..ids.len()).map(|i| format!("?{}", i + 1)).collect();
-    let query = format!(
-        "DELETE FROM tracks WHERE id IN ({})",
-        placeholders.join(", ")
-    );
+    // Delete from FTS index first
+    {
+        let placeholders: Vec<String> = (0..ids.len()).map(|i| format!("?{}", i + 1)).collect();
+        let query = format!(
+            "DELETE FROM tracks_fts WHERE track_id IN ({})",
+            placeholders.join(", ")
+        );
+        let mut statement = conn.prepare(&query)?;
+        let params: Vec<rusqlite::types::Value> = ids.iter().map(|&id| id.into()).collect();
+        statement.execute(rusqlite::params_from_iter(params.iter()))?;
+    }
 
-    let mut statement = conn.prepare(&query)?;
-    let params: Vec<rusqlite::types::Value> = ids.iter().map(|&id| id.into()).collect();
-    statement.execute(rusqlite::params_from_iter(params.iter()))?;
+    // Delete tracks
+    {
+        let placeholders: Vec<String> = (0..ids.len()).map(|i| format!("?{}", i + 1)).collect();
+        let query = format!(
+            "DELETE FROM tracks WHERE id IN ({})",
+            placeholders.join(", ")
+        );
+        let mut statement = conn.prepare(&query)?;
+        let params: Vec<rusqlite::types::Value> = ids.iter().map(|&id| id.into()).collect();
+        statement.execute(rusqlite::params_from_iter(params.iter()))?;
+    }
 
     Ok(())
 }
@@ -1262,11 +1463,36 @@ pub fn insert_track_from_metadata_tx(
 pub fn delete_unprocessed_tracks(conn: &mut Connection) -> Result<usize> {
     let tx = conn.transaction()?;
 
+    // Collect IDs of tracks that will be deleted for FTS cleanup
+    let pending_track_ids: Vec<i64> = {
+        let mut stmt = tx.prepare("SELECT id FROM tracks WHERE scan_status = ?")?;
+        let rows = stmt.query_map([SCAN_STATUS_PENDING], |r| r.get(0))?;
+        rows.collect::<Result<Vec<_>, _>>()?
+    };
+
+    // Delete from tracks_fts first
+    if !pending_track_ids.is_empty() {
+        delete_tracks_fts_by_ids_tx(&pending_track_ids, &tx)?;
+    }
+
     // Delete tracks that weren't seen during this scan
     let deleted_count = tx.execute(
         "DELETE FROM tracks WHERE scan_status = ?",
         [SCAN_STATUS_PENDING],
     )?;
+
+    // Collect orphaned album/artist IDs before deleting them
+    let orphaned_album_ids: Vec<i64> = {
+        let mut stmt = tx.prepare("SELECT id FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks)")?;
+        let rows = stmt.query_map([], |r| r.get(0))?;
+        rows.collect::<Result<Vec<_>, _>>()?
+    };
+
+    let orphaned_artist_ids: Vec<i64> = {
+        let mut stmt = tx.prepare("SELECT id FROM artists WHERE id NOT IN (SELECT DISTINCT artist_id FROM tracks)")?;
+        let rows = stmt.query_map([], |r| r.get(0))?;
+        rows.collect::<Result<Vec<_>, _>>()?
+    };
 
     // Clean up orphaned albums and artists
     tx.execute(
@@ -1278,6 +1504,14 @@ pub fn delete_unprocessed_tracks(conn: &mut Connection) -> Result<usize> {
         "DELETE FROM artists WHERE id NOT IN (SELECT DISTINCT artist_id FROM tracks)",
         [],
     )?;
+
+    // Sync FTS indexes
+    if !orphaned_album_ids.is_empty() {
+        delete_albums_fts_by_ids_tx(&orphaned_album_ids, &tx)?;
+    }
+    if !orphaned_artist_ids.is_empty() {
+        delete_artists_fts_by_ids_tx(&orphaned_artist_ids, &tx)?;
+    }
 
     tx.commit()?;
 
@@ -1303,6 +1537,7 @@ pub fn find_artist_tx(name: &str, tx: &rusqlite::Transaction) -> Result<i64> {
 pub fn add_artist_tx(name: &str, tx: &rusqlite::Transaction) -> Result<i64> {
     let mut statement = tx.prepare("INSERT INTO artists (name, name_lower) VALUES (?, ?)")?;
     let row_id = statement.insert((name, prepare_input(name)))?;
+    insert_artist_fts_tx(row_id, prepare_input(name).as_str(), tx)?;
     Ok(row_id)
 }
 
@@ -1331,6 +1566,7 @@ pub fn add_album_tx(
         album_artist_name,
         prepare_input(album_artist_name),
     ))?;
+    insert_album_fts_tx(row_id, prepare_input(name).as_str(), prepare_input(album_artist_name).as_str(), tx)?;
     Ok(row_id)
 }
 

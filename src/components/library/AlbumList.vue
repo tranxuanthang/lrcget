@@ -40,12 +40,15 @@ import AlbumItem from './album-list/AlbumItem.vue'
 import AlbumTrackList from './album-list/AlbumTrackList.vue'
 import { useVirtualizer } from '@tanstack/vue-virtual'
 import { invoke } from '@tauri-apps/api/core'
+import { useSearchLibrary } from '@/composables/search-library.js'
 
 const props = defineProps(['isActive'])
 
 const albumIds = ref([])
 const parentRef = ref(null)
 const currentAlbum = ref(null)
+
+const { searchValue } = useSearchLibrary()
 
 const rowVirtualizer = useVirtualizer(
   computed(() => ({
@@ -66,9 +69,20 @@ const openAlbum = async album => {
   currentAlbum.value = album
 }
 
+const getAlbumIds = async () => {
+  albumIds.value = []
+  try {
+    albumIds.value = await invoke('get_album_ids', {
+      searchQuery: searchValue.value,
+    })
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 onMounted(async () => {
   if (props.isActive) {
-    albumIds.value = await invoke('get_album_ids')
+    await getAlbumIds()
   }
 })
 
@@ -76,8 +90,14 @@ watch(
   () => props.isActive,
   async () => {
     if (props.isActive) {
-      albumIds.value = await invoke('get_album_ids')
+      await getAlbumIds()
     }
   }
 )
+
+watch(searchValue, async () => {
+  if (props.isActive) {
+    await getAlbumIds()
+  }
+})
 </script>

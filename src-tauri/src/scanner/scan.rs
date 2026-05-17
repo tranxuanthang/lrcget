@@ -270,6 +270,15 @@ fn insert_new_track(
         tx,
     )?;
 
+    // Sync FTS index
+    db::insert_track_fts_tx(
+        track_id,
+        &crate::utils::prepare_input(&metadata.title),
+        &crate::utils::prepare_input(&metadata.artist),
+        &crate::utils::prepare_input(&metadata.album),
+        tx,
+    )?;
+
     // Check for orphaned lyricsfile before importing embedded lyrics
     let orphaned_lyricsfile = db::find_orphaned_lyricsfile_tx(
         &metadata.title,

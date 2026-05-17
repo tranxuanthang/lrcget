@@ -52,8 +52,11 @@ pub fn get_albums(conn: &Connection) -> Result<Vec<PersistentAlbum>> {
     db::get_albums(conn)
 }
 
-pub fn get_album_ids(conn: &Connection) -> Result<Vec<i64>> {
-    db::get_album_ids(conn)
+pub fn get_album_ids(search_query: Option<String>, conn: &Connection) -> Result<Vec<i64>> {
+    match search_query {
+        Some(query) => db::get_search_album_ids(&query, conn),
+        None => db::get_album_ids(conn),
+    }
 }
 
 pub fn get_album(id: i64, conn: &Connection) -> Result<PersistentAlbum> {
@@ -64,8 +67,11 @@ pub fn get_artists(conn: &Connection) -> Result<Vec<PersistentArtist>> {
     db::get_artists(conn)
 }
 
-pub fn get_artist_ids(conn: &Connection) -> Result<Vec<i64>> {
-    db::get_artist_ids(conn)
+pub fn get_artist_ids(search_query: Option<String>, conn: &Connection) -> Result<Vec<i64>> {
+    match search_query {
+        Some(query) => db::get_search_artist_ids(&query, conn),
+        None => db::get_artist_ids(conn),
+    }
 }
 
 pub fn get_artist(id: i64, conn: &Connection) -> Result<PersistentArtist> {

@@ -33,3 +33,15 @@ pub fn prepare_search_input(title: &str) -> String {
     // Apply standard prepare_input normalization
     prepare_input(&cleaned)
 }
+
+/// Build an FTS5 MATCH query from raw user input.
+/// Normalizes the input and turns each token into a prefix query.
+/// Example: "Love Way" -> "love* way*"
+pub fn build_fts_query(input: &str) -> String {
+    let normalized = prepare_input(input);
+    normalized
+        .split_whitespace()
+        .map(|word| format!("{}*", word))
+        .collect::<Vec<_>>()
+        .join(" ")
+}

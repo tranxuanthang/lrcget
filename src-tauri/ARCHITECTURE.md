@@ -92,6 +92,14 @@ trait ServiceAccess {
 
 **Migration v14:** Recreates the `tracks` table without deprecated lyrics columns (`txt_lyrics`, `lrc_lyrics`, `instrumental`, `has_plain_lyrics`, `has_synced_lyrics`, `has_word_synced_lyrics`). All lyrics data is now stored exclusively in the `lyricsfiles` table. Forces a library reset.
 
+**Migration v15:** Added indexes on `tracks.album_id` and `tracks.artist_id`.
+
+**Migration v16:** Added SQLite FTS5 virtual tables for full-text search:
+- `tracks_fts` — indexed `title`, `artist_name`, `album_name` (with `track_id` as UNINDEXED key)
+- `albums_fts` — indexed `album_name`, `album_artist_name` (with `album_id` as UNINDEXED key)
+- `artists_fts` — indexed `artist_name` (with `artist_id` as UNINDEXED key)
+- Backfilled from existing normalized `*_lower` columns.
+
 **Indexes:** All `*_lower` columns + `content_hash`, `scan_status`, `modified_time+file_size` (fingerprint) + lyrics-presence indexes + LRCLIB composite index (`lrclib_instance`, `lrclib_id`)
 
 ### File Scanning (`scanner/`)
@@ -110,6 +118,25 @@ trait ServiceAccess {
 5. Delete remaining "pending" tracks
 
 **Performance:** 100K files HDD ~30-90s faster, SSD ~5-10s faster; Memory ~10MB vs ~200MB old
+
+### FTS5 Search
+
+Library search (tracks, albums, artists) uses SQLite FTS5 virtual tables for tokenized, prefix-matching full-text search. A runtime `fts5_enabled()` check verifies the virtual tables exist; if missing, queries transparently fall back to `LIKE` on `*_lower` columns.
+
+**Virtual Tables:**
+| Table | Indexed Columns | Key |
+|-------|----------------|-----|
+| `tracks_fts` | `title`, `artist_name`, `album_name` | `track_id` (UNINDEXED) |
+| `albums_fts` | `album_name`, `album_artist_name` | `album_id` (UNINDEXED) |
+| `artists_fts` | `artist_name` | `artist_id` (UNINDEXED) |
+
+**Query Building:** `utils::build_fts_query()` normalizes input (diacritics stripped, punctuation removed, lowercased) and converts each token into a prefix query. Example: `Love Way` → `love* way*`.
+
+**Ordering:** Results are ordered by `rank` (FTS5 relevance) when FTS5 is available; otherwise alphabetical by `*_lower`.
+
+**Sync:** The FTS indexes are kept in sync with the source tables at mutation points:
+- **Insert:** `insert_new_track()` inserts into `tracks_fts`; `add_artist_tx()` inserts into `artists_fts`; `add_album_tx()` inserts into `albums_fts`.
+- **Delete:** `delete_unprocessed_tracks()` removes pending track IDs from `tracks_fts` and orphaned album/artist IDs from `albums_fts`/`artists_fts`; `clean_library()` clears all three virtual tables.
 
 ### Orphaned Lyricsfile Reattachment
 
@@ -251,11 +278,13 @@ Implements `From<PersistentTrack>` for seamless conversion from database entitie
 ### Data Queries
 | Command | Returns |
 |---------|---------|
-| `get_track(s/ids)()` | `PersistentTrack` (includes joined `lyricsfile`) |
-| `get_album(s/ids)()` | `PersistentAlbum` |
-| `get_artist(s/ids)()` | `PersistentArtist` |
+| `get_track(s/ids)(search_query?)` | `PersistentTrack` (includes joined `lyricsfile`) |
+| `get_album(s/ids)(search_query?)` | `PersistentAlbum` |
+| `get_artist(s/ids)(search_query?)` | `PersistentArtist` |
 | `get_album_tracks/ids()` | Filtered tracks |
 | `get_artist_tracks/ids()` | Filtered tracks |
+
+Search across all three entity types uses SQLite FTS5 (via `tracks_fts`, `albums_fts`, `artists_fts`). Results are ordered by FTS5 `rank` (relevance). A runtime `fts5_enabled()` check falls back to `LIKE` queries on `*_lower` columns if the virtual tables are unavailable.
 
 ### Lyrics
 | Command | Purpose |

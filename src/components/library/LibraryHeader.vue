@@ -1,7 +1,7 @@
 <template>
   <div class="px-4 py-2 h-12 flex justify-between gap-4 flex-none items-stretch">
     <div class="flex-1 ml-2">
-      <MiniSearch v-if="props.activeTab === 'tracks'" />
+      <MiniSearch :active-tab="props.activeTab" />
     </div>
 
     <div class="flex-1 flex gap-4 justify-center items-center text-sm">

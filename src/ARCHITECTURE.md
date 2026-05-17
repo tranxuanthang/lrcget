@@ -44,7 +44,7 @@ Module-level ref composables (singletons by design):
 | `usePlayer()`        | `playingTrack`, `status`, `duration`, `progress`, `volume`. Supports both library tracks (with `id`) and file-based tracks (with `file_path`). Listens to `player-state` events |
 | `useDownloader()`    | Download queue, progress. Loop started by App.vue at boot                                                                                                                       |
 | `useExporter()`      | Mass export queue, progress. Used by ExportViewer modal                                                                                                                         |
-| `useSearchLibrary()` | Search text, filters                                                                                                                                                            |
+| `useSearchLibrary()` | Shared search text and track-centric filters; used by Tracks, Albums, and Artists tabs |
 | `useSearchLyrics()`  | Search modal state                                                                                                                                                              |
 | `useEditLyricsV2()`  | Edit lyrics modal state                                                                                                                                                         |
 
@@ -69,9 +69,10 @@ Module-level ref composables (singletons by design):
 
 **Library Browsing**:
 
-- Search via `useSearchLibrary()`; tabs fetch IDs from backend
+- Search via `useSearchLibrary()`; shared search text across Tracks/Albums/Artists tabs
+- `MiniSearch.vue` appears in the header for all three tabs with context-aware placeholder text; filter dropdown is hidden for Albums/Artists
 - Tracks: Virtualized (`@tanstack/vue-virtual`), IDs only; `TrackItem.vue` for actions
-- Albums/Artists: Backend-driven, lazy-load track subsets
+- Albums/Artists: Virtualized, IDs only; search queries are passed to `get_album_ids`/`get_artist_ids` commands
 
 **Lyrics Workflows**:
 

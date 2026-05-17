@@ -40,12 +40,15 @@ import { useVirtualizer } from '@tanstack/vue-virtual'
 import { invoke } from '@tauri-apps/api/core'
 import ArtistItem from './artist-list/ArtistItem.vue'
 import ArtistTrackList from './artist-list/ArtistTrackList.vue'
+import { useSearchLibrary } from '@/composables/search-library.js'
 
 const props = defineProps(['isActive'])
 
 const artistIds = ref([])
 const parentRef = ref(null)
 const currentArtist = ref(null)
+
+const { searchValue } = useSearchLibrary()
 
 const rowVirtualizer = useVirtualizer(
   computed(() => ({
@@ -66,9 +69,20 @@ const openArtist = async artist => {
   currentArtist.value = artist
 }
 
+const getArtistIds = async () => {
+  artistIds.value = []
+  try {
+    artistIds.value = await invoke('get_artist_ids', {
+      searchQuery: searchValue.value,
+    })
+  } catch (error) {
+    console.error(error)
+  }
+}
+
 onMounted(async () => {
   if (props.isActive) {
-    artistIds.value = await invoke('get_artist_ids')
+    await getArtistIds()
   }
 })
 
@@ -76,8 +90,14 @@ watch(
   () => props.isActive,
   async () => {
     if (props.isActive) {
-      artistIds.value = await invoke('get_artist_ids')
+      await getArtistIds()
     }
   }
 )
+
+watch(searchValue, async () => {
+  if (props.isActive) {
+    await getArtistIds()
+  }
+})
 </script>

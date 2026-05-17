@@ -4,7 +4,7 @@
       v-model="searchInput"
       type="text"
       class="h-full input px-[2rem] py-1.5 pr-1.5 w-[16rem] dark:text-neutral-200"
-      placeholder="Search for tracks..."
+      :placeholder="placeholder"
       autofocus
     />
     <div class="absolute top-0 left-0 w-[2rem] h-full flex justify-center items-center pl-0.5">
@@ -18,7 +18,11 @@
       >
         <Close />
       </button>
-      <VDropdown theme="lrcget-dropdown" placement="top-start">
+      <VDropdown
+        v-if="props.activeTab === 'tracks'"
+        theme="lrcget-dropdown"
+        placement="top-start"
+      >
         <button
         class="w-[1.5rem] h-[1.5rem] flex justify-center items-center text-neutral-800 group-hover:text-neutral-800 dark:text-neutral-500 dark:hover:text-neutral-300 rounded-full"
           :class="{ 'bg-neutral-200 dark:bg-neutral-700': isFilters }"
@@ -75,9 +79,22 @@ import Filter from '~icons/mdi/filter'
 import _debounce from 'lodash/debounce'
 import CheckboxButton from '@/components/common/CheckboxButton.vue'
 
-const { setSearch, filters } = useSearchLibrary()
+const props = defineProps(['activeTab'])
+
+const { searchValue, setSearch, filters } = useSearchLibrary()
 
 const searchInput = ref('')
+
+const placeholder = computed(() => {
+  switch (props.activeTab) {
+    case 'albums':
+      return 'Search for albums...'
+    case 'artists':
+      return 'Search for artists...'
+    default:
+      return 'Search for tracks...'
+  }
+})
 
 const isFilters = computed(() => {
   return Object.values(filters.value).some(value => !value)
@@ -88,6 +105,15 @@ const debouncedSearch = _debounce(async () => {
 }, 200)
 
 watch(searchInput, debouncedSearch)
+
+// Sync with global search state on mount and when switching tabs
+onMounted(() => {
+  searchInput.value = searchValue.value
+})
+
+watch(searchValue, (newVal) => {
+  searchInput.value = newVal
+})
 </script>
 
 <style scoped>

@@ -474,10 +474,14 @@ async fn get_albums(app_state: State<'_, AppState>) -> Result<Vec<PersistentAlbu
 }
 
 #[tauri::command]
-async fn get_album_ids(app_state: State<'_, AppState>) -> Result<Vec<i64>, String> {
+async fn get_album_ids(
+    search_query: Option<String>,
+    app_state: State<'_, AppState>,
+) -> Result<Vec<i64>, String> {
     let conn_guard = app_state.db.lock().unwrap();
     let conn = conn_guard.as_ref().unwrap();
-    let album_ids = library::get_album_ids(conn).map_err(|err| err.to_string())?;
+    let search_query = search_query.filter(|s| !s.is_empty());
+    let album_ids = library::get_album_ids(search_query, conn).map_err(|err| err.to_string())?;
 
     Ok(album_ids)
 }
@@ -504,10 +508,14 @@ async fn get_artists(app_state: State<'_, AppState>) -> Result<Vec<PersistentArt
 }
 
 #[tauri::command]
-async fn get_artist_ids(app_state: State<'_, AppState>) -> Result<Vec<i64>, String> {
+async fn get_artist_ids(
+    search_query: Option<String>,
+    app_state: State<'_, AppState>,
+) -> Result<Vec<i64>, String> {
     let conn_guard = app_state.db.lock().unwrap();
     let conn = conn_guard.as_ref().unwrap();
-    let artist_ids = library::get_artist_ids(conn).map_err(|err| err.to_string())?;
+    let search_query = search_query.filter(|s| !s.is_empty());
+    let artist_ids = library::get_artist_ids(search_query, conn).map_err(|err| err.to_string())?;
 
     Ok(artist_ids)
 }
