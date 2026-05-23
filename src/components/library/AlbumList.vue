@@ -11,7 +11,7 @@
         <div class="w-full flex flex-col">
           <div
             v-for="virtualRow in virtualRows"
-            :key="virtualRow.index"
+            :key="virtualRow.key"
             class="group flex flex-col"
             :style="{
               position: 'absolute',
@@ -68,6 +68,17 @@ const totalSize = computed(() => rowVirtualizer.value.getTotalSize())
 const openAlbum = async album => {
   currentAlbum.value = album
 }
+
+const openAlbumById = async id => {
+  try {
+    const album = await invoke('get_album', { albumId: id })
+    currentAlbum.value = album
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+defineExpose({ openAlbumById })
 
 const getAlbumIds = async () => {
   albumIds.value = []

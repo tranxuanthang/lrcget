@@ -50,7 +50,7 @@
         <div class="w-full flex flex-col">
           <div
             v-for="virtualRow in virtualRows"
-            :key="virtualRow.index"
+            :key="virtualRow.key"
             class="group flex flex-col w-full"
             :style="{
               position: 'absolute',
@@ -127,4 +127,13 @@ const downloadAlbumLyrics = async () => {
 onMounted(async () => {
   trackIds.value = await invoke('get_album_track_ids', { albumId: props.album.id })
 })
+
+watch(
+  () => props.album?.id,
+  async newId => {
+    if (newId) {
+      trackIds.value = await invoke('get_album_track_ids', { albumId: newId })
+    }
+  }
+)
 </script>

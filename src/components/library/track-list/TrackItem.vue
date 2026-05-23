@@ -30,13 +30,17 @@
         </div>
 
         <div class="gap-2 line-clamp-1">
-          <span class="text-sm text-neutral-500 transition dark:text-neutral-400">{{
-            track.album_name
-          }}</span>
-          <span class="text-neutral-500 h-full mx-1 flex-none dark:text-neutral-400">|</span>
-          <span class="text-sm text-neutral-500 transition dark:text-neutral-400">{{
-            track.artist_name
-          }}</span>
+          <span
+            class="text-sm text-neutral-500 transition dark:text-neutral-400 cursor-pointer hover:underline"
+            @click.stop="goToAlbum"
+            >{{ track.album_name }}</span
+          >
+          <span class="text-neutral-500 h-full mx-1 flex-none dark:text-neutral-400">·</span>
+          <span
+            class="text-sm text-neutral-500 transition dark:text-neutral-400 cursor-pointer hover:underline"
+            @click.stop="goToArtist"
+            >{{ track.artist_name }}</span
+          >
         </div>
       </div>
     </div>
@@ -107,12 +111,26 @@ import { useSearchLyrics } from '../../../composables/search-lyrics.js'
 import { useEditLyricsV2 } from '../../../composables/edit-lyrics-v2.js'
 import Equalizer from '@/components/icons/Equalizer.vue'
 import { parseLyricsfile } from '@/utils/lyricsfile.js'
-import { ref, onMounted, onUnmounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { usePlayer } from '@/composables/player.js'
+import { useLibraryNavigation } from '@/composables/library-navigation.js'
 
 const { playTrack, playingTrack, status, pause, resume } = usePlayer()
+const { navigateToAlbum, navigateToArtist } = useLibraryNavigation()
+
+const goToAlbum = () => {
+  if (track.value?.album_id) {
+    navigateToAlbum(track.value.album_id)
+  }
+}
+
+const goToArtist = () => {
+  if (track.value?.artist_id) {
+    navigateToArtist(track.value.artist_id)
+  }
+}
 
 const { searchLyrics } = useSearchLyrics()
 const { editLyricsV2, editingAudioSource } = useEditLyricsV2()
@@ -163,13 +181,26 @@ const openEditLyricsV2 = track => {
 
 let unlisten = null
 
+const loadTrack = async id => {
+  track.value = await invoke('get_track', { trackId: id })
+}
+
+watch(
+  () => props.trackId,
+  async newId => {
+    if (newId) {
+      await loadTrack(newId)
+    }
+  }
+)
+
 onMounted(async () => {
-  track.value = await invoke('get_track', { trackId: props.trackId })
+  await loadTrack(props.trackId)
 
   unlisten = await listen('reload-track-id', async event => {
     const payload = event.payload
     if (track.value && track.value.id === payload) {
-      track.value = await invoke('get_track', { trackId: props.trackId })
+      await loadTrack(props.trackId)
     }
   })
 })

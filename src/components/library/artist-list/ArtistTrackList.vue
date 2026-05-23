@@ -49,7 +49,7 @@
         <div class="w-full flex flex-col">
           <div
             v-for="virtualRow in virtualRows"
-            :key="virtualRow.index"
+            :key="virtualRow.key"
             class="group flex flex-col w-full"
             :style="{
               position: 'absolute',
@@ -126,4 +126,13 @@ const downloadArtistLyrics = async () => {
 onMounted(async () => {
   trackIds.value = await invoke('get_artist_track_ids', { artistId: props.artist.id })
 })
+
+watch(
+  () => props.artist?.id,
+  async newId => {
+    if (newId) {
+      trackIds.value = await invoke('get_artist_track_ids', { artistId: newId })
+    }
+  }
+)
 </script>

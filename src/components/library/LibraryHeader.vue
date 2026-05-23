@@ -68,7 +68,7 @@
 
       <button
         v-else-if="isDownloading && downloadedCount !== totalCount"
-        class="button button-working h-full min-w-[12rem] px-4 py-1.5 text-xs rounded-full"
+        class="button button-working h-full min-w-[12rem] px-2 text-xs rounded-full"
         @click.prevent="$emit('showDownloadViewer')"
       >
         <div class="animate-spin text-sm">
@@ -82,7 +82,7 @@
 
       <button
         v-else-if="isDownloading"
-        class="button button-done h-full min-w-[12rem] px-4 py-1.5 text-xs rounded-full"
+        class="button button-done h-full min-w-[12rem] px-2 text-xs rounded-full"
         @click.prevent="$emit('showDownloadViewer')"
       >
         <div class="text-sm">
@@ -93,7 +93,7 @@
 
       <button
         v-else
-        class="button button-primary px-4 py-1.5 h-full min-w-[12rem] text-xs rounded-full"
+        class="button button-primary h-full min-w-[12rem] px-2 text-xs rounded-full"
         @click.prevent="downloadAllLyrics"
       >
         <div class="text-sm">
@@ -104,22 +104,24 @@
 
       <button
         v-if="isExporting && (exportedCount + skippedCount + errorCount) < exportTotalCount"
-        class="button button-working h-full aspect-square rounded-full"
+        class="button button-working h-full min-w-[7rem] px-2 text-xs rounded-full"
         @click.prevent="$emit('showExportViewer')"
       >
         <div class="animate-spin text-sm">
           <Loading />
         </div>
+        <span>Exporting</span>
       </button>
 
       <button
         v-else-if="isExporting"
-        class="button button-done h-full aspect-square rounded-full"
+        class="button button-done h-full min-w-[7rem] px-2 text-xs rounded-full"
         @click.prevent="$emit('showExportViewer')"
       >
         <div class="text-sm">
           <Check />
         </div>
+        <span>Exported</span>
       </button>
 
       <VDropdown
@@ -130,10 +132,11 @@
         @show="refreshEmbedConfig"
       >
         <button
-          class="button button-normal h-full aspect-square rounded-full"
+          class="button button-normal h-full min-w-[6rem] px-2 text-xs rounded-full"
           title="Export all lyrics"
         >
           <Export />
+          <span>Export</span>
         </button>
         <template #popper>
           <div class="dropdown-container min-w-[17rem]">

@@ -16,9 +16,9 @@
     <div class="relative grow overflow-hidden">
       <TrackList :is-active="activeTab === 'tracks'" />
 
-      <AlbumList :is-active="activeTab === 'albums'" />
+      <AlbumList ref="albumListRef" :is-active="activeTab === 'albums'" />
 
-      <ArtistList :is-active="activeTab === 'artists'" />
+      <ArtistList ref="artistListRef" :is-active="activeTab === 'artists'" />
 
       <MyLrclib :is-active="activeTab === 'my-lrclib'" />
     </div>
@@ -44,7 +44,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted, watch } from 'vue'
+import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import Loading from '~icons/mdi/loading'
@@ -62,6 +62,7 @@ import About from './About.vue'
 import { useToast } from 'vue-toastification'
 import { useModal } from 'vue-final-modal'
 import { useExporter } from '@/composables/export.js'
+import { useLibraryNavigation } from '@/composables/library-navigation.js'
 
 const props = defineProps({
   shouldScan: {
@@ -79,6 +80,8 @@ const isScanning = ref(false)
 const scanProgress = ref(null)
 const scanResult = ref(null)
 const activeTab = ref('tracks')
+const albumListRef = ref(null)
+const artistListRef = ref(null)
 let unlistenScanProgress = null
 let unlistenScanComplete = null
 
@@ -130,6 +133,24 @@ const { open: openExportViewer, close: closeExportViewer } = useModal({
 const {
   addToQueue: addToExportQueue,
 } = useExporter()
+
+const { pendingNavigation, clearNavigation } = useLibraryNavigation()
+
+watch(pendingNavigation, async nav => {
+  if (!nav) return
+
+  if (nav.type === 'album') {
+    activeTab.value = 'albums'
+    await nextTick()
+    albumListRef.value?.openAlbumById(nav.id)
+  } else if (nav.type === 'artist') {
+    activeTab.value = 'artists'
+    await nextTick()
+    artistListRef.value?.openArtistById(nav.id)
+  }
+
+  clearNavigation()
+})
 
 const changeActiveTab = tab => {
   activeTab.value = tab

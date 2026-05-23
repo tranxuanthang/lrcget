@@ -3,6 +3,7 @@
     :click-to-close="false"
     :esc-to-close="false"
     content-class="w-full h-[95vh] max-w-screen-lg"
+    body-class="grow"
     :title="modalTitle"
     @close="handleClose"
   >
@@ -58,7 +59,7 @@
       </button>
     </template>
 
-    <div class="grow overflow-hidden flex flex-col gap-2 h-full">
+    <div class="grow flex flex-col gap-2 h-full">
       <div class="toolbar bg-neutral-100 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700">
         <EditLyricsV2PlayerBar
           :status="status"

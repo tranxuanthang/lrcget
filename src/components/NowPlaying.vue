@@ -29,7 +29,9 @@
               {{ playingTrack.title }}
             </div>
             <div class="text-xs text-neutral-500 dark:text-neutral-400 line-clamp-1">
-              {{ playingTrack.album_name }} - {{ playingTrack.artist_name }}
+              <span class="cursor-pointer hover:underline" @click="goToAlbum">{{ playingTrack.album_name }}</span>
+              <span> · </span>
+              <span class="cursor-pointer hover:underline" @click="goToArtist">{{ playingTrack.artist_name }}</span>
             </div>
           </div>
         </div>
@@ -94,8 +96,22 @@ import { useGlobalState } from '@/composables/global-state.js'
 import VolumeSlider from './now-playing/VolumeSlider.vue'
 import { humanDuration } from '@/utils/human-duration'
 import { parseLyricsfile } from '@/utils/lyricsfile.js'
+import { useLibraryNavigation } from '@/composables/library-navigation.js'
 
 const { isHotkey } = useGlobalState()
+const { navigateToAlbum, navigateToArtist } = useLibraryNavigation()
+
+const goToAlbum = () => {
+  if (playingTrack.value?.album_id) {
+    navigateToAlbum(playingTrack.value.album_id)
+  }
+}
+
+const goToArtist = () => {
+  if (playingTrack.value?.artist_id) {
+    navigateToArtist(playingTrack.value.artist_id)
+  }
+}
 const {
   playingTrack,
   status,

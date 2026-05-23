@@ -31,7 +31,7 @@
 
 <script setup>
 import DownloadMultiple from '~icons/mdi/download-multiple'
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { useDownloader } from '@/composables/downloader.js'
 
@@ -52,7 +52,20 @@ const downloadLyricsMultiple = async () => {
   addToQueue(trackIds)
 }
 
+const loadArtist = async id => {
+  artist.value = await invoke('get_artist', { artistId: id })
+}
+
+watch(
+  () => props.artistId,
+  async newId => {
+    if (newId) {
+      await loadArtist(newId)
+    }
+  }
+)
+
 onMounted(async () => {
-  artist.value = await invoke('get_artist', { artistId: props.artistId })
+  await loadArtist(props.artistId)
 })
 </script>

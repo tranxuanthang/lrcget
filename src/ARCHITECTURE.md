@@ -47,6 +47,7 @@ Module-level ref composables (singletons by design):
 | `useSearchLibrary()` | Shared search text and track-centric filters; used by Tracks, Albums, and Artists tabs |
 | `useSearchLyrics()`  | Search modal state                                                                                                                                                              |
 | `useEditLyricsV2()`  | Edit lyrics modal state                                                                                                                                                         |
+| `useLibraryNavigation()` | Cross-tab navigation: clicking an album/artist name in `TrackItem.vue` or `NowPlaying.vue` switches to the Albums/Artists tab and opens the corresponding entity via `AlbumList`/`ArtistList` exposed methods |
 
 **Boot Flow**: `main.js` → Vue app init → `App.vue` checks `get_init()` → shows `ChooseDirectory.vue` (setup) or `Library.vue` (main). Loads config, applies theme, starts downloader loop.
 
@@ -72,6 +73,7 @@ Module-level ref composables (singletons by design):
 - Search via `useSearchLibrary()`; shared search text across Tracks/Albums/Artists tabs
 - `MiniSearch.vue` with context-aware placeholder; filter dropdown hidden for Albums/Artists
 - All tabs use virtualized lists (`@tanstack/vue-virtual`) with IDs only
+- Clickable album/artist names in track rows and the NowPlaying panel navigate to the respective tab and open the entity detail view (`AlbumTrackList`/`ArtistTrackList`)
 
 **Lyrics Workflows**:
 
