@@ -18,12 +18,18 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
   const lyricsfileDocument = ref(null)
   const isDirty = ref(false)
   const selectedSyncedLineIndex = ref(-1)
+  const selectedSyncedLineIndices = ref([])
   const isSyncedLineEditing = ref(false)
   const isInstrumental = ref(false)
+
+  const clearSyncedLineSelection = () => {
+    selectedSyncedLineIndices.value = []
+  }
 
   const ensureSelectedSyncedLine = () => {
     if (syncedLines.value.length === 0) {
       selectedSyncedLineIndex.value = -1
+      clearSyncedLineSelection()
       return
     }
 
@@ -34,6 +40,11 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     ) {
       selectedSyncedLineIndex.value = 0
     }
+
+    // Remove any out-of-bounds indices from multi-selection
+    selectedSyncedLineIndices.value = selectedSyncedLineIndices.value.filter(
+      i => i >= 0 && i < syncedLines.value.length
+    )
   }
 
   const selectSyncedLine = lineIndex => {
@@ -42,6 +53,38 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     }
 
     selectedSyncedLineIndex.value = lineIndex
+    clearSyncedLineSelection()
+  }
+
+  const selectSyncedLineRange = (start, end) => {
+    if (syncedLines.value.length === 0) {
+      clearSyncedLineSelection()
+      return
+    }
+    const min = Math.max(0, Math.min(start, end))
+    const max = Math.min(syncedLines.value.length - 1, Math.max(start, end))
+    const indices = []
+    for (let i = min; i <= max; i++) {
+      indices.push(i)
+    }
+    selectedSyncedLineIndices.value = indices
+    selectedSyncedLineIndex.value = min
+  }
+
+  const toggleSyncedLineSelection = lineIndex => {
+    if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+      return
+    }
+    const current = new Set(selectedSyncedLineIndices.value)
+    if (current.has(lineIndex)) {
+      current.delete(lineIndex)
+    } else {
+      current.add(lineIndex)
+    }
+    selectedSyncedLineIndices.value = Array.from(current).sort((a, b) => a - b)
+    if (selectedSyncedLineIndices.value.length > 0) {
+      selectedSyncedLineIndex.value = selectedSyncedLineIndices.value[0]
+    }
   }
 
   const setSyncedLineEditingState = value => {
@@ -92,6 +135,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
 
     syncedLines.value = nextLines
     selectedSyncedLineIndex.value = lineIndex
+    clearSyncedLineSelection()
     isDirty.value = true
   }
 
@@ -102,6 +146,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
 
     syncedLines.value = syncedLines.value.filter((_, index) => index !== lineIndex)
     isDirty.value = true
+    clearSyncedLineSelection()
 
     if (syncedLines.value.length === 0) {
       selectedSyncedLineIndex.value = -1
@@ -109,6 +154,52 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     }
 
     selectedSyncedLineIndex.value = Math.min(lineIndex, syncedLines.value.length - 1)
+  }
+
+  const bulkDeleteLines = indices => {
+    if (!Array.isArray(indices) || indices.length === 0) {
+      return
+    }
+    const indexSet = new Set(indices)
+    const nextLines = syncedLines.value.filter((_, index) => !indexSet.has(index))
+    syncedLines.value = nextLines
+    isDirty.value = true
+    clearSyncedLineSelection()
+
+    if (syncedLines.value.length === 0) {
+      selectedSyncedLineIndex.value = -1
+      return
+    }
+
+    // Pick the first non-deleted line at or after the first deleted index
+    const firstDeleted = Math.min(...indices)
+    selectedSyncedLineIndex.value = Math.min(firstDeleted, syncedLines.value.length - 1)
+  }
+
+  const bulkShiftLineTimestamps = (indices, offsetMs) => {
+    if (!Array.isArray(indices) || indices.length === 0) {
+      return
+    }
+    const indexSet = new Set(indices)
+    const nextLines = syncedLines.value.map((line, index) => {
+      if (!indexSet.has(index)) {
+        return line
+      }
+      const currentStartMs = line?.start_ms
+      const baseStartMs = Number.isFinite(currentStartMs) ? currentStartMs : 0
+      const newStartMs = Math.max(0, Math.round(baseStartMs + offsetMs))
+      return { ...line, start_ms: newStartMs }
+    })
+    syncedLines.value = nextLines
+    isDirty.value = true
+  }
+
+  const bulkRewindLines = indices => {
+    bulkShiftLineTimestamps(indices, -100)
+  }
+
+  const bulkForwardLines = indices => {
+    bulkShiftLineTimestamps(indices, 100)
   }
 
   const importSyncedLinesFromPlain = () => {
@@ -359,6 +450,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     lyricsfileDocument,
     isDirty,
     selectedSyncedLineIndex,
+    selectedSyncedLineIndices,
     isSyncedLineEditing,
     hasPlainLyrics,
     selectedLineExists,
@@ -368,9 +460,15 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     updatePlainLyrics,
     updateSyncedLines,
     selectSyncedLine,
+    selectSyncedLineRange,
+    toggleSyncedLineSelection,
+    clearSyncedLineSelection,
     setSyncedLineEditingState,
     addSyncedLineAt,
     deleteSyncedLine,
+    bulkDeleteLines,
+    bulkRewindLines,
+    bulkForwardLines,
     importSyncedLinesFromPlain,
     syncLineToCurrentProgress,
     rewindLineBy100,

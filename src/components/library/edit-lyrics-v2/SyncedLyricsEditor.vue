@@ -1,5 +1,5 @@
 <template>
-  <div class="grow overflow-hidden flex flex-col">
+  <div class="grow overflow-hidden flex flex-col relative">
     <SyncedWordTimingLane
       class="shrink-0 mt-2"
       :selected-line="selectedLine"
@@ -15,10 +15,13 @@
 
     <div
       ref="linesListElement"
-      class="flex-1 overflow-y-auto py-4 relative"
-      @mousemove="handleLinesMouseMove"
+      class="flex-1 overflow-y-auto py-4 relative outline-none"
+      tabindex="0"
+      @mousemove="handleMouseMove"
       @mouseleave="handleLinesMouseLeave"
       @scroll="handleLinesScroll"
+      @click="handleContainerClick"
+      @keydown.esc="handleEscKey"
     >
       <div>
         <SyncedInsertButton
@@ -43,6 +46,7 @@
             @mouseenter="hoveredLineIndex = index"
             @mouseleave="hoveredLineIndex = null"
             @select="selectLine"
+            @mousedown-line="startDragSelection"
             @play-line="handlePlayLine"
             @sync-line="handleSyncLine"
             @rewind-line="handleRewindLine"
@@ -73,6 +77,39 @@
       </div>
     </div>
 
+    <!-- Floating bulk actions toolbar -->
+    <div
+      v-if="hasMultiSelection"
+      class="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-700 shadow-lg"
+    >
+      <span class="text-xs text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
+        {{ selectedLineIndices.length }} lines selected
+      </span>
+      <div class="w-px h-4 bg-neutral-200 dark:bg-neutral-700" />
+      <button
+        class="button button-normal p-1 rounded-full text-xs h-6 w-6"
+        title="Rewind selected lines by 100ms"
+        @click="handleBulkRewind"
+      >
+        <Rewind />
+      </button>
+      <button
+        class="button button-normal p-1 rounded-full text-xs h-6 w-6"
+        title="Forward selected lines by 100ms"
+        @click="handleBulkForward"
+      >
+        <Forward />
+      </button>
+      <div class="w-px h-4 bg-neutral-200 dark:bg-neutral-700" />
+      <button
+        class="button button-normal p-1 rounded-full text-xs h-6 w-6 text-red-500 dark:text-red-400"
+        title="Delete selected lines"
+        @click="handleBulkDelete"
+      >
+        <Trash />
+      </button>
+    </div>
+
     <SyncedLyricsEmptyState
       v-if="modelValue.length === 0"
       :can-import-from-plain="canImportFromPlain"
@@ -86,7 +123,10 @@
 </template>
 
 <script setup>
-import { computed, nextTick, ref, toRef, watch } from 'vue'
+import { computed, nextTick, onMounted, onUnmounted, ref, toRef, watch } from 'vue'
+import Rewind from '~icons/mdi/rewind'
+import Forward from '~icons/mdi/fast-forward'
+import Trash from '~icons/mdi/trash-can'
 import SyncedInsertButton from '@/components/library/edit-lyrics-v2/SyncedInsertButton.vue'
 import SyncedLyricsEmptyState from '@/components/library/edit-lyrics-v2/SyncedLyricsEmptyState.vue'
 import SyncedLyricsLineRow from '@/components/library/edit-lyrics-v2/SyncedLyricsLineRow.vue'
@@ -104,6 +144,10 @@ const props = defineProps({
     type: Number,
     default: -1,
   },
+  selectedLineIndices: {
+    type: Array,
+    default: () => [],
+  },
   canImportFromPlain: {
     type: Boolean,
     default: false,
@@ -117,6 +161,7 @@ const props = defineProps({
 const emit = defineEmits([
   'update:modelValue',
   'update:selected-line-index',
+  'update:selected-line-indices',
   'play-line',
   'sync-line',
   'rewind-line',
@@ -125,6 +170,9 @@ const emit = defineEmits([
   'rewind-end',
   'forward-end',
   'delete-line',
+  'bulk-rewind-lines',
+  'bulk-forward-lines',
+  'bulk-delete-lines',
   'add-line-at',
   'import-lines-from-plain',
   'import-lrc-file',
@@ -139,6 +187,99 @@ const emit = defineEmits([
 const hoveredLineIndex = ref(null)
 const linesListElement = ref(null)
 const modelValue = toRef(props, 'modelValue')
+
+// Multi-selection drag state
+const isDragging = ref(false)
+const dragAnchorIndex = ref(-1)
+const didJustDrag = ref(false)
+const dragStartPos = ref(null)
+
+const selectedIndexSet = computed(() => new Set(props.selectedLineIndices))
+const hasMultiSelection = computed(() => props.selectedLineIndices.length >= 2)
+
+const isLineRowSelected = index => selectedIndexSet.value.has(index)
+
+const startDragSelection = (index, event) => {
+  if (event.ctrlKey || event.metaKey) {
+    // Ctrl/Cmd+click toggles individual line
+    emit('update:selected-line-indices', index)
+    return
+  }
+
+  didJustDrag.value = false
+  dragStartPos.value = { x: event.clientX, y: event.clientY }
+  isDragging.value = true
+  dragAnchorIndex.value = index
+  emit('update:selected-line-indices', { start: index, end: index })
+}
+
+const updateDragSelection = index => {
+  if (!isDragging.value) {
+    return
+  }
+  if (index !== dragAnchorIndex.value) {
+    didJustDrag.value = true
+  }
+  emit('update:selected-line-indices', { start: dragAnchorIndex.value, end: index })
+}
+
+const endDragSelection = () => {
+  isDragging.value = false
+  dragAnchorIndex.value = -1
+  dragStartPos.value = null
+}
+
+const handleMouseMove = event => {
+  if (isDragging.value && dragStartPos.value) {
+    const dx = Math.abs(event.clientX - dragStartPos.value.x)
+    const dy = Math.abs(event.clientY - dragStartPos.value.y)
+    if (dx > 5 || dy > 5) {
+      didJustDrag.value = true
+    }
+  }
+  handleLinesMouseMove(event)
+}
+
+const handleContainerClick = event => {
+  // If a drag just finished, ignore the click so it doesn't clear the selection
+  if (didJustDrag.value) {
+    didJustDrag.value = false
+    return
+  }
+  // Clicking empty space in the container clears multi-selection,
+  // but clicks on line rows or buttons are ignored here.
+  if (!event.target.closest('.group, button, input')) {
+    emit('update:selected-line-indices', { clear: true })
+  }
+}
+
+const handleEscKey = () => {
+  emit('update:selected-line-indices', { clear: true })
+}
+
+const handleDocumentMouseUp = () => {
+  endDragSelection()
+}
+
+onMounted(() => {
+  document.addEventListener('mouseup', handleDocumentMouseUp)
+})
+
+onUnmounted(() => {
+  document.removeEventListener('mouseup', handleDocumentMouseUp)
+})
+
+const handleBulkRewind = () => {
+  emit('bulk-rewind-lines', props.selectedLineIndices)
+}
+
+const handleBulkForward = () => {
+  emit('bulk-forward-lines', props.selectedLineIndices)
+}
+
+const handleBulkDelete = () => {
+  emit('bulk-delete-lines', props.selectedLineIndices)
+}
 
 const handleUpdateLineText = (lineIndex, newText) => {
   emit('update-line-text', lineIndex, newText)
@@ -190,7 +331,7 @@ const scrollLineIntoView = index => {
 }
 
 const rowClass = index => {
-  if (props.selectedLineIndex === index || editingLineIndex.value === index) {
+  if (isLineRowSelected(index) || props.selectedLineIndex === index || editingLineIndex.value === index) {
     return 'bg-neutral-100 dark:bg-neutral-800'
   }
 
@@ -202,11 +343,15 @@ const rowClass = index => {
 }
 
 const selectLine = index => {
+  if (didJustDrag.value) {
+    didJustDrag.value = false
+    return
+  }
   emit('update:selected-line-index', index)
 }
 
 const isLineControlsVisible = index =>
-  hoveredLineIndex.value === index || props.selectedLineIndex === index
+  hoveredLineIndex.value === index || props.selectedLineIndex === index || isLineRowSelected(index)
 
 const emitLineAction = (eventName, index, selectBefore = true) => {
   if (selectBefore) {
@@ -306,4 +451,10 @@ watch(
     })
   }
 )
+
+watch(hoveredLineIndex, newIndex => {
+  if (isDragging.value && Number.isInteger(newIndex)) {
+    updateDragSelection(newIndex)
+  }
+})
 </script>

@@ -80,7 +80,7 @@ Module-level ref composables (singletons by design):
 | **Display** | `LyricsViewer.vue` (synced) / `PlainLyricsViewer.vue`. Click to `seek()` |
 | **Search** | `SearchLyrics.vue` + `Preview.vue` for LRCLIB lookup; word-level highlight when available |
 | **Normalization** | `normalizeLrclibLyrics()` derives plain/synced/instrumental from `lyricsfile` when LRCLIB omits direct fields |
-| **Edit/Publish** | `EditLyricsV2.vue` — CodeMirror + synced view + word timing lane. Props: `audioSource` (playback), `lyricsfile` (editing), `trackId` (save behavior). Instrumental toggle via `PlainLyricsEmptyState.vue`/`SyncedLyricsEmptyState.vue`. Publish logic in `useEditLyricsV2Publish.js`, export in `useEditLyricsV2Export.js` |
+| **Edit/Publish** | `EditLyricsV2.vue` — CodeMirror + synced view + word timing lane. Props: `audioSource` (playback), `lyricsfile` (editing), `trackId` (save behavior). Instrumental toggle via `PlainLyricsEmptyState.vue`/`SyncedLyricsEmptyState.vue`. Publish logic in `useEditLyricsV2Publish.js`, export in `useEditLyricsV2Export.js`. Synced tab supports multi-line selection via drag and Ctrl/Cmd+click, with a floating toolbar for bulk rewind/forward/delete |
 | **Keyboard Shortcuts** | `KeyboardShortcutsModal.vue` (full reference modal via `BaseModal`). Definitions in `composables/edit-lyrics-v2/keyboardShortcuts.js`. Header keyboard icon opens the modal |
 | **Mass Export** | `LibraryHeader.vue` → `ExportViewer.vue` → `useExporter()` queue → `export_track_lyrics` per track |
 | **My LRCLIB** | User workflows (preview, edit, publish, flag) in `my-lrclib/` |

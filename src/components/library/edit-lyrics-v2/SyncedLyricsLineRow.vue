@@ -1,11 +1,12 @@
 <template>
   <div
     ref="rowElement"
-    class="group flex items-center gap-2 px-4 py-1.5 rounded-md transition-colors h-9"
+    class="group flex items-center gap-2 px-4 py-1.5 rounded-md transition-colors h-9 select-none"
     :class="rowClass"
     @mouseenter="emit('mouseenter', index)"
     @mouseleave="emit('mouseleave')"
     @click="emit('select', index)"
+    @mousedown="handleMouseDown"
   >
     <div class="flex items-center gap-1 w-[3.5rem]">
       <button
@@ -31,11 +32,11 @@
     <div class="relative flex-none">
       <button
         v-show="isLineControlsVisible && line.start_ms"
-        class="button p-0.5 rounded-full text-xs h-5 w-5 bg-hoa-100 dark:bg-hoa-1500 text-hoa-800 dark:text-hoa-200 absolute -left-1.5 top-1/2 -translate-y-1/2 z-10"
+        class="button p-0.5 rounded-full text-xs h-5 w-5 bg-hoa-100 dark:bg-hoa-1500 text-hoa-800/70 dark:text-hoa-200/70 absolute -left-1.5 top-1/2 -translate-y-1/2 z-10"
         title="Rewind line by 100ms"
         @click.stop="emit('rewind-line', index)"
       >
-        <Minus />
+        <Rewind />
       </button>
       <div
         class="px-3 py-0.5 text-xs font-mono rounded-full bg-hoa-100 dark:bg-hoa-1500 text-hoa-1300 dark:text-hoa-200 min-w-[5.75rem] text-center"
@@ -45,11 +46,11 @@
       </div>
       <button
         v-show="isLineControlsVisible && line.start_ms"
-        class="button p-0.5 rounded-full text-xs h-5 w-5 bg-hoa-100 dark:bg-hoa-1500 text-hoa-800 dark:text-hoa-200 absolute -right-1.5 top-1/2 -translate-y-1/2 z-10"
+        class="button p-0.5 rounded-full text-xs h-5 w-5 bg-hoa-100 dark:bg-hoa-1500 text-hoa-800/70 dark:text-hoa-200/70 absolute -right-1.5 top-1/2 -translate-y-1/2 z-10"
         title="Forward line by 100ms"
         @click.stop="emit('forward-line', index)"
       >
-        <Plus />
+        <Forward />
       </button>
     </div>
 
@@ -92,11 +93,11 @@
       <div class="relative flex items-center">
         <button
           v-show="isLineControlsVisible && line.end_ms"
-          class="button p-0.5 rounded-full text-xs h-5 w-5 bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 absolute -left-1.5 top-1/2 -translate-y-1/2 z-10"
+          class="button p-0.5 rounded-full text-xs h-5 w-5 bg-neutral-200 dark:bg-neutral-700 text-neutral-600/70 dark:text-neutral-300/70 absolute -left-1.5 top-1/2 -translate-y-1/2 z-10"
           title="Rewind end timestamp by 100ms"
           @click.stop="emit('rewind-end', index)"
         >
-          <Minus />
+          <Rewind />
         </button>
         <div
           v-show="isLineControlsVisible"
@@ -107,11 +108,11 @@
         </div>
         <button
           v-show="isLineControlsVisible && line.end_ms"
-          class="button p-0.5 rounded-full text-xs h-5 w-5 bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 absolute -right-1.5 top-1/2 -translate-y-1/2 z-10"
+          class="button p-0.5 rounded-full text-xs h-5 w-5 bg-neutral-200 dark:bg-neutral-700 text-neutral-600/70 dark:text-neutral-300/70 absolute -right-1.5 top-1/2 -translate-y-1/2 z-10"
           title="Forward end timestamp by 100ms"
           @click.stop="emit('forward-end', index)"
         >
-          <Plus />
+          <Forward />
         </button>
       </div>
 
@@ -128,11 +129,11 @@
     <div class="flex items-center gap-1 w-[3.5rem] justify-end">
       <button
         v-show="isLineControlsVisible"
-        class="button button-normal p-1 rounded-full text-sm h-6 w-6"
+        class="button p-1 rounded-full text-sm h-6 w-6 bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-700 hover:dark:bg-neutral-600 text-red-500 dark:text-red-400"
         title="Delete line"
         @click.stop="emit('delete-line', index)"
       >
-        <Close />
+        <Trash />
       </button>
     </div>
   </div>
@@ -142,9 +143,11 @@
 import { computed, ref } from 'vue'
 import Play from '~icons/mdi/play'
 import Equal from '~icons/mdi/equal'
-import Minus from '~icons/mdi/minus'
-import Plus from '~icons/mdi/plus'
+import Rewind from '~icons/mdi/rewind'
+import Forward from '~icons/mdi/fast-forward'
 import Close from '~icons/mdi/close'
+import Trash from '~icons/mdi/trash-can'
+
 const props = defineProps({
   index: {
     type: Number,
@@ -192,6 +195,7 @@ const emit = defineEmits([
   'mouseenter',
   'mouseleave',
   'select',
+  'mousedown-line',
   'play-line',
   'sync-line',
   'rewind-line',
@@ -207,6 +211,15 @@ const emit = defineEmits([
 ])
 
 const rowElement = ref(null)
+
+const handleMouseDown = event => {
+  // Ignore mousedown on interactive elements (buttons, inputs) so they
+  // can handle their own click events without starting a drag selection.
+  if (event.target.closest('button, input')) {
+    return
+  }
+  emit('mousedown-line', props.index, event)
+}
 
 // Determine if this line is currently playing based on its own time range
 const isLinePlaying = computed(() => {

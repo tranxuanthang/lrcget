@@ -26,6 +26,7 @@ export const shortcutCategories = [
       { keys: ['Enter'], description: 'Sync line & move to next' },
       { keys: ['←'], description: 'Rewind 100 ms & play' },
       { keys: ['→'], description: 'Forward 100 ms & play' },
+      { keys: ['P'], description: 'Replay selected line' },
     ],
   },
   {
