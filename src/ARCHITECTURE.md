@@ -70,21 +70,21 @@ Module-level ref composables (singletons by design):
 **Library Browsing**:
 
 - Search via `useSearchLibrary()`; shared search text across Tracks/Albums/Artists tabs
-- `MiniSearch.vue` appears in the header for all three tabs with context-aware placeholder text; filter dropdown is hidden for Albums/Artists
-- Tracks: Virtualized (`@tanstack/vue-virtual`), IDs only; `TrackItem.vue` for actions
-- Albums/Artists: Virtualized, IDs only; search queries are passed to `get_album_ids`/`get_artist_ids` commands
+- `MiniSearch.vue` with context-aware placeholder; filter dropdown hidden for Albums/Artists
+- All tabs use virtualized lists (`@tanstack/vue-virtual`) with IDs only
 
 **Lyrics Workflows**:
 
-- **Display**: `LyricsViewer.vue` (synced) / `PlainLyricsViewer.vue`. Click to `seek()`
-- **Search**: `SearchLyrics.vue` + `Preview.vue` for LRCLIB lookup, including word-level highlight in preview when Lyricsfile word timings are available
-- **LRCLIB normalization**: `normalizeLrclibLyrics()` in `utils/lyricsfile.js` derives plain/synced/instrumental state from `lyricsfile` when LRCLIB responses omit direct `plainLyrics`/`syncedLyrics`
-- **Edit/Publish**:
-  - `EditLyricsV2.vue` — CodeMirror + interactive synced view + word timing lane. Accepts three props: `audioSource` (for playback only), `lyricsfile` (for editing operations), and `trackId` (for determining save behavior). The `audioSource` format is `{ type: 'library'|'file', id?, file_path?, duration?, title?, artist_name?, album_name? }`. The `lyricsfile` format is `{ id?, content, metadata?: { title, artist, album, duration_ms } }`. The `trackId` is `null` for temporary associations (LRCLIB Browser flow) or a track ID for library tracks. This design separates audio playback from lyrics editing, allowing the editor to work with both library tracks (via track ID) and standalone lyricsfiles (via lyricsfile ID) without flow-specific conditional logic. The separate `trackId` prop handles the case where a library track is temporarily associated with a standalone lyricsfile for playback - in this case the lyricsfile should NOT be associated with the track on save. Synced line selection keeps the active row in view while navigating or syncing, and the word timing lane supports dragging the first word boundary to update the line start while keeping the current lane window stable until selection changes; line timestamp edits do not automatically shift existing word timings. Header actions use a split save dropdown (`EditLyricsV2HeaderActions.vue`) with `Save`, `Save and Publish`, and manual export for `.txt`, `.lrc`, and embedded lyrics. V2 publish is isolated in `useEditLyricsV2Publish.js` + `EditLyricsV2PublishModal.vue`, and V2 export is isolated in `useEditLyricsV2Export.js`; both send serialized Lyricsfile payloads. When closing the editor with unsaved changes (dirty state), a confirmation modal (`ConfirmModal.vue`) is shown to warn the user before discarding changes.
-  - _V2 Instrumental Support_: Tracks can be marked as instrumental via `PlainLyricsEmptyState.vue` or `SyncedLyricsEmptyState.vue`. When marked, the plain/synced tab switcher is disabled and a centered popup appears with an "Unmark as instrumental" button. The instrumental state is stored in the `lyricsfile` metadata and managed by `useEditLyricsV2Document.js`.
-- **Export (Mass)**: `LibraryHeader.vue` has an export button (with dropdown) that emits `exportAllLyrics` → `Library.vue` opens `ExportViewer.vue` modal → `useExporter()` composable manages queue → invokes `export_track_lyrics` command per track. Exports to `.txt`, `.lrc`, and/or embedded metadata. While exporting, the button turns into a loading/check icon that emits `showExportViewer` to reopen the modal.
-- **My LRCLIB**: User workflows (preview, edit, publish, flag) in `my-lrclib/`
-- **Track Association (My LRCLIB Edit Flow)**: When editing lyrics from My LRCLIB search results, the flow is: (1) Call `prepare_lrclib_lyricsfile(lrclibId)` to fetch/create the lyricsfile in the database (stored with `lrclib_instance` and `lrclib_id`). If lyrics already exist locally, show `LyricsfileConflictModal.vue` to ask if user wants to redownload from LRCLIB or continue with local version. (2) Show `AssociateTrackModal.vue` for selecting either a library track or a file from the computer. (3) Open `EditLyricsV2.vue` with the selected audio source (as `audioSource` prop), the standalone lyricsfile (as `lyricsfile` prop), and `trackId: null` to indicate this is a temporary association. The `get_audio_metadata` backend command extracts metadata from selected files using the existing scanner logic. Supports playback for both library tracks and arbitrary file-based tracks. Note: Even when a library track is selected for playback, `trackId` is `null` to ensure the standalone lyricsfile is not associated with the track after editing.
+| Aspect | Details |
+|--------|---------|
+| **Display** | `LyricsViewer.vue` (synced) / `PlainLyricsViewer.vue`. Click to `seek()` |
+| **Search** | `SearchLyrics.vue` + `Preview.vue` for LRCLIB lookup; word-level highlight when available |
+| **Normalization** | `normalizeLrclibLyrics()` derives plain/synced/instrumental from `lyricsfile` when LRCLIB omits direct fields |
+| **Edit/Publish** | `EditLyricsV2.vue` — CodeMirror + synced view + word timing lane. Props: `audioSource` (playback), `lyricsfile` (editing), `trackId` (save behavior). Instrumental toggle via `PlainLyricsEmptyState.vue`/`SyncedLyricsEmptyState.vue`. Publish logic in `useEditLyricsV2Publish.js`, export in `useEditLyricsV2Export.js` |
+| **Keyboard Shortcuts** | `KeyboardShortcutsModal.vue` (full reference modal via `BaseModal`). Definitions in `composables/edit-lyrics-v2/keyboardShortcuts.js`. Header keyboard icon opens the modal |
+| **Mass Export** | `LibraryHeader.vue` → `ExportViewer.vue` → `useExporter()` queue → `export_track_lyrics` per track |
+| **My LRCLIB** | User workflows (preview, edit, publish, flag) in `my-lrclib/` |
+| **Track Association** | My LRCLIB edit flow: `prepare_lrclib_lyricsfile()` → `AssociateTrackModal.vue` → `EditLyricsV2.vue` with `trackId: null` (temporary association only) |
 
 Utils: `src/utils/` (parsing, linting), Composables: `composables/edit-lyrics-v2/`, `composables/export.js`
 
