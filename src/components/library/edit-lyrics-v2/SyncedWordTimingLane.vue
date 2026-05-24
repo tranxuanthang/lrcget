@@ -44,7 +44,7 @@
         <div class="flex items-center gap-2">
           <button
             class="button button-normal text-xs px-2 py-1 rounded flex items-center gap-1"
-            title="Play line from beginning"
+            :title="playLineTitle"
             @click="handlePlayLine"
           >
             <Play class="w-3.5 h-3.5" />
@@ -52,7 +52,7 @@
           </button>
           <button
             class="button button-primary text-xs px-2 py-1 rounded flex items-center gap-1"
-            title="Sync word at current playback position (z)"
+            :title="syncWordTitle"
             @click="handleSyncWord"
           >
             <Equal class="w-3.5 h-3.5" />
@@ -92,8 +92,8 @@
           :key="index"
           :word="word"
           :word-index="index"
-          :next-word-text="displayedWords[index + 1]?.text || ''"
-          :next-word-start-ms="displayedWords[index + 1]?.start_ms ?? null"
+          :next-word-text="displayedWords[index]?.text || ''"
+          :next-word-start-ms="displayedWords[index]?.start_ms ?? null"
           :next-word-end-ms="
             index + 1 < displayedWords.length ? getWordEndMs(index + 1) : null
           "
@@ -163,6 +163,11 @@ import Close from '~icons/mdi/close'
 import SyncedWordTimingSegment from '@/components/library/edit-lyrics-v2/SyncedWordTimingSegment.vue'
 import { useEditLyricsV2WordBoundaryDrag } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordBoundaryDrag.js'
 import { useEditLyricsV2WordTimingHotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordTimingHotkeys.js'
+import {
+  syncedEditorShortcutBindings,
+  wordTimingShortcutBindings,
+  withShortcutTitle,
+} from '@/composables/edit-lyrics-v2/shortcutRegistry.js'
 import { formatTimestampMs } from '@/utils/lyricsfile.js'
 import { ensureLineWords, distributeWordTimings, hasValidWords } from '@/utils/word-tokenizer.js'
 
@@ -197,6 +202,18 @@ const laneStartMs = ref(0)
 const laneEndMs = ref(0)
 const segmentedTokenTexts = ref(null)
 const segmentationRequestId = ref(0)
+
+const playLineTitle = withShortcutTitle(
+  'Play line from beginning',
+  syncedEditorShortcutBindings,
+  'replaySelectedLine'
+)
+
+const syncWordTitle = withShortcutTitle(
+  'Sync word at current playback position',
+  wordTimingShortcutBindings,
+  'syncSelectedSeparatorAndAdvance'
+)
 
 // Availability checks for word sync feature
 const hasLineContent = computed(() => {

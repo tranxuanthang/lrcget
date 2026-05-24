@@ -15,6 +15,8 @@ export function useEditLyricsV2SyncedHotkeys({
   deleteSyncedLine,
   rewindLineBy100,
   forwardLineBy100,
+  rewindEndBy100,
+  forwardEndBy100,
   playLineAtOffset,
   playLine,
 }) {
@@ -90,6 +92,12 @@ export function useEditLyricsV2SyncedHotkeys({
         return
       case 'forwardLine':
         forwardLineBy100(selectedSyncedLineIndex.value)
+        return
+      case 'rewindLineEnd':
+        rewindEndBy100(selectedSyncedLineIndex.value)
+        return
+      case 'forwardLineEnd':
+        forwardEndBy100(selectedSyncedLineIndex.value)
         return
       case 'replayPreviousLine': {
         const previousLineIndex = selectedSyncedLineIndex.value - 1

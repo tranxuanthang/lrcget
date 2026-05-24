@@ -22,7 +22,7 @@
       <button
         v-show="isLineControlsVisible"
         class="button button-primary p-1 rounded-full text-sm h-6 w-6"
-        title="Sync line to current playback"
+        :title="syncLineTitle"
         @click.stop="emit('sync-line', index)"
       >
         <Equal />
@@ -33,7 +33,7 @@
       <button
         v-show="isLineControlsVisible && line.start_ms"
         class="button p-0.5 rounded-full text-xs h-5 w-5 bg-hoa-100 dark:bg-hoa-1500 text-hoa-800/70 dark:text-hoa-200/70 absolute -left-1.5 top-1/2 -translate-y-1/2 z-10"
-        title="Rewind line by 100ms"
+        :title="rewindLineTitle"
         @click.stop="emit('rewind-line', index)"
       >
         <Rewind />
@@ -47,7 +47,7 @@
       <button
         v-show="isLineControlsVisible && line.start_ms"
         class="button p-0.5 rounded-full text-xs h-5 w-5 bg-hoa-100 dark:bg-hoa-1500 text-hoa-800/70 dark:text-hoa-200/70 absolute -right-1.5 top-1/2 -translate-y-1/2 z-10"
-        title="Forward line by 100ms"
+        :title="forwardLineTitle"
         @click.stop="emit('forward-line', index)"
       >
         <Forward />
@@ -105,36 +105,39 @@
         <button
           v-show="isLineControlsVisible && line.end_ms"
           class="button p-0.5 rounded-full text-xs h-5 w-5 bg-neutral-200 dark:bg-neutral-700 text-neutral-600/70 dark:text-neutral-300/70 absolute -left-1.5 top-1/2 -translate-y-1/2 z-10"
-          title="Rewind end timestamp by 100ms"
+          :title="rewindEndTitle"
           @click.stop="emit('rewind-end', index)"
         >
           <Rewind />
         </button>
         <div
-          v-show="isLineControlsVisible"
-          class="px-3 py-0.5 text-xs font-mono rounded-full bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300 min-w-[5.75rem] text-center"
-          :class="{ 'opacity-50': !line.end_ms }"
+          v-show="isLineControlsVisible || hasEndTimestampDiffDirection"
+          class="px-3 py-0.5 text-xs font-mono rounded-full min-w-[5.75rem] text-center"
+          :class="endTimestampPillClass"
+          :title="endTimestampPillTitle"
         >
           {{ endTimestampText }}
         </div>
         <button
           v-show="isLineControlsVisible && line.end_ms"
           class="button p-0.5 rounded-full text-xs h-5 w-5 bg-neutral-200 dark:bg-neutral-700 text-neutral-600/70 dark:text-neutral-300/70 absolute -right-1.5 top-1/2 -translate-y-1/2 z-10"
-          title="Forward end timestamp by 100ms"
+          :title="forwardEndTitle"
           @click.stop="emit('forward-end', index)"
         >
           <Forward />
         </button>
       </div>
 
-      <button
-        v-show="isLineControlsVisible"
-        class="button bg-neutral-200 text-neutral-600 hover:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-300 hover:dark:bg-neutral-600 p-1 rounded-full text-sm h-6 w-6 mr-4"
-        title="Sync end timestamp to current playback"
-        @click.stop="emit('sync-end', index)"
-      >
-        <Equal />
-      </button>
+      <div class="h-6 w-6 mr-4 shrink-0">
+        <button
+          v-show="isLineControlsVisible"
+          class="button bg-neutral-200 text-neutral-600 hover:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-300 hover:dark:bg-neutral-600 p-1 rounded-full text-sm h-6 w-6"
+          :title="syncEndTitle"
+          @click.stop="emit('sync-end', index)"
+        >
+          <Equal />
+        </button>
+      </div>
     </div>
 
     <div class="flex items-center gap-1 w-[3.5rem] justify-end">
@@ -158,6 +161,10 @@ import Rewind from '~icons/mdi/rewind'
 import Forward from '~icons/mdi/fast-forward'
 import Close from '~icons/mdi/close'
 import Trash from '~icons/mdi/trash-can'
+import {
+  syncedEditorShortcutBindings,
+  withShortcutTitle,
+} from '@/composables/edit-lyrics-v2/shortcutRegistry.js'
 
 const props = defineProps({
   index: {
@@ -175,6 +182,10 @@ const props = defineProps({
   isLineControlsVisible: {
     type: Boolean,
     default: false,
+  },
+  endTimestampDiffDirection: {
+    type: String,
+    default: '',
   },
   isEditing: {
     type: Boolean,
@@ -254,6 +265,64 @@ const isLinePlaying = computed(() => {
 const editingTextProxy = computed({
   get: () => props.editingText,
   set: value => emit('update:editing-text', value),
+})
+
+const syncLineTitle = withShortcutTitle(
+  'Sync line to current playback',
+  syncedEditorShortcutBindings,
+  'syncLineToPlayback'
+)
+
+const rewindLineTitle = withShortcutTitle('Rewind line by 100ms', syncedEditorShortcutBindings, 'rewindLine')
+
+const forwardLineTitle = withShortcutTitle(
+  'Forward line by 100ms',
+  syncedEditorShortcutBindings,
+  'forwardLine'
+)
+
+const syncEndTitle = withShortcutTitle(
+  'Sync end timestamp to current playback',
+  syncedEditorShortcutBindings,
+  'syncLineEndToPlayback'
+)
+
+const rewindEndTitle = withShortcutTitle(
+  'Rewind end timestamp by 100ms',
+  syncedEditorShortcutBindings,
+  'rewindLineEnd'
+)
+
+const forwardEndTitle = withShortcutTitle(
+  'Forward end timestamp by 100ms',
+  syncedEditorShortcutBindings,
+  'forwardLineEnd'
+)
+
+const hasEndTimestampDiffDirection = computed(() => {
+  return props.endTimestampDiffDirection === 'before' || props.endTimestampDiffDirection === 'after'
+})
+
+const endTimestampPillClass = computed(() => ({
+  'bg-neutral-200 dark:bg-neutral-700 text-neutral-600 dark:text-neutral-300':
+    !hasEndTimestampDiffDirection.value,
+  'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300':
+    props.endTimestampDiffDirection === 'before',
+  'bg-rose-100 dark:bg-rose-950/40 text-rose-700 dark:text-rose-300':
+    props.endTimestampDiffDirection === 'after',
+  'opacity-50': !props.line?.end_ms,
+}))
+
+const endTimestampPillTitle = computed(() => {
+  if (props.endTimestampDiffDirection === 'before') {
+    return 'End timestamp is before next line start (gap)'
+  }
+
+  if (props.endTimestampDiffDirection === 'after') {
+    return 'End timestamp is after next line start (overlap)'
+  }
+
+  return 'End timestamp'
 })
 
 // Check if line has word-by-word synced data

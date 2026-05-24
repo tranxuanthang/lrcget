@@ -438,6 +438,8 @@ const { bindSyncedHotkeys, unbindSyncedHotkeys } = useEditLyricsV2SyncedHotkeys(
   deleteSyncedLine,
   rewindLineBy100: rewindLineTimestampBy100,
   forwardLineBy100: forwardLineTimestampBy100,
+  rewindEndBy100,
+  forwardEndBy100,
   playLineAtOffset,
   playLine,
 })

@@ -35,7 +35,7 @@
     <div
       v-if="showNextWordHint"
       class="absolute left-1/2 top-full z-40 mt-1 -translate-x-1/2 px-2 py-0.5 rounded-md border border-hoa-1100/40 bg-hoa-1100 text-xs font-medium leading-4 text-white shadow-sm whitespace-nowrap pointer-events-none"
-      :style="{ left: `${nextSegmentCenterOffsetPx}px` }"
+      :style="{ left: 0 }"
       :title="`Next word: ${nextWordHintText}`"
     >
       {{ nextWordHintText }}
@@ -155,12 +155,6 @@ const currentSegmentWidthPx = computed(() => {
   return (currentDuration / lineDuration) * props.timelineWidth
 })
 
-const nextSegmentCenterOffsetPx = computed(() => {
-  // Hint element is positioned relative to current segment.
-  // Move to center of the next segment: current width + half next width.
-  return currentSegmentWidthPx.value + nextSegmentWidthPx.value / 2
-})
-
 const doesNextWordOverflow = computed(() => {
   if (!nextWordHintText.value || nextSegmentWidthPx.value <= 0) {
     return false
@@ -179,7 +173,7 @@ const isSelectedDividerForNextSegment = computed(() => {
     return false
   }
 
-  const nextBoundaryIndex = props.wordIndex + 1
+  const nextBoundaryIndex = props.wordIndex
 
   if (props.selectedBoundaryIndex === nextBoundaryIndex) {
     return true
@@ -193,7 +187,6 @@ const isSelectedDividerForNextSegment = computed(() => {
 const showNextWordHint = computed(() => {
   return (
     isSelectedDividerForNextSegment.value &&
-    doesNextWordOverflow.value &&
     nextWordHintText.value.length > 0
   )
 })

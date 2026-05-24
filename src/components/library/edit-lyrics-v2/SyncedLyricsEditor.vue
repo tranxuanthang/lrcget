@@ -38,6 +38,7 @@
             :index="index"
             :row-class="rowClass(index)"
             :is-line-controls-visible="isLineControlsVisible(index)"
+            :end-timestamp-diff-direction="getEndTimestampDiffDirection(index)"
             :is-editing="editingLineIndex === index"
             :editing-text="editingText"
             :timestamp-text="formatTimestampMs(line.start_ms)"
@@ -354,6 +355,17 @@ const selectLine = index => {
 
 const isLineControlsVisible = index =>
   hoveredLineIndex.value === index || props.selectedLineIndex === index || isLineRowSelected(index)
+
+const getEndTimestampDiffDirection = index => {
+  const lineEndMs = props.modelValue[index]?.end_ms
+  const nextLineStartMs = props.modelValue[index + 1]?.start_ms
+
+  if (!Number.isFinite(lineEndMs) || !Number.isFinite(nextLineStartMs) || lineEndMs === nextLineStartMs) {
+    return null
+  }
+
+  return lineEndMs < nextLineStartMs ? 'before' : 'after'
+}
 
 const emitLineAction = (eventName, index, selectBefore = true) => {
   if (selectBefore) {
