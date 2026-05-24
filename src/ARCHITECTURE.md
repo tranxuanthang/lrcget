@@ -57,7 +57,7 @@ Module-level ref composables (singletons by design):
 
 - `ChooseDirectory.vue` - Setup: folder picker, persists via `set_directories`, emits to trigger library view
 - `Library.vue` - Header + tabbed panes (Tracks/Albums/Artists/MyLrclib) + `NowPlaying.vue`. Manages scan lifecycle (`scan-progress`, `scan-complete`, `scan_library`)
-- `NowPlaying.vue` - Persistent bottom panel. Track metadata, seek/play/volume, lyrics. Keyboard shortcuts (space/enter/arrows) disabled when typing or via `isHotkey` state
+- `NowPlaying.vue` - Persistent bottom panel. Track metadata, seek/play/volume/speed, lyrics. Keyboard shortcuts (space/enter/arrows) disabled when typing or via `isHotkey` state
 
 **Modals**: `Config.vue`, `About.vue`, `DownloadViewer.vue`
 

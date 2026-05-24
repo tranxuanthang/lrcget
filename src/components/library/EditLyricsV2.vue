@@ -65,9 +65,11 @@
           :status="status"
           :duration="duration"
           :progress="progress"
+          :playback-speed="playbackSpeed"
           @play-toggle="resumeOrPlay"
           @pause="pause"
           @seek="seek"
+          @set-playback-speed="setPlaybackSpeed"
         />
       </div>
 
@@ -188,7 +190,18 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const { disableHotkey, enableHotkey } = useGlobalState()
-const { status, duration, progress, playingTrack, playTrack, pause, resume, seek } = usePlayer()
+const {
+  status,
+  duration,
+  progress,
+  playbackSpeed,
+  playingTrack,
+  playTrack,
+  pause,
+  resume,
+  seek,
+  setPlaybackSpeed,
+} = usePlayer()
 const toast = useToast()
 
 // Convert props to refs for composables

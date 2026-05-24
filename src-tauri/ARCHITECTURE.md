@@ -166,7 +166,7 @@ struct Player {
     sound_handle: Option<StreamingSoundHandle>,
     track: Option<PlayableTrack>,      // Unified type for DB and file-based tracks
     status: PlayerStatus,               // Playing/Paused/Stopped
-    progress: f64, duration: f64, volume: f64,
+    progress: f64, duration: f64, volume: f64, playback_speed: f64,
 }
 ```
 
@@ -178,6 +178,11 @@ Volume persistence:
 - Player initializes with volume from `config_data` on startup
 - `set_volume()` command updates both the player and persists to config
 - Frontend receives volume updates via `player-state` events
+
+Playback speed:
+- Player tracks current `playback_speed` and reapplies it when a new track starts
+- `set_playback_speed()` command updates the active sound handle rate (clamped 0.5x–2.0x)
+- Frontend receives playback speed via `player-state` events
 
 ### Export Module (`export.rs`)
 
@@ -307,7 +312,7 @@ Search across all three entity types uses SQLite FTS5 (via `tracks_fts`, `albums
 
 ### Playback & Config
 - `play_track(track_id?, file_path?, title?, album_name?, artist_name?, album_artist_name?, duration?)` - Unified playback for both library tracks (via `track_id`) and file-based tracks (via `file_path` with metadata)
-- `pause/resume_track()`, `seek_track()`, `stop_track()`, `set_volume()` (persists volume to config)
+- `pause/resume_track()`, `seek_track()`, `stop_track()`, `set_volume()` (persists volume to config), `set_playback_speed()`
 - `get/set_directories()`, `get/set_config()`, `get_init()`
 - Volume is loaded from config on startup and auto-saved when changed via `set_volume()`
 - `open_devtools()`, `drain_notifications()`

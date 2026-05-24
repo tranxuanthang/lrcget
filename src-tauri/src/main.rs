@@ -1441,6 +1441,17 @@ fn set_volume(
 }
 
 #[tauri::command]
+fn set_playback_speed(playback_speed: f64, app_state: tauri::State<AppState>) -> Result<(), String> {
+    let mut player_guard = app_state.player.lock().map_err(|e| e.to_string())?;
+
+    if let Some(ref mut player) = *player_guard {
+        player.set_playback_speed(playback_speed);
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 fn open_devtools(app_handle: AppHandle) {
     app_handle
         .get_webview_window("main")
@@ -1572,6 +1583,7 @@ async fn main() {
             seek_track,
             stop_track,
             set_volume,
+            set_playback_speed,
             open_devtools,
             drain_notifications,
             find_matching_tracks,

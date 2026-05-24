@@ -72,7 +72,19 @@
           </button>
         </div>
 
-        <div class="basis-1/3 flex-1 flex justify-end items-center">
+        <div class="basis-1/3 flex-1 flex justify-end items-center gap-2">
+          <label class="flex items-center gap-1 text-xs text-neutral-700 dark:text-neutral-300">
+            <span>Speed</span>
+            <select
+              class="rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-xs text-neutral-800 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100"
+              :value="String(playbackSpeed)"
+              @change="handleSpeedChange"
+            >
+              <option v-for="option in speedOptions" :key="option" :value="String(option)">
+                {{ option.toFixed(2).replace(/\.00$/, '') }}x
+              </option>
+            </select>
+          </label>
           <VolumeSlider :volume="volume" @set-volume="setPlayerVolume" />
         </div>
       </div>
@@ -118,12 +130,23 @@ const {
   duration,
   progress,
   volume,
+  playbackSpeed,
   playTrack,
   pause,
   resume,
   seek,
   setVolume: setPlayerVolume,
+  setPlaybackSpeed,
 } = usePlayer()
+
+const speedOptions = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
+
+const handleSpeedChange = event => {
+  const value = parseFloat(event.target.value)
+  if (Number.isFinite(value)) {
+    setPlaybackSpeed(value)
+  }
+}
 const keydownEvent = ref(null)
 
 const instrumental = computed(() => {
