@@ -1,3 +1,5 @@
+const SHORTCUT_OVERRIDES_STORAGE_KEY = 'lrcget.edit-lyrics-v2.shortcut-overrides'
+
 const normalizeKey = key => (typeof key === 'string' && key.length === 1 ? key.toLowerCase() : key)
 
 const isCtrlPressed = event => event.ctrlKey || event.metaKey
@@ -18,200 +20,418 @@ const hasExactModifiers = (event, { ctrl = false, alt = false, shift = false }) 
   return true
 }
 
-const matchesShortcut = (event, { key, code, ctrl = false, alt = false, shift = false }) => {
+const isShortcutKeys = keys => {
+  return Array.isArray(keys) && keys.length > 0 && keys.every(key => typeof key === 'string' && key.trim())
+}
+
+const normalizeShortcutKeys = keys => {
+  if (!isShortcutKeys(keys)) {
+    return null
+  }
+
+  return keys.map(key => key.trim())
+}
+
+const loadShortcutOverrides = () => {
+  if (typeof window === 'undefined') {
+    return {}
+  }
+
+  try {
+    const raw = window.localStorage.getItem(SHORTCUT_OVERRIDES_STORAGE_KEY)
+    if (!raw) {
+      return {}
+    }
+
+    const parsed = JSON.parse(raw)
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+      return {}
+    }
+
+    const normalized = {}
+    for (const [shortcutId, keys] of Object.entries(parsed)) {
+      const normalizedKeys = normalizeShortcutKeys(keys)
+      if (normalizedKeys) {
+        normalized[shortcutId] = normalizedKeys
+      }
+    }
+
+    return normalized
+  } catch {
+    return {}
+  }
+}
+
+const persistShortcutOverrides = overrides => {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    window.localStorage.setItem(SHORTCUT_OVERRIDES_STORAGE_KEY, JSON.stringify(overrides))
+  } catch {
+    // Ignore storage failures and keep in-memory overrides.
+  }
+}
+
+let shortcutOverrides = loadShortcutOverrides()
+
+export const getShortcutOverrides = () => ({ ...shortcutOverrides })
+
+export const resolveShortcutKeys = (shortcutId, fallbackKeys = []) => {
+  const overrideKeys = shortcutOverrides[shortcutId]
+  const normalizedOverrideKeys = normalizeShortcutKeys(overrideKeys)
+  if (normalizedOverrideKeys) {
+    return normalizedOverrideKeys
+  }
+
+  const normalizedFallbackKeys = normalizeShortcutKeys(fallbackKeys)
+  return normalizedFallbackKeys || []
+}
+
+export const setShortcutOverride = (shortcutId, keys) => {
+  if (typeof shortcutId !== 'string' || !shortcutId.trim()) {
+    return false
+  }
+
+  const normalizedKeys = normalizeShortcutKeys(keys)
+  if (!normalizedKeys) {
+    return false
+  }
+
+  shortcutOverrides = {
+    ...shortcutOverrides,
+    [shortcutId]: normalizedKeys,
+  }
+
+  persistShortcutOverrides(shortcutOverrides)
+  return true
+}
+
+export const resetShortcutOverride = shortcutId => {
+  if (typeof shortcutId !== 'string' || !shortcutId.trim()) {
+    return false
+  }
+
+  if (!(shortcutId in shortcutOverrides)) {
+    return true
+  }
+
+  const { [shortcutId]: _removed, ...nextOverrides } = shortcutOverrides
+  shortcutOverrides = nextOverrides
+  persistShortcutOverrides(shortcutOverrides)
+  return true
+}
+
+export const resetAllShortcutOverrides = () => {
+  shortcutOverrides = {}
+  persistShortcutOverrides(shortcutOverrides)
+}
+
+const shortcutTokenToEventKey = {
+  '↑': 'ArrowUp',
+  '↓': 'ArrowDown',
+  '←': 'ArrowLeft',
+  '→': 'ArrowRight',
+  Space: ' ',
+  Enter: 'Enter',
+  Backspace: 'Backspace',
+  Delete: 'Delete',
+}
+
+const matchesMainShortcutKey = (event, keyToken) => {
+  if (keyToken === '/') {
+    return normalizeKey(event.key) === '/' || normalizeKey(event.key) === '?' || event.code === 'Slash'
+  }
+
+  if (keyToken === '+') {
+    return normalizeKey(event.key) === '+' || normalizeKey(event.key) === '=' || event.code === 'Equal'
+  }
+
+  if (keyToken === '-') {
+    return normalizeKey(event.key) === '-' || normalizeKey(event.key) === '_' || event.code === 'Minus'
+  }
+
+  const eventKey = shortcutTokenToEventKey[keyToken] || keyToken
+  return normalizeKey(event.key) === normalizeKey(eventKey)
+}
+
+const matchesShortcutKeys = (event, shortcutKeys) => {
+  const normalizedKeys = normalizeShortcutKeys(shortcutKeys)
+  if (!normalizedKeys) {
+    return false
+  }
+
+  const ctrl = normalizedKeys.includes('Ctrl')
+  const alt = normalizedKeys.includes('Alt')
+  const shift = normalizedKeys.includes('Shift')
+  const mainKey = normalizedKeys.find(key => key !== 'Ctrl' && key !== 'Alt' && key !== 'Shift')
+
+  if (!mainKey) {
+    return false
+  }
+
   if (!hasExactModifiers(event, { ctrl, alt, shift })) {
     return false
   }
 
-  if (code && event.code === code) {
-    return true
-  }
-
-  return normalizeKey(event.key) === normalizeKey(key)
+  return matchesMainShortcutKey(event, mainKey)
 }
 
+export const shortcutKeysFromKeyboardEvent = event => {
+  const keys = []
+
+  if (isCtrlPressed(event)) {
+    keys.push('Ctrl')
+  }
+
+  if (event.altKey) {
+    keys.push('Alt')
+  }
+
+  if (event.shiftKey) {
+    keys.push('Shift')
+  }
+
+  const baseKey =
+    event.key === ' '
+      ? 'Space'
+      : event.key === 'ArrowUp'
+        ? '↑'
+        : event.key === 'ArrowDown'
+          ? '↓'
+          : event.key === 'ArrowLeft'
+            ? '←'
+            : event.key === 'ArrowRight'
+              ? '→'
+              : event.key
+
+  const ignoredBaseKeys = ['Control', 'Meta', 'Alt', 'Shift']
+  if (!ignoredBaseKeys.includes(baseKey)) {
+    if (baseKey.length === 1) {
+      keys.push(baseKey.toUpperCase())
+    } else {
+      keys.push(baseKey)
+    }
+  }
+
+  const hasNonModifierKey = keys.some(key => key !== 'Ctrl' && key !== 'Alt' && key !== 'Shift')
+  return hasNonModifierKey ? keys : []
+}
+
+const createShortcutBinding = ({ id, defaultKeys, description }) => ({
+  id,
+  description,
+  get defaultKeys() {
+    return normalizeShortcutKeys(defaultKeys) || []
+  },
+  get keys() {
+    return resolveShortcutKeys(id, defaultKeys)
+  },
+  matches: event => matchesShortcutKeys(event, resolveShortcutKeys(id, defaultKeys)),
+})
+
 export const globalShortcutBindings = [
-  {
+  createShortcutBinding({
     id: 'saveLyrics',
-    keys: ['Ctrl', 'S'],
+    defaultKeys: ['Ctrl', 'S'],
     description: 'Save lyrics',
-    matches: event => matchesShortcut(event, { key: 's', ctrl: true }),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'openShortcutModal',
-    keys: ['Ctrl', '/'],
+    defaultKeys: ['Ctrl', '/'],
     description: 'Open keyboard shortcuts',
-    matches: event =>
-      hasExactModifiers(event, { ctrl: true }) &&
-      (normalizeKey(event.key) === '/' || normalizeKey(event.key) === '?' || event.code === 'Slash'),
-  },
+  }),
 ]
 
 export const plainEditorShortcutBindings = [
-  {
+  createShortcutBinding({
     id: 'zoomIn',
-    keys: ['Ctrl', '+'],
+    defaultKeys: ['Ctrl', '+'],
     description: 'Zoom in',
-    matches: event =>
-      hasExactModifiers(event, { ctrl: true }) &&
-      (normalizeKey(event.key) === '+' || normalizeKey(event.key) === '='),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'zoomOut',
-    keys: ['Ctrl', '-'],
+    defaultKeys: ['Ctrl', '-'],
     description: 'Zoom out',
-    matches: event =>
-      hasExactModifiers(event, { ctrl: true }) &&
-      (normalizeKey(event.key) === '-' || normalizeKey(event.key) === '_'),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'zoomReset',
-    keys: ['Ctrl', '0'],
+    defaultKeys: ['Ctrl', '0'],
     description: 'Reset zoom',
-    matches: event => matchesShortcut(event, { key: '0', ctrl: true }),
-  },
+  }),
 ]
 
-export const plainEditorDisplayOnlyShortcuts = [
-  { keys: ['Ctrl', 'Scroll'], description: 'Zoom in/out' },
-]
+export const plainEditorDisplayOnlyShortcuts = [{ keys: ['Ctrl', 'Scroll'], description: 'Zoom in/out' }]
 
 export const syncedEditorShortcutBindings = [
-  {
+  createShortcutBinding({
     id: 'selectPreviousLine',
-    keys: ['↑'],
+    defaultKeys: ['↑'],
     description: 'Select previous line',
-    matches: event => matchesShortcut(event, { key: 'ArrowUp' }),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'selectNextLine',
-    keys: ['↓'],
+    defaultKeys: ['↓'],
     description: 'Select next line',
-    matches: event => matchesShortcut(event, { key: 'ArrowDown' }),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'syncLineToPlayback',
-    keys: ['Space'],
+    defaultKeys: ['Space'],
     description: 'Sync line to current playback',
-    matches: event => matchesShortcut(event, { key: ' ' }),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'syncLineEndToPlayback',
-    keys: ['Shift', 'Space'],
+    defaultKeys: ['Shift', 'Space'],
     description: 'Sync selected line end to current playback',
-    matches: event => matchesShortcut(event, { key: ' ', shift: true }),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'syncLineEndAndAdvance',
-    keys: ['N'],
+    defaultKeys: ['N'],
     description: 'Sync selected line end & move to next',
-    matches: event => matchesShortcut(event, { key: 'n' }),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'syncLineAndAdvance',
-    keys: ['Enter'],
+    defaultKeys: ['Enter'],
     description: 'Sync line, sync previous line end & move to next',
-    matches: event => matchesShortcut(event, { key: 'Enter' }),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'syncLineAndAdvanceNoPreviousEndSync',
-    keys: ['Shift', 'Enter'],
-    description: 'Sync line & move to next (skip previous line end sync)',
-    matches: event => matchesShortcut(event, { key: 'Enter', shift: true }),
-  },
-  {
+    defaultKeys: ['Shift', 'Enter'],
+    description: 'Sync line & move to next (skip line end sync)',
+  }),
+  createShortcutBinding({
     id: 'rewindLine',
-    keys: ['←'],
+    defaultKeys: ['←'],
     description: 'Rewind 100 ms & play',
-    matches: event => matchesShortcut(event, { key: 'ArrowLeft' }),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'forwardLine',
-    keys: ['→'],
+    defaultKeys: ['→'],
     description: 'Forward 100 ms & play',
-    matches: event => matchesShortcut(event, { key: 'ArrowRight' }),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'replaySelectedLine',
-    keys: ['P'],
+    defaultKeys: ['P'],
     description: 'Replay selected line',
-    matches: event => matchesShortcut(event, { key: 'p', ctrl: false, shift: false }) && !event.altKey,
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'replayPreviousLine',
-    keys: ['Shift', 'P'],
+    defaultKeys: ['Shift', 'P'],
     description: 'Replay previous line',
-    matches: event => matchesShortcut(event, { key: 'p', ctrl: false, shift: true }) && !event.altKey,
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'deleteSelectedLine',
-    keys: ['Backspace'],
+    defaultKeys: ['Backspace'],
     description: 'Delete selected line',
-    matches: event => matchesShortcut(event, { key: 'Backspace' }),
-  },
+  }),
 ]
 
 export const wordTimingShortcutBindings = [
-  {
+  createShortcutBinding({
     id: 'selectPreviousSeparator',
-    keys: ['A'],
+    defaultKeys: ['A'],
     description: 'Select previous separator',
-    matches: event => matchesShortcut(event, { key: 'a' }),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'selectNextSeparator',
-    keys: ['D'],
+    defaultKeys: ['D'],
     description: 'Select next separator',
-    matches: event => matchesShortcut(event, { key: 'd' }),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'syncSelectedSeparatorNoAdvance',
-    keys: ['S'],
+    defaultKeys: ['S'],
     description: 'Sync selected separator (stay selected)',
-    matches: event => matchesShortcut(event, { key: 's' }),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'syncSelectedSeparatorAndAdvance',
-    keys: ['Z'],
+    defaultKeys: ['Z'],
     description: 'Sync selected separator & move to next',
-    matches: event => matchesShortcut(event, { key: 'z' }),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'resetSeparatorCursor',
-    keys: ['X'],
+    defaultKeys: ['X'],
     description: 'Reset separator cursor to second divider',
-    matches: event => matchesShortcut(event, { key: 'x' }),
-  },
-  {
+  }),
+  createShortcutBinding({
     id: 'deleteSelectedSeparators',
-    keys: ['Delete'],
+    defaultKeys: ['Delete'],
     description: 'Delete selected separators to merge adjacent words',
-    matches: event => matchesShortcut(event, { key: 'Delete' }),
-  },
+  }),
 ]
 
-export const shortcutCategories = [
+export const getShortcutCategories = () => [
   {
     id: 'global',
     label: 'Global',
-    shortcuts: globalShortcutBindings.map(({ keys, description }) => ({ keys, description })),
+    shortcuts: globalShortcutBindings.map(({ id, keys, defaultKeys, description }) => ({
+      id,
+      keys,
+      defaultKeys,
+      description,
+    })),
   },
   {
     id: 'plain',
     label: 'Plain Editor',
     shortcuts: [
-      ...plainEditorShortcutBindings.map(({ keys, description }) => ({ keys, description })),
+      ...plainEditorShortcutBindings.map(({ id, keys, defaultKeys, description }) => ({
+        id,
+        keys,
+        defaultKeys,
+        description,
+      })),
       ...plainEditorDisplayOnlyShortcuts,
     ],
   },
   {
     id: 'synced',
     label: 'Synced Editor',
-    shortcuts: syncedEditorShortcutBindings.map(({ keys, description }) => ({ keys, description })),
+    shortcuts: syncedEditorShortcutBindings.map(({ id, keys, defaultKeys, description }) => ({
+      id,
+      keys,
+      defaultKeys,
+      description,
+    })),
   },
   {
     id: 'wordTiming',
     label: 'Word Timing',
-    shortcuts: wordTimingShortcutBindings.map(({ keys, description }) => ({ keys, description })),
+    shortcuts: wordTimingShortcutBindings.map(({ id, keys, defaultKeys, description }) => ({
+      id,
+      keys,
+      defaultKeys,
+      description,
+    })),
   },
 ]
+
+export const shortcutCategories = getShortcutCategories()
+
+export const formatShortcutKeys = keys => {
+  if (!Array.isArray(keys) || keys.length === 0) {
+    return ''
+  }
+
+  return keys.join('+')
+}
+
+export const findShortcutById = (bindings, shortcutId) => {
+  if (!Array.isArray(bindings) || typeof shortcutId !== 'string') {
+    return null
+  }
+
+  return bindings.find(binding => binding.id === shortcutId) || null
+}
+
+export const withShortcutTitle = (title, bindings, shortcutId) => {
+  const baseTitle = typeof title === 'string' ? title : ''
+  const binding = findShortcutById(bindings, shortcutId)
+  const shortcutLabel = formatShortcutKeys(binding?.keys)
+
+  if (!shortcutLabel) {
+    return baseTitle
+  }
+
+  return `${baseTitle} (${shortcutLabel})`
+}

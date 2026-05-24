@@ -113,6 +113,12 @@ Shortcut behavior and shortcut-menu content share one canonical registry:
 - Runtime handlers consume that registry: `useEditLyricsV2Hotkeys.js`, `useEditLyricsV2SyncedHotkeys.js`, `useEditLyricsV2WordTimingHotkeys.js`
 - Menu data (`keyboardShortcuts.js`) is derived from the same registry
 - Result: shortcut behavior and displayed shortcut menu stay in sync
+- Shortcut-aware button tooltips are also derived from the same registry (e.g., `Sync line to current playback (Space)`)
+- Shortcuts are configurable via registry override APIs (`setShortcutOverride`, `resetShortcutOverride`, `resetAllShortcutOverrides`) and persisted in browser `localStorage`
+- `KeyboardShortcutsModal.vue` includes a Configure mode window to remap shortcuts by key capture and reset per-shortcut or all shortcuts
+- Configure mode detects duplicate shortcut assignments and shows warnings both globally and per conflicting shortcut
+- Configure mode shows capture/result feedback through button color states (listening, assigned, canceled, reset)
+- Modified shortcuts (customized from defaults) are highlighted via key chip and reset-button colors
 - Access: header keyboard icon and `Ctrl+/` open `KeyboardShortcutsModal.vue`
 
 Utils: `src/utils/` (parsing, linting), Composables: `composables/edit-lyrics-v2/`, `composables/export.js`. Default word timing tokenization uses backend `segment_words` (Charabia), with frontend tokenizer fallback.
