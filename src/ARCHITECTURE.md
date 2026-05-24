@@ -82,13 +82,40 @@ Module-level ref composables (singletons by design):
 | **Display** | `LyricsViewer.vue` (synced) / `PlainLyricsViewer.vue`. Click to `seek()` |
 | **Search** | `SearchLyrics.vue` + `Preview.vue` for LRCLIB lookup; word-level highlight when available |
 | **Normalization** | `normalizeLrclibLyrics()` derives plain/synced/instrumental from `lyricsfile` when LRCLIB omits direct fields |
-| **Edit/Publish** | `EditLyricsV2.vue` — CodeMirror + synced view + word timing lane. Props: `audioSource` (playback), `lyricsfile` (editing), `trackId` (save behavior). Instrumental toggle via `PlainLyricsEmptyState.vue`/`SyncedLyricsEmptyState.vue`. Publish logic in `useEditLyricsV2Publish.js`, export in `useEditLyricsV2Export.js`. Synced tab supports multi-line selection via drag and Ctrl/Cmd+click, with a floating toolbar for bulk rewind/forward/delete |
-| **Keyboard Shortcuts** | `KeyboardShortcutsModal.vue` (full reference modal via `BaseModal`). Definitions in `composables/edit-lyrics-v2/keyboardShortcuts.js`. Header keyboard icon opens the modal |
+| **Edit/Publish** | `EditLyricsV2.vue` + `useEditLyricsV2Publish.js` + `useEditLyricsV2Export.js`. For detailed editor behavior, see **Edit/Publish Details** below. |
+| **Keyboard Shortcuts** | `KeyboardShortcutsModal.vue` + shared registry in `composables/edit-lyrics-v2/shortcutRegistry.js`. See **Keyboard Shortcuts Details** below. |
 | **Mass Export** | `LibraryHeader.vue` → `ExportViewer.vue` → `useExporter()` queue → `export_track_lyrics` per track |
 | **My LRCLIB** | User workflows (preview, edit, publish, flag) in `my-lrclib/` |
 | **Track Association** | My LRCLIB edit flow: `prepare_lrclib_lyricsfile()` → `AssociateTrackModal.vue` → `EditLyricsV2.vue` with `trackId: null` (temporary association only) |
 
-Utils: `src/utils/` (parsing, linting), Composables: `composables/edit-lyrics-v2/`, `composables/export.js`
+### Edit/Publish Details
+
+`EditLyricsV2.vue` combines CodeMirror plain editing and synced editing with a word timing lane.
+
+- Props/context: `audioSource` (playback source), `lyricsfile` (editing target), `trackId` (save behavior)
+- Instrumental mode: toggle via `PlainLyricsEmptyState.vue` / `SyncedLyricsEmptyState.vue`
+- Publish/export: handled by `useEditLyricsV2Publish.js` and `useEditLyricsV2Export.js`
+- Synced lines: multi-line selection via drag and Ctrl/Cmd+click, with floating bulk rewind/forward/delete toolbar
+- Player bar: playback speed control (`0.5x`-`2.0x`)
+- Line status: each synced line row shows a tiny word-sync status dot
+- Word timing: multi-separator selection (Ctrl/Cmd+click + Shift+click), merge separators (`Delete`/`Backspace`), hover split preview snapped to grapheme boundaries, double-click split at cursor, and `Z` syncs selected separator then advances (last-word sync advances to next line)
+- Narrow segment hint: when a segment is too narrow to show text, a visible hint is rendered beneath it with the next word text
+- Boundary sync: can cascade adjacent boundaries so sync is not blocked by intervening separators, while staying within line bounds
+- Reset behavior: clears persisted word timings and reloads default (non-persisted) segmentation
+- Line-start sync behavior: syncing line start shifts existing word boundaries by the same offset
+- Selection behavior: selecting a synced line starts at the second boundary by default
+
+### Keyboard Shortcuts Details
+
+Shortcut behavior and shortcut-menu content share one canonical registry:
+
+- Definitions live in `composables/edit-lyrics-v2/shortcutRegistry.js`
+- Runtime handlers consume that registry: `useEditLyricsV2Hotkeys.js`, `useEditLyricsV2SyncedHotkeys.js`, `useEditLyricsV2WordTimingHotkeys.js`
+- Menu data (`keyboardShortcuts.js`) is derived from the same registry
+- Result: shortcut behavior and displayed shortcut menu stay in sync
+- Access: header keyboard icon and `Ctrl+/` open `KeyboardShortcutsModal.vue`
+
+Utils: `src/utils/` (parsing, linting), Composables: `composables/edit-lyrics-v2/`, `composables/export.js`. Default word timing tokenization uses backend `segment_words` (Charabia), with frontend tokenizer fallback.
 
 ## Technical Details
 
