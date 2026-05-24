@@ -7,6 +7,7 @@ export function useEditLyricsV2SyncedHotkeys({
   selectedSyncedLineIndex,
   selectedSyncedLineIndices,
   syncedLines,
+  progressMs,
   selectSyncedLine,
   clearSyncedLineSelection,
   syncLineToCurrentProgress,
@@ -14,6 +15,7 @@ export function useEditLyricsV2SyncedHotkeys({
   deleteSyncedLine,
   rewindLineBy100,
   forwardLineBy100,
+  playLineAtOffset,
   playLine,
 }) {
   const isKeyboardTargetEditable = event => {
@@ -49,6 +51,22 @@ export function useEditLyricsV2SyncedHotkeys({
       case 'syncLineEndToPlayback':
         syncEndToCurrentProgress(selectedSyncedLineIndex.value)
         return
+      case 'syncLineEndAndAdvance': {
+        const currentLineIndex = selectedSyncedLineIndex.value
+        const currentLineEndMs = syncedLines.value[currentLineIndex]?.end_ms
+        const currentPlaybackMs = Number(progressMs?.value)
+        const isAfterCurrentEnd =
+          Number.isFinite(currentLineEndMs) &&
+          Number.isFinite(currentPlaybackMs) &&
+          currentPlaybackMs > currentLineEndMs
+
+        if (!isAfterCurrentEnd) {
+          syncEndToCurrentProgress(currentLineIndex)
+        }
+
+        selectSyncedLine(Math.min(syncedLines.value.length - 1, currentLineIndex + 1))
+        return
+      }
       case 'syncLineAndAdvance': {
         const currentLineIndex = selectedSyncedLineIndex.value
         syncLineToCurrentProgress(currentLineIndex)
@@ -73,6 +91,17 @@ export function useEditLyricsV2SyncedHotkeys({
       case 'forwardLine':
         forwardLineBy100(selectedSyncedLineIndex.value)
         return
+      case 'replayPreviousLine': {
+        const previousLineIndex = selectedSyncedLineIndex.value - 1
+        if (previousLineIndex < 0) {
+          const currentLineStartMs = syncedLines.value[selectedSyncedLineIndex.value]?.start_ms
+          const fallbackOffsetMs = Number.isFinite(currentLineStartMs) ? -currentLineStartMs : 0
+          playLineAtOffset(selectedSyncedLineIndex.value, fallbackOffsetMs)
+          return
+        }
+        playLineAtOffset(previousLineIndex, 0)
+        return
+      }
       case 'replaySelectedLine':
         playLine(selectedSyncedLineIndex.value)
         return

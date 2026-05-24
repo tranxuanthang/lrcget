@@ -14,7 +14,9 @@
 | Scanning | Single-pass streaming with batch processing (100 files) |
 | Export | Manual sidecar (.txt/.lrc) and embedded metadata export |
 
-**Key Dependencies:** `tauri`, `rusqlite`+`rusqlite_migration`, `lofty`, `kira`, `reqwest`, `rayon`, `xxhash-rust`, `regex` (for LRC parsing)
+**Key Dependencies:** `tauri`, `rusqlite`+`rusqlite_migration`, `lofty`, `kira`, `reqwest`, `rayon`, `xxhash-rust`, `regex` (for LRC parsing), `charabia` (international word segmentation)
+
+**Word Segmentation Command:** `segment_words(text)` in `main.rs` uses Charabia's segmenter (`Segment::segment_str`) and then applies language-agnostic post-processing: segments containing at least one letter/number are kept as tokens, while separator-only segments (spaces/punctuation/symbols) are merged into adjacent tokens.
 
 ## Project Structure
 
@@ -32,6 +34,7 @@ src-tauri/
 │   │   └── models.rs        # ScanResult, ScanProgress
 │   ├── parser/              # File format parsers
 │   │   └── lrc.rs           # LRC lyrics parser (replaces lrc crate)
+│   ├── word_segmentation.rs # Charabia-based tokenization + separator-merging logic/tests
 │   ├── export.rs            # Manual sidecar/embed export helpers
 │   ├── lyricsfile.rs        # YAML lyricsfile helpers
 │   ├── player.rs            # Kira audio playback

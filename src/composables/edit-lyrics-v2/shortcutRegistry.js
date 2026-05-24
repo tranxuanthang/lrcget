@@ -97,9 +97,15 @@ export const syncedEditorShortcutBindings = [
   },
   {
     id: 'syncLineEndToPlayback',
-    keys: ['Ctrl', 'Space'],
+    keys: ['Shift', 'Space'],
     description: 'Sync selected line end to current playback',
-    matches: event => matchesShortcut(event, { key: ' ', ctrl: true }),
+    matches: event => matchesShortcut(event, { key: ' ', shift: true }),
+  },
+  {
+    id: 'syncLineEndAndAdvance',
+    keys: ['N'],
+    description: 'Sync selected line end & move to next',
+    matches: event => matchesShortcut(event, { key: 'n' }),
   },
   {
     id: 'syncLineAndAdvance',
@@ -109,9 +115,9 @@ export const syncedEditorShortcutBindings = [
   },
   {
     id: 'syncLineAndAdvanceNoPreviousEndSync',
-    keys: ['Ctrl', 'Enter'],
+    keys: ['Shift', 'Enter'],
     description: 'Sync line & move to next (skip previous line end sync)',
-    matches: event => matchesShortcut(event, { key: 'Enter', ctrl: true }),
+    matches: event => matchesShortcut(event, { key: 'Enter', shift: true }),
   },
   {
     id: 'rewindLine',
@@ -132,6 +138,12 @@ export const syncedEditorShortcutBindings = [
     matches: event => matchesShortcut(event, { key: 'p', ctrl: false, shift: false }) && !event.altKey,
   },
   {
+    id: 'replayPreviousLine',
+    keys: ['Shift', 'P'],
+    description: 'Replay previous line',
+    matches: event => matchesShortcut(event, { key: 'p', ctrl: false, shift: true }) && !event.altKey,
+  },
+  {
     id: 'deleteSelectedLine',
     keys: ['Backspace'],
     description: 'Delete selected line',
@@ -140,6 +152,24 @@ export const syncedEditorShortcutBindings = [
 ]
 
 export const wordTimingShortcutBindings = [
+  {
+    id: 'selectPreviousSeparator',
+    keys: ['A'],
+    description: 'Select previous separator',
+    matches: event => matchesShortcut(event, { key: 'a' }),
+  },
+  {
+    id: 'selectNextSeparator',
+    keys: ['D'],
+    description: 'Select next separator',
+    matches: event => matchesShortcut(event, { key: 'd' }),
+  },
+  {
+    id: 'syncSelectedSeparatorNoAdvance',
+    keys: ['S'],
+    description: 'Sync selected separator (stay selected)',
+    matches: event => matchesShortcut(event, { key: 's' }),
+  },
   {
     id: 'syncSelectedSeparatorAndAdvance',
     keys: ['Z'],
@@ -151,6 +181,12 @@ export const wordTimingShortcutBindings = [
     keys: ['X'],
     description: 'Reset separator cursor to second divider',
     matches: event => matchesShortcut(event, { key: 'x' }),
+  },
+  {
+    id: 'deleteSelectedSeparators',
+    keys: ['Delete'],
+    description: 'Delete selected separators to merge adjacent words',
+    matches: event => matchesShortcut(event, { key: 'Delete' }),
   },
 ]
 

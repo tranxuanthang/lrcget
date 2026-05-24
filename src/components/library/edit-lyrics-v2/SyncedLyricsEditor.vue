@@ -1,7 +1,7 @@
 <template>
   <div class="grow overflow-hidden flex flex-col relative">
     <SyncedWordTimingLane
-      class="shrink-0 mt-2"
+      class="relative z-20 shrink-0 mt-2"
       :selected-line="selectedLine"
       :has-selected-line="hasSelectedLine"
       :progress-ms="progressMs"
@@ -10,12 +10,13 @@
       @update:words="handleWordsUpdate"
       @word-timing-edited="handleWordTimingEdited"
       @play-line="handlePlayLine"
+      @play-line-at-offset="handlePlayLineAtOffset"
       @select-next-line="selectLine"
     />
 
     <div
       ref="linesListElement"
-      class="flex-1 overflow-y-auto py-4 relative outline-none"
+      class="flex-1 overflow-y-auto py-4 relative z-0 outline-none"
       tabindex="0"
       @mousemove="handleMouseMove"
       @mouseleave="handleLinesMouseLeave"
@@ -163,6 +164,7 @@ const emit = defineEmits([
   'update:selected-line-index',
   'update:selected-line-indices',
   'play-line',
+  'play-line-at-offset',
   'sync-line',
   'rewind-line',
   'forward-line',
@@ -362,7 +364,11 @@ const emitLineAction = (eventName, index, selectBefore = true) => {
 }
 
 const handlePlayLine = index => {
-  emitLineAction('play-line', index)
+  emitLineAction('play-line', index, false)
+}
+
+const handlePlayLineAtOffset = payload => {
+  emit('play-line-at-offset', payload)
 }
 
 const handleSyncLine = index => {

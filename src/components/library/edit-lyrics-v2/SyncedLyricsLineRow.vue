@@ -72,6 +72,17 @@
       @click="emit('select', index)"
       @dblclick="emit('start-edit', index)"
     >
+      <span
+        class="mr-2 shrink-0 inline-block w-2 h-2 rounded-full border"
+        :class="
+          hasWordSync
+            ? 'bg-emerald-500 border-emerald-500 dark:bg-emerald-400 dark:border-emerald-400'
+            : 'bg-neutral-300 border-neutral-400 dark:bg-neutral-600 dark:border-neutral-500'
+        "
+        :title="hasWordSync ? 'Word synced' : 'Word not synced'"
+        :aria-label="hasWordSync ? 'Word synced' : 'Word not synced'"
+      />
+
       <template v-if="hasWordSync">
         <span
           v-for="(word, wordIndex) in line.words"

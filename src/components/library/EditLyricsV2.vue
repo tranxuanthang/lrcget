@@ -113,6 +113,7 @@
         @update:selected-line-indices="handleUpdateSelectedLineIndices"
         @editing-state-change="setSyncedLineEditingState"
         @play-line="playLine"
+        @play-line-at-offset="handlePlayLineAtOffset"
         @sync-line="syncLineToCurrentProgress"
         @rewind-line="rewindLineBy100"
         @forward-line="forwardLineBy100"
@@ -274,7 +275,7 @@ const { exportLyrics, isExporting } = useEditLyricsV2Export({
   toast,
 })
 
-const { playLine, resumeOrPlay } = useEditLyricsV2Playback({
+const { playLine, playLineAtOffset, resumeOrPlay } = useEditLyricsV2Playback({
   audioSource: audioSourceRef,
   syncedLines,
   progress,
@@ -284,6 +285,10 @@ const { playLine, resumeOrPlay } = useEditLyricsV2Playback({
   resume,
   seek,
 })
+
+const handlePlayLineAtOffset = ({ lineIndex, offsetMs }) => {
+  return playLineAtOffset(lineIndex, offsetMs)
+}
 
 const rewindLineBy100 = lineIndex => {
   rewindLineTimestampBy100(lineIndex)
@@ -425,11 +430,15 @@ const { bindSyncedHotkeys, unbindSyncedHotkeys } = useEditLyricsV2SyncedHotkeys(
   selectedSyncedLineIndex,
   selectedSyncedLineIndices,
   syncedLines,
+  progressMs,
   selectSyncedLine,
   clearSyncedLineSelection,
   syncLineToCurrentProgress,
+  syncEndToCurrentProgress,
+  deleteSyncedLine,
   rewindLineBy100: rewindLineTimestampBy100,
   forwardLineBy100: forwardLineTimestampBy100,
+  playLineAtOffset,
   playLine,
 })
 
@@ -504,6 +513,7 @@ const { bindHotkeys, unbindHotkeys } = useEditLyricsV2Hotkeys({
   saveLyrics,
   changeFontSizeBy: changeCodemirrorFontSizeBy,
   resetFontSize: resetCodemirrorFontSize,
+  openShortcutsModal,
 })
 
 onMounted(() => {

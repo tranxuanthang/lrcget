@@ -236,12 +236,26 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     }))
   }
 
+  const shiftWordBoundariesByOffset = (words, offsetMs) => {
+    if (!Array.isArray(words) || words.length === 0 || !Number.isFinite(offsetMs) || offsetMs === 0) {
+      return words
+    }
+
+    return words.map(word => ({
+      ...word,
+      start_ms: Math.max(0, Math.round((word?.start_ms ?? 0) + offsetMs)),
+    }))
+  }
+
   const syncLineToCurrentProgress = lineIndex => {
     if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
       return
     }
 
+    const currentLine = syncedLines.value[lineIndex]
+    const previousStartMs = Number.isFinite(currentLine?.start_ms) ? currentLine.start_ms : null
     const newStartMs = Math.max(0, Math.round(progress.value * 1000))
+    const lineStartOffsetMs = previousStartMs == null ? 0 : newStartMs - previousStartMs
 
     // Update the current line's start_ms and optionally set previous line's end_ms
     const prevLineIndex = lineIndex - 1
@@ -253,6 +267,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
         return {
           ...line,
           start_ms: newStartMs,
+          words: shiftWordBoundariesByOffset(line.words, lineStartOffsetMs),
         }
       }
       if (index === prevLineIndex && shouldSetPrevEndMs) {

@@ -1,6 +1,6 @@
 <template>
   <div
-    class="relative flex flex-col px-2 py-2 rounded-lg overflow-hidden h-[5rem] transition-[min-height] duration-200 ease-out"
+    class="relative z-20 flex flex-col px-2 py-2 rounded-lg overflow-visible h-[5rem] transition-[min-height] duration-200 ease-out"
     :class="hasSelectedLine ? 'bg-neutral-100 dark:bg-neutral-800' : 'bg-white dark:bg-neutral-950'"
   >
     <!-- Empty state - no line selected -->
@@ -92,12 +92,20 @@
           :key="index"
           :word="word"
           :word-index="index"
+          :next-word-text="displayedWords[index + 1]?.text || ''"
+          :next-word-start-ms="displayedWords[index + 1]?.start_ms ?? null"
+          :next-word-end-ms="
+            index + 1 < displayedWords.length ? getWordEndMs(index + 1) : null
+          "
           :start-ms="word.start_ms"
           :end-ms="getWordEndMs(index)"
           :line-start-ms="laneStartMs"
           :line-end-ms="laneEndMs"
           :timeline-width="timelineWidth"
           :progress-ms="progressMs"
+          :selected-boundary-index="selectedBoundaryIndex"
+          :selected-boundary-indices="selectedBoundaryIndices"
+          @split-at="handleSegmentSplitAt"
         />
 
         <button
@@ -108,7 +116,7 @@
           :style="{ left: `${timeToPercent(displayedWords[index].start_ms)}%` }"
           :title="`Adjust start of ${displayedWords[index].text}`"
           @pointerdown="handleBoundaryPointerDown(index, $event)"
-          @click="selectBoundary(index)"
+          @click="selectBoundary(index, $event)"
         >
           <span
             class="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2 transition-all duration-150 ease-linear bg-neutral-300/70 dark:bg-hoa-1000/70 group-hover:bg-neutral-600 dark:group-hover:bg-neutral-300 group-hover:w-[3px] group-hover:ring-1 group-hover:ring-neutral-500/25"
@@ -148,6 +156,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch, nextTick } from 'vue'
+import { invoke } from '@tauri-apps/api/core'
 import Equal from '~icons/mdi/equal'
 import Play from '~icons/mdi/play'
 import Close from '~icons/mdi/close'
@@ -186,6 +195,8 @@ const timelineElement = ref(null)
 const timelineWidth = ref(0)
 const laneStartMs = ref(0)
 const laneEndMs = ref(0)
+const segmentedTokenTexts = ref(null)
+const segmentationRequestId = ref(0)
 
 // Availability checks for word sync feature
 const hasLineContent = computed(() => {
@@ -243,6 +254,23 @@ const syncLaneWindowToSelection = () => {
 const words = computed(() => {
   if (!isWordSyncAvailable.value) return []
 
+  if (!hasActualWords.value) {
+    const lineText = props.selectedLine?.text || ''
+    const charabiaTokens = segmentedTokenTexts.value
+
+    if (
+      Array.isArray(charabiaTokens) &&
+      charabiaTokens.length > 0 &&
+      charabiaTokens.join('') === lineText
+    ) {
+      return distributeWordTimings(
+        charabiaTokens.map(text => ({ text })),
+        lineStartMs.value,
+        actualLineEndMs.value
+      )
+    }
+  }
+
   const lineWithWords = ensureLineWords(props.selectedLine, props.allLines, props.selectedLineIndex)
 
   return lineWithWords.words || []
@@ -253,9 +281,14 @@ const {
   displayedWords,
   boundaryIndexes,
   selectedBoundaryIndex,
+  selectedBoundaryIndices,
   startBoundaryDrag,
   selectBoundary,
+  isBoundarySelected,
+  selectPreviousBoundary,
+  selectNextBoundary,
   syncSelectedBoundary,
+  deleteSelectedBoundaries,
   resetBoundarySelection,
   cancelBoundaryInteraction,
 } = useEditLyricsV2WordBoundaryDrag({
@@ -332,7 +365,7 @@ const getBoundaryLineClass = index => {
   const isActive =
     dragState.value?.rightWordIndex === index ||
     (!dragState.value && selectedBoundaryIndex.value === index)
-  const isSelected = !dragState.value && selectedBoundaryIndex.value === index
+  const isSelected = !dragState.value && isBoundarySelected(index)
 
   if (isSelected) {
     return 'bg-hoa-1000 dark:bg-neutral-300 w-[3px] ring-2 ring-neutral-300/35'
@@ -346,7 +379,20 @@ const getBoundaryLineClass = index => {
 }
 
 const handleSyncWord = () => {
-  syncSelectedBoundary(props.progressMs)
+  const selectedBoundaryBeforeSync = selectedBoundaryIndex.value
+  const synced = syncSelectedBoundary(props.progressMs)
+
+  if (
+    synced &&
+    selectedBoundaryBeforeSync === words.value.length - 1 &&
+    props.selectedLineIndex < props.allLines.length - 1
+  ) {
+    emit('select-next-line')
+  }
+}
+
+const handleSyncWordNoAdvance = () => {
+  syncSelectedBoundary(props.progressMs, { advance: false })
 }
 
 const handlePlayLine = () => {
@@ -354,14 +400,136 @@ const handlePlayLine = () => {
   emit('play-line', props.selectedLineIndex)
 }
 
+const splitTextByGrapheme = text => {
+  if (!text || typeof text !== 'string') {
+    return []
+  }
+
+  if (typeof Intl !== 'undefined' && typeof Intl.Segmenter === 'function') {
+    const segmenter = new Intl.Segmenter('und', { granularity: 'grapheme' })
+    return Array.from(segmenter.segment(text), item => item.segment)
+  }
+
+  return Array.from(text)
+}
+
+const getWordEndMsFromList = (wordsList, index) => {
+  if (index >= wordsList.length - 1) {
+    return laneEndMs.value
+  }
+
+  const nextWordStart = wordsList[index + 1]?.start_ms
+  return Number.isFinite(nextWordStart) ? nextWordStart : laneEndMs.value
+}
+
+const handleDeleteSelectedBoundaries = () => {
+  if (!isWordSyncAvailable.value) return
+  deleteSelectedBoundaries()
+}
+
+const handleSegmentSplitAt = ({ wordIndex, splitIndex, splitRatio }) => {
+  if (!isWordSyncAvailable.value) {
+    return
+  }
+
+  if (!Number.isInteger(wordIndex) || wordIndex < 0 || wordIndex >= displayedWords.value.length) {
+    return
+  }
+
+  const currentWord = displayedWords.value[wordIndex]
+  const graphemes = splitTextByGrapheme(currentWord?.text || '')
+  if (graphemes.length <= 1) {
+    return
+  }
+
+  const fallbackSplitIndex = Math.max(1, Math.min(graphemes.length - 1, Math.floor(graphemes.length / 2)))
+  const normalizedSplitIndex = Number.isInteger(splitIndex)
+    ? Math.max(1, Math.min(graphemes.length - 1, splitIndex))
+    : fallbackSplitIndex
+
+  const leftText = graphemes.slice(0, normalizedSplitIndex).join('')
+  const rightText = graphemes.slice(normalizedSplitIndex).join('')
+
+  const wordStartMs = Number.isFinite(currentWord?.start_ms) ? currentWord.start_ms : laneStartMs.value
+  const wordEndMs = getWordEndMsFromList(displayedWords.value, wordIndex)
+  const normalizedSplitRatio = Number.isFinite(splitRatio)
+    ? Math.max(0, Math.min(1, splitRatio))
+    : normalizedSplitIndex / graphemes.length
+  const splitTimeMs = Math.max(
+    wordStartMs + 1,
+    Math.min(wordEndMs - 1, Math.round(wordStartMs + (wordEndMs - wordStartMs) * normalizedSplitRatio))
+  )
+
+  const updatedWords = [
+    ...displayedWords.value.slice(0, wordIndex),
+    { text: leftText, start_ms: wordStartMs },
+    { text: rightText, start_ms: splitTimeMs },
+    ...displayedWords.value.slice(wordIndex + 1),
+  ]
+
+  emit('update:words', {
+    lineIndex: props.selectedLineIndex,
+    words: updatedWords,
+    lineStartMs: laneStartMs.value,
+  })
+
+  selectBoundary(Math.min(updatedWords.length - 1, wordIndex + 1))
+}
+
+const loadDefaultSegmentation = async ({ force = false } = {}) => {
+  if (!isWordSyncAvailable.value) {
+    segmentedTokenTexts.value = null
+    return
+  }
+
+  if (!force && hasActualWords.value) {
+    segmentedTokenTexts.value = null
+    return
+  }
+
+  const lineText = props.selectedLine?.text || ''
+  if (!lineText) {
+    segmentedTokenTexts.value = []
+    return
+  }
+
+  const requestId = ++segmentationRequestId.value
+
+  try {
+    const tokens = await invoke('segment_words', { text: lineText })
+
+    if (requestId !== segmentationRequestId.value) {
+      return
+    }
+
+    if (!Array.isArray(tokens)) {
+      segmentedTokenTexts.value = null
+      return
+    }
+
+    segmentedTokenTexts.value = tokens
+      .filter(token => typeof token === 'string')
+      .filter(token => token.length > 0)
+  } catch (error) {
+    if (requestId !== segmentationRequestId.value) {
+      return
+    }
+
+    segmentedTokenTexts.value = null
+    console.error(error)
+  }
+}
+
 const { bindWordTimingHotkeys, unbindWordTimingHotkeys } = useEditLyricsV2WordTimingHotkeys({
   isWordSyncAvailable,
   selectedBoundaryIndex,
   words,
-  selectedLineIndex: computed(() => props.selectedLineIndex),
-  allLines: computed(() => props.allLines),
   syncSelectedBoundaryAtProgress: () => handleSyncWord(),
-  onSelectNextLine: nextLineIndex => emit('select-next-line', nextLineIndex),
+  syncSelectedBoundaryAtProgressNoAdvance: () => handleSyncWordNoAdvance(),
+  selectPreviousBoundary: () => selectPreviousBoundary(),
+  selectNextBoundary: () => selectNextBoundary(),
+  resetBoundarySelection: () => resetBoundarySelection(),
+  deleteSelectedBoundaries: () => handleDeleteSelectedBoundaries(),
 })
 
 watch(
@@ -375,6 +543,10 @@ watch(
     } else if (!props.hasSelectedLine) {
       syncLaneWindowToSelection()
     }
+
+    segmentedTokenTexts.value = null
+    void loadDefaultSegmentation()
+
     nextTick(() => {
       updateTimelineWidth()
     })
@@ -382,18 +554,21 @@ watch(
   { immediate: true }
 )
 
-const handleResetWords = () => {
+const handleResetWords = async () => {
   if (!isWordSyncAvailable.value) return
 
-  // Clear the words object entirely - this will make the timeline
-  // appear with balanced words but reduced opacity (auto-generated state)
+  // Clear the words object entirely - this removes persisted word timings.
   emit('update:words', {
     lineIndex: props.selectedLineIndex,
     words: undefined,
   })
 
-  // Reset selected boundary to first after reset
+  // Reset selected boundary after clearing.
   resetBoundarySelection()
+
+  // Wait for parent state to apply, then force segmentation so first reset is reliable.
+  await nextTick()
+  await loadDefaultSegmentation({ force: true })
 }
 
 const handleTimelineClick = event => {
@@ -418,13 +593,46 @@ watch(
 watch(isWordSyncAvailable, (available, wasAvailable) => {
   if (!available) {
     cancelBoundaryInteraction()
+    segmentedTokenTexts.value = null
     return
   }
 
   if (!wasAvailable) {
     syncLaneWindowToSelection()
+    segmentedTokenTexts.value = null
+    void loadDefaultSegmentation()
   }
 })
+
+watch(hasActualWords, (hasWords, hadWords) => {
+  if (hadWords && !hasWords && isWordSyncAvailable.value) {
+    segmentedTokenTexts.value = null
+    void loadDefaultSegmentation()
+  }
+})
+
+watch(
+  () => props.selectedLine?.text,
+  () => {
+    segmentedTokenTexts.value = null
+    if (isWordSyncAvailable.value) {
+      void loadDefaultSegmentation()
+    }
+  }
+)
+
+watch(
+  [lineStartMs, actualLineEndMs],
+  () => {
+    if (!props.hasSelectedLine || !props.selectedLine) {
+      return
+    }
+
+    laneStartMs.value = lineStartMs.value
+    laneEndMs.value = actualLineEndMs.value
+  },
+  { immediate: true }
+)
 
 watch(
   () => props.allLines,
