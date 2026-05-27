@@ -41,8 +41,29 @@ pub enum ExportFormat {
     Txt,
     /// Standard LRC format (.lrc)
     Lrc,
+    /// Lyricsfile YAML format (.yaml) - preserves word-level timing
+    Lyricsfile,
     /// Embedded in audio file metadata
     Embedded,
+}
+
+/// Sidecar formats that share a basename with the audio file. Embedded is not
+/// listed here because it does not produce a separate file. Used by
+/// `remove_other_sidecars` to enforce the "only one sidecar at a time" invariant
+/// from the export UI as a defense-in-depth at write time.
+const SIDECAR_EXTENSIONS: &[&str] = &["txt", "lrc", "yaml"];
+
+/// Remove any sidecar files (`.txt`, `.lrc`, `.yaml`) sharing the audio file's
+/// basename, except the one whose extension is being written next.
+fn remove_other_sidecars(track_path: &str, keep_ext: &str) {
+    for ext in SIDECAR_EXTENSIONS {
+        if *ext == keep_ext {
+            continue;
+        }
+        if let Ok(path) = build_sidecar_path(track_path, ext) {
+            let _ = remove_file(path);
+        }
+    }
 }
 
 /// Status of an export operation
@@ -105,11 +126,13 @@ pub fn generate_lrc_content(parsed: &ParsedLyricsfile) -> Option<String> {
 pub fn export_track_format(
     track: &PersistentTrack,
     parsed: &ParsedLyricsfile,
+    raw_lyricsfile: &str,
     format: ExportFormat,
 ) -> Result<ExportResult, ExportError> {
     match format {
         ExportFormat::Txt => export_txt(track, parsed),
         ExportFormat::Lrc => export_lrc(track, parsed),
+        ExportFormat::Lyricsfile => export_lyricsfile(track, raw_lyricsfile),
         ExportFormat::Embedded => export_embedded(track, parsed),
     }
 }
@@ -133,11 +156,8 @@ fn export_txt(
 
     let txt_path = build_sidecar_path(&track.file_path, "txt")?;
 
-    // Remove conflicting .lrc file if it exists
-    let lrc_path = build_sidecar_path(&track.file_path, "lrc").ok();
-    if let Some(ref lrc_path) = lrc_path {
-        let _ = remove_file(lrc_path);
-    }
+    // Remove conflicting sidecar files of the other formats (.lrc, .yaml).
+    remove_other_sidecars(&track.file_path, "txt");
 
     write(&txt_path, content).map_err(|e| ExportError::WriteError(e.to_string()))?;
 
@@ -167,17 +187,45 @@ fn export_lrc(
 
     let lrc_path = build_sidecar_path(&track.file_path, "lrc")?;
 
-    // Remove conflicting .txt file if it exists
-    let txt_path = build_sidecar_path(&track.file_path, "txt").ok();
-    if let Some(ref txt_path) = txt_path {
-        let _ = remove_file(txt_path);
-    }
+    // Remove conflicting sidecar files of the other formats (.txt, .yaml).
+    remove_other_sidecars(&track.file_path, "lrc");
 
     write(&lrc_path, content).map_err(|e| ExportError::WriteError(e.to_string()))?;
 
     Ok(ExportResult {
         format: ExportFormat::Lrc,
         path: Some(lrc_path),
+        status: ExportStatus::Success,
+    })
+}
+
+/// Export Lyricsfile YAML to a `.yaml` sidecar. The YAML is written verbatim
+/// (preserving any word-level timing or LRCLIB-provided metadata) and the
+/// sibling `.txt` / `.lrc` files are removed to keep a single sidecar variant
+/// on disk per track.
+fn export_lyricsfile(
+    track: &PersistentTrack,
+    raw_lyricsfile: &str,
+) -> Result<ExportResult, ExportError> {
+    let trimmed = raw_lyricsfile.trim();
+    if trimmed.is_empty() {
+        return Ok(ExportResult {
+            format: ExportFormat::Lyricsfile,
+            path: None,
+            status: ExportStatus::Skipped("no lyricsfile content available".to_string()),
+        });
+    }
+
+    let yaml_path = build_sidecar_path(&track.file_path, "yaml")?;
+
+    // Remove conflicting sidecar files of the other formats (.txt, .lrc).
+    remove_other_sidecars(&track.file_path, "yaml");
+
+    write(&yaml_path, raw_lyricsfile).map_err(|e| ExportError::WriteError(e.to_string()))?;
+
+    Ok(ExportResult {
+        format: ExportFormat::Lyricsfile,
+        path: Some(yaml_path),
         status: ExportStatus::Success,
     })
 }
@@ -208,12 +256,13 @@ fn export_embedded(
 pub fn export_track(
     track: &PersistentTrack,
     parsed: &ParsedLyricsfile,
+    raw_lyricsfile: &str,
     formats: &[ExportFormat],
 ) -> Vec<ExportResult> {
     let mut results = Vec::with_capacity(formats.len());
 
     for format in formats {
-        match export_track_format(track, parsed, *format) {
+        match export_track_format(track, parsed, raw_lyricsfile, *format) {
             Ok(result) => results.push(result),
             Err(e) => results.push(ExportResult {
                 format: *format,
@@ -392,6 +441,37 @@ mod tests {
 
         let lrc_path = build_sidecar_path(track_path, "lrc").unwrap();
         assert_eq!(lrc_path.to_str().unwrap(), "/music/artist/album/song.lrc");
+
+        let yaml_path = build_sidecar_path(track_path, "yaml").unwrap();
+        assert_eq!(yaml_path.to_str().unwrap(), "/music/artist/album/song.yaml");
+    }
+
+    #[test]
+    fn test_export_lyricsfile_skips_empty_content() {
+        let track = PersistentTrack {
+            id: 1,
+            file_path: "/music/artist/album/song.mp3".to_string(),
+            file_name: "song.mp3".to_string(),
+            title: "Song".to_string(),
+            album_name: "Album".to_string(),
+            album_artist_name: None,
+            album_id: 1,
+            artist_name: "Artist".to_string(),
+            artist_id: 1,
+            image_path: None,
+            track_number: None,
+            txt_lyrics: None,
+            lrc_lyrics: None,
+            lyricsfile: None,
+            lyricsfile_id: None,
+            duration: 0.0,
+            instrumental: false,
+        };
+
+        let result = export_lyricsfile(&track, "   \n\t  ").unwrap();
+        assert!(matches!(result.format, ExportFormat::Lyricsfile));
+        assert!(result.path.is_none());
+        assert!(matches!(result.status, ExportStatus::Skipped(_)));
     }
 
     #[test]

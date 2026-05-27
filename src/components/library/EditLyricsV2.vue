@@ -127,6 +127,7 @@
         @add-line-at="addSyncedLineAt"
         @import-lines-from-plain="importSyncedLinesFromPlain"
         @import-lrc-file="handleImportLrcFile"
+        @import-lyricsfile="handleImportLyricsfile"
         @paste-lrc="handlePasteLrc"
         @update:words="updateLineWords"
         @word-timing-edited="handleWordTimingEdited"
@@ -246,6 +247,7 @@ const {
   rewindEndBy100,
   forwardEndBy100,
   saveLyrics,
+  loadFromLyricsfile,
   ensureSelectedSyncedLine,
   updateLineText,
   setInstrumental,
@@ -369,6 +371,36 @@ const handleImportLrcFile = async () => {
   } catch (error) {
     console.error(error)
     toast.error(error?.toString?.() || 'Failed to import LRC file')
+  }
+}
+
+const handleImportLyricsfile = async () => {
+  try {
+    const filePath = await open({
+      multiple: false,
+      directory: false,
+      filters: [
+        { name: 'Lyricsfile', extensions: ['yaml', 'yml'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+    })
+
+    if (!filePath) {
+      return
+    }
+
+    const content = await invoke('read_text_file', { filePath })
+    const loaded = loadFromLyricsfile(content)
+
+    if (!loaded) {
+      toast.error('Selected file is not a valid Lyricsfile')
+      return
+    }
+
+    toast.success('Lyricsfile imported')
+  } catch (error) {
+    console.error(error)
+    toast.error(error?.toString?.() || 'Failed to import Lyricsfile')
   }
 }
 

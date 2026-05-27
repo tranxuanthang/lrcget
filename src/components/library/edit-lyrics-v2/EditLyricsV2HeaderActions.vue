@@ -45,22 +45,44 @@
             <div class="dropdown-section-label">Export to track's directory:</div>
 
             <label class="dropdown-item">
-              <CheckboxButton
-                id="export-plain-text"
-                v-model="exportPlainText"
-                name="export-plain-text"
+              <RadioButton
+                id="editor-export-sidecar-none"
+                v-model="sidecarFormat"
+                value=""
+                name="editor-export-sidecar-format"
               >
-                <span class="dropdown-label">Plain lyrics (.txt)</span>
-              </CheckboxButton>
+                <span class="dropdown-label">No sidecar file</span>
+              </RadioButton>
             </label>
             <label class="dropdown-item">
-              <CheckboxButton
-                id="export-synced-lrc"
-                v-model="exportSyncedLrc"
-                name="export-synced-lrc"
+              <RadioButton
+                id="editor-export-sidecar-txt"
+                v-model="sidecarFormat"
+                value="txt"
+                name="editor-export-sidecar-format"
+              >
+                <span class="dropdown-label">Plain lyrics (.txt)</span>
+              </RadioButton>
+            </label>
+            <label class="dropdown-item">
+              <RadioButton
+                id="editor-export-sidecar-lrc"
+                v-model="sidecarFormat"
+                value="lrc"
+                name="editor-export-sidecar-format"
               >
                 <span class="dropdown-label">Synced lyrics (.lrc)</span>
-              </CheckboxButton>
+              </RadioButton>
+            </label>
+            <label class="dropdown-item">
+              <RadioButton
+                id="editor-export-sidecar-yaml"
+                v-model="sidecarFormat"
+                value="yaml"
+                name="editor-export-sidecar-format"
+              >
+                <span class="dropdown-label">Lyricsfile (.yaml)</span>
+              </RadioButton>
             </label>
 
             <label
@@ -117,12 +139,12 @@ import ChevronDown from '~icons/mdi/chevron-down'
 import ContentSave from '~icons/mdi/content-save'
 import Bug from '~icons/mdi/bug'
 import CheckboxButton from '@/components/common/CheckboxButton.vue'
+import RadioButton from '@/components/common/RadioButton.vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const emit = defineEmits(['save', 'save-and-publish', 'export', 'debug'])
 
-const exportPlainText = ref(false)
-const exportSyncedLrc = ref(false)
+const sidecarFormat = ref('')
 const embedIntoTrack = ref(false)
 const tryEmbedLyrics = ref(false)
 
@@ -134,7 +156,7 @@ const refreshEmbedConfig = async () => {
 onMounted(refreshEmbedConfig)
 
 const hasSelectedExportFormat = computed(
-  () => exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value
+  () => sidecarFormat.value !== '' || embedIntoTrack.value
 )
 
 const handleExportClick = () => {
@@ -143,8 +165,7 @@ const handleExportClick = () => {
   }
 
   emit('export', {
-    plainText: exportPlainText.value,
-    syncedLrc: exportSyncedLrc.value,
+    sidecarFormat: sidecarFormat.value,
     embedIntoTrack: embedIntoTrack.value,
   })
 }
