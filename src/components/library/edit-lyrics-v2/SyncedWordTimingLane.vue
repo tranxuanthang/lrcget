@@ -3,7 +3,7 @@
     class="relative z-20 flex flex-col px-2 py-2 rounded-lg overflow-visible transition-[height] duration-200 ease-out"
     :class="[
       hasSelectedLine ? 'bg-neutral-100 dark:bg-neutral-800' : 'bg-white dark:bg-neutral-950',
-      hasSpectrogramSlot ? 'h-[13rem]' : 'h-[5rem]',
+      laneHeightClass,
     ]"
   >
     <!-- Empty state - no line selected -->
@@ -46,6 +46,15 @@
 
         <div class="flex items-center gap-2">
           <button
+            v-if="filePath"
+            class="button button-normal rounded-full h-6 w-6 flex items-center justify-center"
+            :title="spectrogramVisible ? 'Hide spectrogram' : 'Show spectrogram'"
+            @click="toggleSpectrogramVisible"
+          >
+            <Waveform v-if="spectrogramVisible" class="w-3.5 h-3.5" />
+            <EyeOff v-else class="w-3.5 h-3.5" />
+          </button>
+          <button
             class="button button-normal text-xs px-2 py-1 rounded flex items-center gap-1"
             :title="playLineTitle"
             @click="handlePlayLine"
@@ -73,7 +82,7 @@
       </div>
 
       <SpectrogramPanel
-        v-if="filePath"
+        v-if="filePath && spectrogramVisible"
         :file-path="filePath"
         :start-ms="laneStartMs"
         :end-ms="laneEndMs"
@@ -171,6 +180,9 @@ import { invoke } from '@tauri-apps/api/core'
 import Equal from '~icons/mdi/equal'
 import Play from '~icons/mdi/play'
 import Close from '~icons/mdi/close'
+import Waveform from '~icons/mdi/waveform'
+import EyeOff from '~icons/mdi/eye-off'
+import { useGlobalState } from '@/composables/global-state.js'
 import SpectrogramPanel from '@/components/library/edit-lyrics-v2/SpectrogramPanel.vue'
 import SyncedWordTimingSegment from '@/components/library/edit-lyrics-v2/SyncedWordTimingSegment.vue'
 import { useEditLyricsV2WordBoundaryDrag } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordBoundaryDrag.js'
@@ -212,6 +224,8 @@ const props = defineProps({
 
 const emit = defineEmits(['update:words', 'word-timing-edited', 'play-line', 'select-next-line'])
 
+const { spectrogramVisible, toggleSpectrogramVisible } = useGlobalState()
+
 const timelineElement = ref(null)
 const timelineWidth = ref(0)
 const laneStartMs = ref(0)
@@ -248,7 +262,18 @@ const isWordSyncAvailable = computed(() => {
   return hasLineContent.value && hasLineStartTime.value && hasLineEndTime.value
 })
 
-const hasSpectrogramSlot = computed(() => !!props.filePath && isWordSyncAvailable.value)
+const hasSpectrogramSlot = computed(
+  () => !!props.filePath && isWordSyncAvailable.value && spectrogramVisible.value
+)
+
+// Three-way lane height so collapsing the spectrogram doesn't squash the
+// word-timing timeline: tall with spectrogram, mid-tall in word-sync without
+// spectrogram (preserves timeline size), compact otherwise.
+const laneHeightClass = computed(() => {
+  if (hasSpectrogramSlot.value) return 'h-[13rem]'
+  if (isWordSyncAvailable.value) return 'h-[7rem]'
+  return 'h-[5rem]'
+})
 
 // Check if the line has actual saved words (not auto-generated)
 const hasActualWords = computed(() => {

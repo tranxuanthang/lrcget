@@ -40,7 +40,7 @@ Module-level ref composables (singletons by design):
 
 | Composable           | Purpose                                                                                                                                                                         |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `useGlobalState()`   | `isHotkey`, `themeMode`, `lrclibInstance`                                                                                                                                       |
+| `useGlobalState()`   | `isHotkey`, `themeMode`, `lrclibInstance`, `spectrogramVisible` (+ `toggleSpectrogramVisible` action that persists to config via `set_spectrogram_visible`)                       |
 | `usePlayer()`        | `playingTrack`, `status`, `duration`, `progress`, `volume`. Supports both library tracks (with `id`) and file-based tracks (with `file_path`). Listens to `player-state` events |
 | `useDownloader()`    | Download queue, progress. Loop started by App.vue at boot                                                                                                                       |
 | `useExporter()`      | Mass export queue, progress. Used by ExportViewer modal                                                                                                                         |

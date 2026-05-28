@@ -135,8 +135,7 @@ const computeSpectrogram = (samples, sampleRate) => {
 }
 
 // 5-stop inferno approximation (black → purple → red → orange → pale yellow).
-// Higher visual contrast in the mid-range than viridis, which matters for
-// speech detail. Cheap enough to recompute per pixel.
+// Cheap enough to recompute per pixel.
 const inferno = t => {
   const stops = [
     [0.0, 0, 0, 4],

@@ -104,6 +104,8 @@ trait ServiceAccess {
 - `artists_fts` — indexed `artist_name` (with `artist_id` as UNINDEXED key)
 - Backfilled from existing normalized `*_lower` columns.
 
+**Migration v17:** Added `spectrogram_visible` BOOLEAN column to `config_data` (default `1`) for persisting the V2 lyrics editor's per-line spectrogram show/hide toggle across app launches.
+
 **Indexes:** All `*_lower` columns + `content_hash`, `scan_status`, `modified_time+file_size` (fingerprint) + lyrics-presence indexes + LRCLIB composite index (`lrclib_instance`, `lrclib_id`)
 
 ### File Scanning (`scanner/`)
@@ -318,6 +320,7 @@ Search across all three entity types uses SQLite FTS5 (via `tracks_fts`, `albums
 - `play_track(track_id?, file_path?, title?, album_name?, artist_name?, album_artist_name?, duration?)` - Unified playback for both library tracks (via `track_id`) and file-based tracks (via `file_path` with metadata)
 - `pause/resume_track()`, `seek_track()`, `stop_track()`, `set_volume()` (persists volume to config), `set_playback_speed()`
 - `get_audio_slice(file_path, start_ms, end_ms)` - Returns `{samples: Vec<f32>, sampleRate: u32}` (camelCase). Decodes a mono-downmixed slice.
+- `set_spectrogram_visible(visible)`
 - `get/set_directories()`, `get/set_config()`, `get_init()`
 - Volume is loaded from config on startup and auto-saved when changed via `set_volume()`
 - `open_devtools()`, `drain_notifications()`

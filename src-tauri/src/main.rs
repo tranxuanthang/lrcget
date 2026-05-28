@@ -1447,6 +1447,14 @@ fn stop_track(app_state: tauri::State<AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn set_spectrogram_visible(visible: bool, app_handle: AppHandle) -> Result<(), String> {
+    app_handle
+        .db(|db| db::set_spectrogram_visible_config(visible, db))
+        .map_err(|err| err.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 fn set_volume(
     volume: f64,
     app_state: tauri::State<AppState>,
@@ -1617,6 +1625,7 @@ async fn main() {
             get_audio_slice,
             set_volume,
             set_playback_speed,
+            set_spectrogram_visible,
             open_devtools,
             drain_notifications,
             find_matching_tracks,
