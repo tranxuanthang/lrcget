@@ -76,7 +76,7 @@
           <label class="flex items-center gap-1 text-xs text-neutral-700 dark:text-neutral-300">
             <span>Speed</span>
             <select
-              class="rounded border border-neutral-300 bg-white px-1.5 py-0.5 text-xs text-neutral-800 dark:border-neutral-600 dark:bg-neutral-800 dark:text-neutral-100"
+              class="select select-xs"
               :value="String(playbackSpeed)"
               @change="handleSpeedChange"
             >
