@@ -129,6 +129,7 @@
         @import-lrc-file="handleImportLrcFile"
         @import-lyricsfile="handleImportLyricsfile"
         @paste-lrc="handlePasteLrc"
+        @clear-all-timings="handleClearAllTimings"
         @update:words="updateLineWords"
         @word-timing-edited="handleWordTimingEdited"
         @update-line-text="handleUpdateLineText"
@@ -425,6 +426,15 @@ const handlePasteLrc = async () => {
     console.error(error)
     toast.error(error?.toString?.() || 'Failed to paste LRC from clipboard')
   }
+}
+
+const handleClearAllTimings = () => {
+  if (syncedLines.value.length === 0) {
+    return
+  }
+
+  updateSyncedLines([])
+  toast.success('Cleared all timings')
 }
 
 const handleWordTimingEdited = async ({ startMs }) => {

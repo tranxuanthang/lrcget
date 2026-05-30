@@ -12,6 +12,9 @@
       @play-line="handlePlayLine"
       @play-line-at-offset="handlePlayLineAtOffset"
       @select-next-line="selectLine"
+      @import-lrc-file="emit('import-lrc-file')"
+      @import-lyricsfile="emit('import-lyricsfile')"
+      @clear-all-timings="emit('clear-all-timings')"
     />
 
     <div
@@ -187,6 +190,7 @@ const emit = defineEmits([
   'word-timing-edited',
   'update-line-text',
   'mark-as-instrumental',
+  'clear-all-timings',
 ])
 
 const hoveredLineIndex = ref(null)

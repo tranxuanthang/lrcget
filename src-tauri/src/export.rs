@@ -12,7 +12,7 @@ use lofty::id3::v2::{
 use lofty::mpeg::MpegFile;
 use lofty::TextEncoding;
 use serde::Serialize;
-use std::fs::{remove_file, write};
+use std::fs::write;
 use std::io::Seek;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -45,25 +45,6 @@ pub enum ExportFormat {
     Lyricsfile,
     /// Embedded in audio file metadata
     Embedded,
-}
-
-/// Sidecar formats that share a basename with the audio file. Embedded is not
-/// listed here because it does not produce a separate file. Used by
-/// `remove_other_sidecars` to enforce the "only one sidecar at a time" invariant
-/// from the export UI as a defense-in-depth at write time.
-const SIDECAR_EXTENSIONS: &[&str] = &["txt", "lrc", "yaml"];
-
-/// Remove any sidecar files (`.txt`, `.lrc`, `.yaml`) sharing the audio file's
-/// basename, except the one whose extension is being written next.
-fn remove_other_sidecars(track_path: &str, keep_ext: &str) {
-    for ext in SIDECAR_EXTENSIONS {
-        if *ext == keep_ext {
-            continue;
-        }
-        if let Ok(path) = build_sidecar_path(track_path, ext) {
-            let _ = remove_file(path);
-        }
-    }
 }
 
 /// Status of an export operation
@@ -156,9 +137,6 @@ fn export_txt(
 
     let txt_path = build_sidecar_path(&track.file_path, "txt")?;
 
-    // Remove conflicting sidecar files of the other formats (.lrc, .yaml).
-    remove_other_sidecars(&track.file_path, "txt");
-
     write(&txt_path, content).map_err(|e| ExportError::WriteError(e.to_string()))?;
 
     Ok(ExportResult {
@@ -187,9 +165,6 @@ fn export_lrc(
 
     let lrc_path = build_sidecar_path(&track.file_path, "lrc")?;
 
-    // Remove conflicting sidecar files of the other formats (.txt, .yaml).
-    remove_other_sidecars(&track.file_path, "lrc");
-
     write(&lrc_path, content).map_err(|e| ExportError::WriteError(e.to_string()))?;
 
     Ok(ExportResult {
@@ -200,9 +175,6 @@ fn export_lrc(
 }
 
 /// Export Lyricsfile YAML to a `.yaml` sidecar. The YAML is written verbatim
-/// (preserving any word-level timing or LRCLIB-provided metadata) and the
-/// sibling `.txt` / `.lrc` files are removed to keep a single sidecar variant
-/// on disk per track.
 fn export_lyricsfile(
     track: &PersistentTrack,
     raw_lyricsfile: &str,
@@ -217,9 +189,6 @@ fn export_lyricsfile(
     }
 
     let yaml_path = build_sidecar_path(&track.file_path, "yaml")?;
-
-    // Remove conflicting sidecar files of the other formats (.txt, .lrc).
-    remove_other_sidecars(&track.file_path, "yaml");
 
     write(&yaml_path, raw_lyricsfile).map_err(|e| ExportError::WriteError(e.to_string()))?;
 
