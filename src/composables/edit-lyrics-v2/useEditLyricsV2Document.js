@@ -9,6 +9,21 @@ import {
 
 const createEmptySyncedLine = () => normalizeSyncedLine({})
 
+// Coupled update: the first word's start_ms is conceptually the same point
+// as the line's start_ms, so nudging line start should drag the first word
+// with it. Other words are independent and stay put.
+const setLineStartMs = (line, newStartMs) => {
+  const firstWord = line.words?.[0]
+  if (firstWord && Number.isFinite(firstWord.start_ms)) {
+    return {
+      ...line,
+      start_ms: newStartMs,
+      words: [{ ...firstWord, start_ms: newStartMs }, ...line.words.slice(1)],
+    }
+  }
+  return { ...line, start_ms: newStartMs }
+}
+
 // Stable-sort the lines by start_ms. The editor maintains a sorted-by-start_ms
 // invariant; this is the helper called after any mutation that can move a line
 // past its neighbors. Lines with missing/non-finite start_ms sink to the end.
@@ -297,26 +312,12 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     }))
   }
 
-  const shiftWordBoundariesByOffset = (words, offsetMs) => {
-    if (!Array.isArray(words) || words.length === 0 || !Number.isFinite(offsetMs) || offsetMs === 0) {
-      return words
-    }
-
-    return words.map(word => ({
-      ...word,
-      start_ms: Math.max(0, Math.round((word?.start_ms ?? 0) + offsetMs)),
-    }))
-  }
-
   const syncLineToCurrentProgress = lineIndex => {
     if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
       return
     }
 
-    const currentLine = syncedLines.value[lineIndex]
-    const previousStartMs = Number.isFinite(currentLine?.start_ms) ? currentLine.start_ms : null
     const newStartMs = Math.max(0, Math.round(progress.value * 1000))
-    const lineStartOffsetMs = previousStartMs == null ? 0 : newStartMs - previousStartMs
 
     const prevLineIndex = lineIndex - 1
     const shouldSetPrevEndMs =
@@ -324,18 +325,10 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
 
     // Touch the previous neighbor's end_ms (if needed) BEFORE re-sorting so we
     // close off the cue the user was sitting on, not whichever line happens
-    // to land before the moved one after sort. Inside the mutation, shift the
-    // current line's word boundaries by the same offset (upstream behavior)
-    // so word timings track the line shift.
+    // to land before the moved one after sort.
     applyLineMutation(lines =>
       lines.map((line, index) => {
-        if (index === lineIndex) {
-          return {
-            ...line,
-            start_ms: newStartMs,
-            words: shiftWordBoundariesByOffset(line.words, lineStartOffsetMs),
-          }
-        }
+        if (index === lineIndex) return setLineStartMs(line, newStartMs)
         if (index === prevLineIndex && shouldSetPrevEndMs) return { ...line, end_ms: newStartMs }
         return line
       })
@@ -353,7 +346,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
 
     applyLineMutation(lines =>
       lines.map((line, index) =>
-        index === lineIndex ? { ...line, start_ms: newStartMs } : line
+        index === lineIndex ? setLineStartMs(line, newStartMs) : line
       )
     )
   }
