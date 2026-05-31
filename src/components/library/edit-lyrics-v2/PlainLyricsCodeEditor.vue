@@ -30,21 +30,21 @@
       <div class="toolbar px-2 py-1 flex items-stretch gap-1">
         <button
           class="button button-normal px-1.5 py-0.5 text-sm rounded-full"
-          title="Zoom out"
+          :title="zoomOutTitle"
           @click="emit('change-font-size', -1)"
         >
           <MagnifyMinus />
         </button>
         <button
           class="button button-normal px-1.5 py-0.5 text-sm rounded-full w-[4.5em]"
-          title="Reset zoom level"
+          :title="zoomResetTitle"
           @click="emit('reset-font-size')"
         >
           {{ (fontSize * 100).toFixed(0) }}%
         </button>
         <button
           class="button button-normal px-1.5 py-0.5 text-sm rounded-full"
-          title="Zoom in"
+          :title="zoomInTitle"
           @click="emit('change-font-size', 1)"
         >
           <MagnifyPlus />
@@ -68,6 +68,10 @@ import PlainLyricsEmptyState from '@/components/library/edit-lyrics-v2/PlainLyri
 import Loading from '~icons/mdi/loading'
 import MagnifyPlus from '~icons/mdi/magnify-plus'
 import MagnifyMinus from '~icons/mdi/magnify-minus'
+import {
+  plainEditorShortcutBindings,
+  withShortcutTitle,
+} from '@/composables/edit-lyrics-v2/shortcutRegistry.js'
 const AsyncCodemirror = defineAsyncComponent(async () => {
   const { Codemirror } = await import('vue-codemirror')
   return Codemirror
@@ -105,6 +109,10 @@ const lyricsProxy = computed({
   get: () => props.modelValue,
   set: value => emit('update:modelValue', value),
 })
+
+const zoomOutTitle = withShortcutTitle('Zoom out', plainEditorShortcutBindings, 'zoomOut')
+const zoomResetTitle = withShortcutTitle('Reset zoom level', plainEditorShortcutBindings, 'zoomReset')
+const zoomInTitle = withShortcutTitle('Zoom in', plainEditorShortcutBindings, 'zoomIn')
 
 const handleResize = () => {
   if (!cmContainer.value) {

@@ -7,12 +7,14 @@ const status = ref('stopped')
 const duration = ref(null)
 const progress = ref(null)
 const volume = ref(1.0)
+const playbackSpeed = ref(1.0)
 
 listen('player-state', async event => {
   duration.value = event.payload.duration
   progress.value = event.payload.progress
   status.value = event.payload.status
   volume.value = event.payload.volume
+  playbackSpeed.value = event.payload.playback_speed ?? 1.0
 })
 
 listen('reload-track-id', async event => {
@@ -92,17 +94,23 @@ export function usePlayer() {
     invoke('set_volume', { volume })
   }
 
+  const setPlaybackSpeed = playbackSpeedValue => {
+    invoke('set_playback_speed', { playbackSpeed: playbackSpeedValue })
+  }
+
   return {
     playingTrack,
     status,
     duration,
     progress,
     volume,
+    playbackSpeed,
     playTrack,
     pause,
     resume,
     stop,
     seek,
     setVolume,
+    setPlaybackSpeed,
   }
 }

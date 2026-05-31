@@ -106,6 +106,29 @@ body {
   @apply dark:bg-neutral-800;
 }
 
+.select {
+  @apply box-border border border-neutral-300 rounded transition outline-none text-neutral-900 bg-white px-2 py-1 pr-6 text-sm
+  dark:border-neutral-600 dark:text-neutral-100 dark:bg-neutral-800;
+  -webkit-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%23525252' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.4rem center;
+  background-size: 0.9rem;
+}
+
+.dark .select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20' fill='none'%3E%3Cpath d='M6 8l4 4 4-4' stroke='%23d4d4d4' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.select option {
+  @apply text-neutral-900 bg-white dark:text-neutral-100 dark:bg-neutral-800;
+}
+
+.select-xs {
+  @apply text-xs px-1.5 pr-6 py-0.5;
+}
+
 .textarea {
   @apply bg-white box-border border border-neutral-300 focus:border-hoa-1100 outline-none
   text-sm rounded-lg transition text-neutral-900 placeholder:text-neutral-400 resize-none

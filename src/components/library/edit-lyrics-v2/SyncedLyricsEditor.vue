@@ -1,7 +1,7 @@
 <template>
   <div class="grow overflow-hidden flex flex-col relative">
     <SyncedWordTimingLane
-      class="shrink-0 mt-2"
+      class="relative z-20 shrink-0 mt-2"
       :selected-line="selectedLine"
       :has-selected-line="hasSelectedLine"
       :progress-ms="progressMs"
@@ -10,12 +10,13 @@
       @update:words="handleWordsUpdate"
       @word-timing-edited="handleWordTimingEdited"
       @play-line="handlePlayLine"
+      @play-line-at-offset="handlePlayLineAtOffset"
       @select-next-line="selectLine"
     />
 
     <div
       ref="linesListElement"
-      class="flex-1 overflow-y-auto py-4 relative outline-none"
+      class="flex-1 overflow-y-auto py-4 relative z-0 outline-none"
       tabindex="0"
       @mousemove="handleMouseMove"
       @mouseleave="handleLinesMouseLeave"
@@ -37,6 +38,7 @@
             :index="index"
             :row-class="rowClass(index)"
             :is-line-controls-visible="isLineControlsVisible(index)"
+            :end-timestamp-diff-direction="getEndTimestampDiffDirection(index)"
             :is-editing="editingLineIndex === index"
             :editing-text="editingText"
             :timestamp-text="formatTimestampMs(line.start_ms)"
@@ -163,6 +165,7 @@ const emit = defineEmits([
   'update:selected-line-index',
   'update:selected-line-indices',
   'play-line',
+  'play-line-at-offset',
   'sync-line',
   'rewind-line',
   'forward-line',
@@ -353,6 +356,17 @@ const selectLine = index => {
 const isLineControlsVisible = index =>
   hoveredLineIndex.value === index || props.selectedLineIndex === index || isLineRowSelected(index)
 
+const getEndTimestampDiffDirection = index => {
+  const lineEndMs = props.modelValue[index]?.end_ms
+  const nextLineStartMs = props.modelValue[index + 1]?.start_ms
+
+  if (!Number.isFinite(lineEndMs) || !Number.isFinite(nextLineStartMs) || lineEndMs === nextLineStartMs) {
+    return null
+  }
+
+  return lineEndMs < nextLineStartMs ? 'before' : 'after'
+}
+
 const emitLineAction = (eventName, index, selectBefore = true) => {
   if (selectBefore) {
     selectLine(index)
@@ -362,7 +376,11 @@ const emitLineAction = (eventName, index, selectBefore = true) => {
 }
 
 const handlePlayLine = index => {
-  emitLineAction('play-line', index)
+  emitLineAction('play-line', index, false)
+}
+
+const handlePlayLineAtOffset = payload => {
+  emit('play-line-at-offset', payload)
 }
 
 const handleSyncLine = index => {

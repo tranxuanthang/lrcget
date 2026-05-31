@@ -65,9 +65,11 @@
           :status="status"
           :duration="duration"
           :progress="progress"
+          :playback-speed="playbackSpeed"
           @play-toggle="resumeOrPlay"
           @pause="pause"
           @seek="seek"
+          @set-playback-speed="setPlaybackSpeed"
         />
       </div>
 
@@ -111,6 +113,7 @@
         @update:selected-line-indices="handleUpdateSelectedLineIndices"
         @editing-state-change="setSyncedLineEditingState"
         @play-line="playLine"
+        @play-line-at-offset="handlePlayLineAtOffset"
         @sync-line="syncLineToCurrentProgress"
         @rewind-line="rewindLineBy100"
         @forward-line="forwardLineBy100"
@@ -188,7 +191,18 @@ const props = defineProps({
 const emit = defineEmits(['close'])
 
 const { disableHotkey, enableHotkey } = useGlobalState()
-const { status, duration, progress, playingTrack, playTrack, pause, resume, seek } = usePlayer()
+const {
+  status,
+  duration,
+  progress,
+  playbackSpeed,
+  playingTrack,
+  playTrack,
+  pause,
+  resume,
+  seek,
+  setPlaybackSpeed,
+} = usePlayer()
 const toast = useToast()
 
 // Convert props to refs for composables
@@ -261,7 +275,7 @@ const { exportLyrics, isExporting } = useEditLyricsV2Export({
   toast,
 })
 
-const { playLine, resumeOrPlay } = useEditLyricsV2Playback({
+const { playLine, playLineAtOffset, resumeOrPlay } = useEditLyricsV2Playback({
   audioSource: audioSourceRef,
   syncedLines,
   progress,
@@ -271,6 +285,10 @@ const { playLine, resumeOrPlay } = useEditLyricsV2Playback({
   resume,
   seek,
 })
+
+const handlePlayLineAtOffset = ({ lineIndex, offsetMs }) => {
+  return playLineAtOffset(lineIndex, offsetMs)
+}
 
 const rewindLineBy100 = lineIndex => {
   rewindLineTimestampBy100(lineIndex)
@@ -412,11 +430,17 @@ const { bindSyncedHotkeys, unbindSyncedHotkeys } = useEditLyricsV2SyncedHotkeys(
   selectedSyncedLineIndex,
   selectedSyncedLineIndices,
   syncedLines,
+  progressMs,
   selectSyncedLine,
   clearSyncedLineSelection,
   syncLineToCurrentProgress,
+  syncEndToCurrentProgress,
+  deleteSyncedLine,
   rewindLineBy100: rewindLineTimestampBy100,
   forwardLineBy100: forwardLineTimestampBy100,
+  rewindEndBy100,
+  forwardEndBy100,
+  playLineAtOffset,
   playLine,
 })
 
@@ -491,6 +515,7 @@ const { bindHotkeys, unbindHotkeys } = useEditLyricsV2Hotkeys({
   saveLyrics,
   changeFontSizeBy: changeCodemirrorFontSizeBy,
   resetFontSize: resetCodemirrorFontSize,
+  openShortcutsModal,
 })
 
 onMounted(() => {

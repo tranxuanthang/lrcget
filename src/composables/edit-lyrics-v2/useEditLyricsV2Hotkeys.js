@@ -1,16 +1,48 @@
-export function useEditLyricsV2Hotkeys({ activeTab, saveLyrics, changeFontSizeBy, resetFontSize }) {
-  const isCtrlPressed = event => event.ctrlKey || event.metaKey
+import {
+  globalShortcutBindings,
+  plainEditorShortcutBindings,
+} from '@/composables/edit-lyrics-v2/shortcutRegistry.js'
+
+export function useEditLyricsV2Hotkeys({
+  activeTab,
+  saveLyrics,
+  changeFontSizeBy,
+  resetFontSize,
+  openShortcutsModal,
+}) {
+  const runGlobalAction = actionId => {
+    switch (actionId) {
+      case 'openShortcutModal':
+        openShortcutsModal()
+        return
+      case 'saveLyrics':
+        saveLyrics()
+        return
+    }
+  }
+
+  const runPlainAction = actionId => {
+    switch (actionId) {
+      case 'zoomIn':
+        changeFontSizeBy(1)
+        return
+      case 'zoomOut':
+        changeFontSizeBy(-1)
+        return
+      case 'zoomReset':
+        resetFontSize()
+        return
+    }
+  }
 
   const handleKeyboardShortcuts = event => {
-    if (!isCtrlPressed(event)) {
-      return
-    }
+    for (const binding of globalShortcutBindings) {
+      if (!binding.matches(event)) {
+        continue
+      }
 
-    const key = event.key.toLowerCase()
-
-    if (key === 's') {
       event.preventDefault()
-      saveLyrics()
+      runGlobalAction(binding.id)
       return
     }
 
@@ -18,21 +50,14 @@ export function useEditLyricsV2Hotkeys({ activeTab, saveLyrics, changeFontSizeBy
       return
     }
 
-    if (key === '+' || key === '=') {
-      event.preventDefault()
-      changeFontSizeBy(1)
-      return
-    }
+    for (const binding of plainEditorShortcutBindings) {
+      if (!binding.matches(event)) {
+        continue
+      }
 
-    if (key === '-' || key === '_') {
       event.preventDefault()
-      changeFontSizeBy(-1)
+      runPlainAction(binding.id)
       return
-    }
-
-    if (key === '0') {
-      event.preventDefault()
-      resetFontSize()
     }
   }
 

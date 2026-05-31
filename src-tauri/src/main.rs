@@ -14,6 +14,7 @@ pub mod player;
 pub mod scanner;
 pub mod state;
 pub mod utils;
+pub mod word_segmentation;
 
 use persistent_entities::{PersistentAlbum, PersistentArtist, PersistentConfig, PersistentTrack, PlayableTrack};
 use player::Player;
@@ -1441,6 +1442,17 @@ fn set_volume(
 }
 
 #[tauri::command]
+fn set_playback_speed(playback_speed: f64, app_state: tauri::State<AppState>) -> Result<(), String> {
+    let mut player_guard = app_state.player.lock().map_err(|e| e.to_string())?;
+
+    if let Some(ref mut player) = *player_guard {
+        player.set_playback_speed(playback_speed);
+    }
+
+    Ok(())
+}
+
+#[tauri::command]
 fn open_devtools(app_handle: AppHandle) {
     app_handle
         .get_webview_window("main")
@@ -1459,6 +1471,11 @@ fn drain_notifications(app_state: tauri::State<AppState>) -> Vec<Notify> {
 async fn read_text_file(file_path: String) -> Result<String, String> {
     std::fs::read_to_string(&file_path)
         .map_err(|err| format!("Failed to read file: {}", err))
+}
+
+#[tauri::command]
+async fn segment_words(text: String) -> Result<Vec<String>, String> {
+    Ok(word_segmentation::segment_words_for_timing(text.as_str()))
 }
 
 #[tokio::main]
@@ -1572,6 +1589,7 @@ async fn main() {
             seek_track,
             stop_track,
             set_volume,
+            set_playback_speed,
             open_devtools,
             drain_notifications,
             find_matching_tracks,
@@ -1580,6 +1598,7 @@ async fn main() {
             prepare_lrclib_lyricsfile,
             refresh_lrclib_lyricsfile,
             read_text_file,
+            segment_words,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
