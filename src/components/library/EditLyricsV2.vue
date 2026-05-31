@@ -134,6 +134,7 @@
         @word-timing-edited="handleWordTimingEdited"
         @update-line-text="handleUpdateLineText"
         @mark-as-instrumental="setInstrumental(true)"
+        @seek="seek"
       />
 
     </div>

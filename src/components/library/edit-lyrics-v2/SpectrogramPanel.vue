@@ -1,7 +1,9 @@
 <template>
   <div
-    class="relative w-full overflow-hidden rounded border border-neutral-300 dark:border-neutral-600 bg-black"
+    ref="containerEl"
+    class="relative w-full overflow-hidden rounded border border-neutral-300 dark:border-neutral-600 bg-black cursor-pointer"
     :style="{ height: `${height}px` }"
+    @click="handleSeekClick"
   >
     <canvas ref="canvasEl" class="absolute inset-0 w-full h-full block" />
 
@@ -33,8 +35,23 @@ const props = defineProps({
 })
 
 const canvasEl = ref(null)
+const containerEl = ref(null)
 const isLoading = ref(false)
 const errorMessage = ref(null)
+
+const emit = defineEmits(['seek'])
+
+const handleSeekClick = event => {
+  if (errorMessage.value) return
+  if (!isValidRange.value) return
+  const target = containerEl.value
+  if (!(target instanceof HTMLElement)) return
+  const rect = target.getBoundingClientRect()
+  if (rect.width <= 0) return
+  const fraction = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width))
+  const timeMs = props.startMs + fraction * (props.endMs - props.startMs)
+  emit('seek', timeMs / 1000)
+}
 
 const cacheKey = computed(() =>
   props.filePath ? `${props.filePath}|${props.startMs}|${props.endMs}` : null

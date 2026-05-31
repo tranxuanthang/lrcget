@@ -81,18 +81,20 @@
         </div>
       </div>
 
+      <div class="relative flex flex-col flex-1 min-h-0">
       <SpectrogramPanel
         v-if="filePath && spectrogramVisible"
         :file-path="filePath"
         :start-ms="laneStartMs"
         :end-ms="laneEndMs"
         class="mb-2 shrink-0"
+        @seek="$emit('seek', $event)"
       />
 
       <!-- Timeline with word segments -->
       <div
         ref="timelineElement"
-        class="relative flex-1 bg-white dark:bg-neutral-900 rounded border border-neutral-300 dark:border-neutral-600 transition-opacity duration-200"
+        class="relative flex-1 bg-white dark:bg-neutral-900 rounded border border-neutral-300 dark:border-neutral-600 transition-opacity duration-200 cursor-pointer"
         :class="{ 'opacity-50': !hasActualWords }"
         @click="handleTimelineClick"
       >
@@ -136,7 +138,7 @@
           :style="{ left: `${timeToPercent(displayedWords[index].start_ms)}%` }"
           :title="`Adjust start of ${displayedWords[index].text}`"
           @pointerdown="handleBoundaryPointerDown(index, $event)"
-          @click="selectBoundary(index, $event)"
+          @click.stop="selectBoundary(index, $event)"
         >
           <span
             class="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2 transition-all duration-150 ease-linear bg-neutral-300/70 dark:bg-hoa-1000/70 group-hover:bg-neutral-600 dark:group-hover:bg-neutral-300 group-hover:w-[3px] group-hover:ring-1 group-hover:ring-neutral-500/25"
@@ -159,16 +161,20 @@
           </div>
         </div>
 
-        <!-- Current playhead indicator -->
+      </div>
+
+      <!-- Playhead is a sibling of the spectrogram + timeline so its top
+           sits just above the spectrogram (when visible) instead of just
+           above the timeline. -->
+      <div
+        v-if="progressMs >= lineStartMs && progressMs <= laneEndMs"
+        class="absolute -top-1 bottom-0 w-px bg-neutral-400 dark:bg-neutral-400 z-20 pointer-events-none"
+        :style="{ left: `${playheadPercent}%` }"
+      >
         <div
-          v-if="progressMs >= lineStartMs && progressMs <= laneEndMs"
-          class="absolute -top-1 bottom-0 w-px bg-neutral-400 dark:bg-neutral-400 z-20 pointer-events-none"
-          :style="{ left: `${playheadPercent}%` }"
-        >
-          <div
-            class="absolute -top-1 -left-[3px] w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-neutral-400 dark:border-t-neutral-400"
-          />
-        </div>
+          class="absolute -top-1 -left-[3px] w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-neutral-400 dark:border-t-neutral-400"
+        />
+      </div>
       </div>
     </template>
   </div>
@@ -222,7 +228,7 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:words', 'word-timing-edited', 'play-line', 'select-next-line'])
+const emit = defineEmits(['update:words', 'word-timing-edited', 'play-line', 'select-next-line', 'seek'])
 
 const { spectrogramVisible, toggleSpectrogramVisible } = useGlobalState()
 
@@ -634,6 +640,12 @@ const handleResetWords = async () => {
 
 const handleTimelineClick = event => {
   event.stopPropagation()
+  if (laneEndMs.value <= laneStartMs.value) return
+  const rect = timelineElement.value?.getBoundingClientRect()
+  if (!rect || rect.width <= 0) return
+  const fraction = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width))
+  const timeMs = laneStartMs.value + fraction * (laneEndMs.value - laneStartMs.value)
+  emit('seek', timeMs / 1000)
 }
 
 watch(

@@ -13,6 +13,7 @@
       @play-line="handlePlayLine"
       @play-line-at-offset="handlePlayLineAtOffset"
       @select-next-line="selectLine"
+      @seek="$emit('seek', $event)"
     />
 
     <div
@@ -193,6 +194,7 @@ const emit = defineEmits([
   'word-timing-edited',
   'update-line-text',
   'mark-as-instrumental',
+  'seek',
 ])
 
 // Effective end of a line for overlap detection: prefer the line's own end_ms,
