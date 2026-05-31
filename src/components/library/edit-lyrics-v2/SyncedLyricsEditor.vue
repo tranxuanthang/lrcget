@@ -32,7 +32,7 @@
           @click="handleInsertButtonClick(0, $event)"
         />
 
-        <div v-for="(line, index) in modelValue" :key="index">
+        <div v-for="(line, index) in modelValue" :key="line.id">
           <SyncedLyricsLineRow
             :ref="component => setLineRowRef(component, index)"
             :line="line"
@@ -205,29 +205,31 @@ const getLineEffectiveEndMs = (line, index) => {
   return null
 }
 
-// Indexes of lines whose time range overlaps the selected line's effective
-// range. Used to apply a dimmer highlight so the user notices the conflict.
-const selectedLineOverlapIndexes = computed(() => {
+// Indexes of every line that's part of an overlapping pair anywhere in the
+// song. Relies on the invariant that lines are sorted by start_ms. 
+// For each new line, if the maximum effective end seen so far reaches past 
+// this line's start, both participate in an overlap. 
+const overlappingLineIndexes = computed(() => {
   const overlaps = new Set()
-  if (!hasSelectedLine.value) return overlaps
+  const lines = props.modelValue
+  let maxEnd = -Infinity
+  let maxEndIndex = -1
 
-  const selected = props.modelValue[props.selectedLineIndex]
-  if (!Number.isFinite(selected?.start_ms)) return overlaps
+  for (let i = 0; i < lines.length; i++) {
+    if (!Number.isFinite(lines[i]?.start_ms)) continue
+    const endI = getLineEffectiveEndMs(lines[i], i)
+    if (!Number.isFinite(endI)) continue
 
-  const selectedEnd = getLineEffectiveEndMs(selected, props.selectedLineIndex)
-  if (!Number.isFinite(selectedEnd)) return overlaps
-
-  props.modelValue.forEach((line, index) => {
-    if (index === props.selectedLineIndex) return
-    if (!Number.isFinite(line?.start_ms)) return
-    const lineEnd = getLineEffectiveEndMs(line, index)
-    if (!Number.isFinite(lineEnd)) return
-
-    // Ranges [a, b) and [c, d) overlap iff a < d && c < b.
-    if (line.start_ms < selectedEnd && selected.start_ms < lineEnd) {
-      overlaps.add(index)
+    if (maxEnd > lines[i].start_ms) {
+      overlaps.add(maxEndIndex)
+      overlaps.add(i)
     }
-  })
+
+    if (endI > maxEnd) {
+      maxEnd = endI
+      maxEndIndex = i
+    }
+  }
 
   return overlaps
 })
@@ -392,9 +394,9 @@ const rowClass = index => {
     return 'bg-neutral-50 dark:bg-neutral-800/50'
   }
 
-  // Dim warning color for lines whose time range overlaps the selected line.
-  // Less saturated than selected/hover so it doesn't compete for attention.
-  if (selectedLineOverlapIndexes.value.has(index)) {
+  // Dim warning color for every line that's part of an overlapping pair, so
+  // overlap clusters in the song are visible at a glance.
+  if (overlappingLineIndexes.value.has(index)) {
     return 'bg-amber-50 dark:bg-amber-900/20'
   }
 
