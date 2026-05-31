@@ -436,7 +436,10 @@ const emitLineAction = (eventName, index, selectBefore = true) => {
 }
 
 const handlePlayLine = index => {
-  emitLineAction('play-line', index, false)
+  // Skip auto-select when a bulk selection is active so previewing a line
+  // doesn't collapse the user's multi-select into a single-line focus.
+  // Without bulk, the previous behavior (select-then-play) stands.
+  emitLineAction('play-line', index, props.selectedLineIndices.length === 0)
 }
 
 const handlePlayLineAtOffset = payload => {
