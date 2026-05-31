@@ -130,13 +130,43 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
       return
     }
 
+    // Auto-fill timestamps from sandwich neighbors so a fresh line drops in
+    // pre-timed. Insert at index N pushes the previous value at N to N+1, so
+    // the neighbor on the "next" side is currently at N.
+    const newLine = createEmptySyncedLine()
+    const prevLine = lineIndex > 0 ? syncedLines.value[lineIndex - 1] : null
+    const nextLine = lineIndex < syncedLines.value.length ? syncedLines.value[lineIndex] : null
+
+    if (prevLine && Number.isFinite(prevLine.end_ms)) {
+      newLine.start_ms = prevLine.end_ms
+    }
+    if (nextLine && Number.isFinite(nextLine.start_ms)) {
+      newLine.end_ms = nextLine.start_ms
+    }
+
     const nextLines = [...syncedLines.value]
-    nextLines.splice(lineIndex, 0, createEmptySyncedLine())
+    nextLines.splice(lineIndex, 0, newLine)
 
     syncedLines.value = nextLines
     selectedSyncedLineIndex.value = lineIndex
     clearSyncedLineSelection()
     isDirty.value = true
+  }
+
+  const syncEndToNextLineStart = lineIndex => {
+    if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+      return
+    }
+
+    const nextLine = syncedLines.value[lineIndex + 1]
+    if (!nextLine || !Number.isFinite(nextLine.start_ms)) {
+      return
+    }
+
+    withUpdatedLine(lineIndex, line => ({
+      ...line,
+      end_ms: nextLine.start_ms,
+    }))
   }
 
   const deleteSyncedLine = lineIndex => {
@@ -491,6 +521,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     syncEndToCurrentProgress,
     rewindEndBy100,
     forwardEndBy100,
+    syncEndToNextLineStart,
     saveLyrics,
     ensureSelectedSyncedLine,
     updateLineText,

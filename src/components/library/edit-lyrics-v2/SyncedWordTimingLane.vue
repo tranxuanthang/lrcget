@@ -1,7 +1,10 @@
 <template>
   <div
-    class="relative z-20 flex flex-col px-2 py-2 rounded-lg overflow-visible h-[5rem] transition-[min-height] duration-200 ease-out"
-    :class="hasSelectedLine ? 'bg-neutral-100 dark:bg-neutral-800' : 'bg-white dark:bg-neutral-950'"
+    class="relative z-20 flex flex-col px-2 py-2 rounded-lg overflow-visible transition-[height] duration-200 ease-out"
+    :class="[
+      hasSelectedLine ? 'bg-neutral-100 dark:bg-neutral-800' : 'bg-white dark:bg-neutral-950',
+      hasSpectrogramSlot ? 'h-[13rem]' : 'h-[5rem]',
+    ]"
   >
     <!-- Empty state - no line selected -->
     <div v-if="!hasSelectedLine" class="flex items-center justify-center h-full">
@@ -68,6 +71,14 @@
           </button>
         </div>
       </div>
+
+      <SpectrogramPanel
+        v-if="filePath"
+        :file-path="filePath"
+        :start-ms="laneStartMs"
+        :end-ms="laneEndMs"
+        class="mb-2 shrink-0"
+      />
 
       <!-- Timeline with word segments -->
       <div
@@ -160,6 +171,7 @@ import { invoke } from '@tauri-apps/api/core'
 import Equal from '~icons/mdi/equal'
 import Play from '~icons/mdi/play'
 import Close from '~icons/mdi/close'
+import SpectrogramPanel from '@/components/library/edit-lyrics-v2/SpectrogramPanel.vue'
 import SyncedWordTimingSegment from '@/components/library/edit-lyrics-v2/SyncedWordTimingSegment.vue'
 import { useEditLyricsV2WordBoundaryDrag } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordBoundaryDrag.js'
 import { useEditLyricsV2WordTimingHotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordTimingHotkeys.js'
@@ -191,6 +203,10 @@ const props = defineProps({
   selectedLineIndex: {
     type: Number,
     default: -1,
+  },
+  filePath: {
+    type: String,
+    default: null,
   },
 })
 
@@ -231,6 +247,8 @@ const hasLineEndTime = computed(() => {
 const isWordSyncAvailable = computed(() => {
   return hasLineContent.value && hasLineStartTime.value && hasLineEndTime.value
 })
+
+const hasSpectrogramSlot = computed(() => !!props.filePath && isWordSyncAvailable.value)
 
 // Check if the line has actual saved words (not auto-generated)
 const hasActualWords = computed(() => {
@@ -549,21 +567,22 @@ const { bindWordTimingHotkeys, unbindWordTimingHotkeys } = useEditLyricsV2WordTi
   deleteSelectedBoundaries: () => handleDeleteSelectedBoundaries(),
 })
 
+// Watch the selected line's identity AND its timestamps so that the lane window refreshes on deletions and changes.
 watch(
-  () => props.selectedLineIndex,
-  (newIndex, oldIndex) => {
+  [
+    () => props.selectedLineIndex,
+    () => props.selectedLine?.start_ms,
+    () => props.selectedLine?.end_ms,
+  ],
+  ([newIndex], [oldIndex] = []) => {
     cancelBoundaryInteraction()
-    // Only reset boundary index when actually changing to a different line
+    // Only reset boundary index when actually moving to a different line.
     if (newIndex !== oldIndex) {
       resetBoundarySelection()
-      syncLaneWindowToSelection()
-    } else if (!props.hasSelectedLine) {
-      syncLaneWindowToSelection()
     }
-
+    syncLaneWindowToSelection()
     segmentedTokenTexts.value = null
     void loadDefaultSegmentation()
-
     nextTick(() => {
       updateTimelineWidth()
     })

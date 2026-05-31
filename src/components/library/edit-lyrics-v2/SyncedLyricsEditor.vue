@@ -7,6 +7,7 @@
       :progress-ms="progressMs"
       :all-lines="modelValue"
       :selected-line-index="selectedLineIndex"
+      :file-path="filePath"
       @update:words="handleWordsUpdate"
       @word-timing-edited="handleWordTimingEdited"
       @play-line="handlePlayLine"
@@ -45,6 +46,7 @@
             :end-timestamp-text="formatTimestampMs(line.end_ms)"
             :set-line-input-ref="setLineInputRef"
             :progress-ms="progressMs"
+            :next-line-start-ms="nextLineStartMs(index)"
             @mouseenter="hoveredLineIndex = index"
             @mouseleave="hoveredLineIndex = null"
             @select="selectLine"
@@ -54,6 +56,7 @@
             @rewind-line="handleRewindLine"
             @forward-line="handleForwardLine"
             @sync-end="handleSyncEnd"
+            @sync-end-to-next="handleSyncEndToNext"
             @rewind-end="handleRewindEnd"
             @forward-end="handleForwardEnd"
             @delete-line="handleDeleteLine"
@@ -158,6 +161,10 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  filePath: {
+    type: String,
+    default: null,
+  },
 })
 
 const emit = defineEmits([
@@ -170,6 +177,7 @@ const emit = defineEmits([
   'rewind-line',
   'forward-line',
   'sync-end',
+  'sync-end-to-next',
   'rewind-end',
   'forward-end',
   'delete-line',
@@ -186,6 +194,48 @@ const emit = defineEmits([
   'update-line-text',
   'mark-as-instrumental',
 ])
+
+// Effective end of a line for overlap detection: prefer the line's own end_ms,
+// otherwise fall back to the next line's start_ms. Returns null if neither
+// is available — such a line can't overlap-detect cleanly so it's skipped.
+const getLineEffectiveEndMs = (line, index) => {
+  if (Number.isFinite(line?.end_ms)) return line.end_ms
+  const nextLine = props.modelValue[index + 1]
+  if (nextLine && Number.isFinite(nextLine.start_ms)) return nextLine.start_ms
+  return null
+}
+
+// Indexes of lines whose time range overlaps the selected line's effective
+// range. Used to apply a dimmer highlight so the user notices the conflict.
+const selectedLineOverlapIndexes = computed(() => {
+  const overlaps = new Set()
+  if (!hasSelectedLine.value) return overlaps
+
+  const selected = props.modelValue[props.selectedLineIndex]
+  if (!Number.isFinite(selected?.start_ms)) return overlaps
+
+  const selectedEnd = getLineEffectiveEndMs(selected, props.selectedLineIndex)
+  if (!Number.isFinite(selectedEnd)) return overlaps
+
+  props.modelValue.forEach((line, index) => {
+    if (index === props.selectedLineIndex) return
+    if (!Number.isFinite(line?.start_ms)) return
+    const lineEnd = getLineEffectiveEndMs(line, index)
+    if (!Number.isFinite(lineEnd)) return
+
+    // Ranges [a, b) and [c, d) overlap iff a < d && c < b.
+    if (line.start_ms < selectedEnd && selected.start_ms < lineEnd) {
+      overlaps.add(index)
+    }
+  })
+
+  return overlaps
+})
+
+const nextLineStartMs = index => {
+  const next = props.modelValue[index + 1]
+  return next && Number.isFinite(next.start_ms) ? next.start_ms : null
+}
 
 const hoveredLineIndex = ref(null)
 const linesListElement = ref(null)
@@ -342,6 +392,12 @@ const rowClass = index => {
     return 'bg-neutral-50 dark:bg-neutral-800/50'
   }
 
+  // Dim warning color for lines whose time range overlaps the selected line.
+  // Less saturated than selected/hover so it doesn't compete for attention.
+  if (selectedLineOverlapIndexes.value.has(index)) {
+    return 'bg-amber-50 dark:bg-amber-900/20'
+  }
+
   return 'bg-transparent'
 }
 
@@ -397,6 +453,10 @@ const handleForwardLine = index => {
 
 const handleSyncEnd = index => {
   emitLineAction('sync-end', index)
+}
+
+const handleSyncEndToNext = index => {
+  emitLineAction('sync-end-to-next', index)
 }
 
 const handleRewindEnd = index => {

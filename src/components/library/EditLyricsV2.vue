@@ -108,6 +108,7 @@
         :selected-line-index="selectedSyncedLineIndex"
         :selected-line-indices="selectedSyncedLineIndices"
         :progress-ms="progressMs"
+        :file-path="audioSource?.file_path ?? null"
         @update:model-value="updateSyncedLines"
         @update:selected-line-index="selectSyncedLine"
         @update:selected-line-indices="handleUpdateSelectedLineIndices"
@@ -118,6 +119,7 @@
         @rewind-line="rewindLineBy100"
         @forward-line="forwardLineBy100"
         @sync-end="syncEndToCurrentProgress"
+        @sync-end-to-next="syncEndToNextLineStart"
         @rewind-end="rewindEndBy100"
         @forward-end="forwardEndBy100"
         @delete-line="deleteSyncedLine"
@@ -245,6 +247,7 @@ const {
   syncEndToCurrentProgress,
   rewindEndBy100,
   forwardEndBy100,
+  syncEndToNextLineStart,
   saveLyrics,
   ensureSelectedSyncedLine,
   updateLineText,
