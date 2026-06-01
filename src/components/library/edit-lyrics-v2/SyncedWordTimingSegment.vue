@@ -8,6 +8,7 @@
     @mouseenter="handleSegmentHover"
     @mousemove="handleSegmentHover"
     @mouseleave="handleSegmentLeave"
+    @click="handleSegmentClick"
     @dblclick.stop="handleSegmentDoubleClick"
   >
     <div
@@ -387,6 +388,15 @@ const handleSegmentDoubleClick = event => {
     splitIndex: splitPreview.splitIndex,
     splitRatio: splitPreview.splitRatio,
   })
+}
+
+// Suppress click bubbling to the timeline (which would seek) whenever the
+// split preview is rendered. `hoverPreview` is non-null iff the splitter UI
+// is visible, so this guarantees: preview visible -> no seek on click.
+const handleSegmentClick = event => {
+  if (hoverPreview.value) {
+    event.stopPropagation()
+  }
 }
 
 const handleSegmentHover = event => {
