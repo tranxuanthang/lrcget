@@ -46,16 +46,6 @@
 
             <label class="dropdown-item">
               <RadioButton
-                id="editor-export-sidecar-none"
-                v-model="sidecarFormat"
-                value=""
-                name="editor-export-sidecar-format"
-              >
-                <span class="dropdown-label">No sidecar file</span>
-              </RadioButton>
-            </label>
-            <label class="dropdown-item">
-              <RadioButton
                 id="editor-export-sidecar-txt"
                 v-model="sidecarFormat"
                 value="txt"
