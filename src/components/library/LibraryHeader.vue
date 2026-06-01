@@ -143,22 +143,34 @@
             <div class="dropdown-section-label">Export all lyrics to tracks' directory:</div>
 
             <label class="dropdown-item">
-              <CheckboxButton
-                id="export-plain-text"
-                v-model="exportPlainText"
-                name="export-plain-text"
+              <RadioButton
+                id="export-sidecar-txt"
+                v-model="sidecarFormat"
+                value="txt"
+                name="export-sidecar-format"
               >
                 <span class="dropdown-label">Plain lyrics (.txt)</span>
-              </CheckboxButton>
+              </RadioButton>
             </label>
             <label class="dropdown-item">
-              <CheckboxButton
-                id="export-synced-lrc"
-                v-model="exportSyncedLrc"
-                name="export-synced-lrc"
+              <RadioButton
+                id="export-sidecar-lrc"
+                v-model="sidecarFormat"
+                value="lrc"
+                name="export-sidecar-format"
               >
                 <span class="dropdown-label">Synced lyrics (.lrc)</span>
-              </CheckboxButton>
+              </RadioButton>
+            </label>
+            <label class="dropdown-item">
+              <RadioButton
+                id="export-sidecar-yaml"
+                v-model="sidecarFormat"
+                value="yaml"
+                name="export-sidecar-format"
+              >
+                <span class="dropdown-label">Lyricsfile (.yaml)</span>
+              </RadioButton>
             </label>
 
             <label
@@ -236,6 +248,7 @@ import Refresh from '~icons/mdi/refresh'
 import FolderMultiple from '~icons/mdi/folder-multiple'
 import Export from '~icons/mdi/export'
 import CheckboxButton from '@/components/common/CheckboxButton.vue'
+import RadioButton from '@/components/common/RadioButton.vue'
 import { useDownloader } from '@/composables/downloader.js'
 import { useExporter } from '@/composables/export.js'
 import MiniSearch from './MiniSearch.vue'
@@ -253,8 +266,7 @@ const emit = defineEmits([
   'showExportViewer',
 ])
 
-const exportPlainText = ref(false)
-const exportSyncedLrc = ref(false)
+const sidecarFormat = ref('')
 const embedIntoTrack = ref(false)
 const tryEmbedLyrics = ref(false)
 
@@ -266,7 +278,7 @@ const refreshEmbedConfig = async () => {
 onMounted(refreshEmbedConfig)
 
 const hasSelectedExportFormat = computed(
-  () => exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value
+  () => sidecarFormat.value !== '' || embedIntoTrack.value
 )
 
 const handleExportClick = () => {
@@ -275,8 +287,7 @@ const handleExportClick = () => {
   }
 
   emit('exportAllLyrics', {
-    plainText: exportPlainText.value,
-    syncedLrc: exportSyncedLrc.value,
+    sidecarFormat: sidecarFormat.value,
     embedIntoTrack: embedIntoTrack.value,
   })
 }

@@ -25,6 +25,9 @@ pub struct TrackMetadata {
 pub struct LyricsInfo {
     pub txt_lyrics: Option<String>,
     pub lrc_lyrics: Option<String>,
+    /// Raw Lyricsfile YAML content from a sibling `<stem>.yaml` file, if present.
+    /// Takes precedence over `txt_lyrics`/`lrc_lyrics` when it parses successfully.
+    pub yaml_lyricsfile: Option<String>,
 }
 
 /// Errors that can occur during metadata extraction
@@ -113,25 +116,27 @@ impl TrackMetadata {
 }
 
 impl LyricsInfo {
-    /// Extract lyrics from external files (.txt and .lrc)
+    /// Extract lyrics from external sidecar files (.txt, .lrc, .yaml)
     pub fn from_path(path: &Path) -> Self {
         let mut result = LyricsInfo::default();
 
-        // Get file stem (filename without extension)
         let file_stem = path.file_stem().and_then(|s| s.to_str()).unwrap_or("");
 
         let parent_path = path.parent().unwrap_or(Path::new("."));
 
-        // Try to read .txt lyrics
         let txt_path = parent_path.join(format!("{}.txt", file_stem));
         if let Ok(content) = std::fs::read_to_string(&txt_path) {
             result.txt_lyrics = Some(content);
         }
 
-        // Try to read .lrc lyrics
         let lrc_path = parent_path.join(format!("{}.lrc", file_stem));
         if let Ok(content) = std::fs::read_to_string(&lrc_path) {
             result.lrc_lyrics = Some(content);
+        }
+
+        let yaml_path = parent_path.join(format!("{}.yaml", file_stem));
+        if let Ok(content) = std::fs::read_to_string(&yaml_path) {
+            result.yaml_lyricsfile = Some(content);
         }
 
         result

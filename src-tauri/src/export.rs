@@ -12,7 +12,7 @@ use lofty::id3::v2::{
 use lofty::mpeg::MpegFile;
 use lofty::TextEncoding;
 use serde::Serialize;
-use std::fs::{remove_file, write};
+use std::fs::write;
 use std::io::Seek;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -41,6 +41,8 @@ pub enum ExportFormat {
     Txt,
     /// Standard LRC format (.lrc)
     Lrc,
+    /// Lyricsfile YAML format (.yaml) - preserves word-level timing
+    Lyricsfile,
     /// Embedded in audio file metadata
     Embedded,
 }
@@ -105,11 +107,13 @@ pub fn generate_lrc_content(parsed: &ParsedLyricsfile) -> Option<String> {
 pub fn export_track_format(
     track: &PersistentTrack,
     parsed: &ParsedLyricsfile,
+    raw_lyricsfile: &str,
     format: ExportFormat,
 ) -> Result<ExportResult, ExportError> {
     match format {
         ExportFormat::Txt => export_txt(track, parsed),
         ExportFormat::Lrc => export_lrc(track, parsed),
+        ExportFormat::Lyricsfile => export_lyricsfile(track, raw_lyricsfile),
         ExportFormat::Embedded => export_embedded(track, parsed),
     }
 }
@@ -132,12 +136,6 @@ fn export_txt(
     };
 
     let txt_path = build_sidecar_path(&track.file_path, "txt")?;
-
-    // Remove conflicting .lrc file if it exists
-    let lrc_path = build_sidecar_path(&track.file_path, "lrc").ok();
-    if let Some(ref lrc_path) = lrc_path {
-        let _ = remove_file(lrc_path);
-    }
 
     write(&txt_path, content).map_err(|e| ExportError::WriteError(e.to_string()))?;
 
@@ -167,17 +165,36 @@ fn export_lrc(
 
     let lrc_path = build_sidecar_path(&track.file_path, "lrc")?;
 
-    // Remove conflicting .txt file if it exists
-    let txt_path = build_sidecar_path(&track.file_path, "txt").ok();
-    if let Some(ref txt_path) = txt_path {
-        let _ = remove_file(txt_path);
-    }
-
     write(&lrc_path, content).map_err(|e| ExportError::WriteError(e.to_string()))?;
 
     Ok(ExportResult {
         format: ExportFormat::Lrc,
         path: Some(lrc_path),
+        status: ExportStatus::Success,
+    })
+}
+
+/// Export Lyricsfile YAML to a `.yaml` sidecar. The YAML is written verbatim
+fn export_lyricsfile(
+    track: &PersistentTrack,
+    raw_lyricsfile: &str,
+) -> Result<ExportResult, ExportError> {
+    let trimmed = raw_lyricsfile.trim();
+    if trimmed.is_empty() {
+        return Ok(ExportResult {
+            format: ExportFormat::Lyricsfile,
+            path: None,
+            status: ExportStatus::Skipped("no lyricsfile content available".to_string()),
+        });
+    }
+
+    let yaml_path = build_sidecar_path(&track.file_path, "yaml")?;
+
+    write(&yaml_path, raw_lyricsfile).map_err(|e| ExportError::WriteError(e.to_string()))?;
+
+    Ok(ExportResult {
+        format: ExportFormat::Lyricsfile,
+        path: Some(yaml_path),
         status: ExportStatus::Success,
     })
 }
@@ -208,12 +225,13 @@ fn export_embedded(
 pub fn export_track(
     track: &PersistentTrack,
     parsed: &ParsedLyricsfile,
+    raw_lyricsfile: &str,
     formats: &[ExportFormat],
 ) -> Vec<ExportResult> {
     let mut results = Vec::with_capacity(formats.len());
 
     for format in formats {
-        match export_track_format(track, parsed, *format) {
+        match export_track_format(track, parsed, raw_lyricsfile, *format) {
             Ok(result) => results.push(result),
             Err(e) => results.push(ExportResult {
                 format: *format,
@@ -392,6 +410,37 @@ mod tests {
 
         let lrc_path = build_sidecar_path(track_path, "lrc").unwrap();
         assert_eq!(lrc_path.to_str().unwrap(), "/music/artist/album/song.lrc");
+
+        let yaml_path = build_sidecar_path(track_path, "yaml").unwrap();
+        assert_eq!(yaml_path.to_str().unwrap(), "/music/artist/album/song.yaml");
+    }
+
+    #[test]
+    fn test_export_lyricsfile_skips_empty_content() {
+        let track = PersistentTrack {
+            id: 1,
+            file_path: "/music/artist/album/song.mp3".to_string(),
+            file_name: "song.mp3".to_string(),
+            title: "Song".to_string(),
+            album_name: "Album".to_string(),
+            album_artist_name: None,
+            album_id: 1,
+            artist_name: "Artist".to_string(),
+            artist_id: 1,
+            image_path: None,
+            track_number: None,
+            txt_lyrics: None,
+            lrc_lyrics: None,
+            lyricsfile: None,
+            lyricsfile_id: None,
+            duration: 0.0,
+            instrumental: false,
+        };
+
+        let result = export_lyricsfile(&track, "   \n\t  ").unwrap();
+        assert!(matches!(result.format, ExportFormat::Lyricsfile));
+        assert!(result.path.is_none());
+        assert!(matches!(result.status, ExportStatus::Skipped(_)));
     }
 
     #[test]

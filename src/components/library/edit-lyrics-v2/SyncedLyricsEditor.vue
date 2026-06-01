@@ -12,6 +12,9 @@
       @play-line="handlePlayLine"
       @play-line-at-offset="handlePlayLineAtOffset"
       @select-next-line="selectLine"
+      @import-lrc-file="emit('import-lrc-file')"
+      @import-lyricsfile="emit('import-lyricsfile')"
+      @clear-all-timings="emit('clear-all-timings')"
     />
 
     <div
@@ -117,6 +120,7 @@
       :can-import-from-plain="canImportFromPlain"
       @import-lines-from-plain="handleImportLinesFromPlain"
       @import-lrc-file="emit('import-lrc-file')"
+      @import-lyricsfile="emit('import-lyricsfile')"
       @paste-lrc="emit('paste-lrc')"
       @add-line-at="handleAddLineAt"
       @mark-as-instrumental="handleMarkAsInstrumental"
@@ -179,12 +183,14 @@ const emit = defineEmits([
   'add-line-at',
   'import-lines-from-plain',
   'import-lrc-file',
+  'import-lyricsfile',
   'paste-lrc',
   'editing-state-change',
   'update:words',
   'word-timing-edited',
   'update-line-text',
   'mark-as-instrumental',
+  'clear-all-timings',
 ])
 
 const hoveredLineIndex = ref(null)
