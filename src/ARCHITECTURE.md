@@ -103,6 +103,8 @@ Module-level ref composables (singletons by design):
 - Word timing: multi-separator selection (Ctrl/Cmd+click + Shift+click), merge separators (`Delete`/`Backspace`), hover split preview snapped to grapheme boundaries, double-click split at cursor, and `Z` syncs selected separator then advances (last-word sync advances to next line)
 - Narrow segment hint: when a segment is too narrow to show text, a visible hint is rendered beneath it with the next word text
 - Boundary sync: can cascade adjacent boundaries so sync is not blocked by intervening separators, while staying within line bounds
+- Word boundary chain enforcement: dragging the start of word N (or `Z`-syncing it) also writes `end_ms` on word N-1 in the same update, so the shared boundary stays consistent in the persisted data — not just visually. The dragged word's own `end_ms` is deliberately left alone, so an overshoot that produces `start_ms > end_ms` on a word is observable rather than silently clamped
+- Word start-after-end warning: `SyncedWordTimingSegment.vue` renders a small amber `mdi/alert` above any segment whose `word.start_ms > word.end_ms`, with a `word start is after end` title tooltip. Triggers reactively during drag because `displayedWords` propagates the live `start_ms` while `word.end_ms` stays at its stored value
 - Reset behavior: clears persisted word timings and reloads default (non-persisted) segmentation
 - Line-start sync behavior: syncing line start shifts existing word boundaries by the same offset
 - Selection behavior: selecting a synced line starts at the second boundary by default

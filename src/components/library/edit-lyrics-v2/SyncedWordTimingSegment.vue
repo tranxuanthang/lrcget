@@ -41,11 +41,20 @@
     >
       {{ nextWordHintText }}
     </div>
+
+    <div
+      v-if="hasStartAfterEndWarning"
+      class="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 z-40 flex items-center justify-center text-amber-500"
+      title="word start is after end"
+    >
+      <Alert class="w-3.5 h-3.5" />
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
+import Alert from '~icons/mdi/alert'
 import { formatTimestampMs } from '@/utils/lyricsfile.js'
 
 const emit = defineEmits(['split-at'])
@@ -333,6 +342,12 @@ const getSplitPreview = clientX => {
 const isPlaying = computed(() => {
   // The word is playing when: startMs <= currentTime < endMs
   return props.progressMs >= props.startMs && props.progressMs < props.endMs
+})
+
+const hasStartAfterEndWarning = computed(() => {
+  const startMs = props.word?.start_ms
+  const endMs = props.word?.end_ms
+  return Number.isFinite(startMs) && Number.isFinite(endMs) && startMs > endMs
 })
 
 const segmentClass = computed(() => {
