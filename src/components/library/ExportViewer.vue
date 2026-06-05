@@ -18,7 +18,7 @@
     </div>
 
     <div class="rounded-lg p-3 bg-white dark:bg-neutral-950 w-full text-xs grow overflow-auto">
-      <div v-for="(logItem, index) in log" :key="index" class="mb-1">
+      <div v-for="logItem in log" :key="logItem.id" class="mb-1">
         <div
           :class="{
             'text-green-800 dark:text-green-400': logItem.status === 'exported',

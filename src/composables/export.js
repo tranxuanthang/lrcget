@@ -1,10 +1,10 @@
-import { computed, markRaw, ref } from 'vue'
+import { computed, markRaw, ref, shallowRef } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 
 const delay = time => new Promise(resolve => setTimeout(resolve, time))
 
 const exportQueue = ref([])
-const log = ref([])
+const log = shallowRef([])
 const exportedCount = ref(0)
 const skippedCount = ref(0)
 const errorCount = ref(0)
@@ -16,14 +16,16 @@ const exportFormats = ref({
   embedIntoTrack: false,
 })
 
+let logIdCounter = 0
+
 const addLog = logObj => {
-  log.value.unshift(markRaw(logObj))
+  log.value = [{ id: ++logIdCounter, ...markRaw(logObj) }, ...log.value]
   if (log.value.length > 100) {
     log.value.pop()
   }
 }
 
-const exportTrack = async track => {
+const exportTrack = async trackId => {
   try {
     const formats = []
     if (exportFormats.value.plainText) formats.push('txt')
@@ -31,7 +33,7 @@ const exportTrack = async track => {
     if (exportFormats.value.embedIntoTrack) formats.push('embedded')
 
     const result = await invoke('export_track_lyrics', {
-      trackId: track.id,
+      trackId,
       formats,
     })
 
@@ -39,8 +41,10 @@ const exportTrack = async track => {
       return
     }
 
-    // Check result from backend
-    // Use the backend's skipped count to determine if this was a skip
+    // title/artistName come from the backend response now
+    const title = result.title || 'Unknown'
+    const artistName = result.artistName || ''
+
     const hasErrors = result.errors > 0
     const hasExported = result.exported > 0
     const hasSkipped = result.skipped > 0
@@ -48,37 +52,33 @@ const exportTrack = async track => {
     if (hasErrors) {
       addLog({
         status: 'error',
-        title: track.title,
-        artistName: track.artist_name,
+        title,
+        artistName,
         message: result.message || 'Export failed',
-        // details: result.details,
       })
       errorCount.value++
     } else if (hasExported) {
       addLog({
         status: 'exported',
-        title: track.title,
-        artistName: track.artist_name,
+        title,
+        artistName,
         message: result.message || `Exported to ${result.exported} format(s)`,
-        // details: result.details,
       })
       exportedCount.value++
     } else if (hasSkipped) {
       addLog({
         status: 'skipped',
-        title: track.title,
-        artistName: track.artist_name,
+        title,
+        artistName,
         message: result.message || 'Skipped: no lyrics available for selected formats',
-        // details: result.details,
       })
       skippedCount.value++
     } else {
       addLog({
         status: 'skipped',
-        title: track.title,
-        artistName: track.artist_name,
+        title,
+        artistName,
         message: result.message || 'Nothing to export',
-        // details: result.details,
       })
       skippedCount.value++
     }
@@ -89,8 +89,8 @@ const exportTrack = async track => {
 
     addLog({
       status: 'error',
-      title: track.title,
-      artistName: track.artist_name,
+      title: `Track #${trackId}`,
+      artistName: '',
       message: error,
     })
     errorCount.value++
@@ -105,16 +105,7 @@ const exportNext = async () => {
     }
 
     const trackId = exportQueue.value.shift()
-    try {
-      const track = await invoke('get_track', { trackId: trackId })
-      await exportTrack(track)
-    } catch (error) {
-      if (!isExporting.value) {
-        continue
-      }
-      console.error('Failed to get track for export:', error)
-      errorCount.value++
-    }
+    await exportTrack(trackId)
 
     await delay(1)
   }

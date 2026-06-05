@@ -1256,6 +1256,8 @@ struct TrackExportSummary {
     pub errors: i32,
     pub message: String,
     pub details: Vec<ExportFormatDetail>,
+    pub title: String,
+    pub artist_name: String,
 }
 
 #[tauri::command]
@@ -1272,6 +1274,8 @@ async fn export_track_lyrics(
             errors: 0,
             message: "No formats selected".to_owned(),
             details: vec![],
+            title: String::new(),
+            artist_name: String::new(),
         });
     }
 
@@ -1293,6 +1297,8 @@ async fn export_track_lyrics(
             errors: 0,
             message: "No lyrics available for this track".to_owned(),
             details: vec![],
+            title: track.title.clone(),
+            artist_name: track.artist_name.clone(),
         });
     }
 
@@ -1364,6 +1370,8 @@ async fn export_track_lyrics(
         errors,
         message,
         details,
+        title: track.title.clone(),
+        artist_name: track.artist_name.clone(),
     })
 }
 
