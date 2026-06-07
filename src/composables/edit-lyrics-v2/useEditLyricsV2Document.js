@@ -42,6 +42,26 @@ const setLineStartMs = (line, newStartMs) => {
   return { ...line, start_ms: newStartMs, words: updatedWords }
 }
 
+// if the last word has an explicit end_ms, drag it with the new line end. 
+// Words without an explicit end_ms are left untouched 
+// (the lane derives their end from the next word's start or the line end).
+const setLineEndMs = (line, newEndMs) => {
+  if (!Array.isArray(line.words) || line.words.length === 0) {
+    return { ...line, end_ms: newEndMs }
+  }
+
+  const lastIdx = line.words.length - 1
+  const lastWord = line.words[lastIdx]
+  if (!Number.isFinite(lastWord?.end_ms)) {
+    return { ...line, end_ms: newEndMs }
+  }
+
+  const updatedWords = [...line.words]
+  updatedWords[lastIdx] = { ...lastWord, end_ms: newEndMs }
+
+  return { ...line, end_ms: newEndMs, words: updatedWords }
+}
+
 // Stable-sort the lines by start_ms. The editor maintains a sorted-by-start_ms
 // invariant; this is the helper called after any mutation that can move a line
 // past its neighbors. Lines with missing/non-finite start_ms sink to the end.
@@ -246,10 +266,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
       return
     }
 
-    withUpdatedLine(lineIndex, line => ({
-      ...line,
-      end_ms: nextLine.start_ms,
-    }))
+    withUpdatedLine(lineIndex, line => setLineEndMs(line, nextLine.start_ms))
   }
 
   const deleteSyncedLine = lineIndex => {
@@ -435,10 +452,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
 
     const newEndMs = Math.max(0, Math.round(progress.value * 1000))
 
-    withUpdatedLine(lineIndex, line => ({
-      ...line,
-      end_ms: newEndMs,
-    }))
+    withUpdatedLine(lineIndex, line => setLineEndMs(line, newEndMs))
   }
 
   const shiftEndTimestampBy = (lineIndex, offsetMs) => {
@@ -450,10 +464,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     const baseEndMs = Number.isFinite(currentEndMs) ? currentEndMs : 0
     const newEndMs = Math.max(0, Math.round(baseEndMs + offsetMs))
 
-    withUpdatedLine(lineIndex, line => ({
-      ...line,
-      end_ms: newEndMs,
-    }))
+    withUpdatedLine(lineIndex, line => setLineEndMs(line, newEndMs))
   }
 
   const rewindEndBy100 = lineIndex => {
