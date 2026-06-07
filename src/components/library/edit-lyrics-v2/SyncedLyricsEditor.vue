@@ -7,11 +7,13 @@
       :progress-ms="progressMs"
       :all-lines="modelValue"
       :selected-line-index="selectedLineIndex"
+      :file-path="filePath"
       @update:words="handleWordsUpdate"
       @word-timing-edited="handleWordTimingEdited"
       @play-line="handlePlayLine"
       @play-line-at-offset="handlePlayLineAtOffset"
       @select-next-line="selectLine"
+      @seek="$emit('seek', $event)"
     />
 
     <div
@@ -31,7 +33,7 @@
           @click="handleInsertButtonClick(0, $event)"
         />
 
-        <div v-for="(line, index) in modelValue" :key="index">
+        <div v-for="(line, index) in modelValue" :key="line.id">
           <SyncedLyricsLineRow
             :ref="component => setLineRowRef(component, index)"
             :line="line"
@@ -45,6 +47,7 @@
             :end-timestamp-text="formatTimestampMs(line.end_ms)"
             :set-line-input-ref="setLineInputRef"
             :progress-ms="progressMs"
+            :next-line-start-ms="nextLineStartMs(index)"
             @mouseenter="hoveredLineIndex = index"
             @mouseleave="hoveredLineIndex = null"
             @select="selectLine"
@@ -54,6 +57,7 @@
             @rewind-line="handleRewindLine"
             @forward-line="handleForwardLine"
             @sync-end="handleSyncEnd"
+            @sync-end-to-next="handleSyncEndToNext"
             @rewind-end="handleRewindEnd"
             @forward-end="handleForwardEnd"
             @delete-line="handleDeleteLine"
@@ -158,6 +162,10 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  filePath: {
+    type: String,
+    default: null,
+  },
 })
 
 const emit = defineEmits([
@@ -170,6 +178,7 @@ const emit = defineEmits([
   'rewind-line',
   'forward-line',
   'sync-end',
+  'sync-end-to-next',
   'rewind-end',
   'forward-end',
   'delete-line',
@@ -185,7 +194,52 @@ const emit = defineEmits([
   'word-timing-edited',
   'update-line-text',
   'mark-as-instrumental',
+  'seek',
 ])
+
+// Effective end of a line for overlap detection: prefer the line's own end_ms,
+// otherwise fall back to the next line's start_ms. Returns null if neither
+// is available — such a line can't overlap-detect cleanly so it's skipped.
+const getLineEffectiveEndMs = (line, index) => {
+  if (Number.isFinite(line?.end_ms)) return line.end_ms
+  const nextLine = props.modelValue[index + 1]
+  if (nextLine && Number.isFinite(nextLine.start_ms)) return nextLine.start_ms
+  return null
+}
+
+// Indexes of every line that's part of an overlapping pair anywhere in the
+// song. Relies on the invariant that lines are sorted by start_ms. 
+// For each new line, if the maximum effective end seen so far reaches past 
+// this line's start, both participate in an overlap. 
+const overlappingLineIndexes = computed(() => {
+  const overlaps = new Set()
+  const lines = props.modelValue
+  let maxEnd = -Infinity
+  let maxEndIndex = -1
+
+  for (let i = 0; i < lines.length; i++) {
+    if (!Number.isFinite(lines[i]?.start_ms)) continue
+    const endI = getLineEffectiveEndMs(lines[i], i)
+    if (!Number.isFinite(endI)) continue
+
+    if (maxEnd > lines[i].start_ms) {
+      overlaps.add(maxEndIndex)
+      overlaps.add(i)
+    }
+
+    if (endI > maxEnd) {
+      maxEnd = endI
+      maxEndIndex = i
+    }
+  }
+
+  return overlaps
+})
+
+const nextLineStartMs = index => {
+  const next = props.modelValue[index + 1]
+  return next && Number.isFinite(next.start_ms) ? next.start_ms : null
+}
 
 const hoveredLineIndex = ref(null)
 const linesListElement = ref(null)
@@ -342,6 +396,12 @@ const rowClass = index => {
     return 'bg-neutral-50 dark:bg-neutral-800/50'
   }
 
+  // Dim warning color for every line that's part of an overlapping pair, so
+  // overlap clusters in the song are visible at a glance.
+  if (overlappingLineIndexes.value.has(index)) {
+    return 'bg-amber-50 dark:bg-amber-900/20'
+  }
+
   return 'bg-transparent'
 }
 
@@ -376,7 +436,10 @@ const emitLineAction = (eventName, index, selectBefore = true) => {
 }
 
 const handlePlayLine = index => {
-  emitLineAction('play-line', index, false)
+  // Skip auto-select when a bulk selection is active so previewing a line
+  // doesn't collapse the user's multi-select into a single-line focus.
+  // Without bulk, the previous behavior (select-then-play) stands.
+  emitLineAction('play-line', index, props.selectedLineIndices.length === 0)
 }
 
 const handlePlayLineAtOffset = payload => {
@@ -397,6 +460,10 @@ const handleForwardLine = index => {
 
 const handleSyncEnd = index => {
   emitLineAction('sync-end', index)
+}
+
+const handleSyncEndToNext = index => {
+  emitLineAction('sync-end-to-next', index)
 }
 
 const handleRewindEnd = index => {

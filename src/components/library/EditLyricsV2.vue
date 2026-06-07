@@ -108,6 +108,7 @@
         :selected-line-index="selectedSyncedLineIndex"
         :selected-line-indices="selectedSyncedLineIndices"
         :progress-ms="progressMs"
+        :file-path="audioSource?.file_path ?? null"
         @update:model-value="updateSyncedLines"
         @update:selected-line-index="selectSyncedLine"
         @update:selected-line-indices="handleUpdateSelectedLineIndices"
@@ -118,6 +119,7 @@
         @rewind-line="rewindLineBy100"
         @forward-line="forwardLineBy100"
         @sync-end="syncEndToCurrentProgress"
+        @sync-end-to-next="syncEndToNextLineStart"
         @rewind-end="rewindEndBy100"
         @forward-end="forwardEndBy100"
         @delete-line="deleteSyncedLine"
@@ -132,6 +134,7 @@
         @word-timing-edited="handleWordTimingEdited"
         @update-line-text="handleUpdateLineText"
         @mark-as-instrumental="setInstrumental(true)"
+        @seek="seek"
       />
 
     </div>
@@ -245,9 +248,11 @@ const {
   syncEndToCurrentProgress,
   rewindEndBy100,
   forwardEndBy100,
+  syncEndToNextLineStart,
   saveLyrics,
   ensureSelectedSyncedLine,
   updateLineText,
+  updateLineWords,
   setInstrumental,
 } = useEditLyricsV2Document({
   audioSource: audioSourceRef,
@@ -298,28 +303,6 @@ const rewindLineBy100 = lineIndex => {
 const forwardLineBy100 = lineIndex => {
   forwardLineTimestampBy100(lineIndex)
   void playLine(lineIndex)
-}
-
-const updateLineWords = ({ lineIndex, words, lineStartMs }) => {
-  if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
-    return
-  }
-
-  const nextLineStartMs = Number.isFinite(lineStartMs) ? Math.max(0, Math.round(lineStartMs)) : null
-
-  const newLines = syncedLines.value.map((line, index) => {
-    if (index !== lineIndex) {
-      return line
-    }
-
-    return {
-      ...line,
-      ...(nextLineStartMs === null ? {} : { start_ms: nextLineStartMs }),
-      words,
-    }
-  })
-
-  updateSyncedLines(newLines)
 }
 
 const handleUpdateLineText = (lineIndex, newText) => {

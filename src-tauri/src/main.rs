@@ -4,6 +4,7 @@
 )]
 
 pub mod db;
+pub mod decoder;
 pub mod export;
 pub mod library;
 pub mod lrclib;
@@ -1136,6 +1137,31 @@ async fn flag_lyrics(
     Ok(())
 }
 
+#[derive(Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AudioSliceResponse {
+    samples: Vec<f32>,
+    sample_rate: u32,
+}
+
+#[tauri::command]
+async fn get_audio_slice(
+    file_path: String,
+    start_ms: i64,
+    end_ms: i64,
+) -> Result<AudioSliceResponse, String> {
+    let path = std::path::PathBuf::from(file_path);
+    let slice = tokio::task::spawn_blocking(move || decoder::decode_slice(&path, start_ms, end_ms))
+        .await
+        .map_err(|e| format!("Audio slice decode task failed: {}", e))?
+        .map_err(|e| e.to_string())?;
+
+    Ok(AudioSliceResponse {
+        samples: slice.samples,
+        sample_rate: slice.sample_rate,
+    })
+}
+
 #[tauri::command]
 async fn play_track(
     track_id: Option<i64>,
@@ -1421,6 +1447,14 @@ fn stop_track(app_state: tauri::State<AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn set_spectrogram_visible(visible: bool, app_handle: AppHandle) -> Result<(), String> {
+    app_handle
+        .db(|db| db::set_spectrogram_visible_config(visible, db))
+        .map_err(|err| err.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 fn set_volume(
     volume: f64,
     app_state: tauri::State<AppState>,
@@ -1588,8 +1622,10 @@ async fn main() {
             resume_track,
             seek_track,
             stop_track,
+            get_audio_slice,
             set_volume,
             set_playback_speed,
+            set_spectrogram_visible,
             open_devtools,
             drain_notifications,
             find_matching_tracks,
