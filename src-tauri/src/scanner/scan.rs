@@ -6,6 +6,8 @@ use crate::scanner::metadata::extract_track_info;
 use crate::scanner::models::{ScanProgress, ScanResult};
 use anyhow::Result;
 use globwalk::glob;
+use lofty::config::apply_global_options;
+use lofty::config::GlobalOptions;
 use rusqlite::Connection;
 use std::time::{Instant, SystemTime};
 
@@ -43,6 +45,10 @@ pub fn scan_library(
 ) -> Result<ScanResult> {
     let start_time = Instant::now();
     let is_initial_scan = !db::get_init(conn)?;
+
+    // Increase size limit for tag items to 64 MB. Allows files with large cover art to be loaded.
+    let global_options = GlobalOptions::new().allocation_limit(64 * 1024 * 1024);
+    apply_global_options(global_options);
 
     // Phase 1: Mark all tracks as pending
     db::mark_all_tracks_pending(conn)?;
