@@ -1,5 +1,5 @@
 <template>
-  <div class="px-4 py-2 h-12 flex justify-between gap-4 flex-none items-stretch">
+  <div id="library-header" class="px-4 py-2 h-12 flex justify-between gap-4 flex-none items-stretch">
     <div class="flex-1 ml-2">
       <MiniSearch :active-tab="props.activeTab" />
     </div>

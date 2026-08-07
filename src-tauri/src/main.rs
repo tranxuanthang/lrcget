@@ -1480,7 +1480,7 @@ async fn segment_words(text: String) -> Result<Vec<String>, String> {
 
 #[tokio::main]
 async fn main() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
@@ -1490,7 +1490,65 @@ async fn main() {
             db: Default::default(),
             player: Default::default(),
             queued_notifications: std::sync::Mutex::new(Vec::new()),
-        })
+        });
+
+    // W3C WebDriver server (`tauri-plugin-webdriver`) — debug builds only.
+    // Listens on http://127.0.0.1:4445 (override with TAURI_WEBDRIVER_PORT);
+    // see AGENTS.md for the agent inspection runbook.
+    #[cfg(debug_assertions)]
+    let builder = builder.plugin(tauri_plugin_webdriver::init());
+
+    builder
+        .invoke_handler(tauri::generate_handler![
+            get_directories,
+            set_directories,
+            get_init,
+            get_config,
+            set_config,
+            uninitialize_library,
+            full_scan_library,
+            scan_library,
+            get_tracks,
+            get_track_ids,
+            get_track,
+            get_albums,
+            get_album_ids,
+            get_album,
+            get_artists,
+            get_artist_ids,
+            get_artist,
+            get_album_tracks,
+            get_artist_tracks,
+            get_album_track_ids,
+            get_artist_track_ids,
+            download_lyrics,
+            apply_lyrics,
+            retrieve_lyrics,
+            retrieve_lyrics_by_id,
+            search_lyrics,
+            save_lyrics,
+            publish_lyrics,
+            export_lyrics,
+            export_track_lyrics,
+            get_track_ids_with_lyrics,
+            flag_lyrics,
+            play_track,
+            pause_track,
+            resume_track,
+            seek_track,
+            stop_track,
+            set_volume,
+            set_playback_speed,
+            open_devtools,
+            drain_notifications,
+            find_matching_tracks,
+            get_audio_metadata,
+            prepare_search_query,
+            prepare_lrclib_lyricsfile,
+            refresh_lrclib_lyricsfile,
+            read_text_file,
+            segment_words,
+        ])
         .setup(|app| {
             let handle = app.handle();
 
@@ -1550,56 +1608,6 @@ async fn main() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![
-            get_directories,
-            set_directories,
-            get_init,
-            get_config,
-            set_config,
-            uninitialize_library,
-            full_scan_library,
-            scan_library,
-            get_tracks,
-            get_track_ids,
-            get_track,
-            get_albums,
-            get_album_ids,
-            get_album,
-            get_artists,
-            get_artist_ids,
-            get_artist,
-            get_album_tracks,
-            get_artist_tracks,
-            get_album_track_ids,
-            get_artist_track_ids,
-            download_lyrics,
-            apply_lyrics,
-            retrieve_lyrics,
-            retrieve_lyrics_by_id,
-            search_lyrics,
-            save_lyrics,
-            publish_lyrics,
-            export_lyrics,
-            export_track_lyrics,
-            get_track_ids_with_lyrics,
-            flag_lyrics,
-            play_track,
-            pause_track,
-            resume_track,
-            seek_track,
-            stop_track,
-            set_volume,
-            set_playback_speed,
-            open_devtools,
-            drain_notifications,
-            find_matching_tracks,
-            get_audio_metadata,
-            prepare_search_query,
-            prepare_lrclib_lyricsfile,
-            refresh_lrclib_lyricsfile,
-            read_text_file,
-            segment_words,
-        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
