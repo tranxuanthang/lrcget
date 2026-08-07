@@ -25,6 +25,12 @@
         </button>
         <button
           class="button button-normal px-2 py-1 text-xs rounded-full"
+          @click="emit('import-lyricsfile')"
+        >
+          Import Lyricsfile
+        </button>
+        <button
+          class="button button-normal px-2 py-1 text-xs rounded-full"
           @click="emit('paste-lrc')"
         >
           Paste LRC content
@@ -54,5 +60,12 @@ defineProps({
   },
 })
 
-const emit = defineEmits(['import-lines-from-plain', 'import-lrc-file', 'paste-lrc', 'add-line-at', 'mark-as-instrumental'])
+const emit = defineEmits([
+  'import-lines-from-plain',
+  'import-lrc-file',
+  'import-lyricsfile',
+  'paste-lrc',
+  'add-line-at',
+  'mark-as-instrumental',
+])
 </script>

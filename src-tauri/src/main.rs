@@ -53,6 +53,7 @@ struct FlagLyricsProgress {
 enum ExportLyricsFormat {
     Txt,
     Lrc,
+    Yaml,
     Embedded,
 }
 
@@ -92,6 +93,7 @@ impl From<ExportLyricsFormat> for export::ExportFormat {
         match value {
             ExportLyricsFormat::Txt => export::ExportFormat::Txt,
             ExportLyricsFormat::Lrc => export::ExportFormat::Lrc,
+            ExportLyricsFormat::Yaml => export::ExportFormat::Lyricsfile,
             ExportLyricsFormat::Embedded => export::ExportFormat::Embedded,
         }
     }
@@ -1235,7 +1237,12 @@ async fn export_lyrics(
         lyricsfile::parse_lyricsfile(&lyricsfile_content).map_err(|err| err.to_string())?;
     let export_formats = formats.into_iter().map(Into::into).collect::<Vec<_>>();
 
-    Ok(export::export_track(&track, &parsed, &export_formats))
+    Ok(export::export_track(
+        &track,
+        &parsed,
+        &lyricsfile_content,
+        &export_formats,
+    ))
 }
 
 /// Detail for a single format export result
@@ -1296,11 +1303,12 @@ async fn export_track_lyrics(
         });
     }
 
-    let parsed = lyricsfile::parse_lyricsfile(&lyricsfile_content.unwrap())
-        .map_err(|err| err.to_string())?;
+    let raw_lyricsfile = lyricsfile_content.unwrap();
+    let parsed =
+        lyricsfile::parse_lyricsfile(&raw_lyricsfile).map_err(|err| err.to_string())?;
     let export_formats = formats.into_iter().map(Into::into).collect::<Vec<_>>();
 
-    let results = export::export_track(&track, &parsed, &export_formats);
+    let results = export::export_track(&track, &parsed, &raw_lyricsfile, &export_formats);
 
     // Count results based on status
     let exported = results

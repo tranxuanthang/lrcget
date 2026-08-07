@@ -127,7 +127,9 @@
         @add-line-at="addSyncedLineAt"
         @import-lines-from-plain="importSyncedLinesFromPlain"
         @import-lrc-file="handleImportLrcFile"
+        @import-lyricsfile="handleImportLyricsfile"
         @paste-lrc="handlePasteLrc"
+        @clear-all-timings="handleClearAllTimings"
         @update:words="updateLineWords"
         @word-timing-edited="handleWordTimingEdited"
         @update-line-text="handleUpdateLineText"
@@ -246,6 +248,7 @@ const {
   rewindEndBy100,
   forwardEndBy100,
   saveLyrics,
+  loadFromLyricsfile,
   ensureSelectedSyncedLine,
   updateLineText,
   setInstrumental,
@@ -372,6 +375,36 @@ const handleImportLrcFile = async () => {
   }
 }
 
+const handleImportLyricsfile = async () => {
+  try {
+    const filePath = await open({
+      multiple: false,
+      directory: false,
+      filters: [
+        { name: 'Lyricsfile', extensions: ['yaml', 'yml'] },
+        { name: 'All Files', extensions: ['*'] },
+      ],
+    })
+
+    if (!filePath) {
+      return
+    }
+
+    const content = await invoke('read_text_file', { filePath })
+    const loaded = loadFromLyricsfile(content)
+
+    if (!loaded) {
+      toast.error('Selected file is not a valid Lyricsfile')
+      return
+    }
+
+    toast.success('Lyricsfile imported')
+  } catch (error) {
+    console.error(error)
+    toast.error(error?.toString?.() || 'Failed to import Lyricsfile')
+  }
+}
+
 const handlePasteLrc = async () => {
   try {
     const text = await readText()
@@ -393,6 +426,15 @@ const handlePasteLrc = async () => {
     console.error(error)
     toast.error(error?.toString?.() || 'Failed to paste LRC from clipboard')
   }
+}
+
+const handleClearAllTimings = () => {
+  if (syncedLines.value.length === 0) {
+    return
+  }
+
+  updateSyncedLines([])
+  toast.success('Cleared all timings')
 }
 
 const handleWordTimingEdited = async ({ startMs }) => {

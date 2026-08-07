@@ -1,6 +1,6 @@
 use crate::db;
 use crate::db::ScanTrackInfo;
-use crate::lyricsfile::{build_lyricsfile, LyricsfileTrackMetadata};
+use crate::lyricsfile::{build_lyricsfile, parse_lyricsfile, LyricsfileTrackMetadata};
 use crate::scanner::hasher::compute_quick_hash;
 use crate::scanner::metadata::extract_track_info;
 use crate::scanner::models::{ScanProgress, ScanResult};
@@ -292,26 +292,48 @@ fn insert_new_track(
         // Reattach orphaned lyricsfile to this track
         db::reattach_lyricsfile_to_track_tx(lyricsfile_id, track_id, tx)?;
     } else {
-        // No orphaned lyricsfile found, import embedded lyrics as usual
-        let lyricsfile_track_metadata = LyricsfileTrackMetadata::new(
-            &metadata.title,
-            &metadata.album,
-            &metadata.artist,
-            metadata.duration,
-        );
+        // Prefer a sibling .yaml Lyricsfile when present and parseable.
+        // On parse failure we fall back to building one from .txt/.lrc so a
+        // malformed YAML doesn't lose lyrics that are also available in the
+        // legacy formats.
+        let yaml_lyricsfile = lyrics
+            .yaml_lyricsfile
+            .as_deref()
+            .and_then(|content| match parse_lyricsfile(content) {
+                Ok(_) => Some(content.to_owned()),
+                Err(err) => {
+                    eprintln!(
+                        "Failed to parse .yaml Lyricsfile next to {:?} ({}); falling back to .lrc/.txt",
+                        path, err
+                    );
+                    None
+                }
+            });
 
-        if let Some(lyricsfile) = build_lyricsfile(
-            &lyricsfile_track_metadata,
-            lyrics.txt_lyrics.as_deref(),
-            lyrics.lrc_lyrics.as_deref(),
-        ) {
+        let lyricsfile_to_store = if let Some(content) = yaml_lyricsfile {
+            Some(content)
+        } else {
+            let lyricsfile_track_metadata = LyricsfileTrackMetadata::new(
+                &metadata.title,
+                &metadata.album,
+                &metadata.artist,
+                metadata.duration,
+            );
+            build_lyricsfile(
+                &lyricsfile_track_metadata,
+                lyrics.txt_lyrics.as_deref(),
+                lyrics.lrc_lyrics.as_deref(),
+            )
+        };
+
+        if let Some(content) = lyricsfile_to_store {
             db::upsert_lyricsfile_for_track_tx(
                 track_id,
                 &metadata.title,
                 &metadata.album,
                 &metadata.artist,
                 metadata.duration,
-                &lyricsfile,
+                &content,
                 tx,
             )?;
         }

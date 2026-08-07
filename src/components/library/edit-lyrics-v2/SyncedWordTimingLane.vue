@@ -66,6 +66,33 @@
             <Close class="w-3.5 h-3.5" />
             <span>Reset</span>
           </button>
+          <VDropdown theme="lrcget-dropdown" placement="bottom-end">
+            <button
+              class="button button-normal text-xs px-1.5 py-1 rounded flex items-center"
+              title="More actions"
+              type="button"
+            >
+              <DotsVertical class="w-3.5 h-3.5" />
+            </button>
+
+            <template #popper>
+              <div class="dropdown-container">
+                <button v-close-popper class="dropdown-item" @click="handleImportLrcFile">
+                  <FileMusicOutline class="text-neutral-800 dark:text-neutral-300" />
+                  <span class="dropdown-label">Import LRC file</span>
+                </button>
+                <button v-close-popper class="dropdown-item" @click="handleImportLyricsfile">
+                  <FileDocumentOutline class="text-neutral-800 dark:text-neutral-300" />
+                  <span class="dropdown-label">Import Lyricsfile</span>
+                </button>
+                <div class="dropdown-divider" />
+                <button v-close-popper class="dropdown-item" @click="handleClearAllTimings">
+                  <DeleteSweepOutline class="text-neutral-800 dark:text-neutral-300" />
+                  <span class="dropdown-label">Clear all timings</span>
+                </button>
+              </div>
+            </template>
+          </VDropdown>
         </div>
       </div>
 
@@ -160,6 +187,10 @@ import { invoke } from '@tauri-apps/api/core'
 import Equal from '~icons/mdi/equal'
 import Play from '~icons/mdi/play'
 import Close from '~icons/mdi/close'
+import DotsVertical from '~icons/mdi/dots-vertical'
+import FileMusicOutline from '~icons/mdi/file-music-outline'
+import FileDocumentOutline from '~icons/mdi/file-document-outline'
+import DeleteSweepOutline from '~icons/mdi/delete-sweep-outline'
 import SyncedWordTimingSegment from '@/components/library/edit-lyrics-v2/SyncedWordTimingSegment.vue'
 import { useEditLyricsV2WordBoundaryDrag } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordBoundaryDrag.js'
 import { useEditLyricsV2WordTimingHotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordTimingHotkeys.js'
@@ -194,7 +225,15 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:words', 'word-timing-edited', 'play-line', 'select-next-line'])
+const emit = defineEmits([
+  'update:words',
+  'word-timing-edited',
+  'play-line',
+  'select-next-line',
+  'import-lrc-file',
+  'import-lyricsfile',
+  'clear-all-timings',
+])
 
 const timelineElement = ref(null)
 const timelineWidth = ref(0)
@@ -588,6 +627,18 @@ const handleResetWords = async () => {
   await loadDefaultSegmentation({ force: true })
 }
 
+const handleImportLrcFile = () => {
+  emit('import-lrc-file')
+}
+
+const handleImportLyricsfile = () => {
+  emit('import-lyricsfile')
+}
+
+const handleClearAllTimings = () => {
+  emit('clear-all-timings')
+}
+
 const handleTimelineClick = event => {
   event.stopPropagation()
 }
@@ -672,3 +723,21 @@ onUnmounted(() => {
   unbindWordTimingHotkeys()
 })
 </script>
+
+<style scoped>
+.dropdown-container {
+  @apply p-1 min-w-[12rem];
+}
+
+.dropdown-item {
+  @apply flex items-center px-2 py-1 hover:bg-neutral-100 dark:hover:bg-neutral-700 rounded cursor-pointer h-8 gap-2 w-full;
+}
+
+.dropdown-divider {
+  @apply h-px bg-neutral-100 dark:bg-neutral-700 my-1;
+}
+
+.dropdown-label {
+  @apply text-neutral-800 dark:text-neutral-300 text-sm font-bold;
+}
+</style>

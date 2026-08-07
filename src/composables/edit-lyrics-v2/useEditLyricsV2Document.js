@@ -111,6 +111,24 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     ensureSelectedSyncedLine()
   }
 
+  const loadFromLyricsfile = lyricsfileContent => {
+    const parsed = parseLyricsfile(lyricsfileContent)
+
+    if (!parsed.document) {
+      return false
+    }
+
+    plainLyrics.value = parsed.plainLyrics
+    syncedLines.value = parsed.syncedLines.map(line => normalizeSyncedLine(line))
+    isInstrumental.value = parsed.isInstrumental
+    lyricsfileDocument.value = parsed.document
+    isDirty.value = true
+    isSyncedLineEditing.value = false
+    ensureSelectedSyncedLine()
+
+    return true
+  }
+
   const updatePlainLyrics = lyrics => {
     plainLyrics.value = lyrics
     // Plain and synced lyrics are now independent - editing plain lyrics
@@ -472,6 +490,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     isInstrumental,
     serializedLyricsfile,
     initializeLyrics,
+    loadFromLyricsfile,
     updatePlainLyrics,
     updateSyncedLines,
     selectSyncedLine,

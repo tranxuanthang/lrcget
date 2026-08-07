@@ -11,8 +11,7 @@ const errorCount = ref(0)
 const isExporting = ref(false)
 const totalCount = ref(0)
 const exportFormats = ref({
-  plainText: false,
-  syncedLrc: false,
+  sidecarFormat: '',
   embedIntoTrack: false,
 })
 
@@ -26,8 +25,9 @@ const addLog = logObj => {
 const exportTrack = async track => {
   try {
     const formats = []
-    if (exportFormats.value.plainText) formats.push('txt')
-    if (exportFormats.value.syncedLrc) formats.push('lrc')
+    if (exportFormats.value.sidecarFormat) {
+      formats.push(exportFormats.value.sidecarFormat)
+    }
     if (exportFormats.value.embedIntoTrack) formats.push('embedded')
 
     const result = await invoke('export_track_lyrics', {
