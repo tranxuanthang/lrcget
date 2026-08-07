@@ -225,7 +225,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, watch } from 'vue'
 import DownloadMultiple from '~icons/mdi/download-multiple'
 import Loading from '~icons/mdi/loading'
 import Check from '~icons/mdi/check'
@@ -253,14 +253,46 @@ const emit = defineEmits([
   'showExportViewer',
 ])
 
-const exportPlainText = ref(false)
-const exportSyncedLrc = ref(false)
-const embedIntoTrack = ref(false)
+// Remember the export format selections across exports and app restarts so the
+// user doesn't have to re-check the same boxes every time.
+const EXPORT_PREFS_STORAGE_KEY = 'lrcget:export-format-prefs'
+
+const loadExportPrefs = () => {
+  try {
+    const raw = window.localStorage.getItem(EXPORT_PREFS_STORAGE_KEY)
+    return raw ? JSON.parse(raw) : null
+  } catch (error) {
+    console.error('Failed to load export format preferences', error)
+    return null
+  }
+}
+
+const savedExportPrefs = loadExportPrefs()
+
+const exportPlainText = ref(savedExportPrefs?.plainText ?? false)
+const exportSyncedLrc = ref(savedExportPrefs?.syncedLrc ?? false)
+const embedIntoTrack = ref(savedExportPrefs?.embedIntoTrack ?? false)
 const tryEmbedLyrics = ref(false)
+
+watch([exportPlainText, exportSyncedLrc, embedIntoTrack], ([plainText, syncedLrc, embed]) => {
+  try {
+    window.localStorage.setItem(
+      EXPORT_PREFS_STORAGE_KEY,
+      JSON.stringify({ plainText, syncedLrc, embedIntoTrack: embed })
+    )
+  } catch (error) {
+    console.error('Failed to save export format preferences', error)
+  }
+})
 
 const refreshEmbedConfig = async () => {
   const config = await invoke('get_config')
   tryEmbedLyrics.value = config.try_embed_lyrics
+  // Don't keep a remembered "embed" selection active when the feature is
+  // disabled in settings — the checkbox is disabled in that case.
+  if (!tryEmbedLyrics.value) {
+    embedIntoTrack.value = false
+  }
 }
 
 onMounted(refreshEmbedConfig)
