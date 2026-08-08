@@ -162,7 +162,8 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
         try_embed_lyrics,
         theme_mode,
         lrclib_instance,
-        volume
+        volume,
+        spectrogram_visible
       FROM config_data
       LIMIT 1
     "})?;
@@ -175,6 +176,7 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
             theme_mode: r.get("theme_mode")?,
             lrclib_instance: r.get("lrclib_instance")?,
             volume: r.get("volume")?,
+            spectrogram_visible: r.get("spectrogram_visible")?,
         })
     })?;
     Ok(row)
@@ -217,6 +219,12 @@ pub fn set_config(
 pub fn set_volume_config(volume: f64, db: &Connection) -> Result<()> {
     let mut statement = db.prepare("UPDATE config_data SET volume = ? WHERE 1")?;
     statement.execute([volume])?;
+    Ok(())
+}
+
+pub fn set_spectrogram_visible_config(visible: bool, db: &Connection) -> Result<()> {
+    let mut statement = db.prepare("UPDATE config_data SET spectrogram_visible = ? WHERE 1")?;
+    statement.execute([visible])?;
     Ok(())
 }
 
