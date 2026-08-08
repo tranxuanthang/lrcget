@@ -82,13 +82,23 @@ impl TrackMetadata {
             })?
             .to_string();
 
-        let artist = tag
-            .artist()
-            .ok_or_else(|| MetadataError::MissingField {
-                field: "artist".to_string(),
-                path: file_path.clone(),
-            })?
-            .to_string();
+        let artist = match tag.artist() {
+            Some(a) => a.to_string(),
+            None => {
+                // Fallback to "artists" tag (plural), use first artist
+                tag.get_string(lofty::tag::ItemKey::TrackArtists)
+                    .and_then(|s| {
+                        s.split(|c: char| c == ';' || c == '/')
+                            .next()
+                            .map(|v| v.trim().to_string())
+                            .filter(|v| !v.is_empty())
+                    })
+                    .ok_or_else(|| MetadataError::MissingField {
+                        field: "artist".to_string(),
+                        path: file_path.clone(),
+                    })?
+            }
+        };
 
         // Album artist is optional, fallback to artist
         let album_artist = tag

@@ -380,6 +380,8 @@ struct AudioMetadataResponse {
 
 **Implementation:** Reuses `scanner::metadata::TrackMetadata::from_path()` from the scanning module.
 
+**Artist Fallback:** If the `artist` tag is missing, falls back to the `artists` tag (plural, Vorbis-style), splitting by `;` or `/` delimiters and using the first entry.
+
 ## Search Query Preparation (`prepare_search_query`)
 
 Prepares a search query from track title by:
