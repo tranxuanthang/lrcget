@@ -39,6 +39,20 @@
   <url type="bugtracker">https://github.com/tranxuanthang/lrcget/issues</url>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="2.2.0" date="2026-09-06">
+      <description>
+        <ul>
+          <li>Added optional automatic lyrics export after bulk downloads, with remembered download and export preferences.</li>
+          <li>Improved word-by-word syncing, multilingual word splitting, and word segment editing.</li>
+          <li>Added a configurable keyboard shortcuts menu and shortcut hints.</li>
+          <li>Added playback speed controls from 0.5x to 2x in the main player and lyrics editor.</li>
+          <li>Added multiple-line selection, bulk timestamp adjustments, and clearer line timing indicators.</li>
+          <li>Added search to Albums and Artists, full-text library search, and clickable album and artist names.</li>
+          <li>Fixed writing embedded lyrics to MP3 files, including malformed ID3v2 comment language fields.</li>
+          <li>Fixed the Download button continuing to spin after completion and an error in LRCLIB challenge verification.</li>
+        </ul>
+      </description>
+    </release>
   <release version="2.1.0" date="2026-04-26">
     <description>
       <ul>
