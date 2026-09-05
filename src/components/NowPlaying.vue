@@ -1,5 +1,5 @@
 <template>
-  <div>
+  <div id="player-bar">
     <LyricsViewer
       v-if="hasSyncedLyrics && !instrumental"
       :lyricsfile="lyricsfile"

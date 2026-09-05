@@ -42,6 +42,9 @@ tauri-plugin-os = "2.3.2"
 tauri-plugin-shell = "2.3.5"
 tauri-plugin-dialog = "2.7.0"
 tauri-plugin-clipboard-manager = "2.3.2"
+# W3C WebDriver server for agent-driven inspection (debug builds only, see AGENTS.md)
+[target.'cfg(debug_assertions)'.dependencies]
+tauri-plugin-webdriver = "0.2"
 
 [features]
 # by default Tauri runs in production mode

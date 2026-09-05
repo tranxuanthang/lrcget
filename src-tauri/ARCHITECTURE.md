@@ -23,7 +23,7 @@
 ```
 src-tauri/
 ├── src/
-│   ├── main.rs              # Entry point, Tauri commands
+│   ├── main.rs              # Entry point, Tauri commands, WebDriver plugin wiring
 │   ├── state.rs             # AppState, ServiceAccess trait
 │   ├── db.rs                # SQLite operations, migrations
 │   ├── library.rs           # High-level library API
@@ -274,6 +274,16 @@ Implements `From<PersistentTrack>` for seamless conversion from database entitie
 **PersistentArtist:** id, name, tracks_count
 
 **PersistentConfig:** skip_synced, skip_plain, show_line_count, try_embed, theme_mode, lrclib_instance, volume
+
+## WebDriver Dev Bridge (`tauri-plugin-webdriver`)
+
+Agent-driven inspection (screenshots, DOM queries, JS eval, interaction, logs) via a [W3C WebDriver](https://www.w3.org/TR/webdriver/) server, provided by [tauri-plugin-webdriver](https://github.com/Choochmeque/tauri-plugin-webdriver).
+
+- **Debug builds only**: the dependency lives under `[target.'cfg(debug_assertions)'.dependencies]` in `Cargo.toml`, and the plugin is registered with `#[cfg(debug_assertions)] let builder = builder.plugin(tauri_plugin_webdriver::init());` in `main.rs`. Release builds have no server and no plugin code.
+- **Transport**: HTTP server on `127.0.0.1:4445` (override with `TAURI_WEBDRIVER_PORT` env var or `init_with_port`). Drive it with any W3C WebDriver client (Selenium, WebdriverIO, `fantoccini`).
+- **Linux backend**: WebKitGTK native APIs (`webkit_web_view_get_snapshot` for screenshots, `evaluate_javascript_future` for scripts) — compositor-independent, works on X11 and any Wayland compositor. Element screenshots are a full-webview snapshot after `scrollIntoView` (no pixel crop on Linux).
+- **No custom IPC commands**: unlike the previous tauri-agent-tools bridge, nothing is added to the `invoke_handler` list, so there is no debug/release duplication to keep in sync.
+- **How to run and use it** (launch recipe, session flow, caveats): see *"Inspecting a running dev build"* in the root `AGENTS.md`.
 
 ## Commands
 

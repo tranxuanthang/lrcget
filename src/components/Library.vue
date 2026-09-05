@@ -13,7 +13,7 @@
       @show-export-viewer="openExportViewer"
     />
 
-    <div class="relative grow overflow-hidden">
+    <div id="library-content" class="relative grow overflow-hidden">
       <TrackList :is-active="activeTab === 'tracks'" />
 
       <AlbumList ref="albumListRef" :is-active="activeTab === 'albums'" />
