@@ -10,11 +10,6 @@ const skippedCount = ref(0)
 const errorCount = ref(0)
 const isExporting = ref(false)
 const totalCount = ref(0)
-const exportFormats = ref({
-  plainText: false,
-  syncedLrc: false,
-  embedIntoTrack: false,
-})
 
 const addLog = logObj => {
   log.value.unshift(markRaw(logObj))
@@ -23,13 +18,8 @@ const addLog = logObj => {
   }
 }
 
-const exportTrack = async track => {
+const exportTrack = async (track, formats) => {
   try {
-    const formats = []
-    if (exportFormats.value.plainText) formats.push('txt')
-    if (exportFormats.value.syncedLrc) formats.push('lrc')
-    if (exportFormats.value.embedIntoTrack) formats.push('embedded')
-
     const result = await invoke('export_track_lyrics', {
       trackId: track.id,
       formats,
@@ -104,10 +94,10 @@ const exportNext = async () => {
       continue
     }
 
-    const trackId = exportQueue.value.shift()
+    const { trackId, formats } = exportQueue.value.shift()
     try {
       const track = await invoke('get_track', { trackId: trackId })
-      await exportTrack(track)
+      await exportTrack(track, formats)
     } catch (error) {
       if (!isExporting.value) {
         continue
@@ -139,10 +129,14 @@ const exportProgress = computed(() => {
 
 const addToQueue = (trackIds, formats) => {
   isExporting.value = true
-  exportFormats.value = formats
+  const snapshot = Object.freeze([
+    ...(formats.plainText ? ['txt'] : []),
+    ...(formats.syncedLrc ? ['lrc'] : []),
+    ...(formats.embedIntoTrack ? ['embedded'] : []),
+  ])
 
   for (let i = 0; i < trackIds.length; i++) {
-    exportQueue.value.push(trackIds[i])
+    exportQueue.value.push({ trackId: trackIds[i], formats: snapshot })
   }
 
   totalCount.value += trackIds.length

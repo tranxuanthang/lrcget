@@ -56,6 +56,35 @@ enum ExportLyricsFormat {
     Embedded,
 }
 
+/// Explicit format selection captured when a Download batch is submitted.
+#[derive(Clone, Copy, Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct AutoExportOptions {
+    plain_text: bool,
+    synced_lrc: bool,
+    #[serde(default)]
+    embed_into_track: bool,
+}
+
+impl AutoExportOptions {
+    fn formats(self) -> Result<Vec<export::ExportFormat>, String> {
+        let mut formats = Vec::new();
+        if self.plain_text {
+            formats.push(export::ExportFormat::Txt);
+        }
+        if self.synced_lrc {
+            formats.push(export::ExportFormat::Lrc);
+        }
+        if self.embed_into_track {
+            formats.push(export::ExportFormat::Embedded);
+        }
+        if formats.is_empty() {
+            return Err("Select at least one export format".to_owned());
+        }
+        Ok(formats)
+    }
+}
+
 /// Match quality for track matching results
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -219,6 +248,31 @@ async fn set_config(
     .map_err(|err| err.to_string())?;
 
     Ok(())
+}
+
+#[tauri::command]
+async fn set_export_preferences(
+    auto_export_enabled: Option<bool>,
+    export_lrc: Option<bool>,
+    export_txt: Option<bool>,
+    export_embedded: Option<bool>,
+    skip_tracks_with_synced_lyrics: Option<bool>,
+    skip_tracks_with_plain_lyrics: Option<bool>,
+    app_state: State<'_, AppState>,
+) -> Result<PersistentConfig, String> {
+    let conn_guard = app_state.db.lock().unwrap();
+    let conn = conn_guard.as_ref().unwrap();
+    db::set_export_preferences(
+        auto_export_enabled,
+        export_lrc,
+        export_txt,
+        export_embedded,
+        skip_tracks_with_synced_lyrics,
+        skip_tracks_with_plain_lyrics,
+        conn,
+    )
+    .map_err(|err| err.to_string())?;
+    db::get_config(conn).map_err(|err| err.to_string())
 }
 
 #[tauri::command]
@@ -598,7 +652,12 @@ async fn get_artist_track_ids(
 }
 
 #[tauri::command]
-async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String, String> {
+async fn download_lyrics(
+    track_id: i64,
+    auto_export: Option<AutoExportOptions>,
+    app_handle: AppHandle,
+) -> Result<String, String> {
+    let export_formats = auto_export.map(AutoExportOptions::formats).transpose()?;
     let track = app_handle
         .db(|db| db::get_track_by_id(track_id, db))
         .map_err(|err| err.to_string())?;
@@ -615,6 +674,16 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
     .await
     .map_err(|err| err.to_string())?;
     let resolved = resolve_lrclib_lyrics_payload(lrclib_response)?;
+
+    let message = if resolved.is_instrumental {
+        "Marked track as instrumental"
+    } else if !resolved.synced_lyrics.is_empty() {
+        "Synced lyrics downloaded"
+    } else if !resolved.plain_lyrics.is_empty() {
+        "Plain lyrics downloaded"
+    } else {
+        return Err(LRCLIB_TRACK_NOT_FOUND.to_owned());
+    };
 
     // Build lyricsfile content from the resolved response
     let lyricsfile_content = if let Some(ref provided) = resolved.provided_lyricsfile {
@@ -649,17 +718,51 @@ async fn download_lyrics(track_id: i64, app_handle: AppHandle) -> Result<String,
         })
         .map_err(|err| err.to_string())?;
 
-    app_handle.emit("reload-track-id", track_id).unwrap();
+    let _ = app_handle.emit("reload-track-id", track_id);
 
-    if resolved.is_instrumental {
-        Ok("Marked track as instrumental".to_owned())
-    } else if !resolved.synced_lyrics.is_empty() {
-        Ok("Synced lyrics downloaded".to_owned())
-    } else if !resolved.plain_lyrics.is_empty() {
-        Ok("Plain lyrics downloaded".to_owned())
-    } else {
-        Err(LRCLIB_TRACK_NOT_FOUND.to_owned())
+    // Internal save has succeeded: export errors remain part of the success log string.
+    Ok(match export_formats {
+        Some(formats) => download_export_message(message, &track, &lyricsfile_content, &formats, || {
+            embedding_allowed(&app_handle)
+        }),
+        None => message.to_owned(),
+    })
+}
+
+fn download_export_message(
+    message: &str,
+    track: &PersistentTrack,
+    content: &str,
+    formats: &[export::ExportFormat],
+    embed_allowed: impl FnMut() -> bool,
+) -> String {
+    let parsed = match lyricsfile::parse_lyricsfile(content) {
+        Ok(parsed) => parsed,
+        Err(err) => return format!("{message}; export failed: {err}"),
+    };
+    let mut message = message.to_owned();
+    for result in export::export_track_with_embed_gate(track, &parsed, formats, embed_allowed) {
+        let format = match result.format {
+            export::ExportFormat::Txt => "TXT",
+            export::ExportFormat::Lrc => "LRC",
+            export::ExportFormat::Embedded => "Embedded",
+        };
+        let outcome = match result.status {
+            export::ExportStatus::Success => "export completed".to_owned(),
+            export::ExportStatus::Skipped(reason) => format!("export skipped: {reason}"),
+            export::ExportStatus::Error(reason) => format!("export failed: {reason}"),
+        };
+        message.push_str(&format!("; {format} {outcome}"));
     }
+    message
+}
+
+// Recheck immediately before each embedded write, including after a network download.
+fn embedding_allowed(app_handle: &AppHandle) -> bool {
+    app_handle
+        .db(db::get_config)
+        .map(|config| config.try_embed_lyrics)
+        .unwrap_or(false)
 }
 
 #[tauri::command]
@@ -1235,7 +1338,9 @@ async fn export_lyrics(
         lyricsfile::parse_lyricsfile(&lyricsfile_content).map_err(|err| err.to_string())?;
     let export_formats = formats.into_iter().map(Into::into).collect::<Vec<_>>();
 
-    Ok(export::export_track(&track, &parsed, &export_formats))
+    Ok(export::export_track_with_embed_gate(&track, &parsed, &export_formats, || {
+        embedding_allowed(&app_handle)
+    }))
 }
 
 /// Detail for a single format export result
@@ -1300,7 +1405,9 @@ async fn export_track_lyrics(
         .map_err(|err| err.to_string())?;
     let export_formats = formats.into_iter().map(Into::into).collect::<Vec<_>>();
 
-    let results = export::export_track(&track, &parsed, &export_formats);
+    let results = export::export_track_with_embed_gate(&track, &parsed, &export_formats, || {
+        embedding_allowed(&app_handle)
+    });
 
     // Count results based on status
     let exported = results
@@ -1505,6 +1612,7 @@ async fn main() {
             get_init,
             get_config,
             set_config,
+            set_export_preferences,
             uninitialize_library,
             full_scan_library,
             scan_library,
@@ -1610,4 +1718,197 @@ async fn main() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+mod auto_export_tests {
+    use super::*;
+
+    #[test]
+    fn embedded_exports_write_supported_fixtures_and_skip_unsupported_or_disabled() {
+        use export::{ExportFormat::Embedded, ExportStatus};
+        let directory = std::env::temp_dir().join(format!("lrcget-embed-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let content = lyricsfile::build_lyricsfile(
+            &lyricsfile::LyricsfileTrackMetadata::new("Song", "Album", "Artist", 1.0),
+            Some("embed-test-line"),
+            None,
+        )
+        .unwrap();
+        let parsed = lyricsfile::parse_lyricsfile(&content).unwrap();
+        for (name, bytes) in [
+            (
+                "song.MP3",
+                include_bytes!("../tests/fixtures/embedding.mp3").as_slice(),
+            ),
+            (
+                "song.FLAC",
+                include_bytes!("../tests/fixtures/embedding.flac").as_slice(),
+            ),
+        ] {
+            let path = directory.join(name);
+            std::fs::write(&path, bytes).unwrap();
+            let track = test_track(&path);
+            // A disabled gate never reaches the writer, even for a valid audio file.
+            let result = export::export_track_with_embed_gate(&track, &parsed, &[Embedded], || false);
+            assert!(
+                matches!(&result[0].status, ExportStatus::Skipped(reason) if reason.contains("disabled"))
+            );
+            assert_eq!(std::fs::read(&path).unwrap(), bytes);
+            let result = export::export_track(&track, &parsed, &[Embedded]);
+            assert!(
+                matches!(result[0].status, ExportStatus::Success),
+                "{result:?}"
+            );
+            let written = std::fs::read(&path).unwrap();
+            assert!(written
+                .windows(b"embed-test-line".len())
+                .any(|window| window == b"embed-test-line"));
+        }
+
+        let path = directory.join("song.ogg");
+        let bytes = b"unsupported audio must not be touched";
+        std::fs::write(&path, bytes).unwrap();
+        let track = test_track(&path);
+        let result = export::export_track(&track, &parsed, &[Embedded]);
+        assert!(
+            matches!(&result[0].status, ExportStatus::Skipped(reason) if reason.contains("unsupported"))
+        );
+        assert!(result[0].path.is_none());
+        let result = download_export_message(
+            "Plain lyrics downloaded",
+            &track,
+            &content,
+            &[Embedded],
+            || true,
+        );
+        assert!(result.starts_with("Plain lyrics downloaded; Embedded export skipped: unsupported"));
+        assert_eq!(std::fs::read(&path).unwrap(), bytes);
+
+        // Check the current gate for each operation, even within one batch snapshot.
+        let track = test_track(&directory.join("song.MP3"));
+        let mut enabled = true;
+        let result =
+            export::export_track_with_embed_gate(&track, &parsed, &[Embedded, Embedded], || {
+                let current = enabled;
+                enabled = false;
+                current
+            });
+        assert!(matches!(result[0].status, ExportStatus::Success));
+        assert!(matches!(result[1].status, ExportStatus::Skipped(_)));
+        let before = std::fs::read(&track.file_path).unwrap();
+        let result = download_export_message(
+            "Plain lyrics downloaded",
+            &track,
+            &content,
+            &[Embedded],
+            || false,
+        );
+        assert!(result.starts_with("Plain lyrics downloaded; Embedded export skipped: experimental"));
+        assert_eq!(std::fs::read(&track.file_path).unwrap(), before);
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    fn test_track(path: &std::path::Path) -> PersistentTrack {
+        PersistentTrack {
+            id: 1,
+            file_path: path.to_string_lossy().into_owned(),
+            file_name: "song.flac".into(),
+            title: "Song".into(),
+            album_name: "Album".into(),
+            album_artist_name: None,
+            album_id: 1,
+            artist_name: "Artist".into(),
+            artist_id: 1,
+            image_path: None,
+            track_number: None,
+            txt_lyrics: None,
+            lrc_lyrics: None,
+            lyricsfile: None,
+            lyricsfile_id: None,
+            duration: 100.0,
+            instrumental: false,
+        }
+    }
+
+    #[test]
+    fn selection_allows_embed_only_and_preserves_order() {
+        assert_eq!(
+            AutoExportOptions {
+                plain_text: false,
+                synced_lrc: false,
+                embed_into_track: true,
+            }
+            .formats()
+            .unwrap(),
+            vec![export::ExportFormat::Embedded]
+        );
+        assert!(AutoExportOptions {
+            plain_text: false,
+            synced_lrc: false,
+            embed_into_track: false,
+        }
+        .formats()
+        .is_err());
+        assert_eq!(
+            AutoExportOptions {
+                plain_text: true,
+                synced_lrc: true,
+                embed_into_track: true,
+            }
+            .formats()
+            .unwrap(),
+            vec![
+                export::ExportFormat::Txt,
+                export::ExportFormat::Lrc,
+                export::ExportFormat::Embedded
+            ],
+        );
+    }
+
+    #[test]
+    fn download_export_messages_keep_success_skips_and_errors_in_writer_order() {
+        let directory =
+            std::env::temp_dir().join(format!("lrcget-auto-export-{}", std::process::id()));
+        std::fs::create_dir_all(&directory).unwrap();
+        let track = test_track(&directory.join("song.flac"));
+        let content = lyricsfile::build_lyricsfile(
+            &lyricsfile::LyricsfileTrackMetadata::new("Song", "Album", "Artist", 100.0),
+            Some("hello"),
+            Some("[00:01.00] hello"),
+        )
+        .unwrap();
+        let formats = [export::ExportFormat::Txt, export::ExportFormat::Lrc];
+        std::fs::write(directory.join("song.lrc"), "old lyrics").unwrap();
+        let result =
+            download_export_message("Synced lyrics downloaded", &track, &content, &formats, || true);
+        assert_eq!(
+            result,
+            "Synced lyrics downloaded; TXT export completed; LRC export completed"
+        );
+        assert!(!directory.join("song.txt").exists());
+        assert!(std::fs::read_to_string(directory.join("song.lrc"))
+            .unwrap()
+            .contains("hello"));
+
+        let plain = lyricsfile::build_lyricsfile(
+            &lyricsfile::LyricsfileTrackMetadata::new("Song", "Album", "Artist", 100.0),
+            Some("plain only"),
+            None,
+        )
+        .unwrap();
+        let result = download_export_message("Plain lyrics downloaded", &track, &plain, &formats, || true);
+        assert_eq!(result, "Plain lyrics downloaded; TXT export completed; LRC export skipped: no synced lyrics available");
+        assert!(directory.join("song.txt").exists());
+        // A directory at the LRC target deterministically fails writing, even when tests run as root.
+        std::fs::create_dir(directory.join("song.lrc")).unwrap();
+        let result =
+            download_export_message("Synced lyrics downloaded", &track, &content, &formats, || true);
+        assert!(result
+            .starts_with("Synced lyrics downloaded; TXT export completed; LRC export failed:"));
+        assert!(!directory.join("song.txt").exists()); // Existing destructive semantics are retained.
+        let result = download_export_message("Lyrics downloaded", &track, "[invalid", &formats, || true);
+        assert!(result.starts_with("Lyrics downloaded; export failed:"));
+        std::fs::remove_dir_all(directory).unwrap();
+    }
 }

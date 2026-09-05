@@ -162,12 +162,20 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
         try_embed_lyrics,
         theme_mode,
         lrclib_instance,
-        volume
+        volume,
+        auto_export_enabled,
+        export_lrc,
+        export_txt,
+        export_embedded
       FROM config_data
       LIMIT 1
     "})?;
     let row = statement.query_row([], |r| {
         Ok(PersistentConfig {
+            auto_export_enabled: r.get("auto_export_enabled")?,
+            export_lrc: r.get("export_lrc")?,
+            export_txt: r.get("export_txt")?,
+            export_embedded: r.get("export_embedded")?,
             skip_tracks_with_synced_lyrics: r.get("skip_tracks_with_synced_lyrics")?,
             skip_tracks_with_plain_lyrics: r.get("skip_tracks_with_plain_lyrics")?,
             show_line_count: r.get("show_line_count")?,
@@ -211,6 +219,47 @@ pub fn set_config(
         lrclib_instance,
         volume,
     ))?;
+    Ok(())
+}
+
+// Omitted fields preserve hidden choices and preferences owned by the other popup.
+pub fn set_export_preferences(
+    auto_export_enabled: Option<bool>,
+    export_lrc: Option<bool>,
+    export_txt: Option<bool>,
+    export_embedded: Option<bool>,
+    skip_tracks_with_synced_lyrics: Option<bool>,
+    skip_tracks_with_plain_lyrics: Option<bool>,
+    db: &Connection,
+) -> Result<()> {
+    let config = get_config(db)?;
+    // A disabled experimental option cannot overwrite its remembered selection.
+    let export_embedded = export_embedded.filter(|_| config.try_embed_lyrics);
+    let has_sidecar =
+        export_lrc.unwrap_or(config.export_lrc) || export_txt.unwrap_or(config.export_txt);
+    if auto_export_enabled != Some(false)
+        && !has_sidecar
+        && !(export_embedded.unwrap_or(config.export_embedded) && config.try_embed_lyrics)
+    {
+        anyhow::bail!("Select at least one enabled export format");
+    }
+    db.execute(
+        "UPDATE config_data SET
+            auto_export_enabled = COALESCE(?1, auto_export_enabled),
+            export_lrc = COALESCE(?2, export_lrc),
+            export_txt = COALESCE(?3, export_txt),
+            export_embedded = COALESCE(?4, export_embedded),
+            skip_tracks_with_synced_lyrics = COALESCE(?5, skip_tracks_with_synced_lyrics),
+            skip_tracks_with_plain_lyrics = COALESCE(?6, skip_tracks_with_plain_lyrics)",
+        (
+            auto_export_enabled,
+            export_lrc,
+            export_txt,
+            export_embedded,
+            skip_tracks_with_synced_lyrics,
+            skip_tracks_with_plain_lyrics,
+        ),
+    )?;
     Ok(())
 }
 
@@ -1737,4 +1786,156 @@ pub fn find_tracks_by_metadata(
     }
 
     Ok(tracks)
+}
+
+#[cfg(test)]
+mod export_preferences_tests {
+    use super::*;
+
+    #[test]
+    fn embed_only_preferences_require_gate_and_preserve_disabled_choice() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        Migrations::from_directory(&MIGRATIONS_DIR)
+            .unwrap()
+            .to_latest(&mut conn)
+            .unwrap();
+        conn.execute("UPDATE config_data SET try_embed_lyrics = TRUE", [])
+            .unwrap();
+        set_export_preferences(
+            Some(true),
+            Some(false),
+            Some(false),
+            Some(true),
+            None,
+            None,
+            &conn,
+        )
+        .unwrap();
+        let config = get_config(&conn).unwrap();
+        assert!(config.auto_export_enabled && config.export_embedded);
+        assert!(!config.export_lrc && !config.export_txt);
+
+        conn.execute("UPDATE config_data SET try_embed_lyrics = FALSE", [])
+            .unwrap();
+        // Stale/bypassed embed-only submissions are rejected before any fields change.
+        for auto in [Some(true), None] {
+            assert!(set_export_preferences(
+                auto,
+                Some(false),
+                Some(false),
+                Some(true),
+                Some(false),
+                Some(false),
+                &conn
+            )
+            .is_err());
+        }
+        // An effective sidecar remains valid, but the disabled embedded choice is retained.
+        set_export_preferences(
+            Some(true),
+            Some(true),
+            Some(false),
+            Some(false),
+            None,
+            None,
+            &conn,
+        )
+        .unwrap();
+        assert!(get_config(&conn).unwrap().export_embedded);
+        set_export_preferences(Some(false), None, None, Some(false), None, None, &conn).unwrap();
+        assert!(get_config(&conn).unwrap().export_embedded);
+    }
+
+    #[test]
+    fn download_filter_writes_preserve_unrelated_settings_and_hidden_formats() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        Migrations::from_directory(&MIGRATIONS_DIR)
+            .unwrap()
+            .to_latest(&mut conn)
+            .unwrap();
+        set_config(true, false, true, true, "dark", "https://example.test", 0.4, &conn)
+            .unwrap();
+        set_export_preferences(None, Some(true), Some(true), Some(true), None, None, &conn)
+            .unwrap();
+
+        for (skip_synced, skip_plain) in [(false, false), (true, false), (true, true)] {
+            // Download off preserves formats while atomically saving the submitted filter.
+            set_export_preferences(
+                Some(false), None, None, None, Some(skip_synced), Some(skip_plain), &conn,
+            )
+            .unwrap();
+            let config = get_config(&conn).unwrap();
+            assert_eq!(config.skip_tracks_with_synced_lyrics, skip_synced);
+            assert_eq!(config.skip_tracks_with_plain_lyrics, skip_plain);
+            assert!(!config.auto_export_enabled);
+            assert!(config.export_lrc && config.export_txt && config.export_embedded);
+            assert!(config.show_line_count && config.try_embed_lyrics);
+            assert_eq!(config.theme_mode, "dark");
+            assert_eq!(config.lrclib_instance, "https://example.test");
+            assert_eq!(config.volume, 0.4);
+
+            // Manual Export omits both flags and must leave the Download filter alone.
+            set_export_preferences(None, Some(true), None, None, None, None, &conn).unwrap();
+            let config = get_config(&conn).unwrap();
+            assert_eq!(config.skip_tracks_with_synced_lyrics, skip_synced);
+            assert_eq!(config.skip_tracks_with_plain_lyrics, skip_plain);
+        }
+    }
+
+    #[test]
+    fn migration_and_scoped_writes_preserve_existing_settings() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        let migrations = Migrations::from_directory(&MIGRATIONS_DIR).unwrap();
+        migrations.to_version(&mut conn, 16).unwrap();
+        set_config(
+            true,
+            false,
+            true,
+            true,
+            "dark",
+            "https://example.test",
+            0.4,
+            &conn,
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO lyricsfiles (lyricsfile) VALUES ('plain: saved')",
+            [],
+        )
+        .unwrap();
+        migrations.to_latest(&mut conn).unwrap();
+        let config = get_config(&conn).unwrap();
+        assert!(!config.auto_export_enabled);
+        assert!(config.export_lrc);
+        assert!(!config.export_txt && !config.export_embedded);
+        assert_eq!(config.theme_mode, "dark");
+        let count: i64 = conn
+            .query_row("SELECT COUNT(*) FROM lyricsfiles", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 1);
+
+        // Manual Export shares formats but does not touch the Download toggle.
+        set_export_preferences(Some(true), None, None, None, None, None, &conn).unwrap();
+        set_export_preferences(None, Some(false), Some(true), Some(true), None, None, &conn).unwrap();
+        assert!(get_config(&conn).unwrap().auto_export_enabled);
+        // Turning auto-export off preserves formats, including hidden embedded selection.
+        set_export_preferences(Some(false), None, None, None, None, None, &conn).unwrap();
+        // Ordinary Settings writes leave all export preferences alone.
+        set_config(
+            false,
+            true,
+            false,
+            false,
+            "light",
+            "https://other.test",
+            0.6,
+            &conn,
+        )
+        .unwrap();
+        let config = get_config(&conn).unwrap();
+        assert!(!config.auto_export_enabled && !config.export_lrc);
+        assert!(config.export_txt && config.export_embedded);
+        assert_eq!(config.lrclib_instance, "https://other.test");
+        assert_eq!(config.volume, 0.6);
+    }
 }

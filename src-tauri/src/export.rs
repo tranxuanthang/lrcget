@@ -187,6 +187,14 @@ fn export_embedded(
     track: &PersistentTrack,
     parsed: &ParsedLyricsfile,
 ) -> Result<ExportResult, ExportError> {
+    let path_lower = track.file_path.to_lowercase();
+    if !path_lower.ends_with(".mp3") && !path_lower.ends_with(".flac") {
+        return Ok(ExportResult {
+            format: ExportFormat::Embedded,
+            path: None,
+            status: ExportStatus::Skipped("unsupported audio format (MP3/FLAC only)".to_owned()),
+        });
+    }
     let plain_lyrics = parsed.plain_lyrics.clone().unwrap_or_default();
     let synced_lyrics = if parsed.is_instrumental {
         crate::lyricsfile::INSTRUMENTAL_LRC.to_string()
@@ -210,9 +218,29 @@ pub fn export_track(
     parsed: &ParsedLyricsfile,
     formats: &[ExportFormat],
 ) -> Vec<ExportResult> {
+    export_track_with_embed_gate(track, parsed, formats, || true)
+}
+
+/// Consult the current experimental setting at each embedded operation, not at batch creation.
+pub fn export_track_with_embed_gate(
+    track: &PersistentTrack,
+    parsed: &ParsedLyricsfile,
+    formats: &[ExportFormat],
+    mut embed_allowed: impl FnMut() -> bool,
+) -> Vec<ExportResult> {
     let mut results = Vec::with_capacity(formats.len());
 
     for format in formats {
+        if *format == ExportFormat::Embedded && !embed_allowed() {
+            results.push(ExportResult {
+                format: *format,
+                path: None,
+                status: ExportStatus::Skipped(
+                    "experimental embedding disabled or unavailable".to_owned(),
+                ),
+            });
+            continue;
+        }
         match export_track_format(track, parsed, *format) {
             Ok(result) => results.push(result),
             Err(e) => results.push(ExportResult {

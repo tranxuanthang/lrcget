@@ -1,5 +1,8 @@
 <template>
-  <div id="library-header" class="px-4 py-2 h-12 flex justify-between gap-4 flex-none items-stretch">
+  <div
+    id="library-header"
+    class="px-4 py-2 h-12 flex justify-between gap-4 flex-none items-stretch"
+  >
     <div class="flex-1 ml-2">
       <MiniSearch :active-tab="props.activeTab" />
     </div>
@@ -94,16 +97,14 @@
       <button
         v-else
         class="button button-primary h-full min-w-[12rem] px-2 text-xs rounded-full"
-        @click.prevent="downloadAllLyrics"
+        @click.stop.prevent="openDownloadOptions"
       >
-        <div class="text-sm">
-          <DownloadMultiple />
-        </div>
+        <DownloadMultiple />
         <span>Download all lyrics</span>
       </button>
 
       <button
-        v-if="isExporting && (exportedCount + skippedCount + errorCount) < exportTotalCount"
+        v-if="isExporting && exportedCount + skippedCount + errorCount < exportTotalCount"
         class="button button-working h-full min-w-[7rem] px-2 text-xs rounded-full"
         @click.prevent="$emit('showExportViewer')"
       >
@@ -126,10 +127,11 @@
 
       <VDropdown
         v-else
+        ref="exportDropdown"
         theme="lrcget-dropdown"
         placement="bottom-end"
         class="h-full aspect-square"
-        @show="refreshEmbedConfig"
+        @show="openExportOptions"
       >
         <button
           class="button button-normal h-full min-w-[6rem] px-2 text-xs rounded-full"
@@ -139,48 +141,51 @@
           <span>Export</span>
         </button>
         <template #popper>
-          <div class="dropdown-container min-w-[17rem]">
+          <div
+            class="dropdown-container export-options min-w-[17rem]"
+            @keydown.esc="exportDropdown?.hide()"
+          >
             <div class="dropdown-section-label">Export all lyrics to tracks' directory:</div>
 
-            <label class="dropdown-item">
-              <CheckboxButton
-                id="export-plain-text"
-                v-model="exportPlainText"
-                name="export-plain-text"
-              >
-                <span class="dropdown-label">Plain lyrics (.txt)</span>
-              </CheckboxButton>
-            </label>
-            <label class="dropdown-item">
-              <CheckboxButton
-                id="export-synced-lrc"
-                v-model="exportSyncedLrc"
-                name="export-synced-lrc"
-              >
-                <span class="dropdown-label">Synced lyrics (.lrc)</span>
-              </CheckboxButton>
-            </label>
+            <fieldset :disabled="exportLoading || submittingExport">
+              <label class="dropdown-item">
+                <CheckboxButton
+                  id="export-plain-text"
+                  v-model="exportDraft.plainText"
+                  name="export-plain-text"
+                >
+                  <span class="dropdown-label">Plain lyrics (.txt)</span>
+                </CheckboxButton>
+              </label>
+              <label class="dropdown-item">
+                <CheckboxButton
+                  id="export-synced-lrc"
+                  v-model="exportDraft.syncedLrc"
+                  name="export-synced-lrc"
+                >
+                  <span class="dropdown-label">Synced lyrics (.lrc)</span>
+                </CheckboxButton>
+              </label>
 
-            <label
-              class="dropdown-item"
-              :class="{ 'opacity-50 cursor-not-allowed': !tryEmbedLyrics }"
-            >
-              <CheckboxButton
-                id="embed-into-track"
-                v-model="embedIntoTrack"
-                name="embed-into-track"
-                :disabled="!tryEmbedLyrics"
-              >
-                <span class="dropdown-label">Embed into track</span>
-              </CheckboxButton>
-            </label>
-
+              <label class="dropdown-item" :class="{ 'cursor-not-allowed': !tryEmbedLyrics }">
+                <CheckboxButton
+                  id="embed-into-track"
+                  v-model="exportDraft.embedIntoTrack"
+                  name="embed-into-track"
+                  :disabled="!tryEmbedLyrics"
+                >
+                  <span class="dropdown-label">Embed into track</span>
+                </CheckboxButton>
+              </label>
+            </fieldset>
+            <p v-if="exportError" role="alert" class="options-error">
+              {{ exportError }}
+            </p>
             <div class="px-2 py-2">
               <button
-                v-close-popper
                 class="button w-full text-sm h-8 rounded"
-                :class="hasSelectedExportFormat ? 'button-primary' : 'button-disabled'"
-                :disabled="!hasSelectedExportFormat"
+                :class="canExport ? 'button-primary' : 'button-disabled'"
+                :disabled="!canExport"
                 type="button"
                 @click="handleExportClick"
               >
@@ -225,7 +230,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed } from 'vue'
 import DownloadMultiple from '~icons/mdi/download-multiple'
 import Loading from '~icons/mdi/loading'
 import Check from '~icons/mdi/check'
@@ -238,8 +243,9 @@ import Export from '~icons/mdi/export'
 import CheckboxButton from '@/components/common/CheckboxButton.vue'
 import { useDownloader } from '@/composables/downloader.js'
 import { useExporter } from '@/composables/export.js'
+import { useExportPreferences } from '@/composables/export-preferences.js'
 import MiniSearch from './MiniSearch.vue'
-import { invoke } from '@tauri-apps/api/core'
+import { useDownloadOptions, useDownloadTrigger } from '@/composables/download-options.js'
 
 const props = defineProps(['activeTab'])
 const emit = defineEmits([
@@ -253,61 +259,74 @@ const emit = defineEmits([
   'showExportViewer',
 ])
 
-const exportPlainText = ref(false)
-const exportSyncedLrc = ref(false)
-const embedIntoTrack = ref(false)
+const { refresh: refreshPreferences, save: savePreferences } = useExportPreferences()
+const exportDropdown = ref(null)
+const exportDraft = ref({ plainText: false, syncedLrc: true, embedIntoTrack: false })
 const tryEmbedLyrics = ref(false)
+const exportLoading = ref(false)
+const submittingExport = ref(false)
+const exportError = ref('')
 
-const refreshEmbedConfig = async () => {
-  const config = await invoke('get_config')
-  tryEmbedLyrics.value = config.try_embed_lyrics
+const { isBuildingQueue } = useDownloadOptions()
+const openDownloadOptions = useDownloadTrigger(() => ({ type: 'library' }))
+
+const openExportOptions = async () => {
+  exportLoading.value = true
+  exportError.value = ''
+  try {
+    const config = await refreshPreferences()
+    exportDraft.value = {
+      plainText: config.export_txt,
+      syncedLrc: config.export_lrc,
+      embedIntoTrack: config.export_embedded,
+    }
+    tryEmbedLyrics.value = config.try_embed_lyrics
+  } catch (error) {
+    exportError.value = String(error)
+  } finally {
+    exportLoading.value = false
+  }
 }
 
-onMounted(refreshEmbedConfig)
-
-const hasSelectedExportFormat = computed(
-  () => exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value
+const canExport = computed(
+  () =>
+    !exportLoading.value &&
+    !submittingExport.value &&
+    !exportError.value &&
+    (exportDraft.value.plainText ||
+      exportDraft.value.syncedLrc ||
+      (exportDraft.value.embedIntoTrack && tryEmbedLyrics.value))
 )
 
-const handleExportClick = () => {
-  if (!hasSelectedExportFormat.value) {
-    return
-  }
-
-  emit('exportAllLyrics', {
-    plainText: exportPlainText.value,
-    syncedLrc: exportSyncedLrc.value,
-    embedIntoTrack: embedIntoTrack.value,
-  })
-}
-
-const { isDownloading, totalCount: downloadTotalCount, downloadedCount, addToQueue } = useDownloader()
-
-const { isExporting, exportedCount, skippedCount, errorCount, totalCount: exportTotalCount } = useExporter()
-
-const isBuildingQueue = ref(false)
-
-const downloadAllLyrics = async () => {
-  isBuildingQueue.value = true
-
+const handleExportClick = async () => {
+  if (!canExport.value) return
+  submittingExport.value = true
+  const draft = { ...exportDraft.value }
+  const embedEnabled = tryEmbedLyrics.value
   try {
-    const config = await invoke('get_config')
-    let downloadTrackIds = await invoke('get_track_ids', {
-      searchQuery: '',
-      syncedLyricsTracks: !config.skip_tracks_with_synced_lyrics,
-      plainLyricsTracks: !config.skip_tracks_with_plain_lyrics,
-      instrumentalTracks:
-        !config.skip_tracks_with_synced_lyrics && !config.skip_tracks_with_plain_lyrics, // Treat instrumental tracks as either synced or plain lyrics tracks
-      noLyricsTracks: true,
+    await savePreferences({
+      exportTxt: draft.plainText,
+      exportLrc: draft.syncedLrc,
+      ...(embedEnabled ? { exportEmbedded: draft.embedIntoTrack } : {}),
     })
-    addToQueue(downloadTrackIds)
+    exportDropdown.value?.hide()
+    emit('exportAllLyrics', { ...draft, embedIntoTrack: draft.embedIntoTrack && embedEnabled })
   } catch (error) {
-    // TODO handle error by showing an error popup, etc...
-    console.error(error)
+    exportError.value = String(error)
   } finally {
-    isBuildingQueue.value = false
+    submittingExport.value = false
   }
 }
+
+const { isDownloading, totalCount: downloadTotalCount, downloadedCount } = useDownloader()
+
+const {
+  isExporting,
+  exportedCount,
+  skippedCount,
+  errorCount,
+  totalCount: exportTotalCount,
+} = useExporter()
 </script>
 
 <style scoped>
@@ -325,6 +344,22 @@ const downloadAllLyrics = async () => {
 
 .dropdown-container {
   @apply p-1 min-w-[10rem];
+}
+
+.export-options {
+  @apply max-w-[calc(100vw-1rem)] max-h-[calc(100vh-4rem)] overflow-y-auto text-neutral-900 dark:text-neutral-100;
+}
+
+.options-error {
+  @apply px-2 py-1 text-xs leading-relaxed break-words text-red-700 dark:text-red-400;
+}
+
+.export-options .button-primary {
+  @apply bg-hoa-1400 hover:bg-hoa-1500 active:bg-hoa-1500;
+}
+
+.export-options .button-disabled {
+  @apply text-neutral-500 dark:text-neutral-400;
 }
 
 .dropdown-item {

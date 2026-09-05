@@ -26,7 +26,9 @@
       <div v-if="album" class="transition gap-1">
         <button
           class="text-neutral-800 hover:bg-hoa-1100 hover:text-white rounded p-2 transition dark:text-white dark:hover:bg-hoa-1100 dark:hover:text-white"
-          @click.prevent="downloadLyricsMultiple"
+          @click.stop.prevent="downloadLyricsMultiple"
+          :disabled="!album || album.id !== props.albumId"
+          :aria-label="`Download lyrics for ${album?.name ?? ''}`"
         >
           <DownloadMultiple />
         </button>
@@ -39,27 +41,23 @@
 import DownloadMultiple from '~icons/mdi/download-multiple'
 import { ref, onMounted, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { useDownloader } from '@/composables/downloader.js'
+import { useDownloadTrigger } from '@/composables/download-options.js'
 
 const props = defineProps(['albumId'])
 defineEmits(['openAlbum'])
 
-const { addToQueue } = useDownloader()
-
 const album = ref(null)
 
-const downloadLyricsMultiple = async () => {
-  const config = await invoke('get_config')
-  const trackIds = await invoke('get_album_track_ids', {
-    albumId: album.value.id,
-    withoutPlainLyrics: config.skip_tracks_with_plain_lyrics,
-    withoutSyncedLyrics: config.skip_tracks_with_synced_lyrics,
-  })
-  addToQueue(trackIds)
-}
+const downloadLyricsMultiple = useDownloadTrigger(() =>
+  album.value?.id === props.albumId
+    ? { type: 'album', id: album.value.id, name: album.value.name }
+    : null
+)
 
 const loadAlbum = async id => {
-  album.value = await invoke('get_album', { albumId: id })
+  album.value = null
+  const loaded = await invoke('get_album', { albumId: id })
+  if (id === props.albumId) album.value = loaded
 }
 
 watch(

@@ -82,6 +82,10 @@ pub struct PersistentArtist {
 
 #[derive(Serialize)]
 pub struct PersistentConfig {
+    pub auto_export_enabled: bool,
+    pub export_lrc: bool,
+    pub export_txt: bool,
+    pub export_embedded: bool,
     pub skip_tracks_with_synced_lyrics: bool,
     pub skip_tracks_with_plain_lyrics: bool,
     pub show_line_count: bool,

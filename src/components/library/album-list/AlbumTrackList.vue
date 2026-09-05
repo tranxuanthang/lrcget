@@ -26,7 +26,7 @@
         <div class="">
           <button
             class="button button-normal px-4 py-1.5 text-xs rounded-full"
-            @click.prevent="downloadAlbumLyrics"
+            @click.stop.prevent="downloadAlbumLyrics"
           >
             <div class="text-sm">
               <DownloadMultiple />
@@ -81,12 +81,10 @@ import { useVirtualizer } from '@tanstack/vue-virtual'
 import { ref, computed, watch, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import TrackItem from '../track-list/TrackItem.vue'
-import { useDownloader } from '@/composables/downloader.js'
+import { useDownloadTrigger } from '@/composables/download-options.js'
 
 const props = defineProps(['album'])
 const emit = defineEmits(['back', 'playTrack', 'downloadLyrics'])
-
-const { addToQueue } = useDownloader()
 
 const trackIds = ref([])
 const parentRef = ref(null)
@@ -114,15 +112,9 @@ const downloadLyrics = track => {
   emit('downloadLyrics', track)
 }
 
-const downloadAlbumLyrics = async () => {
-  const config = await invoke('get_config')
-  const downloadTrackIds = await invoke('get_album_track_ids', {
-    albumId: props.album.id,
-    withoutPlainLyrics: config.skip_tracks_with_plain_lyrics,
-    withoutSyncedLyrics: config.skip_tracks_with_synced_lyrics,
-  })
-  addToQueue(downloadTrackIds)
-}
+const downloadAlbumLyrics = useDownloadTrigger(() => ({
+  type: 'album', id: props.album.id, name: props.album.name,
+}))
 
 onMounted(async () => {
   trackIds.value = await invoke('get_album_track_ids', { albumId: props.album.id })

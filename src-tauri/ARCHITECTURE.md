@@ -12,7 +12,7 @@
 | Events | Async backend→frontend via `app.emit()` |
 | Commands | All FFI in `main.rs`, organized by domain |
 | Scanning | Single-pass streaming with batch processing (100 files) |
-| Export | Manual sidecar (.txt/.lrc) and embedded metadata export |
+| Export | Optional TXT/LRC/embedded export after library/album/artist bulk Download; shared manual writers |
 
 **Key Dependencies:** `tauri`, `rusqlite`+`rusqlite_migration`, `lofty`, `kira`, `reqwest`, `rayon`, `xxhash-rust`, `regex` (for LRC parsing), `charabia` (international word segmentation)
 
@@ -96,6 +96,8 @@ trait ServiceAccess {
 **Migration v14:** Recreates the `tracks` table without deprecated lyrics columns (`txt_lyrics`, `lrc_lyrics`, `instrumental`, `has_plain_lyrics`, `has_synced_lyrics`, `has_word_synced_lyrics`). All lyrics data is now stored exclusively in the `lyricsfiles` table. Forces a library reset.
 
 **Migration v15:** Added indexes on `tracks.album_id` and `tracks.artist_id`.
+
+**Migration v17:** Added `auto_export_enabled` (false), `export_lrc` (true), `export_txt` (false), and `export_embedded` (false) to `config_data`. Shared Download/Export defaults persist through a scoped update, without resetting library data. Ordinary `set_config` leaves these fields untouched.
 
 **Migration v16:** Added SQLite FTS5 virtual tables for full-text search:
 - `tracks_fts` — indexed `title`, `artist_name`, `album_name` (with `track_id` as UNINDEXED key)
@@ -189,7 +191,7 @@ Playback speed:
 
 ### Export Module (`export.rs`)
 
-Manual lyrics export to sidecar files (`.txt`, `.lrc`) and embedded metadata.
+Shared lyrics export to sidecar files (`.txt`, `.lrc`) and manual embedded metadata export. Automatic Download export calls the same `export_track` writers after successful internal save.
 
 ```rust
 pub enum ExportFormat {
@@ -211,7 +213,7 @@ pub struct ExportResult {
 - `export_track_format()` - Export to a specific format
 - `embed_lyrics()` - Embed lyrics into MP3 (ID3v2 USLT/SYLT) or FLAC (Vorbis comments)
 
-**Note:** Sidecar exports overwrite existing files silently. Embedded exports use `lofty` for tag writing.
+**Note:** Sidecar exports retain their existing semantics: overwrite the selected target and attempt to delete the opposite extension before writing available content. Unavailable formats skip before deletion. Bulk export runs TXT, LRC, then embedded, so both successful sidecar operations normally leave only LRC. Failures do not roll back filesystem changes. Embedded exports use the existing `lofty` MP3/FLAC writers. The shared format boundary reports unsupported extensions as `Skipped` before touching the file. Both manual commands and automatic export use `export_track_with_embed_gate`, reading current `try_embed_lyrics` immediately before each embedded operation (read failures deny embedding). A disabled gate produces a format-level skip, including embed-only batches whose gate was disabled after submission; successful internal downloads retain their success string. Preference submission rejects zero effective formats and ignores embedded-choice updates while the gate is disabled. Supported-writer edge cases remain unchanged: MP3 requires an existing primary tag; FLAC without Vorbis comments currently performs no tag update.
 
 ### LRC Parser (`parser/lrc.rs`)
 
@@ -273,7 +275,7 @@ Implements `From<PersistentTrack>` for seamless conversion from database entitie
 
 **PersistentArtist:** id, name, tracks_count
 
-**PersistentConfig:** skip_synced, skip_plain, show_line_count, try_embed, theme_mode, lrclib_instance, volume
+**PersistentConfig:** skip_synced, skip_plain, show_line_count, try_embed, theme_mode, lrclib_instance, volume, auto_export_enabled, export_lrc, export_txt, export_embedded
 
 ## WebDriver Dev Bridge (`tauri-plugin-webdriver`)
 
@@ -307,7 +309,7 @@ Search across all three entity types uses SQLite FTS5 (via `tracks_fts`, `albums
 ### Lyrics
 | Command | Purpose |
 |---------|---------|
-| `download_lyrics()` | Auto-download from LRCLIB |
+| `download_lyrics(track_id, auto_export?)` | Download from LRCLIB and save internally. Optional explicit `{ plainText, syncedLrc, embedIntoTrack }` batch snapshot enables TXT/LRC/embedded export after save; empty selections are rejected before downloading. Returns the existing string, appending ordered export outcomes/errors after save. Omitted options preserve internal-only behavior. |
 | `retrieve_lyrics/by_id()` | Get raw LRCLIB response |
 | `search_lyrics()` | Search LRCLIB database |
 | `apply_lyrics()` | Save a selected LRCLIB result into database-backed lyrics storage |
@@ -327,6 +329,7 @@ Search across all three entity types uses SQLite FTS5 (via `tracks_fts`, `albums
 - `play_track(track_id?, file_path?, title?, album_name?, artist_name?, album_artist_name?, duration?)` - Unified playback for both library tracks (via `track_id`) and file-based tracks (via `file_path` with metadata)
 - `pause/resume_track()`, `seek_track()`, `stop_track()`, `set_volume()` (persists volume to config), `set_playback_speed()`
 - `get/set_directories()`, `get/set_config()`, `get_init()`
+- `set_export_preferences(auto_export_enabled?, export_lrc?, export_txt?, export_embedded?, skip_tracks_with_synced_lyrics?, skip_tracks_with_plain_lyrics?)` updates only supplied fields in `config_data` and returns config. Download atomically supplies its existing skip flags, toggle, and effective format selections; manual Export supplies shared formats only. Hidden/omitted fields and unrelated settings survive.
 - Volume is loaded from config on startup and auto-saved when changed via `set_volume()`
 - `open_devtools()`, `drain_notifications()`
 
@@ -404,7 +407,7 @@ Used by `AssociateTrackModal.vue` to prefill the search input when associating L
 
 ## Notes
 
-- **Lyrics Storage:** `lyricsfiles` table is the sole persistence source of truth; sidecar files and embedded tags are manual exports. The `tracks` table no longer contains `txt_lyrics` or `lrc_lyrics` columns as of migration v14.
+- **Lyrics Storage:** `lyricsfiles` table remains the source of truth. The shared confirmed library/album/artist Download popup can opt into TXT/LRC/embedded export after save; all other save paths remain manual export. Automatic export parses the just-saved snapshot without holding the DB lock during file I/O, and failures remain text in the successful download response. The `tracks` table no longer contains `txt_lyrics` or `lrc_lyrics` columns as of migration v14.
 - **Filtering Source of Truth:** Lyrics filters use `lyricsfiles.has_*_lyrics` booleans (via LEFT JOIN with COALESCE)
 - **Instrumental:** `[au: instrumental]` marker in lrc_lyrics, stored as `instrumental = true` in lyricsfiles table
 - **Security:** PoW for LRCLIB writes, user-agent in requests, DB in app_data_dir

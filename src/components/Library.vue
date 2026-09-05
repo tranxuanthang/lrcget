@@ -23,6 +23,11 @@
       <MyLrclib :is-active="activeTab === 'my-lrclib'" />
     </div>
 
+    <DownloadOptionsPopup
+      v-if="downloadRequest"
+      :key="downloadRequest.token"
+      :session="downloadRequest"
+    />
     <NowPlaying class="flex-none" />
   </div>
 
@@ -50,6 +55,9 @@ import { listen } from '@tauri-apps/api/event'
 import Loading from '~icons/mdi/loading'
 import _ from 'lodash'
 import LibraryHeader from './library/LibraryHeader.vue'
+import DownloadOptionsPopup from './library/DownloadOptionsPopup.vue'
+import { useDownloadOptions } from '@/composables/download-options.js'
+
 import NowPlaying from './NowPlaying.vue'
 import TrackList from './library/TrackList.vue'
 import AlbumList from './library/AlbumList.vue'
@@ -63,6 +71,8 @@ import { useToast } from 'vue-toastification'
 import { useModal } from 'vue-final-modal'
 import { useExporter } from '@/composables/export.js'
 import { useLibraryNavigation } from '@/composables/library-navigation.js'
+
+const { request: downloadRequest } = useDownloadOptions()
 
 const props = defineProps({
   shouldScan: {
