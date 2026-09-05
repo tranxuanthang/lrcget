@@ -22,18 +22,10 @@
       {{ humanDuration(duration) }}
     </div>
 
-    <label class="flex-none inline-flex items-center gap-2 text-xs text-neutral-600 dark:text-neutral-400">
-      <span>Speed</span>
-      <select
-        class="select select-xs"
-        :value="String(playbackSpeed)"
-        @change="handleSpeedChange"
-      >
-        <option v-for="option in speedOptions" :key="option" :value="String(option)">
-          {{ option.toFixed(2).replace(/\.00$/, '') }}x
-        </option>
-      </select>
-    </label>
+    <PlaybackSpeedControl
+      :model-value="playbackSpeed"
+      @update:model-value="emit('set-playback-speed', $event)"
+    />
   </div>
 </template>
 
@@ -41,6 +33,7 @@
 import Play from '~icons/mdi/play'
 import Pause from '~icons/mdi/pause'
 import Seek from '@/components/now-playing/Seek.vue'
+import PlaybackSpeedControl from '@/components/common/PlaybackSpeedControl.vue'
 
 defineProps({
   status: {
@@ -62,15 +55,6 @@ defineProps({
 })
 
 const emit = defineEmits(['play-toggle', 'pause', 'seek', 'set-playback-speed'])
-
-const speedOptions = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
-
-const handleSpeedChange = event => {
-  const value = Number(event.target.value)
-  if (Number.isFinite(value)) {
-    emit('set-playback-speed', value)
-  }
-}
 
 const humanDuration = seconds => {
   const boundedSeconds = seconds || 0

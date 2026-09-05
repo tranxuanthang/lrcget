@@ -73,18 +73,7 @@
         </div>
 
         <div class="basis-1/3 flex-1 flex justify-end items-center gap-2">
-          <label class="flex items-center gap-1 text-xs text-neutral-700 dark:text-neutral-300">
-            <span>Speed</span>
-            <select
-              class="select select-xs"
-              :value="String(playbackSpeed)"
-              @change="handleSpeedChange"
-            >
-              <option v-for="option in speedOptions" :key="option" :value="String(option)">
-                {{ option.toFixed(2).replace(/\.00$/, '') }}x
-              </option>
-            </select>
-          </label>
+          <PlaybackSpeedControl :model-value="playbackSpeed" @update:model-value="setPlaybackSpeed" />
           <VolumeSlider :volume="volume" @set-volume="setPlayerVolume" />
         </div>
       </div>
@@ -96,6 +85,7 @@
 import { computed } from 'vue'
 import { ref, onMounted, onUnmounted } from 'vue'
 import Seek from './now-playing/Seek.vue'
+import PlaybackSpeedControl from '@/components/common/PlaybackSpeedControl.vue'
 import LyricsViewer from './now-playing/LyricsViewer.vue'
 import PlainLyricsViewer from './now-playing/PlainLyricsViewer.vue'
 import Play from '~icons/mdi/play'
@@ -139,14 +129,6 @@ const {
   setPlaybackSpeed,
 } = usePlayer()
 
-const speedOptions = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0]
-
-const handleSpeedChange = event => {
-  const value = parseFloat(event.target.value)
-  if (Number.isFinite(value)) {
-    setPlaybackSpeed(value)
-  }
-}
 const keydownEvent = ref(null)
 
 const instrumental = computed(() => {
