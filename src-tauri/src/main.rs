@@ -15,6 +15,7 @@ pub mod player;
 pub mod scanner;
 pub mod state;
 pub mod utils;
+pub mod vocal_stem;
 pub mod word_segmentation;
 
 use persistent_entities::{PersistentAlbum, PersistentArtist, PersistentConfig, PersistentTrack, PlayableTrack};
@@ -1619,6 +1620,19 @@ async fn segment_words(text: String) -> Result<Vec<String>, String> {
     Ok(word_segmentation::segment_words_for_timing(text.as_str()))
 }
 
+#[tauri::command]
+async fn get_vocal_stem(file_path: String, app_handle: AppHandle) -> Result<Option<String>, String> {
+    Ok(vocal_stem::find_existing_vocal_stem(&app_handle, &file_path)?
+        .map(|path| path.to_string_lossy().into_owned()))
+}
+
+#[tauri::command]
+async fn separate_vocals(file_path: String, app_handle: AppHandle) -> Result<String, String> {
+    vocal_stem::separate_vocals(&app_handle, &file_path)
+        .await
+        .map(|path| path.to_string_lossy().into_owned())
+}
+
 #[tokio::main]
 async fn main() {
     let builder = tauri::Builder::default()
@@ -1692,6 +1706,8 @@ async fn main() {
             refresh_lrclib_lyricsfile,
             read_text_file,
             segment_words,
+            get_vocal_stem,
+            separate_vocals,
         ])
         .setup(|app| {
             let handle = app.handle();

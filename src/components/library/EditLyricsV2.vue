@@ -11,14 +11,42 @@
       <EditLyricsV2HeaderActions
         :is-dirty="isDirty"
         :is-exporting="isExporting"
+        :can-separate-vocals="canSeparateVocals"
+        :is-separating-vocals="isSeparating"
+        :has-vocal-stem="hasVocalStem"
         @save="saveLyrics"
         @save-and-publish="saveAndPublish"
         @export="exportLyrics"
         @debug="openDebugModal"
+        @separate-vocals="separateVocals"
       />
     </template>
 
     <template #titleRight>
+      <div class="inline-flex gap-0.5">
+        <button
+          class="button text-sm h-8 px-4 rounded-l-full rounded-r-none"
+          :class="audioMode === 'song' ? 'button-primary' : 'button-normal'"
+          @click="setAudioMode('song')"
+        >
+          Song
+        </button>
+        <button
+          class="button text-sm h-8 px-4 rounded-r-full rounded-l-none"
+          :class="
+            !hasVocalStem
+              ? 'button-disabled'
+              : audioMode === 'vocals'
+                ? 'button-primary'
+                : 'button-normal'
+          "
+          :disabled="!hasVocalStem"
+          @click="setAudioMode('vocals')"
+        >
+          Only vocals
+        </button>
+      </div>
+
       <div class="inline-flex gap-0.5">
         <button
           class="button text-sm h-8 w-24 rounded-l-full rounded-r-none"
@@ -108,7 +136,7 @@
         :selected-line-index="selectedSyncedLineIndex"
         :selected-line-indices="selectedSyncedLineIndices"
         :progress-ms="progressMs"
-        :file-path="audioSource?.file_path ?? null"
+        :file-path="spectrogramFilePath"
         @update:model-value="updateSyncedLines"
         @update:selected-line-index="selectSyncedLine"
         @update:selected-line-indices="handleUpdateSelectedLineIndices"
@@ -160,6 +188,7 @@ import { useEditLyricsV2Publish } from '@/composables/edit-lyrics-v2/useEditLyri
 import { useEditLyricsV2Playback } from '@/composables/edit-lyrics-v2/useEditLyricsV2Playback.js'
 import { useEditLyricsV2Export } from '@/composables/edit-lyrics-v2/useEditLyricsV2Export.js'
 import { useEditLyricsV2SyncedHotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedHotkeys.js'
+import { useEditLyricsV2VocalStem } from '@/composables/edit-lyrics-v2/useEditLyricsV2VocalStem.js'
 import { useGlobalState } from '@/composables/global-state.js'
 import { usePlayer } from '@/composables/player.js'
 import { open } from '@tauri-apps/plugin-dialog'
@@ -280,8 +309,23 @@ const { exportLyrics, isExporting } = useEditLyricsV2Export({
   toast,
 })
 
-const { playLine, playLineAtOffset, resumeOrPlay } = useEditLyricsV2Playback({
+const {
+  audioMode,
+  isSeparating,
+  canSeparateVocals,
+  hasVocalStem,
+  playbackSource,
+  spectrogramFilePath,
+  refreshVocalStem,
+  separateVocals,
+  setAudioMode,
+} = useEditLyricsV2VocalStem({
   audioSource: audioSourceRef,
+  toast,
+})
+
+const { playLine, playLineAtOffset, resumeOrPlay } = useEditLyricsV2Playback({
+  audioSource: playbackSource,
   syncedLines,
   progress,
   playingTrack,
@@ -381,21 +425,43 @@ const handlePasteLrc = async () => {
 const handleWordTimingEdited = async ({ startMs }) => {
   // Auto-replay from the beginning of the edited line for instant verification
   const seekTo = Number.isFinite(startMs) ? startMs / 1000 : progress.value
+  const source = playbackSource.value
 
   // Ensure we're playing the correct audio source
   const isPlayingCorrectTrack =
-    audioSourceRef.value.type === 'library'
-      ? playingTrack.value?.id === audioSourceRef.value.id
-      : playingTrack.value?.file_path === audioSourceRef.value.file_path
+    source?.type === 'library'
+      ? playingTrack.value?.id === source.id
+      : playingTrack.value?.file_path === source?.file_path
 
   if (!playingTrack.value || !isPlayingCorrectTrack) {
-    await playTrack(audioSourceRef.value)
+    await playTrack(source)
   } else if (status.value === 'paused') {
     resume()
   }
 
   seek(seekTo)
 }
+
+watch(audioMode, async (nextMode, previousMode) => {
+  if (nextMode === previousMode) {
+    return
+  }
+
+  const source = playbackSource.value
+  if (!source) {
+    return
+  }
+
+  const position = progress.value ?? 0
+  const wasPlaying = status.value === 'playing'
+  await playTrack(source)
+  if (Number.isFinite(position) && position > 0) {
+    seek(position)
+  }
+  if (!wasPlaying) {
+    pause()
+  }
+})
 
 watch(activeTab, value => {
   if (value !== 'synced') {
@@ -506,15 +572,17 @@ onMounted(() => {
 
   // Initialize lyrics from props
   initializeLyrics()
+  void refreshVocalStem()
 
   // Handle playback - ensure correct audio source is loaded
+  const source = playbackSource.value
   const isPlayingCorrectTrack =
-    audioSourceRef.value?.type === 'library'
-      ? playingTrack.value?.id === audioSourceRef.value?.id
-      : playingTrack.value?.file_path === audioSourceRef.value?.file_path
+    source?.type === 'library'
+      ? playingTrack.value?.id === source?.id
+      : playingTrack.value?.file_path === source?.file_path
 
   if (!playingTrack.value || !isPlayingCorrectTrack) {
-    playTrack(audioSourceRef.value)
+    playTrack(source)
     pause()
   }
 

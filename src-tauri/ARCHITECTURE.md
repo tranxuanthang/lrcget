@@ -28,6 +28,7 @@ src-tauri/
 │   ├── db.rs                # SQLite operations, migrations
 │   ├── library.rs           # High-level library API
 │   ├── decoder.rs           # Symphonia-based audio slice decoder (mono f32)
+│   ├── vocal_stem.rs        # Demucs vocal-stem lookup/separation for the V2 editor
 │   ├── scanner/             # Incremental file scanning (NEW)
 │   │   ├── scan.rs          # Single-pass streaming scanner
 │   │   ├── hasher.rs        # xxhash3 content hashing
@@ -332,6 +333,8 @@ Search across all three entity types uses SQLite FTS5 (via `tracks_fts`, `albums
 - `play_track(track_id?, file_path?, title?, album_name?, artist_name?, album_artist_name?, duration?)` - Unified playback for both library tracks (via `track_id`) and file-based tracks (via `file_path` with metadata)
 - `pause/resume_track()`, `seek_track()`, `stop_track()`, `set_volume()` (persists volume to config), `set_playback_speed()`
 - `get_audio_slice(file_path, start_ms, end_ms)` - Returns `{samples: Vec<f32>, sampleRate: u32}` (camelCase). Decodes a mono-downmixed slice.
+- `get_vocal_stem(file_path)` - Returns an existing `vocals.wav` path from the app cache or a Demucs sidecar next to the song, else `null`
+- `separate_vocals(file_path)` - Runs `demucs --shifts=4 --two-stems=vocals` if no stem exists yet; returns the `vocals.wav` path. Output is stored under `{app_cache}/vocal-stems/{hash}/htdemucs/vocals.wav`
 - `set_spectrogram_visible(visible)`
 - `get/set_directories()`, `get/set_config()`, `get_init()`
 - `set_export_preferences(auto_export_enabled?, export_lrc?, export_txt?, export_embedded?, skip_tracks_with_synced_lyrics?, skip_tracks_with_plain_lyrics?)` updates only supplied fields in `config_data` and returns config. Download atomically supplies its existing skip flags, toggle, and effective format selections; manual Export supplies shared formats only. Hidden/omitted fields and unrelated settings survive.
@@ -392,6 +395,16 @@ Standalone Symphonia-based decoder that extracts mono f32 samples for a `[start_
 **Errors:** `DecoderError` enum covers file open, Symphonia errors, missing-default-track, missing-sample-rate, invalid range.
 
 **Performance:** Decoding a 5-second slice typically runs in ~30-50ms. The command wraps the decode in `tokio::spawn_blocking` to keep the async executor responsive.
+
+### Vocal Stem Separation (`vocal_stem.rs`)
+
+Runs the system-installed Demucs CLI to produce a vocal stem for the V2 lyrics editor.
+
+**Lookup order:**
+1. App cache: `{app_cache}/vocal-stems/{content-hash-size-mtime}/htdemucs/**/vocals.wav`
+2. Sidecar from a previous manual Demucs run: `{song_dir}/separated/{model}/{stem}/vocals.wav`
+
+**Separation:** `demucs --shifts=4 --two-stems=vocals -o {cache_dir} {file}` (falls back to `python -m demucs` / `py -m demucs` if `demucs` is not on PATH). Existing stems are returned without re-running. Concurrent jobs for the same cache dir are rejected.
 
 ## Audio Metadata Extraction (`get_audio_metadata`)
 

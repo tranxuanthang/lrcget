@@ -108,6 +108,30 @@
         <div class="text-xs font-bold">View YAML debug</div>
       </template>
     </VTooltip>
+
+    <VTooltip theme="lrcget-tooltip">
+      <button
+        class="button text-sm px-3 py-1.5 h-8 rounded-full inline-flex items-center justify-center"
+        :class="
+          !canSeparateVocals || isSeparatingVocals
+            ? 'button-disabled'
+            : hasVocalStem
+              ? 'button-primary'
+              : 'button-normal'
+        "
+        :disabled="!canSeparateVocals || isSeparatingVocals"
+        @click="emit('separate-vocals')"
+      >
+        <Loading v-if="isSeparatingVocals" class="text-base animate-spin" />
+        <AccountVoice v-else class="text-base" />
+      </button>
+
+      <template #popper>
+        <div class="text-xs font-bold">
+          {{ vocalStemTooltip }}
+        </div>
+      </template>
+    </VTooltip>
   </div>
 </template>
 
@@ -116,10 +140,12 @@ import { computed, ref, onMounted } from 'vue'
 import ChevronDown from '~icons/mdi/chevron-down'
 import ContentSave from '~icons/mdi/content-save'
 import Bug from '~icons/mdi/bug'
+import AccountVoice from '~icons/mdi/account-voice'
+import Loading from '~icons/mdi/loading'
 import CheckboxButton from '@/components/common/CheckboxButton.vue'
 import { invoke } from '@tauri-apps/api/core'
 
-const emit = defineEmits(['save', 'save-and-publish', 'export', 'debug'])
+const emit = defineEmits(['save', 'save-and-publish', 'export', 'debug', 'separate-vocals'])
 
 const exportPlainText = ref(false)
 const exportSyncedLrc = ref(false)
@@ -149,7 +175,7 @@ const handleExportClick = () => {
   })
 }
 
-defineProps({
+const props = defineProps({
   isDirty: {
     type: Boolean,
     required: true,
@@ -158,6 +184,31 @@ defineProps({
     type: Boolean,
     default: false,
   },
+  canSeparateVocals: {
+    type: Boolean,
+    default: false,
+  },
+  isSeparatingVocals: {
+    type: Boolean,
+    default: false,
+  },
+  hasVocalStem: {
+    type: Boolean,
+    default: false,
+  },
+})
+
+const vocalStemTooltip = computed(() => {
+  if (props.isSeparatingVocals) {
+    return 'Separating vocals…'
+  }
+  if (!props.canSeparateVocals) {
+    return 'No audio file to separate'
+  }
+  if (props.hasVocalStem) {
+    return 'Vocal stem ready'
+  }
+  return 'Separate vocals with Demucs'
 })
 </script>
 
