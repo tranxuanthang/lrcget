@@ -9,6 +9,24 @@ import {
 
 const createEmptySyncedLine = () => normalizeSyncedLine({})
 
+const WRITE_YAML_AT_SAVE_KEY = 'lrcget.edit-lyrics-v2.write-yaml-at-save'
+
+const readStoredWriteYamlAtSave = () => {
+  try {
+    return window.localStorage.getItem(WRITE_YAML_AT_SAVE_KEY) === 'true'
+  } catch {
+    return false
+  }
+}
+
+const persistWriteYamlAtSave = value => {
+  try {
+    window.localStorage.setItem(WRITE_YAML_AT_SAVE_KEY, value ? 'true' : 'false')
+  } catch {
+    // Ignore quota / private-mode failures; the in-session flag still applies.
+  }
+}
+
 const MIN_WORD_DURATION_MS = 10
 
 // The first word's start_ms is conceptually the same point as the line's
@@ -497,60 +515,90 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     isDirty.value = true
   }
 
-  const saveLyrics = async () => {
-    if (!isDirty.value) {
-      return true
+  const writeYamlAtSave = ref(readStoredWriteYamlAtSave())
+
+  watch(writeYamlAtSave, value => {
+    persistWriteYamlAtSave(Boolean(value))
+  })
+
+  const writeYamlSidecarIfEnabled = async serializedContent => {
+    if (!writeYamlAtSave.value) {
+      return
+    }
+
+    const filePath = audioSource.value?.file_path || null
+    const libraryTrackId = trackId?.value !== null && trackId?.value !== undefined ? trackId.value : null
+
+    if (!filePath && libraryTrackId === null) {
+      return
     }
 
     try {
-      const serializedContent = serializedLyricsfile.value
-
-      // Determine if this is a library track or a standalone lyricsfile
-      // trackId is passed separately from audioSource to handle temporary associations
-      // where a library track might be used for playback but the lyricsfile should not
-      // be associated with the track (e.g., LRCLIB Browser flow)
-      const isLibraryTrack = trackId?.value !== null && trackId?.value !== undefined
-
-      if (isLibraryTrack) {
-        // Library track: pass track_id (lyricsfile_id can be null if no lyricsfile exists yet)
-        await invoke('save_lyrics', {
-          trackId: trackId.value,
-          lyricsfileId: lyricsfile?.value?.id ?? null,
-          lyricsfile: serializedContent,
-        })
-      } else {
-        // Standalone lyricsfile: pass lyricsfile_id (must not be null)
-        const standaloneLyricsfileId = lyricsfile?.value?.id
-        if (!standaloneLyricsfileId) {
-          throw new Error('Standalone lyricsfile must have an ID')
-        }
-        await invoke('save_lyrics', {
-          trackId: null,
-          lyricsfileId: standaloneLyricsfileId,
-          lyricsfile: serializedContent,
-        })
-      }
-
-      const parsed = parseLyricsfile(serializedContent)
-      // Preserve independent synced lines structure after save (don't re-sync
-      // to plain lyrics). Also re-attach the existing line ids by array index
-      // so the v-for keys don't churn across save
-      const previousLines = syncedLines.value
-      syncedLines.value = parsed.syncedLines.map((line, i) => {
-        const normalized = normalizeSyncedLine(line)
-        if (previousLines[i]?.id !== undefined) {
-          normalized.id = previousLines[i].id
-        }
-        return normalized
+      await invoke('write_lyricsfile_sidecar', {
+        trackId: libraryTrackId,
+        filePath,
+        lyricsfile: serializedContent,
       })
-      lyricsfileDocument.value = parsed.document
-      isDirty.value = false
-      return true
     } catch (error) {
       console.error(error)
-      toast.error(error)
-      return false
+      toast.error(`Failed to write YAML sidecar: ${error}`)
     }
+  }
+
+  const saveLyrics = async () => {
+    const serializedContent = serializedLyricsfile.value
+
+    if (isDirty.value) {
+      try {
+        // Determine if this is a library track or a standalone lyricsfile
+        // trackId is passed separately from audioSource to handle temporary associations
+        // where a library track might be used for playback but the lyricsfile should not
+        // be associated with the track (e.g., LRCLIB Browser flow)
+        const isLibraryTrack = trackId?.value !== null && trackId?.value !== undefined
+
+        if (isLibraryTrack) {
+          // Library track: pass track_id (lyricsfile_id can be null if no lyricsfile exists yet)
+          await invoke('save_lyrics', {
+            trackId: trackId.value,
+            lyricsfileId: lyricsfile?.value?.id ?? null,
+            lyricsfile: serializedContent,
+          })
+        } else {
+          // Standalone lyricsfile: pass lyricsfile_id (must not be null)
+          const standaloneLyricsfileId = lyricsfile?.value?.id
+          if (!standaloneLyricsfileId) {
+            throw new Error('Standalone lyricsfile must have an ID')
+          }
+          await invoke('save_lyrics', {
+            trackId: null,
+            lyricsfileId: standaloneLyricsfileId,
+            lyricsfile: serializedContent,
+          })
+        }
+
+        const parsed = parseLyricsfile(serializedContent)
+        // Preserve independent synced lines structure after save (don't re-sync
+        // to plain lyrics). Also re-attach the existing line ids by array index
+        // so the v-for keys don't churn across save
+        const previousLines = syncedLines.value
+        syncedLines.value = parsed.syncedLines.map((line, i) => {
+          const normalized = normalizeSyncedLine(line)
+          if (previousLines[i]?.id !== undefined) {
+            normalized.id = previousLines[i].id
+          }
+          return normalized
+        })
+        lyricsfileDocument.value = parsed.document
+        isDirty.value = false
+      } catch (error) {
+        console.error(error)
+        toast.error(error)
+        return false
+      }
+    }
+
+    await writeYamlSidecarIfEnabled(serializedContent)
+    return true
   }
 
   const hasPlainLyrics = computed(() => plainLyrics.value.trim().length > 0)
@@ -636,6 +684,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     rewindEndBy100,
     forwardEndBy100,
     syncEndToNextLineStart,
+    writeYamlAtSave,
     saveLyrics,
     ensureSelectedSyncedLine,
     updateLineText,

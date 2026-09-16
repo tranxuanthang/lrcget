@@ -80,6 +80,17 @@ pub fn build_sidecar_path(track_path: &str, extension: &str) -> Result<PathBuf, 
     Ok(parent_path.join(format!("{}.{}", file_stem, extension)))
 }
 
+/// Write the raw lyricsfile YAML next to the audio file (`{stem}.yaml`).
+/// Does not delete `.txt` or `.lrc` sidecars.
+pub fn write_lyricsfile_sidecar(
+    track_path: &str,
+    lyricsfile: &str,
+) -> Result<PathBuf, ExportError> {
+    let yaml_path = build_sidecar_path(track_path, "yaml")?;
+    write(&yaml_path, lyricsfile).map_err(|e| ExportError::WriteError(e.to_string()))?;
+    Ok(yaml_path)
+}
+
 /// Generate plain text lyrics content from parsed lyricsfile
 pub fn generate_txt_content(parsed: &ParsedLyricsfile) -> Option<String> {
     if parsed.is_instrumental {
@@ -420,6 +431,9 @@ mod tests {
 
         let lrc_path = build_sidecar_path(track_path, "lrc").unwrap();
         assert_eq!(lrc_path.to_str().unwrap(), "/music/artist/album/song.lrc");
+
+        let yaml_path = build_sidecar_path(track_path, "yaml").unwrap();
+        assert_eq!(yaml_path.to_str().unwrap(), "/music/artist/album/song.yaml");
     }
 
     #[test]

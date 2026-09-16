@@ -106,7 +106,7 @@ Shared fields are `export_txt`, `export_lrc`, and `export_embedded`. `auto_expor
 
 - Props/context: `audioSource` (playback source), `lyricsfile` (editing target), `trackId` (save behavior)
 - Instrumental mode: toggle via `PlainLyricsEmptyState.vue` / `SyncedLyricsEmptyState.vue`
-- Publish/export: handled by `useEditLyricsV2Publish.js` and `useEditLyricsV2Export.js`
+- Publish/export: handled by `useEditLyricsV2Publish.js` and `useEditLyricsV2Export.js`. A **Write yaml at save** checkbox in the Save dropdown (persisted in `localStorage`) writes the current lyricsfile YAML as `{stem}.yaml` next to the song on Save / Ctrl+S. It does not replace `.txt` / `.lrc` export and is skipped when there is no audio file.
 - Synced lines: multi-line selection via drag and Ctrl/Cmd+click, with floating bulk rewind/forward/delete toolbar
 - Synced line nudge shortcuts: `Left`/`Right` adjust selected line start by `-/+100ms`; `Shift+Left`/`Shift+Right` adjust selected line end by `-/+100ms`
 - End timestamp visibility: in synced rows, the end timestamp pill stays visible even without hover when it differs from the next line's start timestamp (helps surface gaps/overlaps), and color-codes direction (`before` = gap, `after` = overlap)

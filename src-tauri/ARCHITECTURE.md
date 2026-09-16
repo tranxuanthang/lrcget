@@ -195,7 +195,7 @@ Playback speed:
 
 ### Export Module (`export.rs`)
 
-Shared lyrics export to sidecar files (`.txt`, `.lrc`) and manual embedded metadata export. Automatic Download export calls the same `export_track` writers after successful internal save.
+Shared lyrics export to sidecar files (`.txt`, `.lrc`) and manual embedded metadata export. Automatic Download export calls the same `export_track` writers after successful internal save. The V2 editor can also write the raw lyricsfile YAML as `{stem}.yaml` beside the audio via `write_lyricsfile_sidecar`; that path does not delete `.txt` or `.lrc` sidecars.
 
 ```rust
 pub enum ExportFormat {
@@ -215,6 +215,7 @@ pub struct ExportResult {
 **Key Functions:**
 - `export_track()` - Export a single track to multiple formats
 - `export_track_format()` - Export to a specific format
+- `write_lyricsfile_sidecar()` - Write the raw lyricsfile YAML next to the audio (`{stem}.yaml`)
 - `embed_lyrics()` - Embed lyrics into MP3 (ID3v2 USLT/SYLT) or FLAC (Vorbis comments)
 
 **Note:** Sidecar exports retain their existing semantics: overwrite the selected target and attempt to delete the opposite extension before writing available content. Unavailable formats skip before deletion. Bulk export runs TXT, LRC, then embedded, so both successful sidecar operations normally leave only LRC. Failures do not roll back filesystem changes. Embedded exports use the existing `lofty` MP3/FLAC writers. The shared format boundary reports unsupported extensions as `Skipped` before touching the file. Both manual commands and automatic export use `export_track_with_embed_gate`, reading current `try_embed_lyrics` immediately before each embedded operation (read failures deny embedding). A disabled gate produces a format-level skip, including embed-only batches whose gate was disabled after submission; successful internal downloads retain their success string. Preference submission rejects zero effective formats and ignores embedded-choice updates while the gate is disabled. Supported-writer edge cases remain unchanged: MP3 requires an existing primary tag; FLAC without Vorbis comments currently performs no tag update.
@@ -322,6 +323,7 @@ Search across all three entity types uses SQLite FTS5 (via `tracks_fts`, `albums
 | `save_lyrics(track_id?, lyricsfile_id?, plain?, synced?, lyricsfile?)` | Save lyrics edits. For library tracks: provide `track_id`. For standalone LRCLIB lyrics: provide `lyricsfile_id`. Prefers `lyricsfile` format. |
 | `publish_lyrics(title, album, artist, duration, plain?, synced?, lyricsfile?)` | Upload to LRCLIB (with PoW; accepts Lyricsfile-only payloads) |
 | `export_lyrics(track_id, formats, lyricsfile?)` | Manual export to `.txt`, `.lrc`, or embedded tags |
+| `write_lyricsfile_sidecar(track_id?, file_path?, lyricsfile)` | Write `{stem}.yaml` next to the song (library track lookup or explicit file path) |
 | `export_track_lyrics(track_id, formats)` | Export single track, returns summary for mass export |
 | `get_track_ids_with_lyrics()` | Get all track IDs that have lyrics for mass export |
 | `flag_lyrics()` | Report to LRCLIB (with PoW) |

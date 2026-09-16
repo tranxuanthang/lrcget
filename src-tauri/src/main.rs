@@ -1370,6 +1370,29 @@ async fn export_lyrics(
     }))
 }
 
+#[tauri::command]
+async fn write_lyricsfile_sidecar(
+    track_id: Option<i64>,
+    file_path: Option<String>,
+    lyricsfile: String,
+    app_handle: AppHandle,
+) -> Result<String, String> {
+    let track_path = if let Some(id) = track_id {
+        app_handle
+            .db(|db| db::get_track_by_id(id, db))
+            .map_err(|err| err.to_string())?
+            .file_path
+    } else {
+        file_path
+            .filter(|path| !path.trim().is_empty())
+            .ok_or_else(|| "No audio file path available for YAML sidecar".to_owned())?
+    };
+
+    export::write_lyricsfile_sidecar(&track_path, &lyricsfile)
+        .map(|path| path.to_string_lossy().into_owned())
+        .map_err(|err| err.to_string())
+}
+
 /// Detail for a single format export result
 #[derive(Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -1685,6 +1708,7 @@ async fn main() {
             save_lyrics,
             publish_lyrics,
             export_lyrics,
+            write_lyricsfile_sidecar,
             export_track_lyrics,
             get_track_ids_with_lyrics,
             flag_lyrics,

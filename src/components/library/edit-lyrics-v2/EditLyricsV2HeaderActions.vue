@@ -46,6 +46,15 @@
 
             <label class="dropdown-item">
               <CheckboxButton
+                id="write-yaml-at-save"
+                v-model="writeYamlAtSave"
+                name="write-yaml-at-save"
+              >
+                <span class="dropdown-label">Write yaml at save</span>
+              </CheckboxButton>
+            </label>
+            <label class="dropdown-item">
+              <CheckboxButton
                 id="export-plain-text"
                 v-model="exportPlainText"
                 name="export-plain-text"
@@ -145,40 +154,14 @@ import Loading from '~icons/mdi/loading'
 import CheckboxButton from '@/components/common/CheckboxButton.vue'
 import { invoke } from '@tauri-apps/api/core'
 
-const emit = defineEmits(['save', 'save-and-publish', 'export', 'debug', 'separate-vocals'])
-
-const exportPlainText = ref(false)
-const exportSyncedLrc = ref(false)
-const embedIntoTrack = ref(false)
-const tryEmbedLyrics = ref(false)
-
-const refreshEmbedConfig = async () => {
-  const config = await invoke('get_config')
-  tryEmbedLyrics.value = config.try_embed_lyrics
-}
-
-onMounted(refreshEmbedConfig)
-
-const hasSelectedExportFormat = computed(
-  () => exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value
-)
-
-const handleExportClick = () => {
-  if (!hasSelectedExportFormat.value) {
-    return
-  }
-
-  emit('export', {
-    plainText: exportPlainText.value,
-    syncedLrc: exportSyncedLrc.value,
-    embedIntoTrack: embedIntoTrack.value,
-  })
-}
-
 const props = defineProps({
   isDirty: {
     type: Boolean,
     required: true,
+  },
+  writeYamlAtSave: {
+    type: Boolean,
+    default: false,
   },
   isExporting: {
     type: Boolean,
@@ -197,6 +180,48 @@ const props = defineProps({
     default: false,
   },
 })
+
+const emit = defineEmits([
+  'save',
+  'save-and-publish',
+  'export',
+  'debug',
+  'separate-vocals',
+  'update:writeYamlAtSave',
+])
+
+const exportPlainText = ref(false)
+const exportSyncedLrc = ref(false)
+const embedIntoTrack = ref(false)
+const tryEmbedLyrics = ref(false)
+
+const refreshEmbedConfig = async () => {
+  const config = await invoke('get_config')
+  tryEmbedLyrics.value = config.try_embed_lyrics
+}
+
+onMounted(refreshEmbedConfig)
+
+const writeYamlAtSave = computed({
+  get: () => props.writeYamlAtSave,
+  set: value => emit('update:writeYamlAtSave', Boolean(value)),
+})
+
+const hasSelectedExportFormat = computed(
+  () => exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value
+)
+
+const handleExportClick = () => {
+  if (!hasSelectedExportFormat.value) {
+    return
+  }
+
+  emit('export', {
+    plainText: exportPlainText.value,
+    syncedLrc: exportSyncedLrc.value,
+    embedIntoTrack: embedIntoTrack.value,
+  })
+}
 
 const vocalStemTooltip = computed(() => {
   if (props.isSeparatingVocals) {

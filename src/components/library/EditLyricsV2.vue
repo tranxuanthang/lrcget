@@ -14,6 +14,7 @@
         :can-separate-vocals="canSeparateVocals"
         :is-separating-vocals="isSeparating"
         :has-vocal-stem="hasVocalStem"
+        v-model:write-yaml-at-save="writeYamlAtSave"
         @save="saveLyrics"
         @save-and-publish="saveAndPublish"
         @export="exportLyrics"
@@ -279,6 +280,7 @@ const {
   forwardEndBy100,
   syncEndToNextLineStart,
   saveLyrics,
+  writeYamlAtSave,
   ensureSelectedSyncedLine,
   updateLineText,
   updateLineWords,
