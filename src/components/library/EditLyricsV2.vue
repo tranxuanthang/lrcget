@@ -149,11 +149,13 @@
         @forward-line="forwardLineBy100"
         @sync-end="syncEndToCurrentProgress"
         @sync-end-to-next="syncEndToNextLineStart"
+        @expand-to-fill-space="expandWhitespaceLineToFillSpace"
         @rewind-end="rewindEndBy100"
         @forward-end="forwardEndBy100"
         @delete-line="deleteSyncedLine"
         @bulk-rewind-lines="bulkRewindLines"
         @bulk-forward-lines="bulkForwardLines"
+        @bulk-expand-whitespace-lines="bulkExpandWhitespaceLinesToFillSpace"
         @bulk-delete-lines="bulkDeleteLines"
         @add-line-at="addSyncedLineAt"
         @import-lines-from-plain="importSyncedLinesFromPlain"
@@ -279,6 +281,8 @@ const {
   rewindEndBy100,
   forwardEndBy100,
   syncEndToNextLineStart,
+  expandWhitespaceLineToFillSpace,
+  bulkExpandWhitespaceLinesToFillSpace,
   saveLyrics,
   writeYamlAtSave,
   ensureSelectedSyncedLine,

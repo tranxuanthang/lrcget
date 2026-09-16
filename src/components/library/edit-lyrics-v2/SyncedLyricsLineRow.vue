@@ -152,6 +152,16 @@
     </div>
 
     <div class="flex items-center gap-1 w-[3.5rem] justify-end">
+      <div class="h-6 w-6 shrink-0">
+        <button
+          v-show="isLineControlsVisible && canExpandToFillSpace"
+          class="button bg-neutral-200 text-neutral-600 hover:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-300 hover:dark:bg-neutral-600 p-1 rounded-full text-sm h-6 w-6"
+          title="Expand empty line to fill the gap"
+          @click.stop="emit('expand-to-fill-space', index)"
+        >
+          <ArrowExpandHorizontal />
+        </button>
+      </div>
       <button
         v-show="isLineControlsVisible"
         class="button p-1 rounded-full text-sm h-6 w-6 bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-700 hover:dark:bg-neutral-600 text-red-500 dark:text-red-400"
@@ -173,6 +183,7 @@ import Forward from '~icons/mdi/fast-forward'
 import Close from '~icons/mdi/close'
 import Trash from '~icons/mdi/trash-can'
 import ArrowCollapseRight from '~icons/mdi/arrow-collapse-right'
+import ArrowExpandHorizontal from '~icons/mdi/arrow-expand-horizontal'
 import {
   syncedEditorShortcutBindings,
   withShortcutTitle,
@@ -227,6 +238,10 @@ const props = defineProps({
     type: Number,
     default: null,
   },
+  canExpandToFillSpace: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits([
@@ -245,6 +260,7 @@ const emit = defineEmits([
   'update:editing-text',
   'sync-end',
   'sync-end-to-next',
+  'expand-to-fill-space',
   'rewind-end',
   'forward-end',
 ])

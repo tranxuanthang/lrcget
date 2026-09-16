@@ -2,6 +2,7 @@ import { invoke } from '@tauri-apps/api/core'
 import { computed, ref, watch } from 'vue'
 import {
   createSyncedLinesFromPlain,
+  isWhitespaceSyncedLine,
   normalizeSyncedLine,
   parseLyricsfile,
   serializeLyricsfile,
@@ -285,6 +286,73 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     }
 
     withUpdatedLine(lineIndex, line => setLineEndMs(line, nextLine.start_ms))
+  }
+
+  const fillWhitespaceLineFromNeighbors = (line, prevLine, nextLine) => {
+    const fillStartMs = Number.isFinite(prevLine?.end_ms) ? prevLine.end_ms : null
+    const fillEndMs = Number.isFinite(nextLine?.start_ms) ? nextLine.start_ms : null
+
+    if (!Number.isFinite(fillStartMs) && !Number.isFinite(fillEndMs)) {
+      return line
+    }
+
+    if (Number.isFinite(fillStartMs) && Number.isFinite(fillEndMs) && fillEndMs < fillStartMs) {
+      return line
+    }
+
+    let updated = line
+    if (Number.isFinite(fillStartMs)) {
+      updated = setLineStartMs(updated, fillStartMs)
+    }
+    if (Number.isFinite(fillEndMs)) {
+      updated = setLineEndMs(updated, fillEndMs)
+    }
+    return updated
+  }
+
+  const expandWhitespaceLineToFillSpace = lineIndex => {
+    if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+      return
+    }
+
+    const line = syncedLines.value[lineIndex]
+    if (!isWhitespaceSyncedLine(line)) {
+      return
+    }
+
+    withUpdatedLine(lineIndex, current =>
+      fillWhitespaceLineFromNeighbors(
+        current,
+        syncedLines.value[lineIndex - 1],
+        syncedLines.value[lineIndex + 1]
+      )
+    )
+  }
+
+  const bulkExpandWhitespaceLinesToFillSpace = indices => {
+    if (!Array.isArray(indices) || indices.length === 0) {
+      return
+    }
+
+    const original = syncedLines.value
+    const indexSet = new Set(
+      indices.filter(
+        index => Number.isInteger(index) && index >= 0 && index < original.length && isWhitespaceSyncedLine(original[index])
+      )
+    )
+
+    if (indexSet.size === 0) {
+      return
+    }
+
+    syncedLines.value = original.map((line, index) => {
+      if (!indexSet.has(index)) {
+        return line
+      }
+
+      return fillWhitespaceLineFromNeighbors(line, original[index - 1], original[index + 1])
+    })
+    isDirty.value = true
   }
 
   const deleteSyncedLine = lineIndex => {
@@ -688,6 +756,8 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     rewindEndBy100,
     forwardEndBy100,
     syncEndToNextLineStart,
+    expandWhitespaceLineToFillSpace,
+    bulkExpandWhitespaceLinesToFillSpace,
     writeYamlAtSave,
     saveLyrics,
     ensureSelectedSyncedLine,

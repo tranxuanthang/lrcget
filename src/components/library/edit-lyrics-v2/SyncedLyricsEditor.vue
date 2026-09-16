@@ -48,6 +48,7 @@
             :set-line-input-ref="setLineInputRef"
             :progress-ms="progressMs"
             :next-line-start-ms="nextLineStartMs(index)"
+            :can-expand-to-fill-space="canExpandWhitespaceToFillSpace(index)"
             @mouseenter="hoveredLineIndex = index"
             @mouseleave="hoveredLineIndex = null"
             @select="selectLine"
@@ -58,6 +59,7 @@
             @forward-line="handleForwardLine"
             @sync-end="handleSyncEnd"
             @sync-end-to-next="handleSyncEndToNext"
+            @expand-to-fill-space="handleExpandToFillSpace"
             @rewind-end="handleRewindEnd"
             @forward-end="handleForwardEnd"
             @delete-line="handleDeleteLine"
@@ -106,6 +108,14 @@
       >
         <Forward />
       </button>
+      <button
+        v-if="hasSelectedWhitespaceLine"
+        class="button button-normal p-1 rounded-full text-xs h-6 w-6"
+        title="Expand selected empty lines to fill the gap"
+        @click="handleBulkExpandToFillSpace"
+      >
+        <ArrowExpandHorizontal />
+      </button>
       <div class="w-px h-4 bg-neutral-200 dark:bg-neutral-700" />
       <button
         class="button button-normal p-1 rounded-full text-xs h-6 w-6 text-red-500 dark:text-red-400"
@@ -133,13 +143,14 @@ import { computed, nextTick, onMounted, onUnmounted, ref, toRef, watch } from 'v
 import Rewind from '~icons/mdi/rewind'
 import Forward from '~icons/mdi/fast-forward'
 import Trash from '~icons/mdi/trash-can'
+import ArrowExpandHorizontal from '~icons/mdi/arrow-expand-horizontal'
 import SyncedInsertButton from '@/components/library/edit-lyrics-v2/SyncedInsertButton.vue'
 import SyncedLyricsEmptyState from '@/components/library/edit-lyrics-v2/SyncedLyricsEmptyState.vue'
 import SyncedLyricsLineRow from '@/components/library/edit-lyrics-v2/SyncedLyricsLineRow.vue'
 import SyncedWordTimingLane from '@/components/library/edit-lyrics-v2/SyncedWordTimingLane.vue'
 import { useEditLyricsV2SyncedInlineEditing } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedInlineEditing.js'
 import { useEditLyricsV2SyncedInsertHover } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedInsertHover.js'
-import { formatTimestampMs } from '@/utils/lyricsfile.js'
+import { formatTimestampMs, isWhitespaceSyncedLine } from '@/utils/lyricsfile.js'
 
 const props = defineProps({
   modelValue: {
@@ -179,11 +190,13 @@ const emit = defineEmits([
   'forward-line',
   'sync-end',
   'sync-end-to-next',
+  'expand-to-fill-space',
   'rewind-end',
   'forward-end',
   'delete-line',
   'bulk-rewind-lines',
   'bulk-forward-lines',
+  'bulk-expand-whitespace-lines',
   'bulk-delete-lines',
   'add-line-at',
   'import-lines-from-plain',
@@ -241,6 +254,17 @@ const nextLineStartMs = index => {
   return next && Number.isFinite(next.start_ms) ? next.start_ms : null
 }
 
+const canExpandWhitespaceToFillSpace = index => {
+  const line = props.modelValue[index]
+  if (!isWhitespaceSyncedLine(line)) {
+    return false
+  }
+
+  const prevLine = props.modelValue[index - 1]
+  const nextLine = props.modelValue[index + 1]
+  return Number.isFinite(prevLine?.end_ms) || Number.isFinite(nextLine?.start_ms)
+}
+
 const hoveredLineIndex = ref(null)
 const linesListElement = ref(null)
 const modelValue = toRef(props, 'modelValue')
@@ -253,6 +277,9 @@ const dragStartPos = ref(null)
 
 const selectedIndexSet = computed(() => new Set(props.selectedLineIndices))
 const hasMultiSelection = computed(() => props.selectedLineIndices.length >= 2)
+const hasSelectedWhitespaceLine = computed(() =>
+  props.selectedLineIndices.some(index => isWhitespaceSyncedLine(props.modelValue[index]))
+)
 
 const isLineRowSelected = index => selectedIndexSet.value.has(index)
 
@@ -332,6 +359,10 @@ const handleBulkRewind = () => {
 
 const handleBulkForward = () => {
   emit('bulk-forward-lines', props.selectedLineIndices)
+}
+
+const handleBulkExpandToFillSpace = () => {
+  emit('bulk-expand-whitespace-lines', props.selectedLineIndices)
 }
 
 const handleBulkDelete = () => {
@@ -464,6 +495,10 @@ const handleSyncEnd = index => {
 
 const handleSyncEndToNext = index => {
   emitLineAction('sync-end-to-next', index)
+}
+
+const handleExpandToFillSpace = index => {
+  emitLineAction('expand-to-fill-space', index)
 }
 
 const handleRewindEnd = index => {

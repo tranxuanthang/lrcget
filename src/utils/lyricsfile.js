@@ -124,6 +124,16 @@ export const normalizeSyncedLine = (line, fallbackText = '') => {
   return normalizedLine
 }
 
+export const isWhitespaceSyncedLine = line => {
+  const hasText = typeof line?.text === 'string' && line.text.trim().length > 0
+  if (hasText) {
+    return false
+  }
+
+  const words = Array.isArray(line?.words) ? line.words : []
+  return !words.some(word => typeof word?.text === 'string' && word.text.trim().length > 0)
+}
+
 export const formatTimestampMs = timestampMs => {
   if (!Number.isFinite(timestampMs)) {
     return '--:--.---'
