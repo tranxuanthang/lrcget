@@ -234,8 +234,8 @@ const emit = defineEmits([
   'play-line',
   'play-line-at-offset',
   'select-next-line',
+  'seek'
 ])
-const emit = defineEmits(['update:words', 'word-timing-edited', 'play-line', 'select-next-line', 'seek'])
 
 const { spectrogramVisible, toggleSpectrogramVisible } = useGlobalState()
 
