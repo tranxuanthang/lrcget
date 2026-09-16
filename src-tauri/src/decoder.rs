@@ -57,9 +57,7 @@ pub fn decode_slice(path: &Path, start_ms: i64, end_ms: i64) -> Result<AudioSlic
     )?;
     let mut format = probed.format;
 
-    let track = format
-        .default_track()
-        .ok_or(DecoderError::NoDefaultTrack)?;
+    let track = format.default_track().ok_or(DecoderError::NoDefaultTrack)?;
     let track_id = track.id;
 
     let params = &track.codec_params;

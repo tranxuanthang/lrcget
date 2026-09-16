@@ -322,8 +322,8 @@ fn embed_lyrics_flac(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) 
 /// Embed lyrics into MP3 file using ID3v2 tags
 fn embed_lyrics_mp3(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) -> Result<()> {
     use lofty::file::TaggedFileExt;
-    use lofty::probe::Probe;
     use lofty::id3::v2::Id3v2Tag;
+    use lofty::probe::Probe;
 
     let file_probe = Probe::open(track_path).context("Failed to open MP3 file")?;
     let mut file = file_probe

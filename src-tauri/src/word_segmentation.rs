@@ -87,8 +87,7 @@ fn merge_segment_tokens(raw_segments: Vec<String>) -> Vec<String> {
 }
 
 fn is_apostrophe_connector(segment: &str) -> bool {
-    !segment.is_empty()
-        && segment.chars().all(|ch| matches!(ch, '\'' | '’' | 'ʼ'))
+    !segment.is_empty() && segment.chars().all(|ch| matches!(ch, '\'' | '’' | 'ʼ'))
 }
 
 fn is_opening_bracket_connector(segment: &str) -> bool {
@@ -101,8 +100,7 @@ fn is_opening_bracket_connector(segment: &str) -> bool {
 
         if matches!(
             ch,
-            '('
-                | '['
+            '(' | '['
                 | '{'
                 | '<'
                 | '（'

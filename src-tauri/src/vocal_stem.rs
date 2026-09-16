@@ -50,9 +50,8 @@ fn normalize_source_path(file_path: &str) -> Result<PathBuf, String> {
 }
 
 fn cache_key(source_path: &Path) -> String {
-    let hash = compute_quick_hash(source_path).unwrap_or_else(|_| {
-        format!("{:016x}", xxh3_64(source_path.to_string_lossy().as_bytes()))
-    });
+    let hash = compute_quick_hash(source_path)
+        .unwrap_or_else(|_| format!("{:016x}", xxh3_64(source_path.to_string_lossy().as_bytes())));
     let size = std::fs::metadata(source_path)
         .map(|meta| meta.len())
         .unwrap_or(0);
@@ -135,7 +134,10 @@ pub fn find_sidecar_vocals(source_path: &Path) -> Option<PathBuf> {
     None
 }
 
-pub fn find_existing_vocal_stem(app_handle: &AppHandle, file_path: &str) -> Result<Option<PathBuf>, String> {
+pub fn find_existing_vocal_stem(
+    app_handle: &AppHandle,
+    file_path: &str,
+) -> Result<Option<PathBuf>, String> {
     let source_path = normalize_source_path(file_path)?;
     let cache_dir = vocal_stem_cache_dir(app_handle, &source_path)?;
 
@@ -282,10 +284,8 @@ mod tests {
 
     #[test]
     fn find_vocals_wav_prefers_htdemucs_layout() {
-        let tmp = std::env::temp_dir().join(format!(
-            "lrcget-vocal-stem-test-{}",
-            std::process::id()
-        ));
+        let tmp =
+            std::env::temp_dir().join(format!("lrcget-vocal-stem-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&tmp);
         let expected = expected_cached_vocals_path(&tmp);
         write_file(&expected);
@@ -298,10 +298,8 @@ mod tests {
 
     #[test]
     fn find_sidecar_vocals_looks_in_separated_model_folder() {
-        let tmp = std::env::temp_dir().join(format!(
-            "lrcget-vocal-stem-sidecar-{}",
-            std::process::id()
-        ));
+        let tmp =
+            std::env::temp_dir().join(format!("lrcget-vocal-stem-sidecar-{}", std::process::id()));
         let _ = fs::remove_dir_all(&tmp);
         fs::create_dir_all(&tmp).unwrap();
         let source = tmp.join("song.mp3");

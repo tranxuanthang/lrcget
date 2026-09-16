@@ -1,4 +1,4 @@
-use crate::parser::lrc::{parse_lrc, format_timestamp};
+use crate::parser::lrc::{format_timestamp, parse_lrc};
 use crate::persistent_entities::PersistentTrack;
 use crate::utils::strip_timestamp;
 use anyhow::Result;

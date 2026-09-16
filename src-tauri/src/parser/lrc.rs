@@ -26,9 +26,8 @@ pub struct ParsedLrc {
 
 /// Regex for parsing timestamp tags: [mm:ss.xxx] or [mm:ss.xx] or [mm:ss.x]
 /// Supports 1-3 digits after the decimal point (centiseconds to milliseconds)
-static TIMESTAMP_RE: LazyLock<Regex> = LazyLock::new(|| {
-    Regex::new(r"\[(\d{1,2}):(\d{1,2})\.(\d{1,3})\]").unwrap()
-});
+static TIMESTAMP_RE: LazyLock<Regex> =
+    LazyLock::new(|| Regex::new(r"\[(\d{1,2}):(\d{1,2})\.(\d{1,3})\]").unwrap());
 
 /// Regex for parsing ID tags: [key:value]
 static ID_TAG_RE: LazyLock<Regex> =
@@ -218,8 +217,14 @@ mod tests {
         let lrc = "[ti:Song Title]\n[ar:Artist Name]\n[au: instrumental]\n[00:01.00] First line";
         let parsed = parse_lrc(lrc);
 
-        assert!(parsed.id_tags.iter().any(|(k, v)| k == "ti" && v == "Song Title"));
-        assert!(parsed.id_tags.iter().any(|(k, v)| k == "ar" && v == "Artist Name"));
+        assert!(parsed
+            .id_tags
+            .iter()
+            .any(|(k, v)| k == "ti" && v == "Song Title"));
+        assert!(parsed
+            .id_tags
+            .iter()
+            .any(|(k, v)| k == "ar" && v == "Artist Name"));
         assert!(parsed
             .id_tags
             .iter()
@@ -232,7 +237,9 @@ mod tests {
         assert!(is_instrumental_lrc("[au: instrumental]"));
         assert!(is_instrumental_lrc("[au:instrumental]"));
         assert!(is_instrumental_lrc("[AU:INSTRUMENTAL]"));
-        assert!(is_instrumental_lrc("Some lyrics\n[au: instrumental]\nMore lyrics"));
+        assert!(is_instrumental_lrc(
+            "Some lyrics\n[au: instrumental]\nMore lyrics"
+        ));
         assert!(!is_instrumental_lrc("[00:01.00] Regular lyrics"));
         assert!(!is_instrumental_lrc("[au: lyrics]"));
     }

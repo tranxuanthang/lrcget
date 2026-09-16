@@ -18,7 +18,9 @@ pub mod utils;
 pub mod vocal_stem;
 pub mod word_segmentation;
 
-use persistent_entities::{PersistentAlbum, PersistentArtist, PersistentConfig, PersistentTrack, PlayableTrack};
+use persistent_entities::{
+    PersistentAlbum, PersistentArtist, PersistentConfig, PersistentTrack, PlayableTrack,
+};
 use player::Player;
 use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
@@ -468,8 +470,8 @@ async fn find_matching_tracks(
     }
 
     // Otherwise, search for partial matches (title only match with duration if provided)
-    let partial_matches =
-        db::find_tracks_by_metadata(&title, None, None, duration, conn).map_err(|err| err.to_string())?;
+    let partial_matches = db::find_tracks_by_metadata(&title, None, None, duration, conn)
+        .map_err(|err| err.to_string())?;
 
     // Filter out tracks where artist or album don't match at all (still partial but relevant)
     let normalized_artist = utils::prepare_input(&artist_name);
@@ -501,8 +503,8 @@ async fn find_matching_tracks(
 async fn get_audio_metadata(file_path: String) -> Result<AudioMetadataResponse, String> {
     let path = std::path::Path::new(&file_path);
 
-    let metadata = scanner::metadata::TrackMetadata::from_path(path)
-        .map_err(|err| err.to_string())?;
+    let metadata =
+        scanner::metadata::TrackMetadata::from_path(path).map_err(|err| err.to_string())?;
 
     Ok(AudioMetadataResponse {
         file_path: metadata.file_path,
@@ -724,9 +726,11 @@ async fn download_lyrics(
 
     // Internal save has succeeded: export errors remain part of the success log string.
     Ok(match export_formats {
-        Some(formats) => download_export_message(message, &track, &lyricsfile_content, &formats, || {
-            embedding_allowed(&app_handle)
-        }),
+        Some(formats) => {
+            download_export_message(message, &track, &lyricsfile_content, &formats, || {
+                embedding_allowed(&app_handle)
+            })
+        }
         None => message.to_owned(),
     })
 }
@@ -918,9 +922,7 @@ async fn prepare_lrclib_lyricsfile(
 
     // Check if we already have this lyricsfile in the database
     let existing = app_handle
-        .db(|db: &Connection| {
-            db::get_lyricsfile_by_lrclib(&lrclib_instance, lrclib_id, db)
-        })
+        .db(|db: &Connection| db::get_lyricsfile_by_lrclib(&lrclib_instance, lrclib_id, db))
         .map_err(|err| err.to_string())?;
 
     if let Some((lyricsfile_id, lyricsfile)) = existing {
@@ -1365,9 +1367,12 @@ async fn export_lyrics(
         lyricsfile::parse_lyricsfile(&lyricsfile_content).map_err(|err| err.to_string())?;
     let export_formats = formats.into_iter().map(Into::into).collect::<Vec<_>>();
 
-    Ok(export::export_track_with_embed_gate(&track, &parsed, &export_formats, || {
-        embedding_allowed(&app_handle)
-    }))
+    Ok(export::export_track_with_embed_gate(
+        &track,
+        &parsed,
+        &export_formats,
+        || embedding_allowed(&app_handle),
+    ))
 }
 
 #[tauri::command]
@@ -1607,7 +1612,10 @@ fn set_volume(
 }
 
 #[tauri::command]
-fn set_playback_speed(playback_speed: f64, app_state: tauri::State<AppState>) -> Result<(), String> {
+fn set_playback_speed(
+    playback_speed: f64,
+    app_state: tauri::State<AppState>,
+) -> Result<(), String> {
     let mut player_guard = app_state.player.lock().map_err(|e| e.to_string())?;
 
     if let Some(ref mut player) = *player_guard {
@@ -1634,8 +1642,7 @@ fn drain_notifications(app_state: tauri::State<AppState>) -> Vec<Notify> {
 
 #[tauri::command]
 async fn read_text_file(file_path: String) -> Result<String, String> {
-    std::fs::read_to_string(&file_path)
-        .map_err(|err| format!("Failed to read file: {}", err))
+    std::fs::read_to_string(&file_path).map_err(|err| format!("Failed to read file: {}", err))
 }
 
 #[tauri::command]
@@ -1644,9 +1651,14 @@ async fn segment_words(text: String) -> Result<Vec<String>, String> {
 }
 
 #[tauri::command]
-async fn get_vocal_stem(file_path: String, app_handle: AppHandle) -> Result<Option<String>, String> {
-    Ok(vocal_stem::find_existing_vocal_stem(&app_handle, &file_path)?
-        .map(|path| path.to_string_lossy().into_owned()))
+async fn get_vocal_stem(
+    file_path: String,
+    app_handle: AppHandle,
+) -> Result<Option<String>, String> {
+    Ok(
+        vocal_stem::find_existing_vocal_stem(&app_handle, &file_path)?
+            .map(|path| path.to_string_lossy().into_owned()),
+    )
 }
 
 #[tauri::command]
@@ -1826,7 +1838,8 @@ mod auto_export_tests {
             std::fs::write(&path, bytes).unwrap();
             let track = test_track(&path);
             // A disabled gate never reaches the writer, even for a valid audio file.
-            let result = export::export_track_with_embed_gate(&track, &parsed, &[Embedded], || false);
+            let result =
+                export::export_track_with_embed_gate(&track, &parsed, &[Embedded], || false);
             assert!(
                 matches!(&result[0].status, ExportStatus::Skipped(reason) if reason.contains("disabled"))
             );
@@ -1880,7 +1893,9 @@ mod auto_export_tests {
             &[Embedded],
             || false,
         );
-        assert!(result.starts_with("Plain lyrics downloaded; Embedded export skipped: experimental"));
+        assert!(
+            result.starts_with("Plain lyrics downloaded; Embedded export skipped: experimental")
+        );
         assert_eq!(std::fs::read(&track.file_path).unwrap(), before);
         std::fs::remove_dir_all(directory).unwrap();
     }
@@ -1956,8 +1971,13 @@ mod auto_export_tests {
         .unwrap();
         let formats = [export::ExportFormat::Txt, export::ExportFormat::Lrc];
         std::fs::write(directory.join("song.lrc"), "old lyrics").unwrap();
-        let result =
-            download_export_message("Synced lyrics downloaded", &track, &content, &formats, || true);
+        let result = download_export_message(
+            "Synced lyrics downloaded",
+            &track,
+            &content,
+            &formats,
+            || true,
+        );
         assert_eq!(
             result,
             "Synced lyrics downloaded; TXT export completed; LRC export completed"
@@ -1973,17 +1993,24 @@ mod auto_export_tests {
             None,
         )
         .unwrap();
-        let result = download_export_message("Plain lyrics downloaded", &track, &plain, &formats, || true);
+        let result =
+            download_export_message("Plain lyrics downloaded", &track, &plain, &formats, || true);
         assert_eq!(result, "Plain lyrics downloaded; TXT export completed; LRC export skipped: no synced lyrics available");
         assert!(directory.join("song.txt").exists());
         // A directory at the LRC target deterministically fails writing, even when tests run as root.
         std::fs::create_dir(directory.join("song.lrc")).unwrap();
-        let result =
-            download_export_message("Synced lyrics downloaded", &track, &content, &formats, || true);
+        let result = download_export_message(
+            "Synced lyrics downloaded",
+            &track,
+            &content,
+            &formats,
+            || true,
+        );
         assert!(result
             .starts_with("Synced lyrics downloaded; TXT export completed; LRC export failed:"));
         assert!(!directory.join("song.txt").exists()); // Existing destructive semantics are retained.
-        let result = download_export_message("Lyrics downloaded", &track, "[invalid", &formats, || true);
+        let result =
+            download_export_message("Lyrics downloaded", &track, "[invalid", &formats, || true);
         assert!(result.starts_with("Lyrics downloaded; export failed:"));
         std::fs::remove_dir_all(directory).unwrap();
     }

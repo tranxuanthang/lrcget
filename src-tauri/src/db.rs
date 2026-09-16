@@ -43,7 +43,10 @@ pub fn initialize_database(app_handle: &AppHandle) -> Result<Connection, rusqlit
             let new_version: i64 = db
                 .query_row("PRAGMA user_version;", [], |row| row.get(0))
                 .unwrap_or(-1);
-            println!("[DB Init] Migrations applied successfully. New user_version: {}", new_version);
+            println!(
+                "[DB Init] Migrations applied successfully. New user_version: {}",
+                new_version
+            );
         }
         Err(e) => {
             eprintln!("[DB Init] Failed to run database migrations: {:?}", e);
@@ -811,7 +814,10 @@ pub fn get_search_track_ids(
     let full_query = if use_fts {
         format!("{}{} ORDER BY tracks_fts.rank", base_query, where_clause)
     } else {
-        format!("{}{} ORDER BY tracks.title_lower ASC", base_query, where_clause)
+        format!(
+            "{}{} ORDER BY tracks.title_lower ASC",
+            base_query, where_clause
+        )
     };
 
     let mut statement = db.prepare(&full_query)?;
@@ -1540,13 +1546,17 @@ pub fn delete_unprocessed_tracks(conn: &mut Connection) -> Result<usize> {
 
     // Collect orphaned album/artist IDs before deleting them
     let orphaned_album_ids: Vec<i64> = {
-        let mut stmt = tx.prepare("SELECT id FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks)")?;
+        let mut stmt = tx.prepare(
+            "SELECT id FROM albums WHERE id NOT IN (SELECT DISTINCT album_id FROM tracks)",
+        )?;
         let rows = stmt.query_map([], |r| r.get(0))?;
         rows.collect::<Result<Vec<_>, _>>()?
     };
 
     let orphaned_artist_ids: Vec<i64> = {
-        let mut stmt = tx.prepare("SELECT id FROM artists WHERE id NOT IN (SELECT DISTINCT artist_id FROM tracks)")?;
+        let mut stmt = tx.prepare(
+            "SELECT id FROM artists WHERE id NOT IN (SELECT DISTINCT artist_id FROM tracks)",
+        )?;
         let rows = stmt.query_map([], |r| r.get(0))?;
         rows.collect::<Result<Vec<_>, _>>()?
     };
@@ -1623,7 +1633,12 @@ pub fn add_album_tx(
         album_artist_name,
         prepare_input(album_artist_name),
     ))?;
-    insert_album_fts_tx(row_id, prepare_input(name).as_str(), prepare_input(album_artist_name).as_str(), tx)?;
+    insert_album_fts_tx(
+        row_id,
+        prepare_input(name).as_str(),
+        prepare_input(album_artist_name).as_str(),
+        tx,
+    )?;
     Ok(row_id)
 }
 
@@ -1861,15 +1876,30 @@ mod export_preferences_tests {
             .unwrap()
             .to_latest(&mut conn)
             .unwrap();
-        set_config(true, false, true, true, "dark", "https://example.test", 0.4, &conn)
-            .unwrap();
+        set_config(
+            true,
+            false,
+            true,
+            true,
+            "dark",
+            "https://example.test",
+            0.4,
+            &conn,
+        )
+        .unwrap();
         set_export_preferences(None, Some(true), Some(true), Some(true), None, None, &conn)
             .unwrap();
 
         for (skip_synced, skip_plain) in [(false, false), (true, false), (true, true)] {
             // Download off preserves formats while atomically saving the submitted filter.
             set_export_preferences(
-                Some(false), None, None, None, Some(skip_synced), Some(skip_plain), &conn,
+                Some(false),
+                None,
+                None,
+                None,
+                Some(skip_synced),
+                Some(skip_plain),
+                &conn,
             )
             .unwrap();
             let config = get_config(&conn).unwrap();
@@ -1924,7 +1954,8 @@ mod export_preferences_tests {
 
         // Manual Export shares formats but does not touch the Download toggle.
         set_export_preferences(Some(true), None, None, None, None, None, &conn).unwrap();
-        set_export_preferences(None, Some(false), Some(true), Some(true), None, None, &conn).unwrap();
+        set_export_preferences(None, Some(false), Some(true), Some(true), None, None, &conn)
+            .unwrap();
         assert!(get_config(&conn).unwrap().auto_export_enabled);
         // Turning auto-export off preserves formats, including hidden embedded selection.
         set_export_preferences(Some(false), None, None, None, None, None, &conn).unwrap();
