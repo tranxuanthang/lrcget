@@ -127,6 +127,47 @@ export function useEditLyricsV2WordBoundaryDrag({
     return true
   }
 
+  const shiftSelectedBoundaryBy = offsetMs => {
+    if (!isWordSyncAvailable.value || !Number.isFinite(offsetMs)) {
+      return null
+    }
+
+    const rightWordIndex = selectedBoundaryIndex.value
+    if (rightWordIndex < 0 || rightWordIndex >= words.value.length) {
+      return null
+    }
+
+    const currentStartMs = words.value[rightWordIndex]?.start_ms
+    if (!Number.isFinite(currentStartMs)) {
+      return null
+    }
+
+    let minStartMs
+    let maxStartMs
+
+    if (rightWordIndex === 0) {
+      const nextStartMs = words.value[1]?.start_ms
+      minStartMs = 0
+      maxStartMs = Number.isFinite(nextStartMs) ? nextStartMs - 1 : timelineEndMs.value - 1
+      maxStartMs = Math.max(minStartMs, maxStartMs)
+    } else {
+      const constraint = getBoundaryConstraint(rightWordIndex)
+      minStartMs = constraint.minStartMs
+      maxStartMs = constraint.maxStartMs
+    }
+
+    const nextStartMs = Math.max(minStartMs, Math.min(maxStartMs, Math.round(currentStartMs + offsetMs)))
+
+    commitBoundary({
+      rightWordIndex,
+      startMs: nextStartMs,
+      initialStartMs: currentStartMs,
+      shouldReplay: false,
+    })
+
+    return nextStartMs
+  }
+
   const normalizeSelection = indices => {
     const maxIndex = Math.max(0, words.value.length - 1)
     const uniqueSorted = [...new Set(indices.filter(Number.isInteger))]
@@ -430,6 +471,7 @@ export function useEditLyricsV2WordBoundaryDrag({
     selectPreviousBoundary,
     selectNextBoundary,
     syncSelectedBoundary,
+    shiftSelectedBoundaryBy,
     deleteSelectedBoundaries,
     stopBoundaryDrag,
     resetBoundarySelection,

@@ -194,7 +194,13 @@ const props = defineProps({
   },
 })
 
-const emit = defineEmits(['update:words', 'word-timing-edited', 'play-line', 'select-next-line'])
+const emit = defineEmits([
+  'update:words',
+  'word-timing-edited',
+  'play-line',
+  'play-line-at-offset',
+  'select-next-line',
+])
 
 const timelineElement = ref(null)
 const timelineWidth = ref(0)
@@ -305,6 +311,7 @@ const {
   selectPreviousBoundary,
   selectNextBoundary,
   syncSelectedBoundary,
+  shiftSelectedBoundaryBy,
   deleteSelectedBoundaries,
   resetBoundarySelection,
   cancelBoundaryInteraction,
@@ -415,6 +422,60 @@ const handleSyncWordNoAdvance = () => {
 const handlePlayLine = () => {
   if (!isWordSyncAvailable.value) return
   emit('play-line', props.selectedLineIndex)
+}
+
+const playFromSeparatorMs = separatorStartMs => {
+  const currentLineStartMs = lineStartMs.value
+
+  if (!Number.isFinite(separatorStartMs) || !Number.isFinite(currentLineStartMs)) {
+    return
+  }
+
+  emit('play-line-at-offset', {
+    lineIndex: props.selectedLineIndex,
+    offsetMs: separatorStartMs - currentLineStartMs,
+  })
+}
+
+const handleReplaySelectedSeparator = () => {
+  if (!isWordSyncAvailable.value) {
+    return
+  }
+
+  const selectedWord = words.value[selectedBoundaryIndex.value]
+  playFromSeparatorMs(selectedWord?.start_ms)
+}
+
+const handleReplayPreviousSeparator = stepsBack => {
+  if (!isWordSyncAvailable.value || !Number.isInteger(stepsBack) || stepsBack < 1) {
+    return
+  }
+
+  const selectedIndex = selectedBoundaryIndex.value
+  if (!Number.isInteger(selectedIndex)) {
+    return
+  }
+
+  const targetIndex = Math.max(0, selectedIndex - stepsBack)
+  playFromSeparatorMs(words.value[targetIndex]?.start_ms)
+}
+
+const handleRewindSelectedWord = () => {
+  if (!isWordSyncAvailable.value) {
+    return
+  }
+
+  const nextStartMs = shiftSelectedBoundaryBy(-10)
+  playFromSeparatorMs(nextStartMs ?? words.value[selectedBoundaryIndex.value]?.start_ms)
+}
+
+const handleForwardSelectedWord = () => {
+  if (!isWordSyncAvailable.value) {
+    return
+  }
+
+  const nextStartMs = shiftSelectedBoundaryBy(10)
+  playFromSeparatorMs(nextStartMs ?? words.value[selectedBoundaryIndex.value]?.start_ms)
 }
 
 const splitTextByGrapheme = text => {
@@ -543,6 +604,10 @@ const { bindWordTimingHotkeys, unbindWordTimingHotkeys } = useEditLyricsV2WordTi
   words,
   syncSelectedBoundaryAtProgress: () => handleSyncWord(),
   syncSelectedBoundaryAtProgressNoAdvance: () => handleSyncWordNoAdvance(),
+  rewindSelectedWord: () => handleRewindSelectedWord(),
+  forwardSelectedWord: () => handleForwardSelectedWord(),
+  replaySelectedSeparator: () => handleReplaySelectedSeparator(),
+  replayPreviousSeparator: stepsBack => handleReplayPreviousSeparator(stepsBack),
   selectPreviousBoundary: () => selectPreviousBoundary(),
   selectNextBoundary: () => selectNextBoundary(),
   resetBoundarySelection: () => resetBoundarySelection(),
