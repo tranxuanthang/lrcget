@@ -326,6 +326,11 @@ export const syncedEditorShortcutBindings = [
     description: 'Replay selected line',
   }),
   createShortcutBinding({
+    id: 'replayLineWithLeadIn',
+    defaultKeys: ['Q'],
+    description: 'Replay from 500 ms before line start',
+  }),
+  createShortcutBinding({
     id: 'replayPreviousLine',
     defaultKeys: ['Shift', 'P'],
     description: 'Replay previous line',

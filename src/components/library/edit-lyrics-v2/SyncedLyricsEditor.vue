@@ -499,8 +499,8 @@ const handleEditingTextUpdate = value => {
   editingText.value = value
 }
 
-const handleWordsUpdate = ({ lineIndex, words, lineStartMs }) => {
-  emit('update:words', { lineIndex, words, lineStartMs })
+const handleWordsUpdate = payload => {
+  emit('update:words', payload)
 }
 
 const handleWordTimingEdited = ({ lineIndex, startMs }) => {

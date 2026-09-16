@@ -1,7 +1,7 @@
 <template>
   <div
     ref="containerEl"
-    class="relative w-full overflow-hidden rounded border border-neutral-300 dark:border-neutral-600 bg-black cursor-pointer"
+    class="relative w-full overflow-hidden rounded-t border border-neutral-300 dark:border-neutral-600 bg-black cursor-pointer"
     :style="{ height: `${height}px` }"
     @click="handleSeekClick"
   >
@@ -274,7 +274,19 @@ const refresh = async () => {
       errorMessage.value = 'Audio slice too short'
       return
     }
-    const result = computeSpectrogram(samples, response.sampleRate)
+
+    // If the file ends before the requested window, pad silence so frames stay
+    // mapped to startMs..endMs and stay aligned with the word lane.
+    const expectedLength = Math.max(
+      0,
+      Math.round(((props.endMs - props.startMs) / 1000) * response.sampleRate)
+    )
+    const timedSamples =
+      expectedLength > samples.length
+        ? samples.concat(new Array(expectedLength - samples.length).fill(0))
+        : samples
+
+    const result = computeSpectrogram(timedSamples, response.sampleRate)
 
     if (cache.size >= CACHE_MAX) {
       cache.delete(cache.keys().next().value)

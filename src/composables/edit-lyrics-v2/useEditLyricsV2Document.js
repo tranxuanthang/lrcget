@@ -434,13 +434,16 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     )
   }
 
-  const updateLineWords = ({ lineIndex, words, lineStartMs }) => {
+  const updateLineWords = ({ lineIndex, words, lineStartMs, lineEndMs }) => {
     if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
       return
     }
 
     const nextLineStartMs = Number.isFinite(lineStartMs)
       ? Math.max(0, Math.round(lineStartMs))
+      : null
+    const nextLineEndMs = Number.isFinite(lineEndMs)
+      ? Math.max(0, Math.round(lineEndMs))
       : null
 
     applyLineMutation(lines =>
@@ -449,6 +452,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
         return {
           ...line,
           ...(nextLineStartMs === null ? {} : { start_ms: nextLineStartMs }),
+          ...(nextLineEndMs === null ? {} : { end_ms: nextLineEndMs }),
           words,
         }
       })

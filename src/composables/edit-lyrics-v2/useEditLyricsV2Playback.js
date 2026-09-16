@@ -1,3 +1,5 @@
+export const LANE_CONTEXT_MS = 500
+
 export function useEditLyricsV2Playback({
   audioSource,
   syncedLines,

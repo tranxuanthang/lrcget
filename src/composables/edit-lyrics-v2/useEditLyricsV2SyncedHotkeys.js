@@ -1,4 +1,5 @@
 import { syncedEditorShortcutBindings } from '@/composables/edit-lyrics-v2/shortcutRegistry.js'
+import { LANE_CONTEXT_MS } from '@/composables/edit-lyrics-v2/useEditLyricsV2Playback.js'
 
 export function useEditLyricsV2SyncedHotkeys({
   activeTab,
@@ -112,6 +113,9 @@ export function useEditLyricsV2SyncedHotkeys({
       }
       case 'replaySelectedLine':
         playLine(selectedSyncedLineIndex.value)
+        return
+      case 'replayLineWithLeadIn':
+        playLineAtOffset(selectedSyncedLineIndex.value, -LANE_CONTEXT_MS)
         return
       case 'deleteSelectedLine':
         deleteSyncedLine(selectedSyncedLineIndex.value)
