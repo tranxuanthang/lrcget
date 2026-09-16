@@ -48,7 +48,7 @@ src-tauri/
 │       ├── publish.rs       # POST /api/publish (with PoW)
 │       ├── flag.rs          # POST /api/flag (with PoW)
 │       └── challenge_solver.rs # SHA256 proof-of-work
-├── migrations/              # SQL files (v1-v9), rusqlite_migration
+├── migrations/              # SQL files (v1-v18), rusqlite_migration
 └── Cargo.toml / tauri.conf.json
 ```
 
@@ -98,15 +98,15 @@ trait ServiceAccess {
 
 **Migration v15:** Added indexes on `tracks.album_id` and `tracks.artist_id`.
 
-**Migration v17:** Added `auto_export_enabled` (false), `export_lrc` (true), `export_txt` (false), and `export_embedded` (false) to `config_data`. Shared Download/Export defaults persist through a scoped update, without resetting library data. Ordinary `set_config` leaves these fields untouched.
-
 **Migration v16:** Added SQLite FTS5 virtual tables for full-text search:
 - `tracks_fts` — indexed `title`, `artist_name`, `album_name` (with `track_id` as UNINDEXED key)
 - `albums_fts` — indexed `album_name`, `album_artist_name` (with `album_id` as UNINDEXED key)
 - `artists_fts` — indexed `artist_name` (with `artist_id` as UNINDEXED key)
 - Backfilled from existing normalized `*_lower` columns.
 
-**Migration v17:** Added `spectrogram_visible` BOOLEAN column to `config_data` (default `1`) for persisting the V2 lyrics editor's per-line spectrogram show/hide toggle across app launches.
+**Migration v17:** Added `auto_export_enabled` (false), `export_lrc` (true), `export_txt` (false), and `export_embedded` (false) to `config_data`. Shared Download/Export defaults persist through a scoped update, without resetting library data. Ordinary `set_config` leaves these fields untouched.
+
+**Migration v18:** Added `spectrogram_visible` BOOLEAN column to `config_data` (default `1`) for persisting the V2 lyrics editor's per-line spectrogram show/hide toggle across app launches.
 
 **Indexes:** All `*_lower` columns + `content_hash`, `scan_status`, `modified_time+file_size` (fingerprint) + lyrics-presence indexes + LRCLIB composite index (`lrclib_instance`, `lrclib_id`)
 

@@ -163,7 +163,7 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
         theme_mode,
         lrclib_instance,
         volume,
-        spectrogram_visible
+        spectrogram_visible,
         auto_export_enabled,
         export_lrc,
         export_txt,
