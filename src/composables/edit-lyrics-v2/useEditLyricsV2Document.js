@@ -183,7 +183,14 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
       if (id !== undefined) ids.push(id)
     }
     selectedSyncedLineIds.value = ids
-    selectedSyncedLineIndex.value = min
+  }
+
+  const activateSyncedLine = lineIndex => {
+    if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+      return
+    }
+
+    selectedSyncedLineIndex.value = lineIndex
   }
 
   const toggleSyncedLineSelection = lineIndex => {
@@ -752,6 +759,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     updateSyncedLines,
     selectSyncedLine,
     selectSyncedLineRange,
+    activateSyncedLine,
     toggleSyncedLineSelection,
     clearSyncedLineSelection,
     setSyncedLineEditingState,

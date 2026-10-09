@@ -140,6 +140,7 @@
         :file-path="spectrogramFilePath"
         @update:model-value="updateSyncedLines"
         @update:selected-line-index="selectSyncedLine"
+        @activate-line="activateSyncedLine"
         @update:selected-line-indices="handleUpdateSelectedLineIndices"
         @editing-state-change="setSyncedLineEditingState"
         @play-line="playLine"
@@ -265,6 +266,7 @@ const {
   updateSyncedLines,
   selectSyncedLine,
   selectSyncedLineRange,
+  activateSyncedLine,
   toggleSyncedLineSelection,
   clearSyncedLineSelection,
   setSyncedLineEditingState,

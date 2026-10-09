@@ -182,6 +182,7 @@ const props = defineProps({
 const emit = defineEmits([
   'update:modelValue',
   'update:selected-line-index',
+  'activate-line',
   'update:selected-line-indices',
   'play-line',
   'play-line-at-offset',
@@ -272,6 +273,7 @@ const modelValue = toRef(props, 'modelValue')
 // Multi-selection drag state
 const isDragging = ref(false)
 const dragAnchorIndex = ref(-1)
+const dragCurrentIndex = ref(-1)
 const didJustDrag = ref(false)
 const dragStartPos = ref(null)
 
@@ -294,6 +296,7 @@ const startDragSelection = (index, event) => {
   dragStartPos.value = { x: event.clientX, y: event.clientY }
   isDragging.value = true
   dragAnchorIndex.value = index
+  dragCurrentIndex.value = index
   emit('update:selected-line-indices', { start: index, end: index })
 }
 
@@ -304,12 +307,14 @@ const updateDragSelection = index => {
   if (index !== dragAnchorIndex.value) {
     didJustDrag.value = true
   }
+  dragCurrentIndex.value = index
   emit('update:selected-line-indices', { start: dragAnchorIndex.value, end: index })
 }
 
 const endDragSelection = () => {
   isDragging.value = false
   dragAnchorIndex.value = -1
+  dragCurrentIndex.value = -1
   dragStartPos.value = null
 }
 
@@ -342,6 +347,10 @@ const handleEscKey = () => {
 }
 
 const handleDocumentMouseUp = () => {
+  if (isDragging.value && dragAnchorIndex.value >= 0 && dragCurrentIndex.value >= 0) {
+    const releaseIndex = Math.min(dragAnchorIndex.value, dragCurrentIndex.value)
+    emit('activate-line', releaseIndex)
+  }
   endDragSelection()
 }
 

@@ -33,6 +33,29 @@ describe('addSyncedLineAt', () => {
     expect(syncedLines.value[1]).toMatchObject({ start_ms: 1000, end_ms: 2500 })
   })
 
+  it('highlights a dragged range without changing the active line until release', async () => {
+    const { updateSyncedLines, selectSyncedLine, selectSyncedLineRange, activateSyncedLine, syncedLines, selectedSyncedLineIndex, selectedSyncedLineIndices } =
+      await createDocument()
+
+    updateSyncedLines([
+      { text: 'one', start_ms: 1000, end_ms: 2000 },
+      { text: 'two', start_ms: 2000, end_ms: 3000 },
+      { text: 'three', start_ms: 3000, end_ms: 4000 },
+    ])
+    selectSyncedLine(0)
+
+    selectSyncedLineRange(1, 2)
+
+    expect(selectedSyncedLineIndex.value).toBe(0)
+    expect(selectedSyncedLineIndices.value).toEqual([1, 2])
+    expect(syncedLines.value[0].text).toBe('one')
+
+    activateSyncedLine(1)
+
+    expect(selectedSyncedLineIndex.value).toBe(1)
+    expect(selectedSyncedLineIndices.value).toEqual([1, 2])
+  })
+
   it('still fills a trailing insert from the previous line end', async () => {
     const { updateSyncedLines, addSyncedLineAt, syncedLines } = await createDocument()
 
