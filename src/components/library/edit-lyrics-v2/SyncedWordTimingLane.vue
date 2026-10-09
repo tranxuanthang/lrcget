@@ -14,12 +14,6 @@
     </div>
 
     <!-- Feature not available states -->
-    <div v-else-if="!hasLineContent" class="flex items-center justify-center h-full">
-      <span class="text-sm text-neutral-700 dark:text-neutral-400 italic">
-        Add lyrics content to enable word timing
-      </span>
-    </div>
-
     <div v-else-if="!hasLineStartTime" class="flex items-center justify-center h-full">
       <span class="text-sm text-neutral-700 dark:text-neutral-400 italic">
         Sync the line (set start time) to enable word timing
@@ -272,11 +266,8 @@ const syncWordTitle = withShortcutTitle(
   'syncSelectedSeparatorAndAdvance'
 )
 
-// Availability checks for word sync feature
-const hasLineContent = computed(() => {
-  return props.selectedLine && props.selectedLine.text && props.selectedLine.text.trim().length > 0
-})
-
+// Availability checks for word sync feature. Blank lines still open the lane
+// so their spectrogram is visible; word segments stay empty until there is text.
 const hasLineStartTime = computed(() => {
   return props.selectedLine && Number.isFinite(props.selectedLine.start_ms)
 })
@@ -286,7 +277,7 @@ const hasLineEndTime = computed(() => {
 })
 
 const isWordSyncAvailable = computed(() => {
-  return hasLineContent.value && hasLineStartTime.value && hasLineEndTime.value
+  return hasLineStartTime.value && hasLineEndTime.value
 })
 
 const hasSpectrogramSlot = computed(
