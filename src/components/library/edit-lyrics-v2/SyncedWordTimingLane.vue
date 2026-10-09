@@ -397,6 +397,7 @@ const {
   timelineStartMs: laneStartMs,
   timelineEndMs: laneEndMs,
   selectedLineIndex: computed(() => props.selectedLineIndex),
+  hasPersistedWords: hasActualWords,
   onUpdateWords: payload => emit('update:words', payload),
   onWordTimingEdited: payload => emit('word-timing-edited', payload),
 })

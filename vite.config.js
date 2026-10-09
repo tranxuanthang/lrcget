@@ -19,6 +19,11 @@ export default defineConfig({
   server: {
     port: 1420,
     strictPort: true,
+    watch: {
+      // Cargo locks object files under src-tauri/target while compiling.
+      // Watching them on Windows throws EBUSY and kills the dev server.
+      ignored: ['**/src-tauri/**'],
+    },
   },
   // to make use of `TAURI_DEBUG` and other env variables
   // https://tauri.studio/v1/api/config#buildconfig.beforedevcommand

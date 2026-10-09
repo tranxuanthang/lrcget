@@ -502,7 +502,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     )
   }
 
-  const updateLineWords = ({ lineIndex, words, lineStartMs, lineEndMs }) => {
+  const updateLineWords = ({ lineIndex, words, lineStartMs, lineEndMs, preserveWords = false }) => {
     if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
       return
     }
@@ -521,7 +521,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
           ...line,
           ...(nextLineStartMs === null ? {} : { start_ms: nextLineStartMs }),
           ...(nextLineEndMs === null ? {} : { end_ms: nextLineEndMs }),
-          words,
+          ...(preserveWords ? {} : { words }),
         }
       })
     )

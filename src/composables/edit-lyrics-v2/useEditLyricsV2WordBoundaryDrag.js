@@ -10,6 +10,7 @@ export function useEditLyricsV2WordBoundaryDrag({
   timelineStartMs,
   timelineEndMs,
   selectedLineIndex,
+  hasPersistedWords,
   onUpdateWords,
   onWordTimingEdited,
 }) {
@@ -183,24 +184,32 @@ export function useEditLyricsV2WordBoundaryDrag({
     }
   }
 
-  const commitLineEndBoundary = ({ startMs, shouldReplay }) => {
-    const lastIndex = words.value.length - 1
-    const updatedWords = words.value.map((word, index) => {
-      if (index !== lastIndex) {
-        return word
-      }
+  const commitLineEndBoundary = ({ startMs, shouldReplay, lineBoundsOnly = false }) => {
+    if (lineBoundsOnly) {
+      onUpdateWords({
+        lineIndex: selectedLineIndex.value,
+        preserveWords: true,
+        lineEndMs: startMs,
+      })
+    } else {
+      const lastIndex = words.value.length - 1
+      const updatedWords = words.value.map((word, index) => {
+        if (index !== lastIndex) {
+          return word
+        }
 
-      return {
-        ...word,
-        end_ms: startMs,
-      }
-    })
+        return {
+          ...word,
+          end_ms: startMs,
+        }
+      })
 
-    onUpdateWords({
-      lineIndex: selectedLineIndex.value,
-      words: updatedWords,
-      lineEndMs: startMs,
-    })
+      onUpdateWords({
+        lineIndex: selectedLineIndex.value,
+        words: updatedWords,
+        lineEndMs: startMs,
+      })
+    }
 
     if (shouldReplay) {
       onWordTimingEdited({
@@ -212,13 +221,36 @@ export function useEditLyricsV2WordBoundaryDrag({
     return true
   }
 
-  const commitBoundary = ({ rightWordIndex, startMs, initialStartMs, shouldReplay }) => {
+  const commitBoundary = ({
+    rightWordIndex,
+    startMs,
+    initialStartMs,
+    shouldReplay,
+    lineBoundsOnly = false,
+  }) => {
     if (startMs === initialStartMs) {
       return false
     }
 
     if (isLineEndBoundaryIndex(rightWordIndex)) {
-      return commitLineEndBoundary({ startMs, shouldReplay })
+      return commitLineEndBoundary({ startMs, shouldReplay, lineBoundsOnly })
+    }
+
+    if (lineBoundsOnly && rightWordIndex === 0) {
+      onUpdateWords({
+        lineIndex: selectedLineIndex.value,
+        preserveWords: true,
+        lineStartMs: startMs,
+      })
+
+      if (shouldReplay) {
+        onWordTimingEdited({
+          lineIndex: selectedLineIndex.value,
+          startMs,
+        })
+      }
+
+      return true
     }
 
     const updatedWords = buildUpdatedWords(rightWordIndex, startMs)
@@ -347,11 +379,16 @@ export function useEditLyricsV2WordBoundaryDrag({
 
   const handlePointerUp = () => {
     if (dragState.value) {
+      const rightWordIndex = dragState.value.rightWordIndex
+      const isLineEdge = rightWordIndex === 0 || isLineEndBoundaryIndex(rightWordIndex)
+
       commitBoundary({
-        rightWordIndex: dragState.value.rightWordIndex,
+        rightWordIndex,
         startMs: dragState.value.currentStartMs,
         initialStartMs: dragState.value.initialStartMs,
         shouldReplay: true,
+        // Preview separators are only a line boundary until word timings are saved.
+        lineBoundsOnly: isLineEdge && hasPersistedWords?.value === false,
       })
     }
 
