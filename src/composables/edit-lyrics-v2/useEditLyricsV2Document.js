@@ -245,23 +245,35 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     ensureSelectedSyncedLine()
   }
 
-  const addSyncedLineAt = lineIndex => {
+  const addSyncedLineAt = (lineIndex, options = {}) => {
     if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex > syncedLines.value.length) {
       return
     }
 
-    // Auto-fill timestamps from sandwich neighbors so a fresh line drops in
-    // pre-timed. Insert at index N pushes the previous value at N to N+1, so
-    // the neighbor on the "next" side is currently at N.
     const newLine = createEmptySyncedLine()
-    const prevLine = lineIndex > 0 ? syncedLines.value[lineIndex - 1] : null
-    const nextLine = lineIndex < syncedLines.value.length ? syncedLines.value[lineIndex] : null
+    const copyFromIndex = options?.copyTimestampsFrom
 
-    if (prevLine && Number.isFinite(prevLine.end_ms)) {
-      newLine.start_ms = prevLine.end_ms
-    }
-    if (nextLine && Number.isFinite(nextLine.start_ms)) {
-      newLine.end_ms = nextLine.start_ms
+    if (Number.isInteger(copyFromIndex)) {
+      const sourceLine = syncedLines.value[copyFromIndex]
+      if (Number.isFinite(sourceLine?.start_ms)) {
+        newLine.start_ms = sourceLine.start_ms
+      }
+      if (Number.isFinite(sourceLine?.end_ms)) {
+        newLine.end_ms = sourceLine.end_ms
+      }
+    } else {
+      // Auto-fill timestamps from sandwich neighbors so a fresh line drops in
+      // pre-timed. Insert at index N pushes the previous value at N to N+1, so
+      // the neighbor on the "next" side is currently at N.
+      const prevLine = lineIndex > 0 ? syncedLines.value[lineIndex - 1] : null
+      const nextLine = lineIndex < syncedLines.value.length ? syncedLines.value[lineIndex] : null
+
+      if (prevLine && Number.isFinite(prevLine.end_ms)) {
+        newLine.start_ms = prevLine.end_ms
+      }
+      if (nextLine && Number.isFinite(nextLine.start_ms)) {
+        newLine.end_ms = nextLine.start_ms
+      }
     }
 
     const nextLines = [...syncedLines.value]

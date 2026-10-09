@@ -73,7 +73,7 @@
             v-if="index < modelValue.length - 1"
             title="Add line between"
             :opacity="insertControlOpacity(index + 1)"
-            @click="handleInsertButtonClick(index + 1, $event)"
+            @click="handleInsertBetweenClick(index, $event)"
           />
         </div>
 
@@ -520,6 +520,11 @@ const handleAddLineAt = index => {
 const handleInsertButtonClick = (index, event) => {
   event.stopPropagation()
   handleAddLineAt(index)
+}
+
+const handleInsertBetweenClick = (lineIndex, event) => {
+  event.stopPropagation()
+  emit('add-line-at', lineIndex + 1, { copyTimestampsFrom: lineIndex })
 }
 
 const handleImportLinesFromPlain = () => {
