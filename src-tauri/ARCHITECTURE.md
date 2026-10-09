@@ -213,6 +213,12 @@ pub struct ExportResult {
 - `export_track_format()` - Export to a specific format
 - `embed_lyrics()` - Embed lyrics into MP3 (ID3v2 USLT/SYLT) or FLAC (Vorbis comments)
 
+MP3 lyric export replaces all existing USLT/SYLT language and description
+variants with the selected lyrics; empty input removes the corresponding
+frames. SYLT serialization completes before old SYLT frames are removed.
+Regression tests cover repeated exports, UTF-8 ID3v2.4, millisecond timing,
+artwork retention and unchanged encoded audio packets using generated fixtures.
+
 **Note:** Sidecar exports retain their existing semantics: overwrite the selected target and attempt to delete the opposite extension before writing available content. Unavailable formats skip before deletion. Bulk export runs TXT, LRC, then embedded, so both successful sidecar operations normally leave only LRC. Failures do not roll back filesystem changes. Embedded exports use the existing `lofty` MP3/FLAC writers. The shared format boundary reports unsupported extensions as `Skipped` before touching the file. Both manual commands and automatic export use `export_track_with_embed_gate`, reading current `try_embed_lyrics` immediately before each embedded operation (read failures deny embedding). A disabled gate produces a format-level skip, including embed-only batches whose gate was disabled after submission; successful internal downloads retain their success string. Preference submission rejects zero effective formats and ignores embedded-choice updates while the gate is disabled. Supported-writer edge cases remain unchanged: MP3 requires an existing primary tag; FLAC without Vorbis comments currently performs no tag update.
 
 ### LRC Parser (`parser/lrc.rs`)

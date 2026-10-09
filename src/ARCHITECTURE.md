@@ -107,6 +107,11 @@ Shared fields are `export_txt`, `export_lrc`, and `export_embedded`. `auto_expor
 - Props/context: `audioSource` (playback source), `lyricsfile` (editing target), `trackId` (save behavior)
 - Instrumental mode: toggle via `PlainLyricsEmptyState.vue` / `SyncedLyricsEmptyState.vue`
 - Publish/export: handled by `useEditLyricsV2Publish.js` and `useEditLyricsV2Export.js`
+- Editor export defaults: `EditLyricsV2HeaderActions.vue` selects synced LRC
+  initially and reads `export_embedded` once when configuration loads, subject
+  to `try_embed_lyrics`. Reopening the menu refreshes the experimental gate
+  without overwriting the user's current checkbox choices. Disabled embedding
+  neither counts as an effective format nor enters the submitted export request.
 - Synced lines: multi-line selection via drag and Ctrl/Cmd+click, with floating bulk rewind/forward/delete toolbar
 - Synced line nudge shortcuts: `Left`/`Right` adjust selected line start by `-/+100ms`; `Shift+Left`/`Shift+Right` adjust selected line end by `-/+100ms`
 - End timestamp visibility: in synced rows, the end timestamp pill stays visible even without hover when it differs from the next line's start timestamp (helps surface gaps/overlaps), and color-codes direction (`before` = gap, `after` = overlap)

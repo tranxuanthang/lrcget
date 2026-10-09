@@ -311,8 +311,8 @@ fn embed_lyrics_flac(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) 
 /// Embed lyrics into MP3 file using ID3v2 tags
 fn embed_lyrics_mp3(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) -> Result<()> {
     use lofty::file::TaggedFileExt;
-    use lofty::probe::Probe;
     use lofty::id3::v2::Id3v2Tag;
+    use lofty::probe::Probe;
 
     let file_probe = Probe::open(track_path).context("Failed to open MP3 file")?;
     let mut file = file_probe
@@ -353,6 +353,8 @@ fn embed_lyrics_mp3(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) -
 
 /// Insert USLT (unsynchronized lyrics) frame into ID3v2 tag
 fn insert_uslt_frame(id3v2: &mut Id3v2Tag, plain_lyrics: &str) -> Result<()> {
+    // Players may select an older language/description variant over the new lyrics.
+    let _ = id3v2.remove(&FrameId::new("USLT")?);
     if !plain_lyrics.is_empty() {
         let uslt_frame = UnsynchronizedTextFrame::new(
             TextEncoding::UTF8,
@@ -361,8 +363,6 @@ fn insert_uslt_frame(id3v2: &mut Id3v2Tag, plain_lyrics: &str) -> Result<()> {
             plain_lyrics.to_string(),
         );
         id3v2.insert(Frame::UnsynchronizedText(uslt_frame));
-    } else {
-        let _ = id3v2.remove(&FrameId::new("USLT")?);
     }
 
     Ok(())
@@ -384,6 +384,8 @@ fn insert_sylt_frame(id3v2: &mut Id3v2Tag, synced_lyrics: &str) -> Result<()> {
 
         let sylt_frame_byte = sylt_frame.as_bytes(WriteOptions::default())?;
         let sylt_frame_id = FrameId::new("SYLT")?;
+        // Prepare the replacement before removing every old language variant.
+        let _ = id3v2.remove(&sylt_frame_id);
         id3v2.insert(Frame::Binary(BinaryFrame::new(
             sylt_frame_id,
             sylt_frame_byte,
@@ -411,6 +413,199 @@ fn synced_lyrics_to_sylt_vec(synced_lyrics: &str) -> Result<Vec<(u32, String)>> 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn count_frames(tag: &Id3v2Tag, name: &str) -> usize {
+        let id = FrameId::new(name).unwrap();
+        tag.into_iter().filter(|frame| frame.id() == &id).count()
+    }
+
+    fn tag_with_old_lyrics() -> Id3v2Tag {
+        use lofty::id3::v2::TextInformationFrame;
+        let mut tag = Id3v2Tag::new();
+        tag.insert(Frame::Text(TextInformationFrame::new(
+            FrameId::new("TIT2").unwrap(),
+            TextEncoding::UTF8,
+            "original title",
+        )));
+        for (language, description) in [(*b"eng", "old"), (*b"XXX", "other")] {
+            tag.insert(Frame::UnsynchronizedText(UnsynchronizedTextFrame::new(
+                TextEncoding::UTF8,
+                language,
+                description,
+                "old words",
+            )));
+            let synced = SynchronizedTextFrame::new(
+                TextEncoding::UTF8,
+                language,
+                TimestampFormat::MS,
+                SyncTextContentType::Lyrics,
+                Some(description.into()),
+                vec![(0, "old words".into())],
+            );
+            tag.insert(Frame::Binary(BinaryFrame::new(
+                FrameId::new("SYLT").unwrap(),
+                synced.as_bytes(WriteOptions::default()).unwrap(),
+            )));
+        }
+        tag
+    }
+
+    fn assert_replacement(tag: &Id3v2Tag) {
+        assert_eq!(count_frames(tag, "USLT"), 1);
+        assert_eq!(count_frames(tag, "SYLT"), 1);
+        match tag.get(&FrameId::new("USLT").unwrap()).unwrap() {
+            Frame::UnsynchronizedText(frame) => {
+                assert_eq!(frame.content, "new words");
+                assert_eq!(frame.encoding, TextEncoding::UTF8);
+                assert_eq!(frame.language, *b"XXX");
+            }
+            _ => panic!("expected USLT"),
+        }
+        match tag.get(&FrameId::new("SYLT").unwrap()).unwrap() {
+            Frame::Binary(frame) => {
+                let parsed = SynchronizedTextFrame::parse(&frame.data, frame.flags()).unwrap();
+                assert_eq!(parsed.content, vec![(15250, "new words".into())]);
+                assert_eq!(parsed.encoding, TextEncoding::UTF8);
+                assert_eq!(parsed.timestamp_format, TimestampFormat::MS);
+                assert_eq!(parsed.content_type, SyncTextContentType::Lyrics);
+                assert_eq!(parsed.language, *b"XXX");
+            }
+            _ => panic!("expected SYLT"),
+        }
+        assert_eq!(
+            tag.get_text(&FrameId::new("TIT2").unwrap()),
+            Some("original title")
+        );
+    }
+
+    #[test]
+    fn embedded_lyrics_replace_all_variants_and_repeated_exports_are_idempotent() {
+        let mut tag = tag_with_old_lyrics();
+        for _ in 0..3 {
+            insert_uslt_frame(&mut tag, "new words").unwrap();
+            insert_sylt_frame(&mut tag, "[00:15.25]new words").unwrap();
+            assert_replacement(&tag);
+        }
+    }
+
+    #[test]
+    fn empty_lyrics_remove_all_variants_without_removing_other_tags() {
+        let mut tag = tag_with_old_lyrics();
+        insert_uslt_frame(&mut tag, "").unwrap();
+        insert_sylt_frame(&mut tag, "").unwrap();
+        assert_eq!(count_frames(&tag, "USLT"), 0);
+        assert_eq!(count_frames(&tag, "SYLT"), 0);
+        assert_eq!(
+            tag.get_text(&FrameId::new("TIT2").unwrap()),
+            Some("original title")
+        );
+    }
+
+    #[test]
+    fn mp3_export_replaces_stale_lyrics_and_preserves_artwork_and_audio() {
+        use lofty::config::ParseOptions;
+        use lofty::id3::v2::AttachedPictureFrame;
+        use lofty::picture::{MimeType, Picture, PictureType};
+        use lofty::tag::TagExt;
+        use std::io::Cursor;
+
+        let directory = std::env::temp_dir().join(format!(
+            "lrcget-replacement-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos(),
+        ));
+        std::fs::create_dir(&directory).unwrap();
+        struct Cleanup(PathBuf);
+        impl Drop for Cleanup {
+            fn drop(&mut self) {
+                let _ = std::fs::remove_dir_all(&self.0);
+            }
+        }
+        let _cleanup = Cleanup(directory.clone());
+        let path = directory.join("generated.mp3");
+        std::fs::write(&path, include_bytes!("../tests/fixtures/embedding.mp3")).unwrap();
+        let mut tag = tag_with_old_lyrics();
+        let png = data_encoding::BASE64.decode(
+            b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII="
+        ).unwrap();
+        let picture = Picture::unchecked(png)
+            .pic_type(PictureType::CoverFront)
+            .mime_type(MimeType::Png)
+            .build();
+        tag.insert(Frame::Picture(AttachedPictureFrame::new(
+            TextEncoding::UTF8,
+            picture,
+        )));
+        tag.save_to_path(&path, WriteOptions::default()).unwrap();
+
+        let read = || {
+            let mut data = Cursor::new(std::fs::read(&path).unwrap());
+            MpegFile::read_from(&mut data, ParseOptions::default()).unwrap()
+        };
+        let before = read();
+        let old_cover = before
+            .id3v2()
+            .unwrap()
+            .get(&FrameId::new("APIC").unwrap())
+            .unwrap()
+            .clone();
+        assert_eq!(count_frames(before.id3v2().unwrap(), "USLT"), 2);
+        assert_eq!(count_frames(before.id3v2().unwrap(), "SYLT"), 2);
+        let old_audio = encoded_fixture_audio(&path);
+        for _ in 0..2 {
+            embed_lyrics_mp3(path.to_str().unwrap(), "new words", "[00:15.25]new words").unwrap();
+            let after = read();
+            assert_replacement(after.id3v2().unwrap());
+            assert_eq!(
+                after.id3v2().unwrap().original_version(),
+                lofty::id3::v2::Id3v2Version::V4
+            );
+            assert_eq!(
+                after.id3v2().unwrap().get(&FrameId::new("APIC").unwrap()),
+                Some(&old_cover)
+            );
+            assert_eq!(
+                after.properties().duration(),
+                before.properties().duration()
+            );
+            assert_eq!(encoded_fixture_audio(&path), old_audio);
+        }
+    }
+
+    fn encoded_fixture_audio(path: &Path) -> Vec<Vec<u8>> {
+        use symphonia::core::{
+            errors::Error, formats::FormatOptions, io::MediaSourceStream, meta::MetadataOptions,
+            probe::Hint,
+        };
+        let source = MediaSourceStream::new(
+            Box::new(std::fs::File::open(path).unwrap()),
+            Default::default(),
+        );
+        let mut format = symphonia::default::get_probe()
+            .format(
+                &Hint::new(),
+                source,
+                &FormatOptions::default(),
+                &MetadataOptions::default(),
+            )
+            .unwrap()
+            .format;
+        let mut packets = Vec::new();
+        loop {
+            match format.next_packet() {
+                Ok(packet) => packets.push(packet.data.to_vec()),
+                Err(Error::IoError(error)) if error.kind() == std::io::ErrorKind::UnexpectedEof => {
+                    break
+                }
+                Err(error) => panic!("unable to read fixture audio: {error}"),
+            }
+        }
+        assert!(!packets.is_empty());
+        packets
+    }
 
     #[test]
     fn test_build_sidecar_path() {

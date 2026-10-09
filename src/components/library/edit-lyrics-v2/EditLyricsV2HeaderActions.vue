@@ -15,7 +15,9 @@
         <template #popper>
           <div class="text-xs font-bold">
             Save lyrics
-            <span class="text-[0.65rem] text-neutral-800 bg-neutral-50 px-1 rounded-full">Ctrl+S</span>
+            <span class="text-[0.65rem] text-neutral-800 bg-neutral-50 px-1 rounded-full"
+              >Ctrl+S</span
+            >
           </div>
         </template>
       </VTooltip>
@@ -122,19 +124,26 @@ import { invoke } from '@tauri-apps/api/core'
 const emit = defineEmits(['save', 'save-and-publish', 'export', 'debug'])
 
 const exportPlainText = ref(false)
-const exportSyncedLrc = ref(false)
+// Editor exports are separate from bulk-download export preferences.
+const exportSyncedLrc = ref(true)
 const embedIntoTrack = ref(false)
 const tryEmbedLyrics = ref(false)
+let exportPreferencesLoaded = false
 
 const refreshEmbedConfig = async () => {
   const config = await invoke('get_config')
   tryEmbedLyrics.value = config.try_embed_lyrics
+  if (!exportPreferencesLoaded) {
+    embedIntoTrack.value = config.try_embed_lyrics && config.export_embedded
+    exportPreferencesLoaded = true
+  }
 }
 
 onMounted(refreshEmbedConfig)
 
 const hasSelectedExportFormat = computed(
-  () => exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value
+  () =>
+    exportPlainText.value || exportSyncedLrc.value || (embedIntoTrack.value && tryEmbedLyrics.value)
 )
 
 const handleExportClick = () => {
@@ -145,7 +154,7 @@ const handleExportClick = () => {
   emit('export', {
     plainText: exportPlainText.value,
     syncedLrc: exportSyncedLrc.value,
-    embedIntoTrack: embedIntoTrack.value,
+    embedIntoTrack: embedIntoTrack.value && tryEmbedLyrics.value,
   })
 }
 
