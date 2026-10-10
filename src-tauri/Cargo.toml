@@ -80,3 +80,6 @@ opt-level = 3
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-global-shortcut = "2.3.1"
+
+[dev-dependencies]
+tempfile = "3"

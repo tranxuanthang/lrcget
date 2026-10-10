@@ -428,3 +428,11 @@ The following deprecated functions were removed from `db.rs` (no longer used):
 - The tracks table schema for new databases (post-reset) will not include these deprecated columns
 
 **Migration v14:** Uses `ALTER TABLE DROP COLUMN` (SQLite 3.35.0+) to remove deprecated columns: `txt_lyrics`, `lrc_lyrics`, `instrumental`, `has_plain_lyrics`, `has_synced_lyrics`, `has_word_synced_lyrics`. Drops related indexes and forces a library reset.
+
+## Matching External Lyrics During Scans
+
+Every successfully processed audio path checks matching sidecars, including
+unchanged files. A valid nonempty timed LRC upgrades missing/plain lyrics;
+TXT only fills missing lyrics when no valid LRC is present. Synced/instrumental
+records are protected. Imports use the batch transaction and never rewrite
+sidecars or audio. See `EXTERNAL_LYRICS_REFRESH.md` for workflow and tests.

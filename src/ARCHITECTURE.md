@@ -170,3 +170,10 @@ This enables the V2 lyrics editor to support playback for:
 **Framework**: Vitest. Run `npm test` (once) or `npm run test:watch` (watch mode).
 
 Tests live next to the source files they exercise (e.g. `word-tokenizer.test.js` for `word-tokenizer.js`). Add tests for any utilities that involve non-trivial branching logic (e.g. parsing, tokenization, transformations). `export-workflows.test.js` verifies shared preferences and batch snapshots with mocked commands. `download-options.test.js` uses a minimal Vue renderer to exercise all four album/artist trigger setups, recycling/unmount lifecycle, target isolation, and scope queries without a DOM or real downloads. DOM component tests are not yet set up.
+
+## External Lyrics Refresh
+
+The existing Refresh action can upgrade Plain/missing lyrics from a matching
+valid LRC even when the recording has not changed. Matching TXT is the fallback
+for missing lyrics. Already synced/instrumental lyrics require explicit import
+for replacement. This backend change does not add startup scans or F5 bindings.
