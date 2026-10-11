@@ -428,3 +428,13 @@ The following deprecated functions were removed from `db.rs` (no longer used):
 - The tracks table schema for new databases (post-reset) will not include these deprecated columns
 
 **Migration v14:** Uses `ALTER TABLE DROP COLUMN` (SQLite 3.35.0+) to remove deprecated columns: `txt_lyrics`, `lrc_lyrics`, `instrumental`, `has_plain_lyrics`, `has_synced_lyrics`, `has_word_synced_lyrics`. Drops related indexes and forces a library reset.
+
+### Hover-help preference (schema v18)
+
+Migration 18 adds `config_data.show_hover_help` as a non-null checked boolean,
+default false, without modifying music or lyrics. `get_config` returns it in
+PersistentConfig. `set_config` accepts an optional value and commits ordinary
+settings plus the preference in one transaction; omission preserves the choice
+for old callers. The scoped database setter leaves unrelated fields untouched.
+Tests cover upgrade preservation, default, connection restart, unrelated writes
+and transaction rollback.

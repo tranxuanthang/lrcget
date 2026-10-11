@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 const isHotkeyState = ref(true)
 const themeModeState = ref(true)
 const lrclibInstanceState = ref('')
+const showHoverHelpState = ref(false)
 
 export function useGlobalState() {
   const disableHotkey = () => {
@@ -34,5 +35,9 @@ export function useGlobalState() {
     themeMode,
     setLrclibInstance,
     lrclibInstance,
+    showHoverHelp: computed(() => showHoverHelpState.value),
+    setShowHoverHelp: enabled => {
+      showHoverHelpState.value = enabled === true
+    },
   }
 }

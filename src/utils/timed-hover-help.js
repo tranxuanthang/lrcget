@@ -1,11 +1,14 @@
 // One passive help bubble for native title controls and editor descriptions.
-// Keep the target after dismissal so stationary hover cannot reopen it.
-export function installTimedHoverHelp(doc = document) {
+// Automatic help is opt-in. F1 always requests a two-second description.
+export function installTimedHoverHelp(
+  doc = document,
+  { isEnabled = () => false, subscribe = () => () => {} } = {}
+) {
   const win = doc.defaultView
   let target = null
   let bubble = null
-  let showTimer = null
   let hideTimer = null
+  let showTimer = null
   const content = element =>
     element?.getAttribute('data-editor-help') ?? element?.getAttribute('data-hover-help')
   const dismiss = () => {
@@ -63,26 +66,49 @@ export function installTimedHoverHelp(doc = document) {
     attributes: true,
     attributeFilter: ['title', 'data-editor-help', 'data-hover-help'],
   })
+  const show = element => {
+    dismiss()
+    if (!element?.isConnected || !content(element)) return
+    target = element
+    const text = content(element)
+    bubble = doc.createElement('div')
+    bubble.className = 'lrcget-hover-help'
+    bubble.setAttribute('role', 'tooltip')
+    bubble.textContent = text
+    doc.body.append(bubble)
+    const anchor = target.getBoundingClientRect()
+    const box = bubble.getBoundingClientRect()
+    bubble.style.left = `${Math.max(8, Math.min(anchor.left, win.innerWidth - box.width - 8))}px`
+    const below = anchor.bottom + 8
+    bubble.style.top = `${Math.max(8, below + box.height <= win.innerHeight - 8 ? below : anchor.top - box.height - 8)}px`
+    hideTimer = win.setTimeout(dismiss, 2000)
+  }
   const enter = event => {
     if (event.pointerType === 'touch') return
     const next = event.target.closest?.('[data-editor-help], [data-hover-help]')
     if (!next || next === target || !content(next)) return
     dismiss()
     target = next
-    showTimer = win.setTimeout(() => {
-      if (!target?.isConnected || !content(target)) return
-      bubble = doc.createElement('div')
-      bubble.className = 'lrcget-hover-help'
-      bubble.setAttribute('role', 'tooltip')
-      bubble.textContent = content(target)
-      doc.body.append(bubble)
-      const anchor = target.getBoundingClientRect()
-      const box = bubble.getBoundingClientRect()
-      bubble.style.left = `${Math.max(8, Math.min(anchor.left, win.innerWidth - box.width - 8))}px`
-      const below = anchor.bottom + 8
-      bubble.style.top = `${Math.max(8, below + box.height <= win.innerHeight - 8 ? below : anchor.top - box.height - 8)}px`
-      hideTimer = win.setTimeout(dismiss, 2000)
-    }, 350)
+    if (isEnabled())
+      showTimer = win.setTimeout(() => {
+        if (isEnabled()) show(next)
+      }, 1000)
+  }
+  const requestHelp = event => {
+    if (
+      event.key !== 'F1' ||
+      event.defaultPrevented ||
+      event.repeat ||
+      event.ctrlKey ||
+      event.altKey ||
+      event.metaKey ||
+      event.shiftKey
+    )
+      return
+    const element = target ?? doc.activeElement?.closest?.('[data-editor-help], [data-hover-help]')
+    if (!element?.isConnected || !content(element)) return
+    event.preventDefault()
+    show(element)
   }
   const leave = event => {
     if (!target || target.contains(event.relatedTarget)) return
@@ -103,12 +129,20 @@ export function installTimedHoverHelp(doc = document) {
     [doc, 'visibilitychange', dismiss],
     [win, 'blur', dismiss],
     [win, 'resize', dismiss],
+    // Run after document/editor shortcuts so configured bindings retain priority.
+    [win, 'keydown', requestHelp, false],
   ]
-  listeners.forEach(([owner, type, listener]) => owner.addEventListener(type, listener, true))
+  listeners.forEach(([owner, type, listener, capture = true]) =>
+    owner.addEventListener(type, listener, capture)
+  )
+  const stopWatching = subscribe(dismiss)
   return () => {
+    stopWatching()
     dismiss()
     observer.disconnect()
-    listeners.forEach(([owner, type, listener]) => owner.removeEventListener(type, listener, true))
+    listeners.forEach(([owner, type, listener, capture = true]) =>
+      owner.removeEventListener(type, listener, capture)
+    )
     target = null
   }
 }

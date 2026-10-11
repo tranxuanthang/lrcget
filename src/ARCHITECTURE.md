@@ -171,12 +171,18 @@ This enables the V2 lyrics editor to support playback for:
 
 Tests live next to the source files they exercise (e.g. `word-tokenizer.test.js` for `word-tokenizer.js`). Add tests for any utilities that involve non-trivial branching logic (e.g. parsing, tokenization, transformations). `export-workflows.test.js` verifies shared preferences and batch snapshots with mocked commands. `download-options.test.js` uses a minimal Vue renderer to exercise all four album/artist trigger setups, recycling/unmount lifecycle, target isolation, and scope queries without a DOM or real downloads. DOM component tests are not yet set up.
 
-### Timed hover help
+### Optional hover help
 
-`main.js` installs one passive document-level hover-help controller. Native titles
-are converted to accessible descriptions and a single literal-text help bubble.
-After a 350 ms delay it displays for two seconds; a stationary pointer cannot
-reopen it. Exit/re-entry permits another display. Click/scroll/Escape/blur/resize
-and target removal dismiss it. HMR disposal clears timers, observer and listeners.
-The CSS bubble is bounded to the viewport and cannot capture pointer input.
-Dropdowns and menus keep their existing behavior. No backend or file writes change.
+`main.js` installs one `installTimedHoverHelp` controller with the readonly global
+`showHoverHelp` preference and a disposable Vue watcher. The global value starts
+false; App startup restores `get_config().show_hover_help`. Configuration edits a
+local draft, saves an immutable submitted snapshot and only updates runtime state
+after successful persistence. Cancel/failed Save preserve the previous choice.
+
+Native titles become managed descriptions with accessible names/descriptions;
+the shared controller also accepts `data-editor-help` where supplied. Automatic help is disabled by default. Opt-in hover
+waits 1000 ms; one passive literal-text bubble expires after 2000 ms. F1 requests
+help under the pointer or at keyboard focus independently of the preference, on
+window bubbling after configured editor shortcuts. Modifier/repeat/handled keys
+are ignored. Toggle changes cancel pending/displayed help. Disposal removes the
+watcher, timers, observer and listeners. Dropdown behavior and playback are unchanged.
