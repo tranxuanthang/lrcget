@@ -170,3 +170,17 @@ This enables the V2 lyrics editor to support playback for:
 **Framework**: Vitest. Run `npm test` (once) or `npm run test:watch` (watch mode).
 
 Tests live next to the source files they exercise (e.g. `word-tokenizer.test.js` for `word-tokenizer.js`). Add tests for any utilities that involve non-trivial branching logic (e.g. parsing, tokenization, transformations). `export-workflows.test.js` verifies shared preferences and batch snapshots with mocked commands. `download-options.test.js` uses a minimal Vue renderer to exercise all four album/artist trigger setups, recycling/unmount lifecycle, target isolation, and scope queries without a DOM or real downloads. DOM component tests are not yet set up.
+
+### Selected-phrase Loop
+
+The synced editor exposes a session Loop toggle with optional bounded Lead-in/Tail.
+`useEditLyricsV2Playback` derives selected line bounds from explicit end, next start
+or recording duration. The mode stays enabled on lyric/word navigation; selection
+retargets it while invalidating stale async starts/replays. Invalid/untimed ranges
+and inactive Plain/instrumental tabs suspend repetition without losing the mode.
+A conditional status explains missing bounds and the active toggle remains usable
+for Off. Repeat seeks wait for position acknowledgement; source replacement,
+disposal and genuine seek failures stop safely. Playback initialization suppresses
+repeat seeks, and delayed navigation cannot seek a former source/lyric.
+Tests cover mode retention, suspension, inferred ends, stale requests/failures,
+error reporting, context, acknowledgement and the usable Off control.

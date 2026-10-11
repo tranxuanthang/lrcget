@@ -60,7 +60,9 @@
     </template>
 
     <div class="grow flex flex-col gap-2 h-full">
-      <div class="toolbar bg-neutral-100 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700">
+      <div
+        class="toolbar bg-neutral-100 dark:bg-neutral-800 rounded-lg border border-neutral-200 dark:border-neutral-700"
+      >
         <EditLyricsV2PlayerBar
           :status="status"
           :duration="duration"
@@ -78,7 +80,9 @@
         <div
           class="w-full max-w-lg rounded-lg border border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-900 p-5 shadow-lg"
         >
-          <h3 class="text-base font-semibold text-neutral-900 dark:text-neutral-200">Track is marked as instrumental</h3>
+          <h3 class="text-base font-semibold text-neutral-900 dark:text-neutral-200">
+            Track is marked as instrumental
+          </h3>
           <div class="mt-4 flex flex-wrap gap-2">
             <button
               class="button button-normal px-2 py-1 text-xs rounded-full"
@@ -102,12 +106,17 @@
       />
 
       <SyncedLyricsEditor
+        v-model:loop-lead-seconds="loopLeadSeconds"
+        v-model:loop-tail-seconds="loopTailSeconds"
         v-else
         :model-value="syncedLines"
         :can-import-from-plain="hasPlainLyrics"
         :selected-line-index="selectedSyncedLineIndex"
         :selected-line-indices="selectedSyncedLineIndices"
         :progress-ms="progressMs"
+        :loop-enabled="loopEnabled"
+        :can-loop="canLoop"
+        @toggle-loop="toggleLoop"
         @update:model-value="updateSyncedLines"
         @update:selected-line-index="selectSyncedLine"
         @update:selected-line-indices="handleUpdateSelectedLineIndices"
@@ -133,7 +142,6 @@
         @update-line-text="handleUpdateLineText"
         @mark-as-instrumental="setInstrumental(true)"
       />
-
     </div>
   </BaseModal>
 </template>
@@ -275,7 +283,16 @@ const { exportLyrics, isExporting } = useEditLyricsV2Export({
   toast,
 })
 
-const { playLine, playLineAtOffset, resumeOrPlay } = useEditLyricsV2Playback({
+const {
+  playLine,
+  playLineAtOffset,
+  resumeOrPlay,
+  loopEnabled,
+  canLoop,
+  loopLeadSeconds,
+  loopTailSeconds,
+  toggleLoop,
+} = useEditLyricsV2Playback({
   audioSource: audioSourceRef,
   syncedLines,
   progress,
@@ -284,6 +301,10 @@ const { playLine, playLineAtOffset, resumeOrPlay } = useEditLyricsV2Playback({
   playTrack,
   resume,
   seek,
+  duration,
+  selectedLineIndex: selectedSyncedLineIndex,
+  loopAvailable: computed(() => activeTab.value === 'synced' && !isInstrumental.value),
+  onError: error => toast.error(`Loop playback failed: ${error?.message || error}`),
 })
 
 const handlePlayLineAtOffset = ({ lineIndex, offsetMs }) => {

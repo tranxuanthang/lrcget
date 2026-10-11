@@ -1,5 +1,52 @@
 <template>
   <div class="grow overflow-hidden flex flex-col relative">
+    <div
+      class="shrink-0 flex flex-wrap items-center gap-3 py-2 border-b border-neutral-200 dark:border-neutral-700"
+    >
+      <button
+        type="button"
+        class="button p-1.5 rounded"
+        :class="loopEnabled ? 'button-primary' : 'button-normal'"
+        :disabled="!canLoop && !loopEnabled"
+        :aria-pressed="loopEnabled"
+        title="Keep repeating the selected lyric until Loop is turned off"
+        aria-label="Loop selected phrase"
+        @click="emit('toggle-loop')"
+      >
+        <Repeat />
+      </button>
+      <label class="text-xs inline-flex items-center gap-1"
+        >Lead-in
+        <input
+          class="input w-14 rounded px-1 py-1 text-xs"
+          type="number"
+          min="0"
+          max="5"
+          step="0.1"
+          :value="loopLeadSeconds"
+          @change="emit('update:loop-lead-seconds', Number($event.target.value))"
+        />s
+      </label>
+      <label class="text-xs inline-flex items-center gap-1"
+        >Tail
+        <input
+          class="input w-14 rounded px-1 py-1 text-xs"
+          type="number"
+          min="0"
+          max="5"
+          step="0.1"
+          :value="loopTailSeconds"
+          @change="emit('update:loop-tail-seconds', Number($event.target.value))"
+        />s
+      </label>
+    </div>
+    <p
+      v-if="loopEnabled && !canLoop"
+      role="status"
+      class="mt-1 shrink-0 text-xs text-neutral-600 dark:text-neutral-300"
+    >
+      Loop is on; select a lyric with valid start/end markers to repeat.
+    </p>
     <SyncedWordTimingLane
       class="relative z-20 shrink-0 mt-2"
       :selected-line="selectedLine"
@@ -125,6 +172,7 @@
 </template>
 
 <script setup>
+import Repeat from '~icons/mdi/repeat'
 import { computed, nextTick, onMounted, onUnmounted, ref, toRef, watch } from 'vue'
 import Rewind from '~icons/mdi/rewind'
 import Forward from '~icons/mdi/fast-forward'
@@ -138,6 +186,10 @@ import { useEditLyricsV2SyncedInsertHover } from '@/composables/edit-lyrics-v2/u
 import { formatTimestampMs } from '@/utils/lyricsfile.js'
 
 const props = defineProps({
+  loopEnabled: Boolean,
+  canLoop: Boolean,
+  loopLeadSeconds: { type: Number, default: 0 },
+  loopTailSeconds: { type: Number, default: 0 },
   modelValue: {
     type: Array,
     required: true,
@@ -161,6 +213,9 @@ const props = defineProps({
 })
 
 const emit = defineEmits([
+  'toggle-loop',
+  'update:loop-lead-seconds',
+  'update:loop-tail-seconds',
   'update:modelValue',
   'update:selected-line-index',
   'update:selected-line-indices',
@@ -334,7 +389,11 @@ const scrollLineIntoView = index => {
 }
 
 const rowClass = index => {
-  if (isLineRowSelected(index) || props.selectedLineIndex === index || editingLineIndex.value === index) {
+  if (
+    isLineRowSelected(index) ||
+    props.selectedLineIndex === index ||
+    editingLineIndex.value === index
+  ) {
     return 'bg-neutral-100 dark:bg-neutral-800'
   }
 
@@ -360,7 +419,11 @@ const getEndTimestampDiffDirection = index => {
   const lineEndMs = props.modelValue[index]?.end_ms
   const nextLineStartMs = props.modelValue[index + 1]?.start_ms
 
-  if (!Number.isFinite(lineEndMs) || !Number.isFinite(nextLineStartMs) || lineEndMs === nextLineStartMs) {
+  if (
+    !Number.isFinite(lineEndMs) ||
+    !Number.isFinite(nextLineStartMs) ||
+    lineEndMs === nextLineStartMs
+  ) {
     return null
   }
 
@@ -376,10 +439,12 @@ const emitLineAction = (eventName, index, selectBefore = true) => {
 }
 
 const handlePlayLine = index => {
-  emitLineAction('play-line', index, false)
+  emitLineAction('play-line', index)
 }
 
 const handlePlayLineAtOffset = payload => {
+  if (!props.modelValue[payload?.lineIndex]) return
+  selectLine(payload.lineIndex)
   emit('play-line-at-offset', payload)
 }
 
