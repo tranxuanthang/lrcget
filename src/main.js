@@ -1,5 +1,6 @@
 import { createApp } from 'vue'
 import App from './App.vue'
+import { installTimedHoverHelp } from './utils/timed-hover-help.js'
 import Toast, { POSITION } from 'vue-toastification'
 import { createVfm } from 'vue-final-modal'
 import FloatingVue from 'floating-vue'
@@ -47,6 +48,9 @@ app.use(FloatingVue, {
 })
 app.use(vfm)
 app.mount('#app')
+
+const disposeHoverHelp = installTimedHoverHelp()
+if (import.meta.hot) import.meta.hot.dispose(disposeHoverHelp)
 
 document.addEventListener(
   'contextmenu',
