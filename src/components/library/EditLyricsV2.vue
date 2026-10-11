@@ -106,9 +106,9 @@
       />
 
       <SyncedLyricsEditor
+        v-else
         v-model:loop-lead-seconds="loopLeadSeconds"
         v-model:loop-tail-seconds="loopTailSeconds"
-        v-else
         :model-value="syncedLines"
         :can-import-from-plain="hasPlainLyrics"
         :selected-line-index="selectedSyncedLineIndex"
