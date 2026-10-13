@@ -155,26 +155,25 @@
           />
         </button>
 
-        <div
-          v-if="dragState"
-          class="absolute inset-y-0 z-20 pointer-events-none"
-          :style="{ left: `${timeToPercent(dragState.currentStartMs)}%` }"
-        >
-          <div
-            class="absolute top-0 bottom-0 w-[3px] -translate-x-1/2 bg-neutral-600 dark:bg-neutral-300 ring-1 ring-neutral-500/25"
-          />
-          <div
-            class="absolute top-[-0.375rem] left-0 -translate-x-1/2 -translate-y-full px-[0.4rem] py-0.5 rounded-full text-xs leading-4 whitespace-nowrap text-neutral-800 bg-neutral-200 dark:text-white dark:bg-hoa-1100"
-          >
-            {{ formatTimestampMs(dragState.currentStartMs) }}
-          </div>
-        </div>
-
       </div>
 
-      <!-- Playhead is a sibling of the spectrogram + timeline so its top
-           sits just above the spectrogram (when visible) instead of just
-           above the timeline. -->
+      <!-- Playhead and the drag guide are siblings of the spectrogram + timeline
+           so each line crosses both, instead of stopping at the timeline. -->
+      <div
+        v-if="dragState"
+        class="absolute -top-1 bottom-0 z-30 pointer-events-none"
+        :style="{ left: `${timeToPercent(dragState.currentStartMs)}%` }"
+      >
+        <div
+          class="absolute inset-y-0 w-px -translate-x-1/2 bg-neutral-600 dark:bg-neutral-300"
+        />
+        <div
+          class="absolute top-1 left-0 -translate-x-1/2 px-[0.4rem] py-0.5 rounded-full text-xs leading-4 whitespace-nowrap text-neutral-800 bg-neutral-200 opacity-50 dark:text-white dark:bg-hoa-1100"
+        >
+          {{ formatTimestampMs(dragState.currentStartMs) }}
+        </div>
+      </div>
+
       <div
         v-if="progressMs >= laneStartMs && progressMs <= laneEndMs"
         class="absolute -top-1 bottom-0 w-px bg-neutral-400 dark:bg-neutral-400 z-20 pointer-events-none"
