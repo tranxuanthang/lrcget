@@ -6,6 +6,19 @@ LRCGET will scan every files in your chosen directory for music files, then and 
 
 LRCGET is the official client of [LRCLIB](https://lrclib.net) service.
 
+## AARP Changes
+
+- The Vite dev watcher ignores `src-tauri`, so a locked Cargo build file on Windows no longer stops `npm run tauri dev`.
+- Dragging the first or last separator on a line that only has preview timings moves the line start or end and leaves word timings unset.
+- **Add line between** copies the start and end timestamps from the line above the gap.
+- A line with start and end timestamps shows the spectrogram even when it has no lyric text.
+- Dragging across synced lines highlights the range immediately. The active line, word lane, and spectrogram change when the pointer is released.
+- Dragging a separator shows a one-pixel guide and a 50% opacity timestamp across the spectrogram and the word timeline.
+- Dragging a word separator plays from its new time. Clicking one plays from that word. Shift, Ctrl, and Cmd clicks only change the selection.
+- Dragging or clicking the last separator plays from three separators back, and never more than 3 seconds before that separator. Releasing the drag does not seek a second time.
+- Shift+Enter, while editing a line, splits it at the cursor and divides its time by word count. Six words against six words in a 0:10–0:16 line meet at 0:13. The cursor stays at the start of the new line.
+- Synced lines are the source for plain lyrics. Opening a file keeps the stored plain text, and typing in the plain editor still changes only plain lyrics. Any later synced edit rebuilds plain lyrics as one line per synced line. A word-synced line uses its joined word text.
+
 ## Download
 
 🎉 Latest version: v2.2.0
