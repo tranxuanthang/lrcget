@@ -82,7 +82,7 @@
         :start-ms="laneStartMs"
         :end-ms="laneEndMs"
         class="shrink-0 rounded-b-none"
-        @seek="$emit('seek', $event)"
+        @seek="handleLaneSeek"
       />
 
       <!-- Timeline with word segments -->
@@ -147,7 +147,7 @@
           :style="{ left: `${timeToPercent(getBoundaryTimeMs(index) ?? actualLineEndMs)}%` }"
           :title="getBoundaryTitle(index)"
           @pointerdown="handleBoundaryPointerDown(index, $event)"
-          @click.stop="selectBoundary(index, $event)"
+          @click.stop="handleBoundaryClick(index, $event)"
         >
           <span
             class="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2 transition-all duration-150 ease-linear bg-neutral-300/70 dark:bg-hoa-1000/70 group-hover:bg-neutral-600 dark:group-hover:bg-neutral-300 group-hover:w-[3px] group-hover:ring-1 group-hover:ring-neutral-500/25"
@@ -367,8 +367,11 @@ const {
   displayedWords,
   boundaryIndexes,
   getBoundaryTimeMs,
+  getSeparatorPlayStartMs,
+  consumeRecentBoundaryDrag,
   selectedBoundaryIndex,
   selectedBoundaryIndices,
+  isDraggingBoundary,
   startBoundaryDrag,
   selectBoundary,
   isBoundarySelected,
@@ -473,6 +476,17 @@ const getBoundaryTitle = index => {
 
 const handleBoundaryPointerDown = (rightWordIndex, event) => {
   startBoundaryDrag(rightWordIndex, event, clientXToTime)
+}
+
+const handleBoundaryClick = (index, event) => {
+  const dragged = isDraggingBoundary.value
+  const releasedDrag = consumeRecentBoundaryDrag()
+  selectBoundary(index, event)
+  if (dragged || releasedDrag || event.shiftKey || event.ctrlKey || event.metaKey) {
+    return
+  }
+
+  playFromSeparatorMs(getSeparatorPlayStartMs(index))
 }
 
 const getBoundaryLineClass = index => {
@@ -753,8 +767,17 @@ const handleResetWords = async () => {
   await loadDefaultSegmentation({ force: true })
 }
 
+const handleLaneSeek = timeSeconds => {
+  if (consumeRecentBoundaryDrag()) {
+    return
+  }
+
+  emit('seek', timeSeconds)
+}
+
 const handleTimelineClick = event => {
   event.stopPropagation()
+  if (consumeRecentBoundaryDrag()) return
   if (laneEndMs.value <= laneStartMs.value) return
   const rect = timelineElement.value?.getBoundingClientRect()
   if (!rect || rect.width <= 0) return

@@ -21,6 +21,7 @@ export function useEditLyricsV2WordBoundaryDrag({
   const selectedBoundaryIndices = ref([0])
   const isDraggingBoundary = ref(false)
   const dragStartPos = ref(null)
+  const boundaryDragEndedAt = ref(0)
 
   const getLineEndBoundaryIndex = () => (words.value.length > 0 ? words.value.length : -1)
 
@@ -199,8 +200,8 @@ export function useEditLyricsV2WordBoundaryDrag({
     return words.value[index]?.start_ms
   }
 
-  // Replay from three separators back so a late word does not restart the line.
-  // A long note still starts at most 3 seconds before the dragged separator.
+  // Only the last separator replays: three separators back, and never more
+  // than 3 seconds before the dragged time.
   const getDragReplayStartMs = (rightWordIndex, draggedMs) => {
     const previousIndex = Math.max(0, rightWordIndex - DRAG_REPLAY_SEPARATORS_BACK)
     const previousMs =
@@ -211,7 +212,20 @@ export function useEditLyricsV2WordBoundaryDrag({
     return Math.max(0, Math.min(draggedMs, Math.max(boundedPreviousMs, earliestMs)))
   }
 
+  const getSeparatorPlayStartMs = index => {
+    const boundaryMs = getBoundaryTimeMs(index)
+    if (!isLineEndBoundaryIndex(index) || !Number.isFinite(boundaryMs)) {
+      return boundaryMs
+    }
+
+    return getDragReplayStartMs(index, boundaryMs)
+  }
+
   const commitLineEndBoundary = ({ startMs, shouldReplay, lineBoundsOnly = false }) => {
+    // Read the lookback before the line end changes, so preview words are not
+    // redistributed across the new window before the replay point is chosen.
+    const replayStartMs = shouldReplay ? getDragReplayStartMs(words.value.length, startMs) : null
+
     if (lineBoundsOnly) {
       onUpdateWords({
         lineIndex: selectedLineIndex.value,
@@ -241,7 +255,7 @@ export function useEditLyricsV2WordBoundaryDrag({
     if (shouldReplay) {
       onWordTimingEdited({
         lineIndex: selectedLineIndex.value,
-        startMs: getDragReplayStartMs(words.value.length, startMs),
+        startMs: replayStartMs,
       })
     }
 
@@ -273,7 +287,7 @@ export function useEditLyricsV2WordBoundaryDrag({
       if (shouldReplay) {
         onWordTimingEdited({
           lineIndex: selectedLineIndex.value,
-          startMs: getDragReplayStartMs(rightWordIndex, startMs),
+          startMs,
         })
       }
 
@@ -291,7 +305,7 @@ export function useEditLyricsV2WordBoundaryDrag({
     if (shouldReplay) {
       onWordTimingEdited({
         lineIndex: selectedLineIndex.value,
-        startMs: getDragReplayStartMs(rightWordIndex, startMs),
+        startMs,
       })
     }
 
@@ -404,7 +418,19 @@ export function useEditLyricsV2WordBoundaryDrag({
     updateDragPosition(event.clientX, dragStartPos.value.clientXToTime)
   }
 
+  const consumeRecentBoundaryDrag = () => {
+    if (!boundaryDragEndedAt.value) {
+      return false
+    }
+
+    const recent = Date.now() - boundaryDragEndedAt.value < 500
+    boundaryDragEndedAt.value = 0
+    return recent
+  }
+
   const handlePointerUp = () => {
+    boundaryDragEndedAt.value = Date.now()
+
     if (dragState.value) {
       const rightWordIndex = dragState.value.rightWordIndex
       const isLineEdge = rightWordIndex === 0 || isLineEndBoundaryIndex(rightWordIndex)
@@ -702,6 +728,7 @@ export function useEditLyricsV2WordBoundaryDrag({
     dragState.value = null
     dragStartPos.value = null
     isDraggingBoundary.value = false
+    boundaryDragEndedAt.value = 0
     stopBoundaryDrag()
   }
 
@@ -710,6 +737,8 @@ export function useEditLyricsV2WordBoundaryDrag({
     displayedWords,
     boundaryIndexes,
     getBoundaryTimeMs,
+    getSeparatorPlayStartMs,
+    consumeRecentBoundaryDrag,
     selectedBoundaryIndex,
     selectedBoundaryIndices,
     isDraggingBoundary,
