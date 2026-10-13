@@ -41,16 +41,21 @@ const previewWords = () => [
   { text: 'world', start_ms: 500 },
 ]
 
-const setupDrag = ({ hasPersistedWords = false, words = previewWords() } = {}) => {
+const setupDrag = ({
+  hasPersistedWords = false,
+  words = previewWords(),
+  lineEndMs = 1000,
+  timelineEndMs = 1500,
+} = {}) => {
   const updates = []
   const replays = []
   const drag = useEditLyricsV2WordBoundaryDrag({
     isWordSyncAvailable: computed(() => true),
     words: ref(words),
     lineStartMs: computed(() => 0),
-    lineEndMs: computed(() => 1000),
+    lineEndMs: computed(() => lineEndMs),
     timelineStartMs: computed(() => -500),
-    timelineEndMs: computed(() => 1500),
+    timelineEndMs: computed(() => timelineEndMs),
     selectedLineIndex: computed(() => 2),
     hasPersistedWords: computed(() => hasPersistedWords),
     onUpdateWords: payload => updates.push(payload),
@@ -120,6 +125,43 @@ describe('useEditLyricsV2WordBoundaryDrag line-edge drags', () => {
     expect(updates[0].preserveWords).toBeUndefined()
     expect(updates[0].words[0]).toMatchObject({ text: 'hello ', end_ms: 300 })
     expect(updates[0].words[1]).toMatchObject({ text: 'world', start_ms: 300 })
+  })
+
+  it('replays a late separator from three separators back', () => {
+    const words = [
+      { text: 'a', start_ms: 0 },
+      { text: 'b', start_ms: 400 },
+      { text: 'c', start_ms: 800 },
+      { text: 'd', start_ms: 1200 },
+      { text: 'e', start_ms: 1600 },
+      { text: 'f', start_ms: 2000 },
+    ]
+    const { drag, replays } = setupDrag({
+      hasPersistedWords: true,
+      words,
+      lineEndMs: 5000,
+      timelineEndMs: 6000,
+    })
+
+    dragBoundary(drag, 5, 2100)
+
+    expect(replays).toEqual([{ lineIndex: 2, startMs: 800 }])
+  })
+
+  it('caps separator replay at 3 seconds before a long note', () => {
+    const { drag, replays } = setupDrag({
+      hasPersistedWords: true,
+      words: [
+        { text: 'a', start_ms: 0 },
+        { text: 'b', start_ms: 10000 },
+      ],
+      lineEndMs: 20000,
+      timelineEndMs: 21000,
+    })
+
+    dragBoundary(drag, 1, 10100)
+
+    expect(replays).toEqual([{ lineIndex: 2, startMs: 7100 }])
   })
 
   it('keeps persisted word timings when the first separator moves', () => {

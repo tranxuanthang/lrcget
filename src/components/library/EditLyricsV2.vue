@@ -431,7 +431,7 @@ const handlePasteLrc = async () => {
 }
 
 const handleWordTimingEdited = async ({ startMs }) => {
-  // Auto-replay from the beginning of the edited line for instant verification
+  // Seek to the replay point chosen by the separator drag.
   const seekTo = Number.isFinite(startMs) ? startMs / 1000 : progress.value
   const source = playbackSource.value
 

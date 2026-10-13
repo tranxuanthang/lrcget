@@ -1,6 +1,8 @@
 import { computed, ref } from 'vue'
 
 const DRAG_THRESHOLD = 3
+const DRAG_REPLAY_SEPARATORS_BACK = 3
+const DRAG_REPLAY_MAX_LOOKBACK_MS = 3000
 
 export function useEditLyricsV2WordBoundaryDrag({
   isWordSyncAvailable,
@@ -184,6 +186,31 @@ export function useEditLyricsV2WordBoundaryDrag({
     }
   }
 
+  const getStoredBoundaryTimeMs = index => {
+    if (index <= 0) {
+      const firstStartMs = words.value[0]?.start_ms
+      return Number.isFinite(firstStartMs) ? firstStartMs : lineStartMs.value
+    }
+
+    if (index >= words.value.length) {
+      return getLineEndBoundaryTimeMs()
+    }
+
+    return words.value[index]?.start_ms
+  }
+
+  // Replay from three separators back so a late word does not restart the line.
+  // A long note still starts at most 3 seconds before the dragged separator.
+  const getDragReplayStartMs = (rightWordIndex, draggedMs) => {
+    const previousIndex = Math.max(0, rightWordIndex - DRAG_REPLAY_SEPARATORS_BACK)
+    const previousMs =
+      previousIndex === rightWordIndex ? draggedMs : getStoredBoundaryTimeMs(previousIndex)
+    const boundedPreviousMs = Number.isFinite(previousMs) ? previousMs : draggedMs
+    const earliestMs = draggedMs - DRAG_REPLAY_MAX_LOOKBACK_MS
+
+    return Math.max(0, Math.min(draggedMs, Math.max(boundedPreviousMs, earliestMs)))
+  }
+
   const commitLineEndBoundary = ({ startMs, shouldReplay, lineBoundsOnly = false }) => {
     if (lineBoundsOnly) {
       onUpdateWords({
@@ -214,7 +241,7 @@ export function useEditLyricsV2WordBoundaryDrag({
     if (shouldReplay) {
       onWordTimingEdited({
         lineIndex: selectedLineIndex.value,
-        startMs: lineStartMs.value,
+        startMs: getDragReplayStartMs(words.value.length, startMs),
       })
     }
 
@@ -246,7 +273,7 @@ export function useEditLyricsV2WordBoundaryDrag({
       if (shouldReplay) {
         onWordTimingEdited({
           lineIndex: selectedLineIndex.value,
-          startMs,
+          startMs: getDragReplayStartMs(rightWordIndex, startMs),
         })
       }
 
@@ -264,7 +291,7 @@ export function useEditLyricsV2WordBoundaryDrag({
     if (shouldReplay) {
       onWordTimingEdited({
         lineIndex: selectedLineIndex.value,
-        startMs: rightWordIndex === 0 ? startMs : lineStartMs.value,
+        startMs: getDragReplayStartMs(rightWordIndex, startMs),
       })
     }
 
