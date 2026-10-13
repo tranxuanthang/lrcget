@@ -147,6 +147,22 @@ export const formatTimestampMs = timestampMs => {
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`
 }
 
+export const syncedLinePlainText = line => {
+  if (Array.isArray(line?.words) && line.words.length > 0) {
+    return line.words.map(word => word?.text || '').join('')
+  }
+
+  return typeof line?.text === 'string' ? line.text : ''
+}
+
+export const plainLyricsFromSyncedLines = lines => {
+  if (!Array.isArray(lines)) {
+    return ''
+  }
+
+  return lines.map(syncedLinePlainText).join('\n')
+}
+
 export const createSyncedLinesFromPlain = (plainLyrics, existingLines = []) => {
   const plainLines =
     typeof plainLyrics === 'string' ? plainLyrics.replace(/\r\n/g, '\n').split('\n') : []

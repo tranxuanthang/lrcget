@@ -72,6 +72,7 @@ import {
   plainEditorShortcutBindings,
   withShortcutTitle,
 } from '@/composables/edit-lyrics-v2/shortcutRegistry.js'
+import { plainLyricsFromSyncedLines } from '@/utils/lyricsfile.js'
 const AsyncCodemirror = defineAsyncComponent(async () => {
   const { Codemirror } = await import('vue-codemirror')
   return Codemirror
@@ -143,12 +144,7 @@ const handleImportFromSynced = () => {
     return
   }
 
-  const linesText = props.syncedLines
-    .map(line => line.text || '')
-    .filter(text => text.length > 0)
-    .join('\n')
-
-  emit('update:modelValue', linesText)
+  emit('update:modelValue', plainLyricsFromSyncedLines(props.syncedLines))
 }
 
 const handleAddLineManually = () => {

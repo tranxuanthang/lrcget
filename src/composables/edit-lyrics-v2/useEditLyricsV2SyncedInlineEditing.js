@@ -5,10 +5,12 @@ export function useEditLyricsV2SyncedInlineEditing({
   emit,
   selectLine,
   updateLineText,
+  splitSyncedLine,
 }) {
   const editingLineIndex = ref(null)
   const editingText = ref('')
   const lineInput = ref(null)
+  const suppressNextSave = ref(false)
 
   const setLineInputRef = element => {
     lineInput.value = element
@@ -40,7 +42,43 @@ export function useEditLyricsV2SyncedInlineEditing({
     })
   }
 
+  const splitEditingLine = caretIndex => {
+    if (editingLineIndex.value === null || typeof splitSyncedLine !== 'function') {
+      return
+    }
+
+    const result = splitSyncedLine({
+      lineIndex: editingLineIndex.value,
+      text: editingText.value,
+      caretIndex,
+    })
+
+    if (!result || !Number.isInteger(result.lineIndex) || result.lineIndex < 0) {
+      return
+    }
+
+    suppressNextSave.value = true
+    editingLineIndex.value = result.lineIndex
+    editingText.value = result.text ?? ''
+    emit('editing-state-change', true)
+
+    nextTick(() => {
+      const input = lineInput.value
+      suppressNextSave.value = false
+      if (!input) {
+        return
+      }
+
+      input.focus()
+      input.setSelectionRange(0, 0)
+    })
+  }
+
   const saveEditingLine = () => {
+    if (suppressNextSave.value) {
+      return
+    }
+
     if (editingLineIndex.value === null) {
       return
     }
@@ -82,6 +120,7 @@ export function useEditLyricsV2SyncedInlineEditing({
     editingText,
     setLineInputRef,
     startEditingLine,
+    splitEditingLine,
     saveEditingLine,
     cancelEditingLine,
     handleLineCountChange,

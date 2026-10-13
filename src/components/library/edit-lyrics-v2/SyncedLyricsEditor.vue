@@ -65,6 +65,7 @@
             @delete-line="handleDeleteLine"
             @start-edit="startEditingLine"
             @save-edit="saveEditingLine"
+            @split-edit="handleSplitEdit"
             @cancel-edit="cancelEditingLine"
             @update:editing-text="handleEditingTextUpdate"
           />
@@ -207,6 +208,7 @@ const emit = defineEmits([
   'update:words',
   'word-timing-edited',
   'update-line-text',
+  'split-line',
   'mark-as-instrumental',
   'seek',
 ])
@@ -387,6 +389,7 @@ const {
   editingText,
   setLineInputRef,
   startEditingLine,
+  splitEditingLine,
   saveEditingLine,
   cancelEditingLine,
   handleLineCountChange: handleInlineEditingLineCountChange,
@@ -395,7 +398,19 @@ const {
   emit,
   selectLine: index => emit('update:selected-line-index', index),
   updateLineText: handleUpdateLineText,
+  splitSyncedLine: payload => {
+    let result = null
+    emit('split-line', payload, value => {
+      result = value
+    })
+    return result
+  },
 })
+
+const handleSplitEdit = event => {
+  const caretIndex = event?.target?.selectionStart
+  splitEditingLine(caretIndex)
+}
 
 const {
   lineRowElements,

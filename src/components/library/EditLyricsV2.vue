@@ -165,6 +165,7 @@
         @update:words="updateLineWords"
         @word-timing-edited="handleWordTimingEdited"
         @update-line-text="handleUpdateLineText"
+        @split-line="handleSplitLine"
         @mark-as-instrumental="setInstrumental(true)"
         @seek="seek"
       />
@@ -271,6 +272,7 @@ const {
   clearSyncedLineSelection,
   setSyncedLineEditingState,
   addSyncedLineAt,
+  splitSyncedLineAtCaret,
   deleteSyncedLine,
   bulkDeleteLines,
   bulkRewindLines,
@@ -359,6 +361,11 @@ const forwardLineBy100 = lineIndex => {
 
 const handleUpdateLineText = (lineIndex, newText) => {
   updateLineText(lineIndex, newText)
+}
+
+const handleSplitLine = (payload, done) => {
+  const result = splitSyncedLineAtCaret(payload?.lineIndex, payload?.text, payload?.caretIndex)
+  done?.(result)
 }
 
 const handleUpdateSelectedLineIndices = payload => {

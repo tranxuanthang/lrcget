@@ -61,7 +61,8 @@
       class="grow h-full px-2 rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 outline-none"
       :class="{ 'font-bold': isLinePlaying }"
       @blur="emit('save-edit')"
-      @keydown.enter.prevent="emit('save-edit')"
+      @keydown.enter.exact.prevent="emit('save-edit')"
+      @keydown.shift.enter.stop.prevent="emit('split-edit', $event)"
       @keydown.esc.prevent="emit('cancel-edit')"
     />
 
@@ -256,6 +257,7 @@ const emit = defineEmits([
   'delete-line',
   'start-edit',
   'save-edit',
+  'split-edit',
   'cancel-edit',
   'update:editing-text',
   'sync-end',

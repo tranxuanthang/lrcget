@@ -5,8 +5,10 @@ import {
   isWhitespaceSyncedLine,
   normalizeSyncedLine,
   parseLyricsfile,
+  plainLyricsFromSyncedLines,
   serializeLyricsfile,
 } from '@/utils/lyricsfile.js'
+import { splitSyncedLineAtCaret as divideSyncedLineAtCaret } from '@/composables/edit-lyrics-v2/splitSyncedLine.js'
 
 const createEmptySyncedLine = () => normalizeSyncedLine({})
 
@@ -107,6 +109,23 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
   const selectedSyncedLineIds = ref([])
   const isSyncedLineEditing = ref(false)
   const isInstrumental = ref(false)
+  // Opening a file keeps its stored plain lyrics. Synced edits after that
+  // rebuild plain lyrics, so this stays raised while applying a saved document.
+  let pausePlainSync = false
+
+  const publishPlainLyricsFromSyncedLines = () => {
+    if (pausePlainSync) {
+      return
+    }
+
+    const nextPlain = plainLyricsFromSyncedLines(syncedLines.value)
+    if (nextPlain === plainLyrics.value) {
+      return
+    }
+
+    plainLyrics.value = nextPlain
+    isDirty.value = true
+  }
 
   const selectedSyncedLineIndices = computed(() => {
     if (selectedSyncedLineIds.value.length === 0) return []
@@ -224,9 +243,8 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     console.log(lyricsfileContent)
     const parsed = parseLyricsfile(lyricsfileContent)
 
+    pausePlainSync = true
     plainLyrics.value = parsed.plainLyrics
-    // Load synced lines independently from plain lyrics
-    // This allows users to have different structures (e.g., annotations, empty lines)
     syncedLines.value = parsed.syncedLines.map(line => normalizeSyncedLine(line))
     isInstrumental.value = parsed.isInstrumental
 
@@ -234,14 +252,14 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     console.log(lyricsfileDocument.value)
     isDirty.value = false
     isSyncedLineEditing.value = false
+    pausePlainSync = false
     ensureSelectedSyncedLine()
   }
 
   const updatePlainLyrics = lyrics => {
     plainLyrics.value = lyrics
-    // Plain and synced lyrics are now independent - editing plain lyrics
-    // does not automatically update synced lines, allowing users to have
-    // different structures (e.g., annotations like [chorus], empty lines)
+    // Plain edits stay on the plain side until the next synced edit, which
+    // rebuilds plain lyrics from the synced lines.
     isDirty.value = true
   }
 
@@ -292,6 +310,48 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     selectedSyncedLineIndex.value = newIdx >= 0 ? newIdx : lineIndex
     clearSyncedLineSelection()
     isDirty.value = true
+  }
+
+  const splitSyncedLineAtCaret = (lineIndex, text, caretIndex) => {
+    if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
+      return null
+    }
+
+    const line = syncedLines.value[lineIndex]
+    const divided = divideSyncedLineAtCaret(line, text, caretIndex)
+    if (!divided) {
+      return null
+    }
+
+    const leftLine = {
+      ...line,
+      text: divided.leftText,
+      words: divided.leftWords,
+      ...(Number.isFinite(divided.splitMs) ? { end_ms: divided.splitMs } : {}),
+    }
+    const rightLine = normalizeSyncedLine({
+      text: divided.rightText,
+      ...(Number.isFinite(divided.splitMs) ? { start_ms: divided.splitMs } : {}),
+      ...(Number.isFinite(line?.end_ms) ? { end_ms: line.end_ms } : {}),
+      words: divided.rightWords,
+    })
+
+    applyLineMutation(lines => {
+      const nextLines = [...lines]
+      nextLines.splice(lineIndex, 1, leftLine, rightLine)
+      return nextLines
+    })
+
+    const rightIndex = syncedLines.value.findIndex(item => item.id === rightLine.id)
+    if (rightIndex >= 0) {
+      selectedSyncedLineIndex.value = rightIndex
+      clearSyncedLineSelection()
+    }
+
+    return {
+      lineIndex: rightIndex,
+      text: divided.rightText,
+    }
   }
 
   const syncEndToNextLineStart = lineIndex => {
@@ -668,10 +728,10 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
         }
 
         const parsed = parseLyricsfile(serializedContent)
-        // Preserve independent synced lines structure after save (don't re-sync
-        // to plain lyrics). Also re-attach the existing line ids by array index
-        // so the v-for keys don't churn across save
+        // Re-attach the existing line ids by array index so the v-for keys
+        // don't churn across save. Keep the plain lyrics that were just written.
         const previousLines = syncedLines.value
+        pausePlainSync = true
         syncedLines.value = parsed.syncedLines.map((line, i) => {
           const normalized = normalizeSyncedLine(line)
           if (previousLines[i]?.id !== undefined) {
@@ -681,6 +741,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
         })
         lyricsfileDocument.value = parsed.document
         isDirty.value = false
+        pausePlainSync = false
       } catch (error) {
         console.error(error)
         toast.error(error)
@@ -741,6 +802,8 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     { deep: true }
   )
 
+  watch(syncedLines, publishPlainLyricsFromSyncedLines, { deep: true, flush: 'sync' })
+
   return {
     plainLyrics,
     syncedLines,
@@ -764,6 +827,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     clearSyncedLineSelection,
     setSyncedLineEditingState,
     addSyncedLineAt,
+    splitSyncedLineAtCaret,
     deleteSyncedLine,
     bulkDeleteLines,
     bulkRewindLines,

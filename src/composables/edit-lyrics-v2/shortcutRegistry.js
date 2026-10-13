@@ -264,6 +264,13 @@ export const plainEditorShortcutBindings = [
 
 export const plainEditorDisplayOnlyShortcuts = [{ keys: ['Ctrl', 'Scroll'], description: 'Zoom in/out' }]
 
+export const syncedEditorDisplayOnlyShortcuts = [
+  {
+    keys: ['Shift', 'Enter'],
+    description: 'While editing a line, split it at the cursor and divide its time',
+  },
+]
+
 export const syncedEditorShortcutBindings = [
   createShortcutBinding({
     id: 'selectPreviousLine',
@@ -442,12 +449,15 @@ export const getShortcutCategories = () => [
   {
     id: 'synced',
     label: 'Synced Editor',
-    shortcuts: syncedEditorShortcutBindings.map(({ id, keys, defaultKeys, description }) => ({
-      id,
-      keys,
-      defaultKeys,
-      description,
-    })),
+    shortcuts: [
+      ...syncedEditorShortcutBindings.map(({ id, keys, defaultKeys, description }) => ({
+        id,
+        keys,
+        defaultKeys,
+        description,
+      })),
+      ...syncedEditorDisplayOnlyShortcuts,
+    ],
   },
   {
     id: 'wordTiming',
