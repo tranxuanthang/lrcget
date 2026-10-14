@@ -70,7 +70,84 @@ const stampSharedBoundary = (leftWords, rightWords, splitMs) => {
   return { leftWords: nextLeft, rightWords: nextRight }
 }
 
-const partitionWords = (words, caretIndex, splitMs, leftText, rightText, startMs, endMs) => {
+const wordWindowEndMs = (words, index, lineEndMs) => {
+  const word = words[index]
+  if (Number.isFinite(word?.end_ms)) {
+    return word.end_ms
+  }
+
+  const nextStartMs = words[index + 1]?.start_ms
+  if (Number.isFinite(nextStartMs)) {
+    return nextStartMs
+  }
+
+  return lineEndMs
+}
+
+const boundarySplitMs = (leftWord, rightWord) => {
+  if (Number.isFinite(rightWord?.start_ms)) {
+    return rightWord.start_ms
+  }
+
+  if (Number.isFinite(leftWord?.end_ms)) {
+    return leftWord.end_ms
+  }
+
+  return null
+}
+
+// A caret in the trailing spaces of a word is the boundary before the next word.
+const isTrailingSpaceCaret = (wordText, within) => {
+  if (within <= 0 || within >= wordText.length) {
+    return false
+  }
+
+  const leftFragment = wordText.slice(0, within)
+  const rightFragment = wordText.slice(within)
+  return leftFragment.trim().length > 0 && rightFragment.trim().length === 0
+}
+
+const findWordSplit = (words, caretIndex, lineEndMs) => {
+  let offset = 0
+
+  for (let index = 0; index < words.length; index++) {
+    const wordText = words[index].text || ''
+    const wordEnd = offset + wordText.length
+
+    if (caretIndex < wordEnd) {
+      const within = caretIndex - offset
+      if (within <= 0 || isTrailingSpaceCaret(wordText, within)) {
+        const splitAt = within <= 0 ? index : index + 1
+        return {
+          midWord: false,
+          splitMs: boundarySplitMs(words[splitAt - 1], words[splitAt]),
+        }
+      }
+
+      const wordStartMs = words[index].start_ms
+      const wordEndMs = wordWindowEndMs(words, index, lineEndMs)
+      let splitMs = null
+      if (Number.isFinite(wordStartMs) && Number.isFinite(wordEndMs) && wordEndMs > wordStartMs) {
+        splitMs = Math.round(wordStartMs + (wordEndMs - wordStartMs) * (within / wordText.length))
+      }
+
+      return { midWord: true, splitMs }
+    }
+
+    if (caretIndex === wordEnd) {
+      return {
+        midWord: false,
+        splitMs: boundarySplitMs(words[index], words[index + 1]),
+      }
+    }
+
+    offset = wordEnd
+  }
+
+  return null
+}
+
+const partitionWords = (words, caretIndex, splitMs, leftText, rightText, startMs, endMs, preserveWordTimes = false) => {
   let offset = 0
   let splitAt = words.length
 
@@ -92,9 +169,15 @@ const partitionWords = (words, caretIndex, splitMs, leftText, rightText, startMs
         rightWords.unshift({ ...cloneWord(words[index]), text: rightFragment })
       }
 
-      const stamped = stampSharedBoundary(leftWords, rightWords, splitMs)
-      const alignedLeft = alignWordsToText(stamped.leftWords, leftText)
-      const alignedRight = alignWordsToText(stamped.rightWords, rightText)
+      const placed = preserveWordTimes
+        ? { leftWords, rightWords }
+        : stampSharedBoundary(leftWords, rightWords, splitMs)
+      const alignedLeft = alignWordsToText(placed.leftWords, leftText)
+      const alignedRight = alignWordsToText(placed.rightWords, rightText)
+      if (preserveWordTimes) {
+        return { leftWords: alignedLeft, rightWords: alignedRight }
+      }
+
       const leftEnd = Number.isFinite(splitMs) ? splitMs : endMs
       const rightStart = Number.isFinite(splitMs) ? splitMs : startMs
 
@@ -111,13 +194,17 @@ const partitionWords = (words, caretIndex, splitMs, leftText, rightText, startMs
     }
   }
 
-  const stamped = stampSharedBoundary(
-    words.slice(0, splitAt).map(cloneWord),
-    words.slice(splitAt).map(cloneWord),
-    splitMs
-  )
-  const alignedLeft = alignWordsToText(stamped.leftWords, leftText)
-  const alignedRight = alignWordsToText(stamped.rightWords, rightText)
+  const leftWords = words.slice(0, splitAt).map(cloneWord)
+  const rightWords = words.slice(splitAt).map(cloneWord)
+  const placed = preserveWordTimes
+    ? { leftWords, rightWords }
+    : stampSharedBoundary(leftWords, rightWords, splitMs)
+  const alignedLeft = alignWordsToText(placed.leftWords, leftText)
+  const alignedRight = alignWordsToText(placed.rightWords, rightText)
+  if (preserveWordTimes) {
+    return { leftWords: alignedLeft, rightWords: alignedRight }
+  }
+
   const leftEnd = Number.isFinite(splitMs) ? splitMs : endMs
   const rightStart = Number.isFinite(splitMs) ? splitMs : startMs
 
@@ -161,13 +248,26 @@ export const splitSyncedLineAtCaret = (line, text, caretIndex) => {
 
   const startMs = line?.start_ms
   const endMs = line?.end_ms
-  const splitMs = splitTimeByWordCount(leftText, rightText, startMs, endMs)
   const storedWords = Array.isArray(line?.words) ? line.words : []
   const storedText = storedWords.map(word => word.text || '').join('')
-  const partitioned =
-    storedWords.length > 0 && storedText === source
-      ? partitionWords(storedWords, clamped, splitMs, leftText, rightText, startMs, endMs)
-      : { leftWords: [], rightWords: [] }
+  const canUseWords = storedWords.length > 0 && storedText === source
+  const wordSplit = canUseWords ? findWordSplit(storedWords, clamped, endMs) : null
+  const splitFromWords = Number.isFinite(wordSplit?.splitMs)
+  const splitMs = splitFromWords
+    ? wordSplit.splitMs
+    : splitTimeByWordCount(leftText, rightText, startMs, endMs)
+  const partitioned = canUseWords
+    ? partitionWords(
+        storedWords,
+        clamped,
+        splitMs,
+        leftText,
+        rightText,
+        startMs,
+        endMs,
+        splitFromWords && wordSplit.midWord === false
+      )
+    : { leftWords: [], rightWords: [] }
 
   return {
     leftText,

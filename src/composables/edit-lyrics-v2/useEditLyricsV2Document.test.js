@@ -118,7 +118,7 @@ describe('splitSyncedLineAtCaret', () => {
       start_ms: 0,
       end_ms: 500,
     })
-    expect(syncedLines.value[0].words).toEqual([{ text: 'hello', start_ms: 0, end_ms: 500 }])
+    expect(syncedLines.value[0].words).toEqual([{ text: 'hello', start_ms: 0 }])
     expect(syncedLines.value[1]).toMatchObject({
       text: 'world',
       start_ms: 500,
@@ -135,6 +135,52 @@ describe('splitSyncedLineAtCaret', () => {
     expect(splitSyncedLineAtCaret(0, 'only', 0)).toBeNull()
     expect(splitSyncedLineAtCaret(0, 'only', 4)).toBeNull()
     expect(syncedLines.value).toHaveLength(1)
+  })
+
+  it('splits an unsynced line in half at the middle and by proportion before the second word', async () => {
+    const text = 'one two three four five six'
+    const middle = await createDocument()
+
+    middle.updateSyncedLines([{ text, start_ms: 0, end_ms: 6000 }])
+    middle.splitSyncedLineAtCaret(0, text, text.indexOf('four'))
+
+    expect(middle.syncedLines.value[0]).toMatchObject({ text: 'one two three', end_ms: 3000 })
+    expect(middle.syncedLines.value[1]).toMatchObject({ text: 'four five six', start_ms: 3000, end_ms: 6000 })
+
+    const early = await createDocument()
+    early.updateSyncedLines([{ text, start_ms: 0, end_ms: 6000 }])
+    early.splitSyncedLineAtCaret(0, text, text.indexOf('two'))
+
+    expect(early.syncedLines.value[0]).toMatchObject({ text: 'one', end_ms: 1000 })
+    expect(early.syncedLines.value[1]).toMatchObject({ text: 'two three four five six', start_ms: 1000, end_ms: 6000 })
+  })
+
+  it('uses synced word times as the new line bounds', async () => {
+    const { updateSyncedLines, splitSyncedLineAtCaret, syncedLines } = await createDocument()
+    const text = 'one two three four five six'
+
+    updateSyncedLines([
+      {
+        text,
+        start_ms: 0,
+        end_ms: 6000,
+        words: [
+          { text: 'one ', start_ms: 0 },
+          { text: 'two ', start_ms: 100 },
+          { text: 'three ', start_ms: 200 },
+          { text: 'four ', start_ms: 5000 },
+          { text: 'five ', start_ms: 5300 },
+          { text: 'six', start_ms: 5600, end_ms: 6000 },
+        ],
+      },
+    ])
+
+    splitSyncedLineAtCaret(0, text, text.indexOf('four'))
+
+    expect(syncedLines.value[0]).toMatchObject({ text: 'one two three', start_ms: 0, end_ms: 5000 })
+    expect(syncedLines.value[0].words.map(word => word.start_ms)).toEqual([0, 100, 200])
+    expect(syncedLines.value[1]).toMatchObject({ text: 'four five six', start_ms: 5000, end_ms: 6000 })
+    expect(syncedLines.value[1].words.map(word => word.start_ms)).toEqual([5000, 5300, 5600])
   })
 })
 

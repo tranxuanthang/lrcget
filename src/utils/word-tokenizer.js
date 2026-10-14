@@ -1,6 +1,7 @@
 /**
  * Word tokenization utilities for lyrics text.
  * Handles both Latin scripts (space-delimited) and CJK (character-based).
+ * Hangul is space-delimited, like Latin, so a word such as "좋아하는지?" stays whole.
  * Also handles Japanese phonetic modifiers:
  *   - Yōon (small kana: ゃゅょ etc.) — merges backward with preceding character
  *   - Sokuon (small tsu: っッ) — merges forward with following character
@@ -12,7 +13,6 @@ const CJK_BASE_RANGES = [
   [0x4e00, 0x9fff], // CJK Unified Ideographs
   [0x3040, 0x309f], // Hiragana
   [0x30a0, 0x30ff], // Katakana
-  [0xac00, 0xd7af], // Hangul Syllables
   [0x3400, 0x4dbf], // CJK Extension A
   [0xf900, 0xfaff], // CJK Compatibility Ideographs
   [0xff66, 0xff9f], // Halfwidth Katakana
@@ -120,7 +120,7 @@ function absorbsSokuon(char) {
 
 /**
  * Tokenize text into words.
- * - Latin scripts: space-delimited, preserve trailing spaces in tokens
+ * - Latin scripts and Hangul: space-delimited, preserve trailing spaces in tokens
  * - CJK: character-based, with punctuation grouped and spaces preserved as trailing
  * - Japanese: sokuon merges forward, yōon and chōonpu merge backward
  * @param {string} text - Input text to tokenize

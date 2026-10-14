@@ -42,6 +42,7 @@
             :is-line-controls-visible="isLineControlsVisible(index)"
             :end-timestamp-diff-direction="getEndTimestampDiffDirection(index)"
             :is-editing="editingLineIndex === index"
+            :is-active="selectedLineIndex === index"
             :editing-text="editingText"
             :timestamp-text="formatTimestampMs(line.start_ms)"
             :end-timestamp-text="formatTimestampMs(line.end_ms)"

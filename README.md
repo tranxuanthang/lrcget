@@ -16,7 +16,7 @@ LRCGET is the official client of [LRCLIB](https://lrclib.net) service.
 - Dragging a separator shows a one-pixel guide and a 50% opacity timestamp across the spectrogram and the word timeline.
 - Dragging a word separator plays from its new time. Clicking one plays from that word. Shift, Ctrl, and Cmd clicks only change the selection.
 - Dragging or clicking the last separator plays from three separators back, and never more than 3 seconds before that separator. Releasing the drag does not seek a second time.
-- Shift+Enter, while editing a line, splits it at the cursor and divides its time by word count. Six words against six words in a 0:10–0:16 line meet at 0:13. The cursor stays at the start of the new line.
+- Alt+Enter, while editing a line, splits it at the cursor. A line that already has word timings uses those word times as the new line start and end. A line without word timings divides its time by word count: the middle of six words is half, and a split between the first and second word takes one sixth. The cursor stays at the start of the new line.
 - Synced lines are the source for plain lyrics. Opening a file keeps the stored plain text, and typing in the plain editor still changes only plain lyrics. Any later synced edit rebuilds plain lyrics as one line per synced line. A word-synced line uses its joined word text.
 
 ## Download

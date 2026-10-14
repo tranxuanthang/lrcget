@@ -62,7 +62,7 @@
       :class="{ 'font-bold': isLinePlaying }"
       @blur="emit('save-edit')"
       @keydown.enter.exact.prevent="emit('save-edit')"
-      @keydown.shift.enter.stop.prevent="emit('split-edit', $event)"
+      @keydown.alt.enter.stop.prevent="emit('split-edit', $event)"
       @keydown.esc.prevent="emit('cancel-edit')"
     />
 
@@ -84,7 +84,10 @@
         :aria-label="hasWordSync ? 'Word synced' : 'Word not synced'"
       />
 
-      <template v-if="hasWordSync">
+      <template v-if="romanizedLine && !isActive">
+        <span class="whitespace-pre-wrap">{{ romanizedLine }}</span>
+      </template>
+      <template v-else-if="hasWordSync">
         <span
           v-for="(word, wordIndex) in line.words"
           :key="wordIndex"
@@ -189,6 +192,7 @@ import {
   syncedEditorShortcutBindings,
   withShortcutTitle,
 } from '@/composables/edit-lyrics-v2/shortcutRegistry.js'
+import { romanizedHangulLabel } from '@/utils/romanize-hangul.js'
 
 const props = defineProps({
   index: {
@@ -212,6 +216,10 @@ const props = defineProps({
     default: '',
   },
   isEditing: {
+    type: Boolean,
+    default: false,
+  },
+  isActive: {
     type: Boolean,
     default: false,
   },
@@ -366,6 +374,16 @@ const endTimestampPillTitle = computed(() => {
 const hasWordSync = computed(() => {
   return props.line?.words && Array.isArray(props.line.words) && props.line.words.length > 0
 })
+
+const lineDisplayText = computed(() => {
+  if (hasWordSync.value) {
+    return props.line.words.map(word => word?.text || '').join('')
+  }
+
+  return props.line?.text || ''
+})
+
+const romanizedLine = computed(() => romanizedHangulLabel(lineDisplayText.value))
 
 // Determine the currently playing word index based on progressMs
 const currentWordIndex = computed(() => {

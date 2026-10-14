@@ -266,7 +266,7 @@ export const plainEditorDisplayOnlyShortcuts = [{ keys: ['Ctrl', 'Scroll'], desc
 
 export const syncedEditorDisplayOnlyShortcuts = [
   {
-    keys: ['Shift', 'Enter'],
+    keys: ['Alt', 'Enter'],
     description: 'While editing a line, split it at the cursor and divide its time',
   },
 ]

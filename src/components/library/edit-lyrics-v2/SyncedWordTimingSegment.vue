@@ -17,9 +17,17 @@
     >
       <span
         ref="textElement"
-        class="relative z-10 block max-w-full overflow-hidden whitespace-nowrap text-clip"
+        class="relative z-10 flex max-w-full flex-col items-center justify-center leading-none"
       >
-        {{ word.text }}
+        <span class="block max-w-full overflow-hidden whitespace-nowrap text-clip">
+          {{ word.text }}
+        </span>
+        <span
+          v-if="romanizedWord"
+          class="mt-0.5 block max-w-full overflow-hidden whitespace-nowrap text-clip text-[10px] font-normal leading-none opacity-70"
+        >
+          {{ romanizedWord }}
+        </span>
       </span>
 
       <div
@@ -56,6 +64,7 @@
 import { computed, ref } from 'vue'
 import Alert from '~icons/mdi/alert'
 import { formatTimestampMs } from '@/utils/lyricsfile.js'
+import { romanizedHangulLabel } from '@/utils/romanize-hangul.js'
 
 const emit = defineEmits(['split-at'])
 
@@ -120,6 +129,7 @@ const textElement = ref(null)
 const hoverPreview = ref(null)
 
 const nextWordHintText = computed(() => (props.nextWordText || '').trim())
+const romanizedWord = computed(() => romanizedHangulLabel(props.word?.text || ''))
 
 const nextSegmentWidthPx = computed(() => {
   if (!Number.isFinite(props.timelineWidth) || props.timelineWidth <= 0) {
