@@ -2,7 +2,7 @@
 <!-- Copyright 2025 tranxuanthang -->
 <component type="desktop-application">
   <id>net.lrclib.lrcget</id>
-  <launchable type="desktop-id">LRCGET.desktop</launchable>
+  <launchable type="desktop-id">lrcget.desktop</launchable>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>MIT</project_license>
   <name>LRCGET</name>
@@ -129,6 +129,6 @@
     </release>
   </releases>
   <provides>
-    <binary>LRCGET</binary>
+    <binary>lrcget</binary>
   </provides>
 </component>
