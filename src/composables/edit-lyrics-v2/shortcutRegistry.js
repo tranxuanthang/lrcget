@@ -264,6 +264,13 @@ export const plainEditorShortcutBindings = [
 
 export const plainEditorDisplayOnlyShortcuts = [{ keys: ['Ctrl', 'Scroll'], description: 'Zoom in/out' }]
 
+export const syncedEditorDisplayOnlyShortcuts = [
+  {
+    keys: ['Alt', 'Enter'],
+    description: 'While editing a line, split it at the cursor and divide its time',
+  },
+]
+
 export const syncedEditorShortcutBindings = [
   createShortcutBinding({
     id: 'selectPreviousLine',
@@ -326,6 +333,11 @@ export const syncedEditorShortcutBindings = [
     description: 'Replay selected line',
   }),
   createShortcutBinding({
+    id: 'replayLineWithLeadIn',
+    defaultKeys: ['Q'],
+    description: 'Replay from 500 ms before line start',
+  }),
+  createShortcutBinding({
     id: 'replayPreviousLine',
     defaultKeys: ['Shift', 'P'],
     description: 'Replay previous line',
@@ -357,6 +369,46 @@ export const wordTimingShortcutBindings = [
     id: 'syncSelectedSeparatorAndAdvance',
     defaultKeys: ['Z'],
     description: 'Sync selected separator & move to next',
+  }),
+  createShortcutBinding({
+    id: 'rewindSelectedWord',
+    defaultKeys: ['J'],
+    description: 'Rewind word 10 ms & play',
+  }),
+  createShortcutBinding({
+    id: 'forwardSelectedWord',
+    defaultKeys: ['L'],
+    description: 'Forward word 10 ms & play',
+  }),
+  createShortcutBinding({
+    id: 'replaySelectedSeparator',
+    defaultKeys: ['I'],
+    description: 'Replay selected separator',
+  }),
+  createShortcutBinding({
+    id: 'replaySeparator1Back',
+    defaultKeys: ['1'],
+    description: 'Play 1 separator back',
+  }),
+  createShortcutBinding({
+    id: 'replaySeparator2Back',
+    defaultKeys: ['2'],
+    description: 'Play 2 separators back',
+  }),
+  createShortcutBinding({
+    id: 'replaySeparator3Back',
+    defaultKeys: ['3'],
+    description: 'Play 3 separators back',
+  }),
+  createShortcutBinding({
+    id: 'replaySeparator4Back',
+    defaultKeys: ['4'],
+    description: 'Play 4 separators back',
+  }),
+  createShortcutBinding({
+    id: 'replaySeparator5Back',
+    defaultKeys: ['5'],
+    description: 'Play 5 separators back',
   }),
   createShortcutBinding({
     id: 'resetSeparatorCursor',
@@ -397,12 +449,15 @@ export const getShortcutCategories = () => [
   {
     id: 'synced',
     label: 'Synced Editor',
-    shortcuts: syncedEditorShortcutBindings.map(({ id, keys, defaultKeys, description }) => ({
-      id,
-      keys,
-      defaultKeys,
-      description,
-    })),
+    shortcuts: [
+      ...syncedEditorShortcutBindings.map(({ id, keys, defaultKeys, description }) => ({
+        id,
+        keys,
+        defaultKeys,
+        description,
+      })),
+      ...syncedEditorDisplayOnlyShortcuts,
+    ],
   },
   {
     id: 'wordTiming',

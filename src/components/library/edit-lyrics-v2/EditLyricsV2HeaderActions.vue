@@ -46,6 +46,15 @@
 
             <label class="dropdown-item">
               <CheckboxButton
+                id="write-yaml-at-save"
+                v-model="writeYamlAtSave"
+                name="write-yaml-at-save"
+              >
+                <span class="dropdown-label">Write yaml at save</span>
+              </CheckboxButton>
+            </label>
+            <label class="dropdown-item">
+              <CheckboxButton
                 id="export-plain-text"
                 v-model="exportPlainText"
                 name="export-plain-text"
@@ -108,6 +117,30 @@
         <div class="text-xs font-bold">View YAML debug</div>
       </template>
     </VTooltip>
+
+    <VTooltip theme="lrcget-tooltip">
+      <button
+        class="button text-sm px-3 py-1.5 h-8 rounded-full inline-flex items-center justify-center"
+        :class="
+          !canSeparateVocals || isSeparatingVocals
+            ? 'button-disabled'
+            : hasVocalStem
+              ? 'button-primary'
+              : 'button-normal'
+        "
+        :disabled="!canSeparateVocals || isSeparatingVocals"
+        @click="emit('separate-vocals')"
+      >
+        <Loading v-if="isSeparatingVocals" class="text-base animate-spin" />
+        <AccountVoice v-else class="text-base" />
+      </button>
+
+      <template #popper>
+        <div class="text-xs font-bold">
+          {{ vocalStemTooltip }}
+        </div>
+      </template>
+    </VTooltip>
   </div>
 </template>
 
@@ -116,10 +149,46 @@ import { computed, ref, onMounted } from 'vue'
 import ChevronDown from '~icons/mdi/chevron-down'
 import ContentSave from '~icons/mdi/content-save'
 import Bug from '~icons/mdi/bug'
+import AccountVoice from '~icons/mdi/account-voice'
+import Loading from '~icons/mdi/loading'
 import CheckboxButton from '@/components/common/CheckboxButton.vue'
 import { invoke } from '@tauri-apps/api/core'
 
-const emit = defineEmits(['save', 'save-and-publish', 'export', 'debug'])
+const props = defineProps({
+  isDirty: {
+    type: Boolean,
+    required: true,
+  },
+  writeYamlAtSave: {
+    type: Boolean,
+    default: false,
+  },
+  isExporting: {
+    type: Boolean,
+    default: false,
+  },
+  canSeparateVocals: {
+    type: Boolean,
+    default: false,
+  },
+  isSeparatingVocals: {
+    type: Boolean,
+    default: false,
+  },
+  hasVocalStem: {
+    type: Boolean,
+    default: false,
+  },
+})
+
+const emit = defineEmits([
+  'save',
+  'save-and-publish',
+  'export',
+  'debug',
+  'separate-vocals',
+  'update:writeYamlAtSave',
+])
 
 const exportPlainText = ref(false)
 const exportSyncedLrc = ref(false)
@@ -132,6 +201,11 @@ const refreshEmbedConfig = async () => {
 }
 
 onMounted(refreshEmbedConfig)
+
+const writeYamlAtSave = computed({
+  get: () => props.writeYamlAtSave,
+  set: value => emit('update:writeYamlAtSave', Boolean(value)),
+})
 
 const hasSelectedExportFormat = computed(
   () => exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value
@@ -149,15 +223,17 @@ const handleExportClick = () => {
   })
 }
 
-defineProps({
-  isDirty: {
-    type: Boolean,
-    required: true,
-  },
-  isExporting: {
-    type: Boolean,
-    default: false,
-  },
+const vocalStemTooltip = computed(() => {
+  if (props.isSeparatingVocals) {
+    return 'Separating vocals…'
+  }
+  if (!props.canSeparateVocals) {
+    return 'No audio file to separate'
+  }
+  if (props.hasVocalStem) {
+    return 'Vocal stem ready'
+  }
+  return 'Separate vocals with Demucs'
 })
 </script>
 

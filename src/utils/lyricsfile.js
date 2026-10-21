@@ -3,6 +3,12 @@ import YAML from 'yaml'
 export const LYRICSFILE_VERSION = '1.0'
 export const INSTRUMENTAL_LRC = '[au: instrumental]'
 
+// Monotonic counter for in-memory line IDs. Used to give every synced line a
+// stable identity so Vue v-for keys survive reorder when a user's start_ms
+// edit moves the line past its neighbors. Stripped before YAML output.
+let _lineIdCounter = 0
+export const nextLineId = () => ++_lineIdCounter
+
 const emptyParsedLyricsfile = () => ({
   plainLyrics: '',
   syncedLines: [],
@@ -102,6 +108,7 @@ export const normalizeSyncedLine = (line, fallbackText = '') => {
   const text = typeof line?.text === 'string' ? line.text : textFromWords || fallbackText
 
   const normalizedLine = {
+    id: Number.isFinite(line?.id) ? line.id : nextLineId(),
     text,
     words,
   }
@@ -117,6 +124,16 @@ export const normalizeSyncedLine = (line, fallbackText = '') => {
   return normalizedLine
 }
 
+export const isWhitespaceSyncedLine = line => {
+  const hasText = typeof line?.text === 'string' && line.text.trim().length > 0
+  if (hasText) {
+    return false
+  }
+
+  const words = Array.isArray(line?.words) ? line.words : []
+  return !words.some(word => typeof word?.text === 'string' && word.text.trim().length > 0)
+}
+
 export const formatTimestampMs = timestampMs => {
   if (!Number.isFinite(timestampMs)) {
     return '--:--.---'
@@ -128,6 +145,22 @@ export const formatTimestampMs = timestampMs => {
   const milliseconds = safeMs % 1000
 
   return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}.${String(milliseconds).padStart(3, '0')}`
+}
+
+export const syncedLinePlainText = line => {
+  if (Array.isArray(line?.words) && line.words.length > 0) {
+    return line.words.map(word => word?.text || '').join('')
+  }
+
+  return typeof line?.text === 'string' ? line.text : ''
+}
+
+export const plainLyricsFromSyncedLines = lines => {
+  if (!Array.isArray(lines)) {
+    return ''
+  }
+
+  return lines.map(syncedLinePlainText).join('\n')
 }
 
 export const createSyncedLinesFromPlain = (plainLyrics, existingLines = []) => {
@@ -306,10 +339,19 @@ export const serializeLyricsfile = ({
     metadata.language = baseMetadata.language
   }
 
+  const persistableLines =
+    lines.length > 0
+      ? lines.map(line => {
+          const copy = { ...line }
+          delete copy.id
+          return copy
+        })
+      : null
+
   return YAML.stringify({
     version: LYRICSFILE_VERSION,
     metadata,
-    lines: lines.length > 0 ? lines : null,
+    lines: persistableLines,
     plain,
   })
 }

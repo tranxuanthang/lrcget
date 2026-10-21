@@ -1,7 +1,10 @@
 <template>
   <div
-    class="relative z-20 flex flex-col px-2 py-2 rounded-lg overflow-visible h-[5rem] transition-[min-height] duration-200 ease-out"
-    :class="hasSelectedLine ? 'bg-neutral-100 dark:bg-neutral-800' : 'bg-white dark:bg-neutral-950'"
+    class="relative z-20 flex flex-col px-2 py-2 rounded-lg overflow-visible transition-[height] duration-200 ease-out"
+    :class="[
+      hasSelectedLine ? 'bg-neutral-100 dark:bg-neutral-800' : 'bg-white dark:bg-neutral-950',
+      laneHeightClass,
+    ]"
   >
     <!-- Empty state - no line selected -->
     <div v-if="!hasSelectedLine" class="flex items-center justify-center h-full">
@@ -11,12 +14,6 @@
     </div>
 
     <!-- Feature not available states -->
-    <div v-else-if="!hasLineContent" class="flex items-center justify-center h-full">
-      <span class="text-sm text-neutral-700 dark:text-neutral-400 italic">
-        Add lyrics content to enable word timing
-      </span>
-    </div>
-
     <div v-else-if="!hasLineStartTime" class="flex items-center justify-center h-full">
       <span class="text-sm text-neutral-700 dark:text-neutral-400 italic">
         Sync the line (set start time) to enable word timing
@@ -42,6 +39,15 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <button
+            v-if="filePath"
+            class="button button-normal rounded-full h-6 w-6 flex items-center justify-center"
+            :title="spectrogramVisible ? 'Hide spectrogram' : 'Show spectrogram'"
+            @click="toggleSpectrogramVisible"
+          >
+            <Waveform v-if="spectrogramVisible" class="w-3.5 h-3.5" />
+            <EyeOff v-else class="w-3.5 h-3.5" />
+          </button>
           <button
             class="button button-normal text-xs px-2 py-1 rounded flex items-center gap-1"
             :title="playLineTitle"
@@ -69,11 +75,24 @@
         </div>
       </div>
 
+      <div class="relative flex flex-col flex-1 min-h-0">
+      <SpectrogramPanel
+        v-if="filePath && spectrogramVisible"
+        :file-path="filePath"
+        :start-ms="laneStartMs"
+        :end-ms="laneEndMs"
+        class="shrink-0 rounded-b-none"
+        @seek="handleLaneSeek"
+      />
+
       <!-- Timeline with word segments -->
       <div
         ref="timelineElement"
-        class="relative flex-1 bg-white dark:bg-neutral-900 rounded border border-neutral-300 dark:border-neutral-600 transition-opacity duration-200"
-        :class="{ 'opacity-50': !hasActualWords }"
+        class="relative flex-1 bg-white dark:bg-neutral-900 border border-neutral-300 dark:border-neutral-600 transition-opacity duration-200 cursor-pointer"
+        :class="[
+          hasSpectrogramSlot ? 'rounded-b border-t-0' : 'rounded',
+          { 'opacity-50': !hasActualWords },
+        ]"
         @click="handleTimelineClick"
       >
         <!-- Timeline grid lines (every 500ms) -->
@@ -85,6 +104,18 @@
             />
           </template>
         </div> -->
+
+        <!-- Context padding (500ms before line start / after line end).
+             Grows while dragging the first/last separator so the void stays
+             aligned with the spectrogram instead of vanishing on release. -->
+        <div
+          class="absolute inset-y-0 left-0 pointer-events-none bg-neutral-200/70 dark:bg-black/35"
+          :style="{ width: `${Math.max(0, timeToPercent(contextStartMs))}%` }"
+        />
+        <div
+          class="absolute inset-y-0 pointer-events-none bg-neutral-200/70 dark:bg-black/35"
+          :style="{ left: `${timeToPercent(contextEndMs)}%`, right: 0 }"
+        />
 
         <!-- Word segments -->
         <SyncedWordTimingSegment
@@ -113,10 +144,10 @@
           :key="`boundary-${index}`"
           type="button"
           class="group absolute top-0 bottom-0 z-30 -ml-2 w-4 cursor-ew-resize bg-transparent"
-          :style="{ left: `${timeToPercent(displayedWords[index].start_ms)}%` }"
-          :title="`Adjust start of ${displayedWords[index].text}`"
+          :style="{ left: `${timeToPercent(getBoundaryTimeMs(index) ?? actualLineEndMs)}%` }"
+          :title="getBoundaryTitle(index)"
           @pointerdown="handleBoundaryPointerDown(index, $event)"
-          @click="selectBoundary(index, $event)"
+          @click.stop="handleBoundaryClick(index, $event)"
         >
           <span
             class="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2 transition-all duration-150 ease-linear bg-neutral-300/70 dark:bg-hoa-1000/70 group-hover:bg-neutral-600 dark:group-hover:bg-neutral-300 group-hover:w-[3px] group-hover:ring-1 group-hover:ring-neutral-500/25"
@@ -124,31 +155,34 @@
           />
         </button>
 
-        <div
-          v-if="dragState"
-          class="absolute inset-y-0 z-20 pointer-events-none"
-          :style="{ left: `${timeToPercent(dragState.currentStartMs)}%` }"
-        >
-          <div
-            class="absolute top-0 bottom-0 w-[3px] -translate-x-1/2 bg-neutral-600 dark:bg-neutral-300 ring-1 ring-neutral-500/25"
-          />
-          <div
-            class="absolute top-[-0.375rem] left-0 -translate-x-1/2 -translate-y-full px-[0.4rem] py-0.5 rounded-full text-xs leading-4 whitespace-nowrap text-neutral-800 bg-neutral-200 dark:text-white dark:bg-hoa-1100"
-          >
-            {{ formatTimestampMs(dragState.currentStartMs) }}
-          </div>
-        </div>
+      </div>
 
-        <!-- Current playhead indicator -->
+      <!-- Playhead and the drag guide are siblings of the spectrogram + timeline
+           so each line crosses both, instead of stopping at the timeline. -->
+      <div
+        v-if="dragState"
+        class="absolute -top-1 bottom-0 z-30 pointer-events-none"
+        :style="{ left: `${timeToPercent(dragState.currentStartMs)}%` }"
+      >
         <div
-          v-if="progressMs >= lineStartMs && progressMs <= laneEndMs"
-          class="absolute -top-1 bottom-0 w-px bg-neutral-400 dark:bg-neutral-400 z-20 pointer-events-none"
-          :style="{ left: `${playheadPercent}%` }"
+          class="absolute inset-y-0 w-px -translate-x-1/2 bg-neutral-600 dark:bg-neutral-300"
+        />
+        <div
+          class="absolute top-1 left-0 -translate-x-1/2 px-[0.4rem] py-0.5 rounded-full text-xs leading-4 whitespace-nowrap text-neutral-800 bg-neutral-200 opacity-50 dark:text-white dark:bg-hoa-1100"
         >
-          <div
-            class="absolute -top-1 -left-[3px] w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-neutral-400 dark:border-t-neutral-400"
-          />
+          {{ formatTimestampMs(dragState.currentStartMs) }}
         </div>
+      </div>
+
+      <div
+        v-if="progressMs >= laneStartMs && progressMs <= laneEndMs"
+        class="absolute -top-1 bottom-0 w-px bg-neutral-400 dark:bg-neutral-400 z-20 pointer-events-none"
+        :style="{ left: `${playheadPercent}%` }"
+      >
+        <div
+          class="absolute -top-1 -left-[3px] w-0 h-0 border-l-[4px] border-r-[4px] border-t-[6px] border-l-transparent border-r-transparent border-t-neutral-400 dark:border-t-neutral-400"
+        />
+      </div>
       </div>
     </template>
   </div>
@@ -160,9 +194,14 @@ import { invoke } from '@tauri-apps/api/core'
 import Equal from '~icons/mdi/equal'
 import Play from '~icons/mdi/play'
 import Close from '~icons/mdi/close'
+import Waveform from '~icons/mdi/waveform'
+import EyeOff from '~icons/mdi/eye-off'
+import { useGlobalState } from '@/composables/global-state.js'
+import SpectrogramPanel from '@/components/library/edit-lyrics-v2/SpectrogramPanel.vue'
 import SyncedWordTimingSegment from '@/components/library/edit-lyrics-v2/SyncedWordTimingSegment.vue'
 import { useEditLyricsV2WordBoundaryDrag } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordBoundaryDrag.js'
 import { useEditLyricsV2WordTimingHotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordTimingHotkeys.js'
+import { LANE_CONTEXT_MS } from '@/composables/edit-lyrics-v2/useEditLyricsV2Playback.js'
 import {
   syncedEditorShortcutBindings,
   wordTimingShortcutBindings,
@@ -192,14 +231,25 @@ const props = defineProps({
     type: Number,
     default: -1,
   },
+  filePath: {
+    type: String,
+    default: null,
+  },
 })
 
-const emit = defineEmits(['update:words', 'word-timing-edited', 'play-line', 'select-next-line'])
+const emit = defineEmits([
+  'update:words',
+  'word-timing-edited',
+  'play-line',
+  'play-line-at-offset',
+  'select-next-line',
+  'seek'
+])
+
+const { spectrogramVisible, toggleSpectrogramVisible } = useGlobalState()
 
 const timelineElement = ref(null)
 const timelineWidth = ref(0)
-const laneStartMs = ref(0)
-const laneEndMs = ref(0)
 const segmentedTokenTexts = ref(null)
 const segmentationRequestId = ref(0)
 
@@ -215,11 +265,8 @@ const syncWordTitle = withShortcutTitle(
   'syncSelectedSeparatorAndAdvance'
 )
 
-// Availability checks for word sync feature
-const hasLineContent = computed(() => {
-  return props.selectedLine && props.selectedLine.text && props.selectedLine.text.trim().length > 0
-})
-
+// Availability checks for word sync feature. Blank lines still open the lane
+// so their spectrogram is visible; word segments stay empty until there is text.
 const hasLineStartTime = computed(() => {
   return props.selectedLine && Number.isFinite(props.selectedLine.start_ms)
 })
@@ -229,7 +276,20 @@ const hasLineEndTime = computed(() => {
 })
 
 const isWordSyncAvailable = computed(() => {
-  return hasLineContent.value && hasLineStartTime.value && hasLineEndTime.value
+  return hasLineStartTime.value && hasLineEndTime.value
+})
+
+const hasSpectrogramSlot = computed(
+  () => !!props.filePath && isWordSyncAvailable.value && spectrogramVisible.value
+)
+
+// Three-way lane height so collapsing the spectrogram doesn't squash the
+// word-timing timeline: tall with spectrogram, mid-tall in word-sync without
+// spectrogram (preserves timeline size), compact otherwise.
+const laneHeightClass = computed(() => {
+  if (hasSpectrogramSlot.value) return 'h-[13rem]'
+  if (isWordSyncAvailable.value) return 'h-[7rem]'
+  return 'h-[5rem]'
 })
 
 // Check if the line has actual saved words (not auto-generated)
@@ -257,16 +317,25 @@ const lineStartMs = computed(() => {
   return Number.isFinite(props.selectedLine?.start_ms) ? props.selectedLine.start_ms : 0
 })
 
-const syncLaneWindowToSelection = () => {
+// Shared time window for the spectrogram and the word lane. Extra context on
+// both sides lets miss-synced lyrics be compared against neighboring audio,
+// and keeps a visible gap when dragging the first/last separator instead of
+// snapping the line flush to the lane edge on release.
+const laneStartMs = computed(() => {
   if (!props.hasSelectedLine || !props.selectedLine) {
-    laneStartMs.value = 0
-    laneEndMs.value = 0
-    return
+    return 0
   }
 
-  laneStartMs.value = lineStartMs.value
-  laneEndMs.value = actualLineEndMs.value
-}
+  return Math.max(0, lineStartMs.value - LANE_CONTEXT_MS)
+})
+
+const laneEndMs = computed(() => {
+  if (!props.hasSelectedLine || !props.selectedLine) {
+    return 0
+  }
+
+  return actualLineEndMs.value + LANE_CONTEXT_MS
+})
 
 const words = computed(() => {
   if (!isWordSyncAvailable.value) return []
@@ -297,14 +366,19 @@ const {
   dragState,
   displayedWords,
   boundaryIndexes,
+  getBoundaryTimeMs,
+  getSeparatorPlayStartMs,
+  consumeRecentBoundaryDrag,
   selectedBoundaryIndex,
   selectedBoundaryIndices,
+  isDraggingBoundary,
   startBoundaryDrag,
   selectBoundary,
   isBoundarySelected,
   selectPreviousBoundary,
   selectNextBoundary,
   syncSelectedBoundary,
+  shiftSelectedBoundaryBy,
   deleteSelectedBoundaries,
   resetBoundarySelection,
   cancelBoundaryInteraction,
@@ -312,11 +386,23 @@ const {
   isWordSyncAvailable,
   words,
   lineStartMs,
+  lineEndMs: actualLineEndMs,
   timelineStartMs: laneStartMs,
   timelineEndMs: laneEndMs,
   selectedLineIndex: computed(() => props.selectedLineIndex),
+  hasPersistedWords: hasActualWords,
   onUpdateWords: payload => emit('update:words', payload),
   onWordTimingEdited: payload => emit('word-timing-edited', payload),
+})
+
+const contextStartMs = computed(() => {
+  const firstBoundaryMs = getBoundaryTimeMs(0)
+  return Number.isFinite(firstBoundaryMs) ? firstBoundaryMs : lineStartMs.value
+})
+
+const contextEndMs = computed(() => {
+  const endBoundaryMs = getBoundaryTimeMs(displayedWords.value.length)
+  return Number.isFinite(endBoundaryMs) ? endBoundaryMs : actualLineEndMs.value
 })
 
 const playheadPercent = computed(() => {
@@ -367,15 +453,40 @@ const clientXToTime = clientX => {
 
 const getWordEndMs = index => {
   if (index >= displayedWords.value.length - 1) {
-    return laneEndMs.value
+    const lastWord = displayedWords.value[displayedWords.value.length - 1]
+    if (Number.isFinite(lastWord?.end_ms)) {
+      return lastWord.end_ms
+    }
+    return actualLineEndMs.value
   }
 
   const nextWordStart = displayedWords.value[index + 1]?.start_ms
-  return Number.isFinite(nextWordStart) ? nextWordStart : laneEndMs.value
+  return Number.isFinite(nextWordStart) ? nextWordStart : actualLineEndMs.value
+}
+
+const getBoundaryTitle = index => {
+  if (index < displayedWords.value.length) {
+    const wordText = displayedWords.value[index]?.text || 'word'
+    return `Adjust start of ${wordText}`
+  }
+
+  const lastWord = displayedWords.value[displayedWords.value.length - 1]
+  return lastWord ? `Adjust end of ${lastWord.text}` : 'Adjust line end'
 }
 
 const handleBoundaryPointerDown = (rightWordIndex, event) => {
   startBoundaryDrag(rightWordIndex, event, clientXToTime)
+}
+
+const handleBoundaryClick = (index, event) => {
+  const dragged = isDraggingBoundary.value
+  const releasedDrag = consumeRecentBoundaryDrag()
+  selectBoundary(index, event)
+  if (dragged || releasedDrag || event.shiftKey || event.ctrlKey || event.metaKey) {
+    return
+  }
+
+  playFromSeparatorMs(getSeparatorPlayStartMs(index))
 }
 
 const getBoundaryLineClass = index => {
@@ -401,7 +512,7 @@ const handleSyncWord = () => {
 
   if (
     synced &&
-    selectedBoundaryBeforeSync === words.value.length - 1 &&
+    selectedBoundaryBeforeSync === words.value.length &&
     props.selectedLineIndex < props.allLines.length - 1
   ) {
     emit('select-next-line')
@@ -415,6 +526,59 @@ const handleSyncWordNoAdvance = () => {
 const handlePlayLine = () => {
   if (!isWordSyncAvailable.value) return
   emit('play-line', props.selectedLineIndex)
+}
+
+const playFromSeparatorMs = separatorStartMs => {
+  const currentLineStartMs = lineStartMs.value
+
+  if (!Number.isFinite(separatorStartMs) || !Number.isFinite(currentLineStartMs)) {
+    return
+  }
+
+  emit('play-line-at-offset', {
+    lineIndex: props.selectedLineIndex,
+    offsetMs: separatorStartMs - currentLineStartMs,
+  })
+}
+
+const handleReplaySelectedSeparator = () => {
+  if (!isWordSyncAvailable.value) {
+    return
+  }
+
+  playFromSeparatorMs(getBoundaryTimeMs(selectedBoundaryIndex.value))
+}
+
+const handleReplayPreviousSeparator = stepsBack => {
+  if (!isWordSyncAvailable.value || !Number.isInteger(stepsBack) || stepsBack < 1) {
+    return
+  }
+
+  const selectedIndex = selectedBoundaryIndex.value
+  if (!Number.isInteger(selectedIndex)) {
+    return
+  }
+
+  const targetIndex = Math.max(0, selectedIndex - stepsBack)
+  playFromSeparatorMs(getBoundaryTimeMs(targetIndex))
+}
+
+const handleRewindSelectedWord = () => {
+  if (!isWordSyncAvailable.value) {
+    return
+  }
+
+  const nextStartMs = shiftSelectedBoundaryBy(-10)
+  playFromSeparatorMs(nextStartMs ?? getBoundaryTimeMs(selectedBoundaryIndex.value))
+}
+
+const handleForwardSelectedWord = () => {
+  if (!isWordSyncAvailable.value) {
+    return
+  }
+
+  const nextStartMs = shiftSelectedBoundaryBy(10)
+  playFromSeparatorMs(nextStartMs ?? getBoundaryTimeMs(selectedBoundaryIndex.value))
 }
 
 const splitTextByGrapheme = text => {
@@ -432,11 +596,15 @@ const splitTextByGrapheme = text => {
 
 const getWordEndMsFromList = (wordsList, index) => {
   if (index >= wordsList.length - 1) {
-    return laneEndMs.value
+    const lastWord = wordsList[wordsList.length - 1]
+    if (Number.isFinite(lastWord?.end_ms)) {
+      return lastWord.end_ms
+    }
+    return actualLineEndMs.value
   }
 
   const nextWordStart = wordsList[index + 1]?.start_ms
-  return Number.isFinite(nextWordStart) ? nextWordStart : laneEndMs.value
+  return Number.isFinite(nextWordStart) ? nextWordStart : actualLineEndMs.value
 }
 
 const handleDeleteSelectedBoundaries = () => {
@@ -467,7 +635,7 @@ const handleSegmentSplitAt = ({ wordIndex, splitIndex, splitRatio }) => {
   const leftText = graphemes.slice(0, normalizedSplitIndex).join('')
   const rightText = graphemes.slice(normalizedSplitIndex).join('')
 
-  const wordStartMs = Number.isFinite(currentWord?.start_ms) ? currentWord.start_ms : laneStartMs.value
+  const wordStartMs = Number.isFinite(currentWord?.start_ms) ? currentWord.start_ms : lineStartMs.value
   const wordEndMs = getWordEndMsFromList(displayedWords.value, wordIndex)
   const normalizedSplitRatio = Number.isFinite(splitRatio)
     ? Math.max(0, Math.min(1, splitRatio))
@@ -477,17 +645,24 @@ const handleSegmentSplitAt = ({ wordIndex, splitIndex, splitRatio }) => {
     Math.min(wordEndMs - 1, Math.round(wordStartMs + (wordEndMs - wordStartMs) * normalizedSplitRatio))
   )
 
+  const leftWord = { text: leftText, start_ms: wordStartMs, end_ms: splitTimeMs }
+  const rightWord = { text: rightText, start_ms: splitTimeMs }
+  if (Number.isFinite(currentWord?.end_ms)) {
+    rightWord.end_ms = currentWord.end_ms
+  } else if (wordIndex >= displayedWords.value.length - 1) {
+    rightWord.end_ms = wordEndMs
+  }
+
   const updatedWords = [
     ...displayedWords.value.slice(0, wordIndex),
-    { text: leftText, start_ms: wordStartMs },
-    { text: rightText, start_ms: splitTimeMs },
+    leftWord,
+    rightWord,
     ...displayedWords.value.slice(wordIndex + 1),
   ]
 
   emit('update:words', {
     lineIndex: props.selectedLineIndex,
     words: updatedWords,
-    lineStartMs: laneStartMs.value,
   })
 
   selectBoundary(Math.min(updatedWords.length - 1, wordIndex + 1))
@@ -543,27 +718,31 @@ const { bindWordTimingHotkeys, unbindWordTimingHotkeys } = useEditLyricsV2WordTi
   words,
   syncSelectedBoundaryAtProgress: () => handleSyncWord(),
   syncSelectedBoundaryAtProgressNoAdvance: () => handleSyncWordNoAdvance(),
+  rewindSelectedWord: () => handleRewindSelectedWord(),
+  forwardSelectedWord: () => handleForwardSelectedWord(),
+  replaySelectedSeparator: () => handleReplaySelectedSeparator(),
+  replayPreviousSeparator: stepsBack => handleReplayPreviousSeparator(stepsBack),
   selectPreviousBoundary: () => selectPreviousBoundary(),
   selectNextBoundary: () => selectNextBoundary(),
   resetBoundarySelection: () => resetBoundarySelection(),
   deleteSelectedBoundaries: () => handleDeleteSelectedBoundaries(),
 })
 
+// Watch the selected line's identity AND its timestamps so that the lane window refreshes on deletions and changes.
 watch(
-  () => props.selectedLineIndex,
-  (newIndex, oldIndex) => {
+  [
+    () => props.selectedLineIndex,
+    () => props.selectedLine?.start_ms,
+    () => props.selectedLine?.end_ms,
+  ],
+  ([newIndex], [oldIndex] = []) => {
     cancelBoundaryInteraction()
-    // Only reset boundary index when actually changing to a different line
+    // Only reset boundary index when actually moving to a different line.
     if (newIndex !== oldIndex) {
       resetBoundarySelection()
-      syncLaneWindowToSelection()
-    } else if (!props.hasSelectedLine) {
-      syncLaneWindowToSelection()
     }
-
     segmentedTokenTexts.value = null
     void loadDefaultSegmentation()
-
     nextTick(() => {
       updateTimelineWidth()
     })
@@ -588,8 +767,23 @@ const handleResetWords = async () => {
   await loadDefaultSegmentation({ force: true })
 }
 
+const handleLaneSeek = timeSeconds => {
+  if (consumeRecentBoundaryDrag()) {
+    return
+  }
+
+  emit('seek', timeSeconds)
+}
+
 const handleTimelineClick = event => {
   event.stopPropagation()
+  if (consumeRecentBoundaryDrag()) return
+  if (laneEndMs.value <= laneStartMs.value) return
+  const rect = timelineElement.value?.getBoundingClientRect()
+  if (!rect || rect.width <= 0) return
+  const fraction = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width))
+  const timeMs = laneStartMs.value + fraction * (laneEndMs.value - laneStartMs.value)
+  emit('seek', timeMs / 1000)
 }
 
 watch(
@@ -599,10 +793,7 @@ watch(
       nextTick(() => {
         updateTimelineWidth()
       })
-      return
     }
-
-    syncLaneWindowToSelection()
   },
   { immediate: true }
 )
@@ -615,7 +806,6 @@ watch(isWordSyncAvailable, (available, wasAvailable) => {
   }
 
   if (!wasAvailable) {
-    syncLaneWindowToSelection()
     segmentedTokenTexts.value = null
     void loadDefaultSegmentation()
   }
@@ -636,19 +826,6 @@ watch(
       void loadDefaultSegmentation()
     }
   }
-)
-
-watch(
-  [lineStartMs, actualLineEndMs],
-  () => {
-    if (!props.hasSelectedLine || !props.selectedLine) {
-      return
-    }
-
-    laneStartMs.value = lineStartMs.value
-    laneEndMs.value = actualLineEndMs.value
-  },
-  { immediate: true }
 )
 
 watch(

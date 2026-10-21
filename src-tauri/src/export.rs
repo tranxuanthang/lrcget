@@ -9,7 +9,6 @@ use lofty::id3::v2::{
     BinaryFrame, CommentFrame, Frame, FrameId, Id3v2Tag, SyncTextContentType,
     SynchronizedTextFrame, TimestampFormat, UnsynchronizedTextFrame,
 };
-use lofty::mpeg::MpegFile;
 use lofty::TextEncoding;
 use serde::Serialize;
 use std::fs::{remove_file, write};
@@ -78,6 +77,17 @@ pub fn build_sidecar_path(track_path: &str, extension: &str) -> Result<PathBuf, 
         .ok_or_else(|| ExportError::PathBuildError("Invalid track filename".to_string()))?;
 
     Ok(parent_path.join(format!("{}.{}", file_stem, extension)))
+}
+
+/// Write the raw lyricsfile YAML next to the audio file (`{stem}.yaml`).
+/// Does not delete `.txt` or `.lrc` sidecars.
+pub fn write_lyricsfile_sidecar(
+    track_path: &str,
+    lyricsfile: &str,
+) -> Result<PathBuf, ExportError> {
+    let yaml_path = build_sidecar_path(track_path, "yaml")?;
+    write(&yaml_path, lyricsfile).map_err(|e| ExportError::WriteError(e.to_string()))?;
+    Ok(yaml_path)
 }
 
 /// Generate plain text lyrics content from parsed lyricsfile
@@ -311,8 +321,8 @@ fn embed_lyrics_flac(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) 
 /// Embed lyrics into MP3 file using ID3v2 tags
 fn embed_lyrics_mp3(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) -> Result<()> {
     use lofty::file::TaggedFileExt;
-    use lofty::probe::Probe;
     use lofty::id3::v2::Id3v2Tag;
+    use lofty::probe::Probe;
 
     let file_probe = Probe::open(track_path).context("Failed to open MP3 file")?;
     let mut file = file_probe
@@ -420,6 +430,9 @@ mod tests {
 
         let lrc_path = build_sidecar_path(track_path, "lrc").unwrap();
         assert_eq!(lrc_path.to_str().unwrap(), "/music/artist/album/song.lrc");
+
+        let yaml_path = build_sidecar_path(track_path, "yaml").unwrap();
+        assert_eq!(yaml_path.to_str().unwrap(), "/music/artist/album/song.yaml");
     }
 
     #[test]

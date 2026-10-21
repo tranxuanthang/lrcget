@@ -16,7 +16,7 @@
 
 **Key Dependencies:** `tauri`, `rusqlite`+`rusqlite_migration`, `lofty`, `kira`, `reqwest`, `rayon`, `xxhash-rust`, `regex` (for LRC parsing), `charabia` (international word segmentation)
 
-**Word Segmentation Command:** `segment_words(text)` in `main.rs` uses Charabia's segmenter (`Segment::segment_str`) and then applies language-agnostic post-processing: segments containing at least one letter/number are kept as tokens, while separator-only segments (spaces/punctuation/symbols) are merged into adjacent tokens.
+**Word Segmentation Command:** `segment_words(text)` in `main.rs` uses Charabia's segmenter (`Segment::segment_str`) and then applies language-agnostic post-processing: segments containing at least one letter/number are kept as tokens, while separator-only segments (spaces/punctuation/symbols) are merged into adjacent tokens. Hangul is not sent through that syllable split: a Hangul word stays intact, including its punctuation, and breaks only on spaces. Mixed lines still send the non-Hangul chunks through Charabia.
 
 ## Project Structure
 
@@ -27,6 +27,8 @@ src-tauri/
 │   ├── state.rs             # AppState, ServiceAccess trait
 │   ├── db.rs                # SQLite operations, migrations
 │   ├── library.rs           # High-level library API
+│   ├── decoder.rs           # Symphonia-based audio slice decoder (mono f32)
+│   ├── vocal_stem.rs        # Demucs vocal-stem lookup/separation for the V2 editor
 │   ├── scanner/             # Incremental file scanning (NEW)
 │   │   ├── scan.rs          # Single-pass streaming scanner
 │   │   ├── hasher.rs        # xxhash3 content hashing
@@ -47,7 +49,7 @@ src-tauri/
 │       ├── publish.rs       # POST /api/publish (with PoW)
 │       ├── flag.rs          # POST /api/flag (with PoW)
 │       └── challenge_solver.rs # SHA256 proof-of-work
-├── migrations/              # SQL files (v1-v9), rusqlite_migration
+├── migrations/              # SQL files (v1-v18), rusqlite_migration
 └── Cargo.toml / tauri.conf.json
 ```
 
@@ -97,13 +99,15 @@ trait ServiceAccess {
 
 **Migration v15:** Added indexes on `tracks.album_id` and `tracks.artist_id`.
 
-**Migration v17:** Added `auto_export_enabled` (false), `export_lrc` (true), `export_txt` (false), and `export_embedded` (false) to `config_data`. Shared Download/Export defaults persist through a scoped update, without resetting library data. Ordinary `set_config` leaves these fields untouched.
-
 **Migration v16:** Added SQLite FTS5 virtual tables for full-text search:
 - `tracks_fts` — indexed `title`, `artist_name`, `album_name` (with `track_id` as UNINDEXED key)
 - `albums_fts` — indexed `album_name`, `album_artist_name` (with `album_id` as UNINDEXED key)
 - `artists_fts` — indexed `artist_name` (with `artist_id` as UNINDEXED key)
 - Backfilled from existing normalized `*_lower` columns.
+
+**Migration v17:** Added `auto_export_enabled` (false), `export_lrc` (true), `export_txt` (false), and `export_embedded` (false) to `config_data`. Shared Download/Export defaults persist through a scoped update, without resetting library data. Ordinary `set_config` leaves these fields untouched.
+
+**Migration v18:** Added `spectrogram_visible` BOOLEAN column to `config_data` (default `1`) for persisting the V2 lyrics editor's per-line spectrogram show/hide toggle across app launches.
 
 **Indexes:** All `*_lower` columns + `content_hash`, `scan_status`, `modified_time+file_size` (fingerprint) + lyrics-presence indexes + LRCLIB composite index (`lrclib_instance`, `lrclib_id`)
 
@@ -191,7 +195,7 @@ Playback speed:
 
 ### Export Module (`export.rs`)
 
-Shared lyrics export to sidecar files (`.txt`, `.lrc`) and manual embedded metadata export. Automatic Download export calls the same `export_track` writers after successful internal save.
+Shared lyrics export to sidecar files (`.txt`, `.lrc`) and manual embedded metadata export. Automatic Download export calls the same `export_track` writers after successful internal save. The V2 editor can also write the raw lyricsfile YAML as `{stem}.yaml` beside the audio via `write_lyricsfile_sidecar`; that path does not delete `.txt` or `.lrc` sidecars.
 
 ```rust
 pub enum ExportFormat {
@@ -211,6 +215,7 @@ pub struct ExportResult {
 **Key Functions:**
 - `export_track()` - Export a single track to multiple formats
 - `export_track_format()` - Export to a specific format
+- `write_lyricsfile_sidecar()` - Write the raw lyricsfile YAML next to the audio (`{stem}.yaml`)
 - `embed_lyrics()` - Embed lyrics into MP3 (ID3v2 USLT/SYLT) or FLAC (Vorbis comments)
 
 **Note:** Sidecar exports retain their existing semantics: overwrite the selected target and attempt to delete the opposite extension before writing available content. Unavailable formats skip before deletion. Bulk export runs TXT, LRC, then embedded, so both successful sidecar operations normally leave only LRC. Failures do not roll back filesystem changes. Embedded exports use the existing `lofty` MP3/FLAC writers. The shared format boundary reports unsupported extensions as `Skipped` before touching the file. Both manual commands and automatic export use `export_track_with_embed_gate`, reading current `try_embed_lyrics` immediately before each embedded operation (read failures deny embedding). A disabled gate produces a format-level skip, including embed-only batches whose gate was disabled after submission; successful internal downloads retain their success string. Preference submission rejects zero effective formats and ignores embedded-choice updates while the gate is disabled. Supported-writer edge cases remain unchanged: MP3 requires an existing primary tag; FLAC without Vorbis comments currently performs no tag update.
@@ -318,6 +323,7 @@ Search across all three entity types uses SQLite FTS5 (via `tracks_fts`, `albums
 | `save_lyrics(track_id?, lyricsfile_id?, plain?, synced?, lyricsfile?)` | Save lyrics edits. For library tracks: provide `track_id`. For standalone LRCLIB lyrics: provide `lyricsfile_id`. Prefers `lyricsfile` format. |
 | `publish_lyrics(title, album, artist, duration, plain?, synced?, lyricsfile?)` | Upload to LRCLIB (with PoW; accepts Lyricsfile-only payloads) |
 | `export_lyrics(track_id, formats, lyricsfile?)` | Manual export to `.txt`, `.lrc`, or embedded tags |
+| `write_lyricsfile_sidecar(track_id?, file_path?, lyricsfile)` | Write `{stem}.yaml` next to the song (library track lookup or explicit file path) |
 | `export_track_lyrics(track_id, formats)` | Export single track, returns summary for mass export |
 | `get_track_ids_with_lyrics()` | Get all track IDs that have lyrics for mass export |
 | `flag_lyrics()` | Report to LRCLIB (with PoW) |
@@ -328,6 +334,10 @@ Search across all three entity types uses SQLite FTS5 (via `tracks_fts`, `albums
 ### Playback & Config
 - `play_track(track_id?, file_path?, title?, album_name?, artist_name?, album_artist_name?, duration?)` - Unified playback for both library tracks (via `track_id`) and file-based tracks (via `file_path` with metadata)
 - `pause/resume_track()`, `seek_track()`, `stop_track()`, `set_volume()` (persists volume to config), `set_playback_speed()`
+- `get_audio_slice(file_path, start_ms, end_ms)` - Returns `{samples: Vec<f32>, sampleRate: u32}` (camelCase). Decodes a mono-downmixed slice.
+- `get_vocal_stem(file_path)` - Returns an existing `vocals.wav` path from the app cache or a Demucs sidecar next to the song, else `null`
+- `separate_vocals(file_path)` - Runs `demucs --shifts=4 --two-stems=vocals` if no stem exists yet; returns the `vocals.wav` path. Output is stored under `{app_cache}/vocal-stems/{hash}/htdemucs/vocals.wav`
+- `set_spectrogram_visible(visible)`
 - `get/set_directories()`, `get/set_config()`, `get_init()`
 - `set_export_preferences(auto_export_enabled?, export_lrc?, export_txt?, export_embedded?, skip_tracks_with_synced_lyrics?, skip_tracks_with_plain_lyrics?)` updates only supplied fields in `config_data` and returns config. Download atomically supplies its existing skip flags, toggle, and effective format selections; manual Export supplies shared formats only. Hidden/omitted fields and unrelated settings survive.
 - Volume is loaded from config on startup and auto-saved when changed via `set_volume()`
@@ -372,6 +382,31 @@ struct MatchingTrack {
 **DB Function:** `db::find_tracks_by_metadata()` searches using normalized `*_lower` columns for case-insensitive matching.
 
 **Note:** The frontend currently uses a simpler approach with `get_tracks` + client-side filtering in `AssociateTrackModal.vue`.
+
+## Audio Slice Decoding (`decoder.rs`)
+
+Standalone Symphonia-based decoder that extracts mono f32 samples for a `[start_ms, end_ms)` window of any audio file the codebase already supports (via Symphonia's `all` features). Used by the V2 editor spectrogram.
+
+**Process:**
+1. Open file, probe format (extension hint), get default track
+2. Seek to `start_ms` using `SeekMode::Accurate` (best-effort; some codecs may land at the nearest packet boundary)
+3. Decode packets; for each packet, downmix all channels via average to mono and convert to f32 via Symphonia's `SampleBuffer<f32>` (auto-handles source sample formats)
+4. Skip samples before `start_ms` and stop once `end_ms` is reached, using `packet.ts` to align
+5. Return `AudioSlice { samples: Vec<f32>, sample_rate: u32 }`
+
+**Errors:** `DecoderError` enum covers file open, Symphonia errors, missing-default-track, missing-sample-rate, invalid range.
+
+**Performance:** Decoding a 5-second slice typically runs in ~30-50ms. The command wraps the decode in `tokio::spawn_blocking` to keep the async executor responsive.
+
+### Vocal Stem Separation (`vocal_stem.rs`)
+
+Runs the system-installed Demucs CLI to produce a vocal stem for the V2 lyrics editor.
+
+**Lookup order:**
+1. App cache: `{app_cache}/vocal-stems/{content-hash-size-mtime}/htdemucs/**/vocals.wav`
+2. Sidecar from a previous manual Demucs run: `{song_dir}/separated/{model}/{stem}/vocals.wav`
+
+**Separation:** `demucs --shifts=4 --two-stems=vocals -o {cache_dir} {file}` (falls back to `python -m demucs` / `py -m demucs` if `demucs` is not on PATH). Existing stems are returned without re-running. Concurrent jobs for the same cache dir are rejected.
 
 ## Audio Metadata Extraction (`get_audio_metadata`)
 

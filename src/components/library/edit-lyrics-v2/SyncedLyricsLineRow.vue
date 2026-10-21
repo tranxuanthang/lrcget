@@ -61,7 +61,8 @@
       class="grow h-full px-2 rounded-md border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-900 outline-none"
       :class="{ 'font-bold': isLinePlaying }"
       @blur="emit('save-edit')"
-      @keydown.enter.prevent="emit('save-edit')"
+      @keydown.enter.exact.prevent="emit('save-edit')"
+      @keydown.alt.enter.stop.prevent="emit('split-edit', $event)"
       @keydown.esc.prevent="emit('cancel-edit')"
     />
 
@@ -83,7 +84,10 @@
         :aria-label="hasWordSync ? 'Word synced' : 'Word not synced'"
       />
 
-      <template v-if="hasWordSync">
+      <template v-if="romanizedLine && !isActive">
+        <span class="whitespace-pre-wrap">{{ romanizedLine }}</span>
+      </template>
+      <template v-else-if="hasWordSync">
         <span
           v-for="(word, wordIndex) in line.words"
           :key="wordIndex"
@@ -128,7 +132,7 @@
         </button>
       </div>
 
-      <div class="h-6 w-6 mr-4 shrink-0">
+      <div class="h-6 w-6 shrink-0">
         <button
           v-show="isLineControlsVisible"
           class="button bg-neutral-200 text-neutral-600 hover:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-300 hover:dark:bg-neutral-600 p-1 rounded-full text-sm h-6 w-6"
@@ -138,9 +142,30 @@
           <Equal />
         </button>
       </div>
+
+      <div class="h-6 w-6 mr-4 shrink-0">
+        <button
+          v-show="isLineControlsVisible && canSyncEndToNext"
+          class="button bg-neutral-200 text-neutral-600 hover:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-300 hover:dark:bg-neutral-600 p-1 rounded-full text-sm h-6 w-6"
+          title="Set end to next line's start"
+          @click.stop="emit('sync-end-to-next', index)"
+        >
+          <ArrowCollapseRight />
+        </button>
+      </div>
     </div>
 
     <div class="flex items-center gap-1 w-[3.5rem] justify-end">
+      <div class="h-6 w-6 shrink-0">
+        <button
+          v-show="isLineControlsVisible && canExpandToFillSpace"
+          class="button bg-neutral-200 text-neutral-600 hover:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-300 hover:dark:bg-neutral-600 p-1 rounded-full text-sm h-6 w-6"
+          title="Expand empty line to fill the gap"
+          @click.stop="emit('expand-to-fill-space', index)"
+        >
+          <ArrowExpandHorizontal />
+        </button>
+      </div>
       <button
         v-show="isLineControlsVisible"
         class="button p-1 rounded-full text-sm h-6 w-6 bg-neutral-200 hover:bg-neutral-300 dark:bg-neutral-700 hover:dark:bg-neutral-600 text-red-500 dark:text-red-400"
@@ -161,10 +186,13 @@ import Rewind from '~icons/mdi/rewind'
 import Forward from '~icons/mdi/fast-forward'
 import Close from '~icons/mdi/close'
 import Trash from '~icons/mdi/trash-can'
+import ArrowCollapseRight from '~icons/mdi/arrow-collapse-right'
+import ArrowExpandHorizontal from '~icons/mdi/arrow-expand-horizontal'
 import {
   syncedEditorShortcutBindings,
   withShortcutTitle,
 } from '@/composables/edit-lyrics-v2/shortcutRegistry.js'
+import { romanizedHangulLabel } from '@/utils/romanize-hangul.js'
 
 const props = defineProps({
   index: {
@@ -191,6 +219,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  isActive: {
+    type: Boolean,
+    default: false,
+  },
   editingText: {
     type: String,
     default: '',
@@ -211,6 +243,14 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  nextLineStartMs: {
+    type: Number,
+    default: null,
+  },
+  canExpandToFillSpace: {
+    type: Boolean,
+    default: false,
+  },
 })
 
 const emit = defineEmits([
@@ -225,12 +265,17 @@ const emit = defineEmits([
   'delete-line',
   'start-edit',
   'save-edit',
+  'split-edit',
   'cancel-edit',
   'update:editing-text',
   'sync-end',
+  'sync-end-to-next',
+  'expand-to-fill-space',
   'rewind-end',
   'forward-end',
 ])
+
+const canSyncEndToNext = computed(() => Number.isFinite(props.nextLineStartMs))
 
 const rowElement = ref(null)
 
@@ -329,6 +374,16 @@ const endTimestampPillTitle = computed(() => {
 const hasWordSync = computed(() => {
   return props.line?.words && Array.isArray(props.line.words) && props.line.words.length > 0
 })
+
+const lineDisplayText = computed(() => {
+  if (hasWordSync.value) {
+    return props.line.words.map(word => word?.text || '').join('')
+  }
+
+  return props.line?.text || ''
+})
+
+const romanizedLine = computed(() => romanizedHangulLabel(lineDisplayText.value))
 
 // Determine the currently playing word index based on progressMs
 const currentWordIndex = computed(() => {

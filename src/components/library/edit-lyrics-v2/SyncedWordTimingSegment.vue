@@ -8,6 +8,7 @@
     @mouseenter="handleSegmentHover"
     @mousemove="handleSegmentHover"
     @mouseleave="handleSegmentLeave"
+    @click="handleSegmentClick"
     @dblclick.stop="handleSegmentDoubleClick"
   >
     <div
@@ -16,9 +17,17 @@
     >
       <span
         ref="textElement"
-        class="relative z-10 block max-w-full overflow-hidden whitespace-nowrap text-clip"
+        class="relative z-10 flex max-w-full flex-col items-center justify-center leading-none"
       >
-        {{ word.text }}
+        <span class="block max-w-full overflow-hidden whitespace-nowrap text-clip">
+          {{ word.text }}
+        </span>
+        <span
+          v-if="romanizedWord"
+          class="mt-0.5 block max-w-full overflow-hidden whitespace-nowrap text-clip text-[10px] font-normal leading-none opacity-70"
+        >
+          {{ romanizedWord }}
+        </span>
       </span>
 
       <div
@@ -40,12 +49,22 @@
     >
       {{ nextWordHintText }}
     </div>
+
+    <div
+      v-if="hasStartAfterEndWarning"
+      class="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 z-40 flex items-center justify-center text-amber-500"
+      title="word start is after end"
+    >
+      <Alert class="w-3.5 h-3.5" />
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
+import Alert from '~icons/mdi/alert'
 import { formatTimestampMs } from '@/utils/lyricsfile.js'
+import { romanizedHangulLabel } from '@/utils/romanize-hangul.js'
 
 const emit = defineEmits(['split-at'])
 
@@ -110,6 +129,7 @@ const textElement = ref(null)
 const hoverPreview = ref(null)
 
 const nextWordHintText = computed(() => (props.nextWordText || '').trim())
+const romanizedWord = computed(() => romanizedHangulLabel(props.word?.text || ''))
 
 const nextSegmentWidthPx = computed(() => {
   if (!Number.isFinite(props.timelineWidth) || props.timelineWidth <= 0) {
@@ -334,6 +354,12 @@ const isPlaying = computed(() => {
   return props.progressMs >= props.startMs && props.progressMs < props.endMs
 })
 
+const hasStartAfterEndWarning = computed(() => {
+  const startMs = props.word?.start_ms
+  const endMs = props.word?.end_ms
+  return Number.isFinite(startMs) && Number.isFinite(endMs) && startMs > endMs
+})
+
 const segmentClass = computed(() => {
   const baseClasses = [
     'bg-neutral-200 dark:bg-neutral-700',
@@ -387,6 +413,15 @@ const handleSegmentDoubleClick = event => {
     splitIndex: splitPreview.splitIndex,
     splitRatio: splitPreview.splitRatio,
   })
+}
+
+// Suppress click bubbling to the timeline (which would seek) whenever the
+// split preview is rendered. `hoverPreview` is non-null iff the splitter UI
+// is visible, so this guarantees: preview visible -> no seek on click.
+const handleSegmentClick = event => {
+  if (hoverPreview.value) {
+    event.stopPropagation()
+  }
 }
 
 const handleSegmentHover = event => {

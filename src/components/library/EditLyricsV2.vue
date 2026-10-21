@@ -11,14 +11,43 @@
       <EditLyricsV2HeaderActions
         :is-dirty="isDirty"
         :is-exporting="isExporting"
+        :can-separate-vocals="canSeparateVocals"
+        :is-separating-vocals="isSeparating"
+        :has-vocal-stem="hasVocalStem"
+        v-model:write-yaml-at-save="writeYamlAtSave"
         @save="saveLyrics"
         @save-and-publish="saveAndPublish"
         @export="exportLyrics"
         @debug="openDebugModal"
+        @separate-vocals="separateVocals"
       />
     </template>
 
     <template #titleRight>
+      <div class="inline-flex gap-0.5">
+        <button
+          class="button text-sm h-8 px-4 rounded-l-full rounded-r-none"
+          :class="audioMode === 'song' ? 'button-primary' : 'button-normal'"
+          @click="setAudioMode('song')"
+        >
+          Song
+        </button>
+        <button
+          class="button text-sm h-8 px-4 rounded-r-full rounded-l-none"
+          :class="
+            !hasVocalStem
+              ? 'button-disabled'
+              : audioMode === 'vocals'
+                ? 'button-primary'
+                : 'button-normal'
+          "
+          :disabled="!hasVocalStem"
+          @click="setAudioMode('vocals')"
+        >
+          Only vocals
+        </button>
+      </div>
+
       <div class="inline-flex gap-0.5">
         <button
           class="button text-sm h-8 w-24 rounded-l-full rounded-r-none"
@@ -108,8 +137,10 @@
         :selected-line-index="selectedSyncedLineIndex"
         :selected-line-indices="selectedSyncedLineIndices"
         :progress-ms="progressMs"
+        :file-path="spectrogramFilePath"
         @update:model-value="updateSyncedLines"
         @update:selected-line-index="selectSyncedLine"
+        @activate-line="activateSyncedLine"
         @update:selected-line-indices="handleUpdateSelectedLineIndices"
         @editing-state-change="setSyncedLineEditingState"
         @play-line="playLine"
@@ -118,11 +149,14 @@
         @rewind-line="rewindLineBy100"
         @forward-line="forwardLineBy100"
         @sync-end="syncEndToCurrentProgress"
+        @sync-end-to-next="syncEndToNextLineStart"
+        @expand-to-fill-space="expandWhitespaceLineToFillSpace"
         @rewind-end="rewindEndBy100"
         @forward-end="forwardEndBy100"
         @delete-line="deleteSyncedLine"
         @bulk-rewind-lines="bulkRewindLines"
         @bulk-forward-lines="bulkForwardLines"
+        @bulk-expand-whitespace-lines="bulkExpandWhitespaceLinesToFillSpace"
         @bulk-delete-lines="bulkDeleteLines"
         @add-line-at="addSyncedLineAt"
         @import-lines-from-plain="importSyncedLinesFromPlain"
@@ -131,7 +165,9 @@
         @update:words="updateLineWords"
         @word-timing-edited="handleWordTimingEdited"
         @update-line-text="handleUpdateLineText"
+        @split-line="handleSplitLine"
         @mark-as-instrumental="setInstrumental(true)"
+        @seek="seek"
       />
 
     </div>
@@ -157,6 +193,7 @@ import { useEditLyricsV2Publish } from '@/composables/edit-lyrics-v2/useEditLyri
 import { useEditLyricsV2Playback } from '@/composables/edit-lyrics-v2/useEditLyricsV2Playback.js'
 import { useEditLyricsV2Export } from '@/composables/edit-lyrics-v2/useEditLyricsV2Export.js'
 import { useEditLyricsV2SyncedHotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedHotkeys.js'
+import { useEditLyricsV2VocalStem } from '@/composables/edit-lyrics-v2/useEditLyricsV2VocalStem.js'
 import { useGlobalState } from '@/composables/global-state.js'
 import { usePlayer } from '@/composables/player.js'
 import { open } from '@tauri-apps/plugin-dialog'
@@ -230,10 +267,12 @@ const {
   updateSyncedLines,
   selectSyncedLine,
   selectSyncedLineRange,
+  activateSyncedLine,
   toggleSyncedLineSelection,
   clearSyncedLineSelection,
   setSyncedLineEditingState,
   addSyncedLineAt,
+  splitSyncedLineAtCaret,
   deleteSyncedLine,
   bulkDeleteLines,
   bulkRewindLines,
@@ -245,9 +284,14 @@ const {
   syncEndToCurrentProgress,
   rewindEndBy100,
   forwardEndBy100,
+  syncEndToNextLineStart,
+  expandWhitespaceLineToFillSpace,
+  bulkExpandWhitespaceLinesToFillSpace,
   saveLyrics,
+  writeYamlAtSave,
   ensureSelectedSyncedLine,
   updateLineText,
+  updateLineWords,
   setInstrumental,
 } = useEditLyricsV2Document({
   audioSource: audioSourceRef,
@@ -275,8 +319,23 @@ const { exportLyrics, isExporting } = useEditLyricsV2Export({
   toast,
 })
 
-const { playLine, playLineAtOffset, resumeOrPlay } = useEditLyricsV2Playback({
+const {
+  audioMode,
+  isSeparating,
+  canSeparateVocals,
+  hasVocalStem,
+  playbackSource,
+  spectrogramFilePath,
+  refreshVocalStem,
+  separateVocals,
+  setAudioMode,
+} = useEditLyricsV2VocalStem({
   audioSource: audioSourceRef,
+  toast,
+})
+
+const { playLine, playLineAtOffset, resumeOrPlay } = useEditLyricsV2Playback({
+  audioSource: playbackSource,
   syncedLines,
   progress,
   playingTrack,
@@ -300,30 +359,13 @@ const forwardLineBy100 = lineIndex => {
   void playLine(lineIndex)
 }
 
-const updateLineWords = ({ lineIndex, words, lineStartMs }) => {
-  if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
-    return
-  }
-
-  const nextLineStartMs = Number.isFinite(lineStartMs) ? Math.max(0, Math.round(lineStartMs)) : null
-
-  const newLines = syncedLines.value.map((line, index) => {
-    if (index !== lineIndex) {
-      return line
-    }
-
-    return {
-      ...line,
-      ...(nextLineStartMs === null ? {} : { start_ms: nextLineStartMs }),
-      words,
-    }
-  })
-
-  updateSyncedLines(newLines)
-}
-
 const handleUpdateLineText = (lineIndex, newText) => {
   updateLineText(lineIndex, newText)
+}
+
+const handleSplitLine = (payload, done) => {
+  const result = splitSyncedLineAtCaret(payload?.lineIndex, payload?.text, payload?.caretIndex)
+  done?.(result)
 }
 
 const handleUpdateSelectedLineIndices = payload => {
@@ -396,23 +438,45 @@ const handlePasteLrc = async () => {
 }
 
 const handleWordTimingEdited = async ({ startMs }) => {
-  // Auto-replay from the beginning of the edited line for instant verification
+  // Seek to the replay point chosen by the separator drag.
   const seekTo = Number.isFinite(startMs) ? startMs / 1000 : progress.value
+  const source = playbackSource.value
 
   // Ensure we're playing the correct audio source
   const isPlayingCorrectTrack =
-    audioSourceRef.value.type === 'library'
-      ? playingTrack.value?.id === audioSourceRef.value.id
-      : playingTrack.value?.file_path === audioSourceRef.value.file_path
+    source?.type === 'library'
+      ? playingTrack.value?.id === source.id
+      : playingTrack.value?.file_path === source?.file_path
 
   if (!playingTrack.value || !isPlayingCorrectTrack) {
-    await playTrack(audioSourceRef.value)
+    await playTrack(source)
   } else if (status.value === 'paused') {
     resume()
   }
 
   seek(seekTo)
 }
+
+watch(audioMode, async (nextMode, previousMode) => {
+  if (nextMode === previousMode) {
+    return
+  }
+
+  const source = playbackSource.value
+  if (!source) {
+    return
+  }
+
+  const position = progress.value ?? 0
+  const wasPlaying = status.value === 'playing'
+  await playTrack(source)
+  if (Number.isFinite(position) && position > 0) {
+    seek(position)
+  }
+  if (!wasPlaying) {
+    pause()
+  }
+})
 
 watch(activeTab, value => {
   if (value !== 'synced') {
@@ -523,15 +587,17 @@ onMounted(() => {
 
   // Initialize lyrics from props
   initializeLyrics()
+  void refreshVocalStem()
 
   // Handle playback - ensure correct audio source is loaded
+  const source = playbackSource.value
   const isPlayingCorrectTrack =
-    audioSourceRef.value?.type === 'library'
-      ? playingTrack.value?.id === audioSourceRef.value?.id
-      : playingTrack.value?.file_path === audioSourceRef.value?.file_path
+    source?.type === 'library'
+      ? playingTrack.value?.id === source?.id
+      : playingTrack.value?.file_path === source?.file_path
 
   if (!playingTrack.value || !isPlayingCorrectTrack) {
-    playTrack(audioSourceRef.value)
+    playTrack(source)
     pause()
   }
 

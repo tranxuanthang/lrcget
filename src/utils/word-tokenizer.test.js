@@ -104,8 +104,12 @@ describe('tokenizeText', () => {
       expectTokens('アイウ', ['ア', 'イ', 'ウ'])
     })
 
-    it('handles Hangul', () => {
-      expectTokens('안녕하세요', ['안', '녕', '하', '세', '요'])
+    it('keeps unspaced Hangul together', () => {
+      expectTokens('안녕하세요', ['안녕하세요'])
+    })
+
+    it('splits Hangul on spaces and keeps punctuation with the word', () => {
+      expectTokens('뭘 좋아하는지? 나는 어떤지?', ['뭘 ', '좋아하는지? ', '나는 ', '어떤지?'])
     })
   })
 

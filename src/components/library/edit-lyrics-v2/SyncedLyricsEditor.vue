@@ -7,11 +7,13 @@
       :progress-ms="progressMs"
       :all-lines="modelValue"
       :selected-line-index="selectedLineIndex"
+      :file-path="filePath"
       @update:words="handleWordsUpdate"
       @word-timing-edited="handleWordTimingEdited"
       @play-line="handlePlayLine"
       @play-line-at-offset="handlePlayLineAtOffset"
       @select-next-line="selectLine"
+      @seek="$emit('seek', $event)"
     />
 
     <div
@@ -31,7 +33,7 @@
           @click="handleInsertButtonClick(0, $event)"
         />
 
-        <div v-for="(line, index) in modelValue" :key="index">
+        <div v-for="(line, index) in modelValue" :key="line.id">
           <SyncedLyricsLineRow
             :ref="component => setLineRowRef(component, index)"
             :line="line"
@@ -40,11 +42,14 @@
             :is-line-controls-visible="isLineControlsVisible(index)"
             :end-timestamp-diff-direction="getEndTimestampDiffDirection(index)"
             :is-editing="editingLineIndex === index"
+            :is-active="selectedLineIndex === index"
             :editing-text="editingText"
             :timestamp-text="formatTimestampMs(line.start_ms)"
             :end-timestamp-text="formatTimestampMs(line.end_ms)"
             :set-line-input-ref="setLineInputRef"
             :progress-ms="progressMs"
+            :next-line-start-ms="nextLineStartMs(index)"
+            :can-expand-to-fill-space="canExpandWhitespaceToFillSpace(index)"
             @mouseenter="hoveredLineIndex = index"
             @mouseleave="hoveredLineIndex = null"
             @select="selectLine"
@@ -54,11 +59,14 @@
             @rewind-line="handleRewindLine"
             @forward-line="handleForwardLine"
             @sync-end="handleSyncEnd"
+            @sync-end-to-next="handleSyncEndToNext"
+            @expand-to-fill-space="handleExpandToFillSpace"
             @rewind-end="handleRewindEnd"
             @forward-end="handleForwardEnd"
             @delete-line="handleDeleteLine"
             @start-edit="startEditingLine"
             @save-edit="saveEditingLine"
+            @split-edit="handleSplitEdit"
             @cancel-edit="cancelEditingLine"
             @update:editing-text="handleEditingTextUpdate"
           />
@@ -67,7 +75,7 @@
             v-if="index < modelValue.length - 1"
             title="Add line between"
             :opacity="insertControlOpacity(index + 1)"
-            @click="handleInsertButtonClick(index + 1, $event)"
+            @click="handleInsertBetweenClick(index, $event)"
           />
         </div>
 
@@ -102,6 +110,14 @@
       >
         <Forward />
       </button>
+      <button
+        v-if="hasSelectedWhitespaceLine"
+        class="button button-normal p-1 rounded-full text-xs h-6 w-6"
+        title="Expand selected empty lines to fill the gap"
+        @click="handleBulkExpandToFillSpace"
+      >
+        <ArrowExpandHorizontal />
+      </button>
       <div class="w-px h-4 bg-neutral-200 dark:bg-neutral-700" />
       <button
         class="button button-normal p-1 rounded-full text-xs h-6 w-6 text-red-500 dark:text-red-400"
@@ -129,13 +145,14 @@ import { computed, nextTick, onMounted, onUnmounted, ref, toRef, watch } from 'v
 import Rewind from '~icons/mdi/rewind'
 import Forward from '~icons/mdi/fast-forward'
 import Trash from '~icons/mdi/trash-can'
+import ArrowExpandHorizontal from '~icons/mdi/arrow-expand-horizontal'
 import SyncedInsertButton from '@/components/library/edit-lyrics-v2/SyncedInsertButton.vue'
 import SyncedLyricsEmptyState from '@/components/library/edit-lyrics-v2/SyncedLyricsEmptyState.vue'
 import SyncedLyricsLineRow from '@/components/library/edit-lyrics-v2/SyncedLyricsLineRow.vue'
 import SyncedWordTimingLane from '@/components/library/edit-lyrics-v2/SyncedWordTimingLane.vue'
 import { useEditLyricsV2SyncedInlineEditing } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedInlineEditing.js'
 import { useEditLyricsV2SyncedInsertHover } from '@/composables/edit-lyrics-v2/useEditLyricsV2SyncedInsertHover.js'
-import { formatTimestampMs } from '@/utils/lyricsfile.js'
+import { formatTimestampMs, isWhitespaceSyncedLine } from '@/utils/lyricsfile.js'
 
 const props = defineProps({
   modelValue: {
@@ -158,11 +175,16 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  filePath: {
+    type: String,
+    default: null,
+  },
 })
 
 const emit = defineEmits([
   'update:modelValue',
   'update:selected-line-index',
+  'activate-line',
   'update:selected-line-indices',
   'play-line',
   'play-line-at-offset',
@@ -170,11 +192,14 @@ const emit = defineEmits([
   'rewind-line',
   'forward-line',
   'sync-end',
+  'sync-end-to-next',
+  'expand-to-fill-space',
   'rewind-end',
   'forward-end',
   'delete-line',
   'bulk-rewind-lines',
   'bulk-forward-lines',
+  'bulk-expand-whitespace-lines',
   'bulk-delete-lines',
   'add-line-at',
   'import-lines-from-plain',
@@ -184,8 +209,65 @@ const emit = defineEmits([
   'update:words',
   'word-timing-edited',
   'update-line-text',
+  'split-line',
   'mark-as-instrumental',
+  'seek',
 ])
+
+// Effective end of a line for overlap detection: prefer the line's own end_ms,
+// otherwise fall back to the next line's start_ms. Returns null if neither
+// is available — such a line can't overlap-detect cleanly so it's skipped.
+const getLineEffectiveEndMs = (line, index) => {
+  if (Number.isFinite(line?.end_ms)) return line.end_ms
+  const nextLine = props.modelValue[index + 1]
+  if (nextLine && Number.isFinite(nextLine.start_ms)) return nextLine.start_ms
+  return null
+}
+
+// Indexes of every line that's part of an overlapping pair anywhere in the
+// song. Relies on the invariant that lines are sorted by start_ms. 
+// For each new line, if the maximum effective end seen so far reaches past 
+// this line's start, both participate in an overlap. 
+const overlappingLineIndexes = computed(() => {
+  const overlaps = new Set()
+  const lines = props.modelValue
+  let maxEnd = -Infinity
+  let maxEndIndex = -1
+
+  for (let i = 0; i < lines.length; i++) {
+    if (!Number.isFinite(lines[i]?.start_ms)) continue
+    const endI = getLineEffectiveEndMs(lines[i], i)
+    if (!Number.isFinite(endI)) continue
+
+    if (maxEnd > lines[i].start_ms) {
+      overlaps.add(maxEndIndex)
+      overlaps.add(i)
+    }
+
+    if (endI > maxEnd) {
+      maxEnd = endI
+      maxEndIndex = i
+    }
+  }
+
+  return overlaps
+})
+
+const nextLineStartMs = index => {
+  const next = props.modelValue[index + 1]
+  return next && Number.isFinite(next.start_ms) ? next.start_ms : null
+}
+
+const canExpandWhitespaceToFillSpace = index => {
+  const line = props.modelValue[index]
+  if (!isWhitespaceSyncedLine(line)) {
+    return false
+  }
+
+  const prevLine = props.modelValue[index - 1]
+  const nextLine = props.modelValue[index + 1]
+  return Number.isFinite(prevLine?.end_ms) || Number.isFinite(nextLine?.start_ms)
+}
 
 const hoveredLineIndex = ref(null)
 const linesListElement = ref(null)
@@ -194,11 +276,15 @@ const modelValue = toRef(props, 'modelValue')
 // Multi-selection drag state
 const isDragging = ref(false)
 const dragAnchorIndex = ref(-1)
+const dragCurrentIndex = ref(-1)
 const didJustDrag = ref(false)
 const dragStartPos = ref(null)
 
 const selectedIndexSet = computed(() => new Set(props.selectedLineIndices))
 const hasMultiSelection = computed(() => props.selectedLineIndices.length >= 2)
+const hasSelectedWhitespaceLine = computed(() =>
+  props.selectedLineIndices.some(index => isWhitespaceSyncedLine(props.modelValue[index]))
+)
 
 const isLineRowSelected = index => selectedIndexSet.value.has(index)
 
@@ -213,6 +299,7 @@ const startDragSelection = (index, event) => {
   dragStartPos.value = { x: event.clientX, y: event.clientY }
   isDragging.value = true
   dragAnchorIndex.value = index
+  dragCurrentIndex.value = index
   emit('update:selected-line-indices', { start: index, end: index })
 }
 
@@ -223,12 +310,14 @@ const updateDragSelection = index => {
   if (index !== dragAnchorIndex.value) {
     didJustDrag.value = true
   }
+  dragCurrentIndex.value = index
   emit('update:selected-line-indices', { start: dragAnchorIndex.value, end: index })
 }
 
 const endDragSelection = () => {
   isDragging.value = false
   dragAnchorIndex.value = -1
+  dragCurrentIndex.value = -1
   dragStartPos.value = null
 }
 
@@ -261,6 +350,10 @@ const handleEscKey = () => {
 }
 
 const handleDocumentMouseUp = () => {
+  if (isDragging.value && dragAnchorIndex.value >= 0 && dragCurrentIndex.value >= 0) {
+    const releaseIndex = Math.min(dragAnchorIndex.value, dragCurrentIndex.value)
+    emit('activate-line', releaseIndex)
+  }
   endDragSelection()
 }
 
@@ -280,6 +373,10 @@ const handleBulkForward = () => {
   emit('bulk-forward-lines', props.selectedLineIndices)
 }
 
+const handleBulkExpandToFillSpace = () => {
+  emit('bulk-expand-whitespace-lines', props.selectedLineIndices)
+}
+
 const handleBulkDelete = () => {
   emit('bulk-delete-lines', props.selectedLineIndices)
 }
@@ -293,6 +390,7 @@ const {
   editingText,
   setLineInputRef,
   startEditingLine,
+  splitEditingLine,
   saveEditingLine,
   cancelEditingLine,
   handleLineCountChange: handleInlineEditingLineCountChange,
@@ -301,7 +399,19 @@ const {
   emit,
   selectLine: index => emit('update:selected-line-index', index),
   updateLineText: handleUpdateLineText,
+  splitSyncedLine: payload => {
+    let result = null
+    emit('split-line', payload, value => {
+      result = value
+    })
+    return result
+  },
 })
+
+const handleSplitEdit = event => {
+  const caretIndex = event?.target?.selectionStart
+  splitEditingLine(caretIndex)
+}
 
 const {
   lineRowElements,
@@ -342,6 +452,12 @@ const rowClass = index => {
     return 'bg-neutral-50 dark:bg-neutral-800/50'
   }
 
+  // Dim warning color for every line that's part of an overlapping pair, so
+  // overlap clusters in the song are visible at a glance.
+  if (overlappingLineIndexes.value.has(index)) {
+    return 'bg-amber-50 dark:bg-amber-900/20'
+  }
+
   return 'bg-transparent'
 }
 
@@ -376,7 +492,10 @@ const emitLineAction = (eventName, index, selectBefore = true) => {
 }
 
 const handlePlayLine = index => {
-  emitLineAction('play-line', index, false)
+  // Skip auto-select when a bulk selection is active so previewing a line
+  // doesn't collapse the user's multi-select into a single-line focus.
+  // Without bulk, the previous behavior (select-then-play) stands.
+  emitLineAction('play-line', index, props.selectedLineIndices.length === 0)
 }
 
 const handlePlayLineAtOffset = payload => {
@@ -397,6 +516,14 @@ const handleForwardLine = index => {
 
 const handleSyncEnd = index => {
   emitLineAction('sync-end', index)
+}
+
+const handleSyncEndToNext = index => {
+  emitLineAction('sync-end-to-next', index)
+}
+
+const handleExpandToFillSpace = index => {
+  emitLineAction('expand-to-fill-space', index)
 }
 
 const handleRewindEnd = index => {
@@ -420,6 +547,11 @@ const handleInsertButtonClick = (index, event) => {
   handleAddLineAt(index)
 }
 
+const handleInsertBetweenClick = (lineIndex, event) => {
+  event.stopPropagation()
+  emit('add-line-at', lineIndex + 1, { copyTimestampsFrom: lineIndex })
+}
+
 const handleImportLinesFromPlain = () => {
   emit('import-lines-from-plain')
 }
@@ -432,8 +564,8 @@ const handleEditingTextUpdate = value => {
   editingText.value = value
 }
 
-const handleWordsUpdate = ({ lineIndex, words, lineStartMs }) => {
-  emit('update:words', { lineIndex, words, lineStartMs })
+const handleWordsUpdate = payload => {
+  emit('update:words', payload)
 }
 
 const handleWordTimingEdited = ({ lineIndex, startMs }) => {
