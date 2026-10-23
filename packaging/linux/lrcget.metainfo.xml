@@ -39,6 +39,19 @@
   <url type="bugtracker">https://github.com/tranxuanthang/lrcget/issues</url>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="2.2.1" date="2026-10-23">
+      <description>
+        <ul>
+          <li>Improved LRCLIB reliability with higher rate limits for LRCGET, automatic retries, and smarter request pacing.</li>
+          <li>Added a countdown in the Download window when downloads pause due to rate limits, plus clearer error messages.</li>
+          <li>Improved publishing and flagging reliability, including fixing how report reasons are submitted.</li>
+          <li>Fixed scanning audio files with large embedded cover art by increasing the metadata allocation limit to 64 MB (#372).</li>
+          <li>Updated the word segmentation library to simplify reproducible builds, including NixOS packaging (#407).</li>
+          <li>Standardized Linux executable and package filenames to lowercase lrcget, while keeping the display name “LRCGET” (#431).</li>
+        </ul>
+        <p>Thanks to @BrenekH and @LeisureLinux for their contributions!</p>
+      </description>
+    </release>
     <release version="2.2.0" date="2026-09-06">
       <description>
         <ul>
