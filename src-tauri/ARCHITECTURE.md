@@ -14,7 +14,7 @@
 | Scanning | Single-pass streaming with batch processing (100 files) |
 | Export | Optional TXT/LRC/embedded export after library/album/artist bulk Download; shared manual writers |
 
-**Key Dependencies:** `tauri`, `rusqlite`+`rusqlite_migration`, `lofty`, `kira`, `reqwest`, `rayon`, `xxhash-rust`, `regex` (for LRC parsing), `charabia` (international word segmentation)
+**Key Dependencies:** `tauri`, `rusqlite`+`rusqlite_migration`, `lofty`, `kira`, `reqwest`, `rayon`, `xxhash-rust`, `regex` (for LRC parsing), `charabia` (international word segmentation), `fastrand` (retry jitter)
 
 **Word Segmentation Command:** `segment_words(text)` in `main.rs` uses Charabia's segmenter (`Segment::segment_str`) and then applies language-agnostic post-processing: segments containing at least one letter/number are kept as tokens, while separator-only segments (spaces/punctuation/symbols) are merged into adjacent tokens.
 
@@ -41,6 +41,7 @@ src-tauri/
 │   ├── persistent_entities.rs # Track/Album/Artist structs
 │   ├── utils.rs             # Text normalization
 │   └── lrclib/              # LRCLIB API client
+│       ├── client.rs        # Shared HTTP client, retry/backoff, error model, App ID headers
 │       ├── search.rs        # GET /api/search
 │       ├── get.rs           # GET /api/get
 │       ├── get_by_id.rs     # GET /api/get/{id}
@@ -256,10 +257,44 @@ pub fn format_timestamp(timestamp_ms: i64) -> String;
 
 **Endpoints:** search, get, get_by_id, publish, flag, request_challenge
 
+**Shared HTTP client (`client.rs`):**
+- A single process-wide `reqwest::Client` (10s timeout) is reused for connection pooling.
+- Sets `User-Agent: LRCGET v<version> (GitHub URL)` on every request.
+- Sends the public `Lrclib-App-Id` header when the configured instance is `lrclib.net` or a subdomain. This gives the registered client higher rate limits (~180 req/min per IP plus an app-wide allowance). The App ID is not a secret; server-side `Lrclib-Api-Key` is never embedded.
+- The App ID is a compile-time constant in `client.rs`. Forks should register their own application and replace it.
+- Custom/self-hosted instances do not receive the App ID, because they may reject an ID registered on another instance.
+- Provides `get`, `post_json`, and `post` helpers plus shared endpoint/URL construction.
+- Sends `Accept: application/json` on every request.
+
+**Query hygiene:**
+- Empty optional parameters are omitted.
+- `/api/get`: always sends `track_name` and `artist_name` (validated client-side); sends `album_name` only when non-empty and `duration` only when it rounds into the documented 1–3600 range.
+- `/api/search`: when `q` is non-empty it is sent alone (it takes precedence); otherwise `track_name` is sent with non-empty `artist_name`/`album_name`. A search with no `q` and no title returns an empty result without a network request.
+- Response models include `id`, `trackName`, and `hasWordSync`; `hasWordSync` defaults to `false` for older instances that omit it.
+
+**Error model:**
+- `LrclibError` carries a typed `kind` (`NotFound`, `Validation`, `Unauthorized`, `RateLimited`, `ServerOverloaded`, `ServerError`, `Network`, `Unexpected`), HTTP status, API `name`/`message`, `Retry-After`, and rate-limit `scope`.
+- Parses the current `{ message, name, statusCode }` schema and accepts the legacy `error` field for older instances.
+- Non-JSON responses (for example network-edge errors) fall back to a truncated text preview instead of failing to decode.
+- `send_with_retry()` converts non-2xx responses into `LrclibError` and applies the retry policy.
+- `parse_json()` reports invalid success bodies explicitly.
+
+**Retry policy (`RetryPolicy`):**
+- **Batch** (mass-download `/api/get`): 4 attempts total. Retries 429, 500, 502, 503, 504, timeouts, and connection errors. Honors `Retry-After` plus up to 30% jitter; otherwise uses 500 ms → 1 s → 2 s exponential backoff capped at 8 s.
+- **Interactive** (search, preview, lyrics by ID): 3 attempts total for quick 5xx/network failures. A 429 fails fast rather than blocking the UI; a 503 with a `Retry-After` longer than 3 s also fails fast.
+- **NoRetry** (publish/flag): one attempt only, because `X-Publish-Token` is single-use.
+- **Shared cooldown:** a 429 (or a 503 carrying `Retry-After`) sets a process-wide cooldown. Batch requests wait for it; interactive and one-shot requests return a wait error instead of sending a request early.
+
 **Challenge-Response (publish/flag):**
 1. Request challenge → prefix + target hash
 2. Solve PoW (SHA256): find nonce where hash(prefix+nonce) < target
 3. Submit with token
+
+**Write retry behavior:**
+- The HTTP layer uses `RetryPolicy::NoRetry` for publish/flag because `X-Publish-Token` is single-use.
+- `publish_lyrics` / `flag_lyrics` retry up to 3 times on an explicit 429 or 503 by requesting a **new** challenge, re-solving PoW, and submitting a **fresh** token.
+- `Retry-After` is honored with jitter when the requested wait is ≤ 5 s; longer waits fail fast with a clear message instead of blocking the modal.
+- 500/502/504 responses and timeouts are not retried, because the write may already have been processed.
 
 ### Data Entities (`persistent_entities.rs`)
 
@@ -309,18 +344,18 @@ Search across all three entity types uses SQLite FTS5 (via `tracks_fts`, `albums
 ### Lyrics
 | Command | Purpose |
 |---------|---------|
-| `download_lyrics(track_id, auto_export?)` | Download from LRCLIB and save internally. Optional explicit `{ plainText, syncedLrc, embedIntoTrack }` batch snapshot enables TXT/LRC/embedded export after save; empty selections are rejected before downloading. Returns the existing string, appending ordered export outcomes/errors after save. Omitted options preserve internal-only behavior. |
+| `download_lyrics(track_id, auto_export?)` | Download from LRCLIB using the batch retry policy and save internally. Optional explicit `{ plainText, syncedLrc, embedIntoTrack }` batch snapshot enables TXT/LRC/embedded export after save; empty selections are rejected before downloading. Returns the existing string appended with ordered export outcomes/errors, or rejects with a structured `DownloadLyricsError` (`kind`, `message`, `retryAfterSecs`, `scope`) on failure so the frontend can pause the queue on rate limits. Omitted options preserve internal-only behavior. |
 | `retrieve_lyrics/by_id()` | Get raw LRCLIB response |
 | `search_lyrics()` | Search LRCLIB database |
 | `apply_lyrics()` | Save a selected LRCLIB result into database-backed lyrics storage |
 | `prepare_lrclib_lyricsfile(lrclib_id)` | Get or create lyricsfile from LRCLIB. Checks local cache first, fetches from API if needed. Saves to `lyricsfiles` table with `lrclib_instance` + `lrclib_id`. Returns `lyricsfile_id` + content + `exists_in_db` flag. |
 | `refresh_lrclib_lyricsfile(lrclib_id)` | Force re-download lyrics from LRCLIB API. Updates existing record in `lyricsfiles` table. Returns refreshed `lyricsfile_id` + content. |
 | `save_lyrics(track_id?, lyricsfile_id?, plain?, synced?, lyricsfile?)` | Save lyrics edits. For library tracks: provide `track_id`. For standalone LRCLIB lyrics: provide `lyricsfile_id`. Prefers `lyricsfile` format. |
-| `publish_lyrics(title, album, artist, duration, plain?, synced?, lyricsfile?)` | Upload to LRCLIB (with PoW; accepts Lyricsfile-only payloads) |
+| `publish_lyrics(title, album, artist, duration, plain?, synced?, lyricsfile?)` | Upload to LRCLIB (with PoW; accepts Lyricsfile-only payloads). Retries explicit 429/503 with a fresh challenge/token |
 | `export_lyrics(track_id, formats, lyricsfile?)` | Manual export to `.txt`, `.lrc`, or embedded tags |
 | `export_track_lyrics(track_id, formats)` | Export single track, returns summary for mass export |
 | `get_track_ids_with_lyrics()` | Get all track IDs that have lyrics for mass export |
-| `flag_lyrics()` | Report to LRCLIB (with PoW) |
+| `flag_lyrics()` | Report to LRCLIB (with PoW). Sends the documented `content` field and retries explicit 429/503 with a fresh token |
 | `find_matching_tracks(title, album, artist, duration?)` | Find local tracks matching LRCLIB metadata (for My LRCLIB edit flow) |
 | `get_audio_metadata(filePath)` | Extract metadata from audio file (for file picker) |
 | `prepare_search_query(title)` | Prepare search query by removing brackets and normalizing |
@@ -405,12 +440,28 @@ Prepares a search query from track title by:
 
 Used by `AssociateTrackModal.vue` to prefill the search input when associating LRCLIB tracks with local tracks.
 
+## Testing
+
+Run the backend test suite from `src-tauri/`:
+
+```bash
+cargo test
+```
+
+`lrclib::client` includes in-process HTTP integration tests backed by a raw `TcpListener` mock server. They cover:
+
+- 429, 500, and 503 responses followed by success
+- The 4-attempt Batch retry limit
+- No retry for 400/404, interactive 429s, or `NoRetry` write requests
+- `Accept: application/json` on requests
+- No `Lrclib-App-Id` sent to custom/self-hosted instances
+
 ## Notes
 
 - **Lyrics Storage:** `lyricsfiles` table remains the source of truth. The shared confirmed library/album/artist Download popup can opt into TXT/LRC/embedded export after save; all other save paths remain manual export. Automatic export parses the just-saved snapshot without holding the DB lock during file I/O, and failures remain text in the successful download response. The `tracks` table no longer contains `txt_lyrics` or `lrc_lyrics` columns as of migration v14.
 - **Filtering Source of Truth:** Lyrics filters use `lyricsfiles.has_*_lyrics` booleans (via LEFT JOIN with COALESCE)
 - **Instrumental:** `[au: instrumental]` marker in lrc_lyrics, stored as `instrumental = true` in lyricsfiles table
-- **Security:** PoW for LRCLIB writes, user-agent in requests, DB in app_data_dir
+- **Security:** PoW for LRCLIB writes, registered `Lrclib-App-Id` (public) plus User-Agent in requests, DB in app_data_dir
 
 ## Deprecated Code Cleanup
 

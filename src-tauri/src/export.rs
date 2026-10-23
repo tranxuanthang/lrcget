@@ -9,7 +9,6 @@ use lofty::id3::v2::{
     BinaryFrame, CommentFrame, Frame, FrameId, Id3v2Tag, SyncTextContentType,
     SynchronizedTextFrame, TimestampFormat, UnsynchronizedTextFrame,
 };
-use lofty::mpeg::MpegFile;
 use lofty::TextEncoding;
 use serde::Serialize;
 use std::fs::{remove_file, write};

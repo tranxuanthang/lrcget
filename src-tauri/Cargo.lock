@@ -2937,6 +2937,7 @@ dependencies = [
  "charabia",
  "collapse",
  "data-encoding",
+ "fastrand",
  "globwalk",
  "include_dir",
  "indoc",
