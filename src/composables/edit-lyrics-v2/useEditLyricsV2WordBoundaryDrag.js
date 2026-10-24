@@ -47,14 +47,23 @@ export function useEditLyricsV2WordBoundaryDrag({
 
   const buildUpdatedWords = (rightWordIndex, startMs) => {
     return words.value.map((word, index) => {
-      if (index !== rightWordIndex) {
-        return word
+      if (index === rightWordIndex) {
+        return {
+          ...word,
+          start_ms: startMs,
+        }
       }
 
-      return {
-        ...word,
-        start_ms: startMs,
+      // Chain rule: boundary shared with previous word. Current word's own
+      // end_ms is intentionally not updated; overshoot surfaces a warning.
+      if (index === rightWordIndex - 1) {
+        return {
+          ...word,
+          end_ms: startMs,
+        }
       }
+
+      return word
     })
   }
 
@@ -342,10 +351,17 @@ export function useEditLyricsV2WordBoundaryDrag({
     const hasChanges = nextStartValues.some((startMs, index) => startMs !== currentWords[index].start_ms)
 
     if (hasChanges) {
-      const updatedWords = currentWords.map((word, index) => ({
-        ...word,
-        start_ms: nextStartValues[index],
-      }))
+      const updatedWords = currentWords.map((word, index) => {
+        const updated = { ...word, start_ms: nextStartValues[index] }
+        const nextIndex = index + 1
+        if (
+          nextIndex < boundaryCount &&
+          nextStartValues[nextIndex] !== currentWords[nextIndex].start_ms
+        ) {
+          updated.end_ms = nextStartValues[nextIndex]
+        }
+        return updated
+      })
 
       onUpdateWords({
         lineIndex: selectedLineIndex.value,

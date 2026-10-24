@@ -128,7 +128,7 @@
         </button>
       </div>
 
-      <div class="h-6 w-6 mr-4 shrink-0">
+      <div class="h-6 w-6 shrink-0">
         <button
           v-show="isLineControlsVisible"
           class="button bg-neutral-200 text-neutral-600 hover:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-300 hover:dark:bg-neutral-600 p-1 rounded-full text-sm h-6 w-6"
@@ -136,6 +136,17 @@
           @click.stop="emit('sync-end', index)"
         >
           <Equal />
+        </button>
+      </div>
+
+      <div class="h-6 w-6 mr-4 shrink-0">
+        <button
+          v-show="isLineControlsVisible && canSyncEndToNext"
+          class="button bg-neutral-200 text-neutral-600 hover:bg-neutral-300 dark:bg-neutral-700 dark:text-neutral-300 hover:dark:bg-neutral-600 p-1 rounded-full text-sm h-6 w-6"
+          title="Set end to next line's start"
+          @click.stop="emit('sync-end-to-next', index)"
+        >
+          <ArrowCollapseRight />
         </button>
       </div>
     </div>
@@ -161,6 +172,7 @@ import Rewind from '~icons/mdi/rewind'
 import Forward from '~icons/mdi/fast-forward'
 import Close from '~icons/mdi/close'
 import Trash from '~icons/mdi/trash-can'
+import ArrowCollapseRight from '~icons/mdi/arrow-collapse-right'
 import {
   syncedEditorShortcutBindings,
   withShortcutTitle,
@@ -211,6 +223,10 @@ const props = defineProps({
     type: Number,
     default: 0,
   },
+  nextLineStartMs: {
+    type: Number,
+    default: null,
+  },
 })
 
 const emit = defineEmits([
@@ -228,9 +244,12 @@ const emit = defineEmits([
   'cancel-edit',
   'update:editing-text',
   'sync-end',
+  'sync-end-to-next',
   'rewind-end',
   'forward-end',
 ])
+
+const canSyncEndToNext = computed(() => Number.isFinite(props.nextLineStartMs))
 
 const rowElement = ref(null)
 

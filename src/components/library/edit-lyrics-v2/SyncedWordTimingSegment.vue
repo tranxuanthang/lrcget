@@ -8,6 +8,7 @@
     @mouseenter="handleSegmentHover"
     @mousemove="handleSegmentHover"
     @mouseleave="handleSegmentLeave"
+    @click="handleSegmentClick"
     @dblclick.stop="handleSegmentDoubleClick"
   >
     <div
@@ -22,7 +23,7 @@
       </span>
 
       <div
-        v-if="hoverPreview"
+        v-if="hoverPreview && !dragActive"
         class="absolute inset-y-0 pointer-events-none z-20"
         :style="{ left: `${hoverPreview.splitX}px` }"
       >
@@ -40,11 +41,20 @@
     >
       {{ nextWordHintText }}
     </div>
+
+    <div
+      v-if="hasStartAfterEndWarning"
+      class="absolute left-1/2 -translate-x-1/2 bottom-full mb-1 z-40 flex items-center justify-center text-amber-500"
+      title="word start is after end"
+    >
+      <Alert class="w-3.5 h-3.5" />
+    </div>
   </div>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue'
+import Alert from '~icons/mdi/alert'
 import { formatTimestampMs } from '@/utils/lyricsfile.js'
 
 const emit = defineEmits(['split-at'])
@@ -101,6 +111,10 @@ const props = defineProps({
   selectedBoundaryIndices: {
     type: Array,
     default: () => [],
+  },
+  dragActive: {
+    type: Boolean,
+    default: false,
   },
 })
 
@@ -261,6 +275,7 @@ const getSplitPreview = clientX => {
         splitIndex: index,
         measuredWidth: Math.max(0, boundaryClientX - textRect.left),
         splitX: boundaryClientX - previewContainerRect.left,
+        splitClientX: boundaryClientX,
       })
     }
 
@@ -282,6 +297,7 @@ const getSplitPreview = clientX => {
         splitIndex: nearestBoundary.splitIndex,
         splitRatio,
         splitX: nearestBoundary.splitX,
+        splitClientX: nearestBoundary.splitClientX,
       }
     }
   }
@@ -326,12 +342,19 @@ const getSplitPreview = clientX => {
     splitIndex: nearestBoundary.splitIndex,
     splitRatio: nearestBoundary.measuredWidth / totalMeasuredWidth,
     splitX,
+    splitClientX: previewContainerRect.left + splitX,
   }
 }
 
 const isPlaying = computed(() => {
   // The word is playing when: startMs <= currentTime < endMs
   return props.progressMs >= props.startMs && props.progressMs < props.endMs
+})
+
+const hasStartAfterEndWarning = computed(() => {
+  const startMs = props.word?.start_ms
+  const endMs = props.word?.end_ms
+  return Number.isFinite(startMs) && Number.isFinite(endMs) && startMs > endMs
 })
 
 const segmentClass = computed(() => {
@@ -386,10 +409,29 @@ const handleSegmentDoubleClick = event => {
     wordIndex: props.wordIndex,
     splitIndex: splitPreview.splitIndex,
     splitRatio: splitPreview.splitRatio,
+    splitClientX: splitPreview.splitClientX,
   })
 }
 
+// Suppress click bubbling to the timeline (which would seek) whenever the
+// split preview is rendered. `hoverPreview` is non-null whenever the splitter
+// UI is visible, so this guarantees: preview visible -> no seek on click.
+// (During a drag the preview is hidden, but a drag's click targets the
+// timeline rather than a segment, so this handler is not involved.)
+const handleSegmentClick = event => {
+  if (hoverPreview.value) {
+    event.stopPropagation()
+  }
+}
+
 const handleSegmentHover = event => {
+  // A boundary drag sweeps the pointer across segments, so skip the split
+  // preview while one is in flight instead of previewing splits mid-drag.
+  if (props.dragActive) {
+    hoverPreview.value = null
+    return
+  }
+
   hoverPreview.value = getSplitPreview(event.clientX)
 }
 
