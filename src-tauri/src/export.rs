@@ -88,6 +88,31 @@ pub fn generate_txt_content(parsed: &ParsedLyricsfile) -> Option<String> {
     parsed.plain_lyrics.clone().filter(|s| !s.trim().is_empty())
 }
 
+/// Build LRC ID tag lines ([ti:], [ar:], [al:]) from the track's metadata.
+/// Empty values are skipped.
+fn build_lrc_header(track: &PersistentTrack) -> String {
+    let mut header = String::new();
+
+    for (tag, value) in [
+        ("ti", &track.title),
+        ("ar", &track.artist_name),
+        ("al", &track.album_name),
+    ] {
+        let value = value.replace(['\r', '\n'], " ");
+        let value = value.trim();
+        if !value.is_empty() {
+            header.push_str(&format!("[{}:{}]\n", tag, value));
+        }
+    }
+
+    if !header.is_empty() {
+        header.push('\n');
+    }
+
+    header
+}
+
+
 /// Generate standard LRC format content from parsed lyricsfile
 pub fn generate_lrc_content(parsed: &ParsedLyricsfile) -> Option<String> {
     if parsed.is_instrumental {
@@ -172,6 +197,7 @@ fn export_lrc(
         let _ = remove_file(txt_path);
     }
 
+    let content = format!("{}{}", build_lrc_header(track), content);
     write(&lrc_path, content).map_err(|e| ExportError::WriteError(e.to_string()))?;
 
     Ok(ExportResult {
