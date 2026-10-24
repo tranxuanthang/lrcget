@@ -300,10 +300,12 @@ async fn set_config(
     theme_mode: &str,
     lrclib_instance: &str,
     volume: f64,
+    show_hover_help: Option<bool>,
     app_state: State<'_, AppState>,
 ) -> Result<(), String> {
     let conn_guard = app_state.db.lock().unwrap();
     let conn = conn_guard.as_ref().unwrap();
+    let tx = conn.unchecked_transaction().map_err(|err| err.to_string())?;
     db::set_config(
         skip_tracks_with_synced_lyrics,
         skip_tracks_with_plain_lyrics,
@@ -312,9 +314,14 @@ async fn set_config(
         theme_mode,
         lrclib_instance,
         volume,
-        conn,
+        &tx,
     )
     .map_err(|err| err.to_string())?;
+
+    if let Some(enabled) = show_hover_help {
+        db::set_hover_help_enabled(enabled, &tx).map_err(|err| err.to_string())?;
+    }
+    tx.commit().map_err(|err| err.to_string())?;
 
     Ok(())
 }

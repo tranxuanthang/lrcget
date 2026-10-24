@@ -267,3 +267,14 @@ body {
 .secondary-page-back-button {
   @apply button button-normal transition rounded-full p-4;
 }
+
+
+.lrcget-hover-help {
+  @apply fixed rounded bg-neutral-800 px-3 py-2 text-xs text-white shadow-lg dark:bg-neutral-100 dark:text-neutral-900;
+  z-index: 100000;
+  max-width: min(360px, calc(100vw - 16px));
+  max-height: calc(100vh - 16px);
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  pointer-events: none;
+}
