@@ -95,6 +95,13 @@
         <button class="track-button" @click="openEditLyricsV2(track)">
           <PlaylistEdit />
         </button>
+        <button
+          class="track-button disabled:opacity-30 disabled:cursor-not-allowed"
+          :disabled="!canMarkInstrumental"
+          @click="markAsInstrumental"
+        >
+          <MarkInstrumental />
+        </button>
       </div>
     </div>
   </div>
@@ -110,12 +117,13 @@ import { humanDuration } from '../../../utils/human-duration.js'
 import { useSearchLyrics } from '../../../composables/search-lyrics.js'
 import { useEditLyricsV2 } from '../../../composables/edit-lyrics-v2.js'
 import Equalizer from '@/components/icons/Equalizer.vue'
-import { parseLyricsfile } from '@/utils/lyricsfile.js'
+import { parseLyricsfile, serializeLyricsfile } from '@/utils/lyricsfile.js'
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
 import { listen } from '@tauri-apps/api/event'
 import { usePlayer } from '@/composables/player.js'
 import { useLibraryNavigation } from '@/composables/library-navigation.js'
+import MarkInstrumental from '@/components/icons/MarkInstrumental.vue'
 
 const { playTrack, playingTrack, status, pause, resume } = usePlayer()
 const { navigateToAlbum, navigateToArtist } = useLibraryNavigation()
@@ -152,6 +160,9 @@ const lyricsStatus = computed(() => {
     return null
   }
   const parsed = parseLyricsfile(track.value.lyricsfile)
+  if (parsed.isInstrumental) {
+    return 'instrumental'
+  }
   if (parsed.syncedLines && parsed.syncedLines.length > 0) {
     return 'synced'
   }
@@ -177,6 +188,40 @@ const openEditLyricsV2 = track => {
   }
   // Pass trackId for library tracks - this tells the save function to associate the lyricsfile with this track
   editLyricsV2({ audioSource, lyricsfile, trackId: track.id })
+}
+
+const canMarkInstrumental = computed(() => {
+  const status = lyricsStatus.value
+  if (!track.value) return false
+  if (status === 'instrumental' || status === 'synced' || status === 'plain') {
+    return false
+  }
+  return true
+})
+
+const markAsInstrumental = async () => {
+  if (!track.value || !canMarkInstrumental.value) {
+    return
+  }
+  try {
+    const parsedLyricsfile = parseLyricsfile(track.value.lyricsfile ?? '')
+    const instrumentalLyricsfile = serializeLyricsfile({
+      track: track.value,
+      plainLyrics: '',
+      syncedLines: [],
+      baseDocument: parsedLyricsfile.document,
+      isInstrumental: true,
+    })
+
+    await invoke('save_lyrics', {
+      trackId: track.value.id,
+      lyricsfileId: track.value.lyricsfile_id ?? null,
+      lyricsfile: instrumentalLyricsfile,
+    })
+    await loadTrack(track.value.id)
+  } catch (error) {
+    console.error('Failed to mark track as instrumental:', error)
+  }
 }
 
 let unlisten = null
