@@ -32,6 +32,7 @@ import {
   SPECTROGRAM_LUT_SIZE,
   getSpectrogramLut,
 } from '@/utils/spectrogram-themes.js'
+import { buildRowBinMap, findPeakDb, sampleColumn } from '@/utils/spectrogram-render.js'
 
 const props = defineProps({
   filePath: { type: String, default: null },
@@ -141,38 +142,32 @@ const renderToCanvas = (canvas, frames, binCount, sampleRate) => {
   const imgData = ctx.createImageData(pxWidth, pxHeight)
   const data = imgData.data
 
-  // Peak-relative normalization: take the loudest bin across the slice as the
-  // ceiling, display DYNAMIC_RANGE_DB below that.
-  let peakDb = -Infinity
-  for (let f = 0; f < frames.length; f++) {
-    for (let b = 0; b < binCount; b++) {
-      if (frames[f][b] > peakDb) peakDb = frames[f][b]
-    }
-  }
+  const effectiveSampleRate = sampleRate > 0 ? sampleRate : 44100
+  const rowMap = buildRowBinMap({
+    rows: pxHeight,
+    minHz: DISPLAY_MIN_HZ,
+    maxHz: Math.min(DISPLAY_MAX_HZ, effectiveSampleRate / 2),
+    binHz: effectiveSampleRate / FFT_SIZE,
+    binCount,
+  })
+
+  // Peak-relative normalization: the loudest displayed bin gets the top color and
+  // DYNAMIC_RANGE_DB below it is black. Only displayed bins count, so loud energy
+  // above or below the panel can't dim what is shown.
+  let peakDb = findPeakDb(frames, rowMap.lowestBin, rowMap.highestBin)
   if (!Number.isFinite(peakDb)) peakDb = 0
   const floorDb = peakDb - DYNAMIC_RANGE_DB
 
-  // Precompute the bin index for each Y pixel using a log-frequency mapping.
-  // Pixel 0 sits at the top (max freq), pxHeight-1 at the bottom (min freq).
-  const effectiveSampleRate = sampleRate > 0 ? sampleRate : 44100
-  const nyquistHz = effectiveSampleRate / 2
-  const logMin = Math.log(DISPLAY_MIN_HZ)
-  const logMax = Math.log(Math.min(DISPLAY_MAX_HZ, nyquistHz))
-  const logRange = logMax - logMin
-  const yToBin = new Int32Array(pxHeight)
-  for (let y = 0; y < pxHeight; y++) {
-    const yNorm = pxHeight > 1 ? (pxHeight - 1 - y) / (pxHeight - 1) : 0
-    const freqHz = Math.exp(logMin + yNorm * logRange)
-    const binFloat = (freqHz * FFT_SIZE) / effectiveSampleRate
-    yToBin[y] = Math.max(0, Math.min(binCount - 1, Math.round(binFloat)))
-  }
-
+  const column = new Float32Array(pxHeight)
+  let sampledFrameIdx = -1
   for (let x = 0; x < pxWidth; x++) {
     const frameIdx = Math.min(frames.length - 1, Math.floor((x / pxWidth) * frames.length))
-    const frame = frames[frameIdx]
+    if (frameIdx !== sampledFrameIdx) {
+      sampleColumn(frames[frameIdx], rowMap, column)
+      sampledFrameIdx = frameIdx
+    }
     for (let y = 0; y < pxHeight; y++) {
-      const db = frame[yToBin[y]]
-      const t = Math.max(0, Math.min(1, (db - floorDb) / DYNAMIC_RANGE_DB))
+      const t = Math.max(0, Math.min(1, (column[y] - floorDb) / DYNAMIC_RANGE_DB))
       const lutIdx = Math.round(t * (SPECTROGRAM_LUT_SIZE - 1)) * 3
       const offset = (y * pxWidth + x) * 4
       data[offset] = lut[lutIdx]
