@@ -64,6 +64,27 @@ export const sampleColumn = (frame, rowMap, out) => {
   return out
 }
 
+// Remaps a level between the floor (0) and the peak (1) so the middle of the color
+// ramp lands `midpointDb` below the peak. Schlick's bias curve keeps both ends
+// fixed and has finite slope at each, so moving the midpoint never clips colors;
+// a midpoint halfway down the dynamic range leaves levels unchanged.
+export const shapeLevel = (level, midpointDb, dynamicRangeDb) => {
+  const midpointLevel = 1 + midpointDb / dynamicRangeDb
+  const bias = (2 * midpointLevel - 1) / (1 - midpointLevel)
+  return level / (bias * (1 - level) + 1)
+}
+
+// Precomputes the color lookup table offset (index * 3) for each quantized level,
+// keeping the per-pixel cost of the curve to one array read.
+export const buildLevelToLutOffset = ({ midpointDb, dynamicRangeDb, lutSize, resolution }) => {
+  const offsets = new Uint16Array(resolution)
+  for (let i = 0; i < resolution; i++) {
+    const shaped = shapeLevel(i / (resolution - 1), midpointDb, dynamicRangeDb)
+    offsets[i] = Math.round(Math.min(1, Math.max(0, shaped)) * (lutSize - 1)) * 3
+  }
+  return offsets
+}
+
 export const findPeakDb = (frames, lowestBin, highestBin) => {
   let peakDb = -Infinity
   for (const frame of frames) {

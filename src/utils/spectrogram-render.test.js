@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { buildRowBinMap, findPeakDb, sampleColumn } from './spectrogram-render.js'
+import {
+  buildLevelToLutOffset,
+  buildRowBinMap,
+  findPeakDb,
+  sampleColumn,
+  shapeLevel,
+} from './spectrogram-render.js'
 
 const BIN_HZ = 44100 / 1024
 const BIN_COUNT = 512
@@ -63,6 +69,66 @@ describe('sampleColumn', () => {
     frame[12] = -20
     const column = sampleColumn(frame, map, new Float32Array(map.rows))
     expect(column[bottom]).toBeCloseTo(-40 + 20 * map.weight[bottom], 5)
+  })
+})
+
+describe('shapeLevel', () => {
+  const RANGE_DB = 70
+
+  it('keeps the floor black and the peak at the top color for every midpoint', () => {
+    for (const midpointDb of [-55, -35, -15]) {
+      expect(shapeLevel(0, midpointDb, RANGE_DB)).toBe(0)
+      expect(shapeLevel(1, midpointDb, RANGE_DB)).toBeCloseTo(1, 10)
+    }
+  })
+
+  it('puts the middle color exactly midpointDb below the peak', () => {
+    for (const midpointDb of [-55, -45, -25, -15]) {
+      const midpointLevel = 1 + midpointDb / RANGE_DB
+      expect(shapeLevel(midpointLevel, midpointDb, RANGE_DB)).toBeCloseTo(0.5, 10)
+    }
+  })
+
+  it('leaves levels unchanged when the midpoint is halfway down the range', () => {
+    for (const level of [0.1, 0.37, 0.8]) {
+      expect(shapeLevel(level, -35, RANGE_DB)).toBeCloseTo(level, 10)
+    }
+  })
+
+  it('brightens quiet levels for deeper midpoints and darkens them for shallower ones', () => {
+    expect(shapeLevel(0.3, -55, RANGE_DB)).toBeGreaterThan(0.3)
+    expect(shapeLevel(0.3, -15, RANGE_DB)).toBeLessThan(0.3)
+  })
+})
+
+describe('buildLevelToLutOffset', () => {
+  it('maps quantized levels onto RGB offsets across the whole lookup table, in order', () => {
+    const offsets = buildLevelToLutOffset({
+      midpointDb: -45,
+      dynamicRangeDb: 70,
+      lutSize: 256,
+      resolution: 1024,
+    })
+    expect(offsets).toHaveLength(1024)
+    expect(offsets[0]).toBe(0)
+    expect(offsets[1023]).toBe(255 * 3)
+    for (let i = 1; i < offsets.length; i++) {
+      expect(offsets[i]).toBeGreaterThanOrEqual(offsets[i - 1])
+      expect(offsets[i] % 3).toBe(0)
+    }
+  })
+
+  it('stays inside the lookup table even for a midpoint outside the dynamic range', () => {
+    const offsets = buildLevelToLutOffset({
+      midpointDb: -100,
+      dynamicRangeDb: 70,
+      lutSize: 256,
+      resolution: 1024,
+    })
+    for (const offset of offsets) {
+      expect(offset).toBeGreaterThanOrEqual(0)
+      expect(offset).toBeLessThanOrEqual(255 * 3)
+    }
   })
 })
 
