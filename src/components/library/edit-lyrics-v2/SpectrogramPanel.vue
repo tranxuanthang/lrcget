@@ -252,7 +252,7 @@ watch(
   { immediate: false }
 )
 
-// FFT frames are theme-independent, so a theme switch recolours the cached
+// FFT frames are theme-independent, so a theme switch recolors the cached
 // result in place instead of re-fetching audio and recomputing the transform.
 watch(
   () => props.theme,

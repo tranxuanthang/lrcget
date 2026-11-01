@@ -59,15 +59,15 @@
               <button
                 type="button"
                 class="button button-normal h-6 w-5 rounded-r-full rounded-l-none flex items-center justify-center"
-                title="Spectrogram colour theme"
-                aria-label="Spectrogram colour theme"
+                title="Spectrogram color theme"
+                aria-label="Spectrogram color theme"
                 aria-haspopup="menu"
               >
                 <ChevronDown class="w-3 h-3" />
               </button>
 
               <template #popper>
-                <div class="theme-menu" role="menu" aria-label="Spectrogram colour theme">
+                <div class="theme-menu" role="menu" aria-label="Spectrogram color theme">
                   <button
                     v-for="theme in SPECTROGRAM_THEMES"
                     :key="theme.id"
