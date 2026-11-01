@@ -2,14 +2,14 @@ import { rgb } from 'd3-color'
 import { interpolateRgbBasis } from 'd3-interpolate'
 import { interpolateInferno } from 'd3-scale-chromatic'
 
-// Entry count of every theme's colour lookup table. The spectrogram render hot
+// Entry count of every theme's color lookup table. The spectrogram render hot
 // loop indexes it with the normalized magnitude, so this doubles as the
-// quantization resolution of the colour axis.
+// quantization resolution of the color axis.
 export const SPECTROGRAM_LUT_SIZE = 256
 
-// Sample any d3 `t => colour` interpolator into a flat RGB lookup table.
+// Sample any d3 `t => color` interpolator into a flat RGB lookup table.
 //
-// This is the single colour-calculation path shared by every theme: a theme is
+// This is the single color-calculation path shared by every theme: a theme is
 // just an interpolator plugged into this builder. `interpolateInferno` returns
 // "#rrggbb" while `interpolateRgbBasis` returns "rgb(r, g, b)", so values are
 // normalized through d3-color's `rgb()` rather than parsing either format by
@@ -33,7 +33,7 @@ const defineTheme = (id, label, swatchColor, interpolate) =>
     lut: buildLut(interpolate),
   })
 
-// Blue and green are Aegisub-flavoured ramps: a black floor climbing through the
+// Blue and green are Aegisub-flavored ramps: a black floor climbing through the
 // hue to a pale — not white — peak, mirroring how inferno tops out at pale
 // yellow rather than blowing out to white.
 //

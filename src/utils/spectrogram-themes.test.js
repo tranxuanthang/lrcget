@@ -37,7 +37,7 @@ describe('spectrogram themes', () => {
     }
   })
 
-  it('declares a hex swatch colour for every theme', () => {
+  it('declares a hex swatch color for every theme', () => {
     for (const theme of SPECTROGRAM_THEMES) {
       expect(theme.swatchColor).toMatch(/^#[0-9a-f]{6}$/)
     }
