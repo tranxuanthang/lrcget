@@ -108,7 +108,7 @@ trait ServiceAccess {
 
 **Migration v18:** Added `spectrogram_visible` BOOLEAN column to `config_data` (default `1`) for persisting the V2 lyrics editor's per-line spectrogram show/hide toggle across app launches.
 
-**Migration v19:** Added `spectrogram_theme` TEXT column to `config_data` (`NOT NULL DEFAULT 'inferno'`) for persisting the V2 editor's spectrogram colour theme (`inferno` | `blue` | `green`). Unknown or legacy values are normalized back to `inferno` by the frontend theme registry rather than failing to render.
+**Migration v19:** Added `spectrogram_theme` TEXT column to `config_data` (`NOT NULL DEFAULT 'inferno'`) for persisting the V2 editor's spectrogram color theme (`inferno` | `blue` | `green`). Unknown or legacy values are normalized back to `inferno` by the frontend theme registry rather than failing to render.
 
 **Indexes:** All `*_lower` columns + `content_hash`, `scan_status`, `modified_time+file_size` (fingerprint) + lyrics-presence indexes + LRCLIB composite index (`lrclib_instance`, `lrclib_id`)
 
