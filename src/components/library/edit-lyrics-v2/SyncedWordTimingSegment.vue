@@ -415,9 +415,7 @@ const handleSegmentDoubleClick = event => {
 
 // Suppress click bubbling to the timeline (which would seek) whenever the
 // split preview is rendered. `hoverPreview` is non-null whenever the splitter
-// UI is visible, so this guarantees: preview visible -> no seek on click.
-// (During a drag the preview is hidden, but a drag's click targets the
-// timeline rather than a segment, so this handler is not involved.)
+// UI is visible, so this guarantees: splitter preview visible -> no seek on click.
 const handleSegmentClick = event => {
   if (hoverPreview.value) {
     event.stopPropagation()

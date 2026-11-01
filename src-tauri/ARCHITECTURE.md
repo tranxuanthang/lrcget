@@ -106,7 +106,7 @@ trait ServiceAccess {
 - `artists_fts` — indexed `artist_name` (with `artist_id` as UNINDEXED key)
 - Backfilled from existing normalized `*_lower` columns.
 
-**Migration v18:** Added `spectrogram_visible` BOOLEAN column to `config_data` (default `1`) for persisting the V2 lyrics editor's per-line spectrogram show/hide toggle across app launches. (Authored as v17 on the spectrogram branch; renumbered to v18 once `main`'s v17 export-preferences migration merged in, so directory order matches applied-version order.)
+**Migration v18:** Added `spectrogram_visible` BOOLEAN column to `config_data` (default `1`) for persisting the V2 lyrics editor's per-line spectrogram show/hide toggle across app launches.
 
 **Migration v19:** Added `spectrogram_theme` TEXT column to `config_data` (`NOT NULL DEFAULT 'inferno'`) for persisting the V2 editor's spectrogram colour theme (`inferno` | `blue` | `green`). Unknown or legacy values are normalized back to `inferno` by the frontend theme registry rather than failing to render.
 

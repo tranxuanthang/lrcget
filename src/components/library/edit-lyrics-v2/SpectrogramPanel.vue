@@ -99,7 +99,7 @@ const computeSpectrogram = (samples, sampleRate) => {
 
   // fft.js radix-4 real-input transform. realTransform() fills the left half of
   // `spectrum` (the non-redundant bins 0..binCount-1) with interleaved [re, im]
-  // pairs — exactly the bins we render — so completeSpectrum() is unnecessary.
+  // pairs — exactly the bins we render
   const fft = new FFT(FFT_SIZE)
   const input = new Float32Array(FFT_SIZE)
   const spectrum = fft.createComplexArray()
@@ -142,9 +142,7 @@ const renderToCanvas = (canvas, frames, binCount, sampleRate) => {
   const data = imgData.data
 
   // Peak-relative normalization: take the loudest bin across the slice as the
-  // ceiling, display DYNAMIC_RANGE_DB below that. Local min/max wasted the
-  // contrast budget on the noise floor; peak-relative keeps contrast where
-  // speech actually lives.
+  // ceiling, display DYNAMIC_RANGE_DB below that.
   let peakDb = -Infinity
   for (let f = 0; f < frames.length; f++) {
     for (let b = 0; b < binCount; b++) {

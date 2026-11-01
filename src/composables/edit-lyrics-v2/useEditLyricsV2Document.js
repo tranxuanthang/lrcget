@@ -475,8 +475,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     shiftEndTimestampBy(lineIndex, 100)
   }
 
-  // Set a line end to an explicit value (word-lane right-edge trim drag).
-  // Routes through setLineEndMs so the last word's explicit end stays locked.
+  // Set a line end to an explicit value (used for word-lane right-edge trim drag).
   const setLineEndMsTo = (lineIndex, endMs) => {
     if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
       return
