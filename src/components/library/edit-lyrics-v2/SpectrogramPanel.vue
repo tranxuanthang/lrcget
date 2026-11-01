@@ -32,7 +32,17 @@ import {
   SPECTROGRAM_LUT_SIZE,
   getSpectrogramLut,
 } from '@/utils/spectrogram-themes.js'
-import { buildRowBinMap, findPeakDb, sampleColumn } from '@/utils/spectrogram-render.js'
+import {
+  buildLevelToLutOffset,
+  buildRowBinMap,
+  findPeakDb,
+  sampleColumn,
+} from '@/utils/spectrogram-render.js'
+import {
+  DEFAULT_SPECTROGRAM_MAX_HZ,
+  DEFAULT_SPECTROGRAM_MIDPOINT_DB,
+  DEFAULT_SPECTROGRAM_MIN_HZ,
+} from '@/utils/spectrogram-settings.js'
 
 const props = defineProps({
   filePath: { type: String, default: null },
@@ -40,6 +50,9 @@ const props = defineProps({
   endMs: { type: Number, default: 0 },
   height: { type: Number, default: 96 },
   theme: { type: String, default: DEFAULT_SPECTROGRAM_THEME_ID },
+  minHz: { type: Number, default: DEFAULT_SPECTROGRAM_MIN_HZ },
+  maxHz: { type: Number, default: DEFAULT_SPECTROGRAM_MAX_HZ },
+  midpointDb: { type: Number, default: DEFAULT_SPECTROGRAM_MIDPOINT_DB },
 })
 
 const canvasEl = ref(null)
@@ -82,12 +95,7 @@ const CACHE_MAX = 50
 const FFT_SIZE = 1024
 const HOP = 128
 const DYNAMIC_RANGE_DB = 70
-
-// Log-frequency display range. Covers the speech-relevant band (fundamental
-// + first three formants) so it fills the panel vertically rather than being
-// squashed into the bottom ~5% the way a linear Y axis does.
-const DISPLAY_MIN_HZ = 50
-const DISPLAY_MAX_HZ = 8000
+const LEVEL_RESOLUTION = 1024
 
 const computeSpectrogram = (samples, sampleRate) => {
   const win = new Float32Array(FFT_SIZE)
@@ -143,12 +151,19 @@ const renderToCanvas = (canvas, frames, binCount, sampleRate) => {
   const data = imgData.data
 
   const effectiveSampleRate = sampleRate > 0 ? sampleRate : 44100
+  const maxHz = Math.min(props.maxHz, effectiveSampleRate / 2)
   const rowMap = buildRowBinMap({
     rows: pxHeight,
-    minHz: DISPLAY_MIN_HZ,
-    maxHz: Math.min(DISPLAY_MAX_HZ, effectiveSampleRate / 2),
+    minHz: Math.min(props.minHz, maxHz / 2),
+    maxHz,
     binHz: effectiveSampleRate / FFT_SIZE,
     binCount,
+  })
+  const levelToLutOffset = buildLevelToLutOffset({
+    midpointDb: props.midpointDb,
+    dynamicRangeDb: DYNAMIC_RANGE_DB,
+    lutSize: SPECTROGRAM_LUT_SIZE,
+    resolution: LEVEL_RESOLUTION,
   })
 
   // Peak-relative normalization: the loudest displayed bin gets the top color and
@@ -167,8 +182,8 @@ const renderToCanvas = (canvas, frames, binCount, sampleRate) => {
       sampledFrameIdx = frameIdx
     }
     for (let y = 0; y < pxHeight; y++) {
-      const t = Math.max(0, Math.min(1, (column[y] - floorDb) / DYNAMIC_RANGE_DB))
-      const lutIdx = Math.round(t * (SPECTROGRAM_LUT_SIZE - 1)) * 3
+      const level = Math.max(0, Math.min(1, (column[y] - floorDb) / DYNAMIC_RANGE_DB))
+      const lutIdx = levelToLutOffset[Math.round(level * (LEVEL_RESOLUTION - 1))]
       const offset = (y * pxWidth + x) * 4
       data[offset] = lut[lutIdx]
       data[offset + 1] = lut[lutIdx + 1]
@@ -247,10 +262,11 @@ watch(
   { immediate: false }
 )
 
-// FFT frames are theme-independent, so a theme switch recolors the cached
-// result in place instead of re-fetching audio and recomputing the transform.
+// FFT frames don't depend on the display settings, so a theme, frequency range or
+// midpoint change redraws the cached result in place instead of re-fetching audio
+// and recomputing the transform.
 watch(
-  () => props.theme,
+  () => [props.theme, props.minHz, props.maxHz, props.midpointDb],
   () => {
     const cached = cacheKey.value ? cache.get(cacheKey.value) : null
     if (cached) renderToCanvas(canvasEl.value, cached.frames, cached.binCount, cached.sampleRate)
