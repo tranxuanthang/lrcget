@@ -165,6 +165,9 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
         volume,
         spectrogram_visible,
         spectrogram_theme,
+        spectrogram_min_hz,
+        spectrogram_max_hz,
+        spectrogram_midpoint_db,
         auto_export_enabled,
         export_lrc,
         export_txt,
@@ -187,6 +190,9 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
             volume: r.get("volume")?,
             spectrogram_visible: r.get("spectrogram_visible")?,
             spectrogram_theme: r.get("spectrogram_theme")?,
+            spectrogram_min_hz: r.get("spectrogram_min_hz")?,
+            spectrogram_max_hz: r.get("spectrogram_max_hz")?,
+            spectrogram_midpoint_db: r.get("spectrogram_midpoint_db")?,
         })
     })?;
     Ok(row)
@@ -282,6 +288,23 @@ pub fn set_spectrogram_visible_config(visible: bool, db: &Connection) -> Result<
 pub fn set_spectrogram_theme_config(theme: &str, db: &Connection) -> Result<()> {
     let mut statement = db.prepare("UPDATE config_data SET spectrogram_theme = ? WHERE 1")?;
     statement.execute([theme])?;
+    Ok(())
+}
+
+pub fn set_spectrogram_frequency_range_config(
+    min_hz: f64,
+    max_hz: f64,
+    db: &Connection,
+) -> Result<()> {
+    let mut statement = db
+        .prepare("UPDATE config_data SET spectrogram_min_hz = ?, spectrogram_max_hz = ? WHERE 1")?;
+    statement.execute((min_hz, max_hz))?;
+    Ok(())
+}
+
+pub fn set_spectrogram_midpoint_config(midpoint_db: f64, db: &Connection) -> Result<()> {
+    let mut statement = db.prepare("UPDATE config_data SET spectrogram_midpoint_db = ? WHERE 1")?;
+    statement.execute([midpoint_db])?;
     Ok(())
 }
 
