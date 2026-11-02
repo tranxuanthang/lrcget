@@ -4,8 +4,6 @@ import {
   DEFAULT_SPECTROGRAM_MIDPOINT_DB,
   DEFAULT_SPECTROGRAM_MIN_HZ,
   SPECTROGRAM_AXIS_STOPS_HZ,
-  SPECTROGRAM_MAX_HZ_STOPS,
-  SPECTROGRAM_MIN_HZ_STOPS,
   SPECTROGRAM_MIN_STOP_GAP,
   clampSpectrogramMaxStop,
   clampSpectrogramMinStop,
@@ -16,9 +14,7 @@ import {
   formatSpectrogramMidpoint,
   formatSpectrogramRangeReadout,
   normalizeSpectrogramFrequencyRange,
-  normalizeSpectrogramMaxHz,
   normalizeSpectrogramMidpointDb,
-  normalizeSpectrogramMinHz,
   spectrogramStopIndex,
 } from './spectrogram-settings.js'
 
@@ -87,32 +83,18 @@ describe('spectrogram frequency range', () => {
 })
 
 describe('spectrogram settings', () => {
-  it('splits the octave axis into separate halves for the bottom and top handles', () => {
-    expect(SPECTROGRAM_AXIS_STOPS_HZ).toEqual([
-      ...SPECTROGRAM_MIN_HZ_STOPS,
-      1000,
-      ...SPECTROGRAM_MAX_HZ_STOPS,
-    ])
-    expect(Math.max(...SPECTROGRAM_MIN_HZ_STOPS) * 4).toBeLessThanOrEqual(
-      Math.min(...SPECTROGRAM_MAX_HZ_STOPS)
-    )
-    expect(SPECTROGRAM_MIN_HZ_STOPS).toContain(DEFAULT_SPECTROGRAM_MIN_HZ)
-    expect(SPECTROGRAM_MAX_HZ_STOPS).toContain(DEFAULT_SPECTROGRAM_MAX_HZ)
+  it('spaces the axis stops one octave apart', () => {
+    for (let i = 1; i < SPECTROGRAM_AXIS_STOPS_HZ.length; i++) {
+      expect(SPECTROGRAM_AXIS_STOPS_HZ[i]).toBe(SPECTROGRAM_AXIS_STOPS_HZ[i - 1] * 2)
+    }
   })
 
-  it('snaps stored frequencies to the nearest stop within each handle range', () => {
-    expect(normalizeSpectrogramMinHz(50)).toBe(62.5)
-    expect(normalizeSpectrogramMinHz(300)).toBe(250)
-    expect(normalizeSpectrogramMinHz(1000)).toBe(500)
-    expect(normalizeSpectrogramMaxHz(20000)).toBe(16000)
-    expect(normalizeSpectrogramMaxHz(1000)).toBe(2000)
-    expect(normalizeSpectrogramMaxHz(8000)).toBe(8000)
-  })
-
-  it('falls back to the defaults for missing or invalid frequencies', () => {
+  it('falls back to the default range for missing or invalid frequencies', () => {
     for (const value of [undefined, null, NaN, 0, -100, 'abc']) {
-      expect(normalizeSpectrogramMinHz(value)).toBe(DEFAULT_SPECTROGRAM_MIN_HZ)
-      expect(normalizeSpectrogramMaxHz(value)).toBe(DEFAULT_SPECTROGRAM_MAX_HZ)
+      expect(normalizeSpectrogramFrequencyRange(value, value)).toEqual({
+        minHz: DEFAULT_SPECTROGRAM_MIN_HZ,
+        maxHz: DEFAULT_SPECTROGRAM_MAX_HZ,
+      })
     }
   })
 
