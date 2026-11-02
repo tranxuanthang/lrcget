@@ -37,11 +37,13 @@ import {
   buildRowBinMap,
   findPeakDb,
   sampleColumn,
+  spectrogramFftSize,
 } from '@/utils/spectrogram-render.js'
 import {
   DEFAULT_SPECTROGRAM_MAX_HZ,
   DEFAULT_SPECTROGRAM_MIDPOINT_DB,
   DEFAULT_SPECTROGRAM_MIN_HZ,
+  displayedSpectrogramRange,
 } from '@/utils/spectrogram-settings.js'
 
 const props = defineProps({
@@ -60,7 +62,7 @@ const containerEl = ref(null)
 const isLoading = ref(false)
 const errorMessage = ref(null)
 
-const emit = defineEmits(['seek'])
+const emit = defineEmits(['seek', 'sample-rate'])
 
 const handleSeekClick = event => {
   if (errorMessage.value) return
@@ -92,32 +94,33 @@ const isValidRange = computed(
 const cache = new Map()
 const CACHE_MAX = 50
 
-const FFT_SIZE = 1024
-const HOP = 128
+const HOPS_PER_WINDOW = 8
 const DYNAMIC_RANGE_DB = 70
 const LEVEL_RESOLUTION = 1024
 
 const computeSpectrogram = (samples, sampleRate) => {
-  const win = new Float32Array(FFT_SIZE)
-  for (let i = 0; i < FFT_SIZE; i++) {
-    win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (FFT_SIZE - 1))
+  const fftSize = spectrogramFftSize(sampleRate)
+  const hop = fftSize / HOPS_PER_WINDOW
+  const win = new Float32Array(fftSize)
+  for (let i = 0; i < fftSize; i++) {
+    win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (fftSize - 1))
   }
 
-  const totalFrames = Math.max(1, Math.floor((samples.length - FFT_SIZE) / HOP) + 1)
-  const binCount = FFT_SIZE / 2
+  const totalFrames = Math.max(1, Math.floor((samples.length - fftSize) / hop) + 1)
+  const binCount = fftSize / 2
 
   // fft.js radix-4 real-input transform. realTransform() fills the left half of
   // `spectrum` (the non-redundant bins 0..binCount-1) with interleaved [re, im]
   // pairs — exactly the bins we render
-  const fft = new FFT(FFT_SIZE)
-  const input = new Float32Array(FFT_SIZE)
+  const fft = new FFT(fftSize)
+  const input = new Float32Array(fftSize)
   const spectrum = fft.createComplexArray()
 
   const frames = new Array(totalFrames)
 
   for (let frame = 0; frame < totalFrames; frame++) {
-    const offset = frame * HOP
-    for (let i = 0; i < FFT_SIZE; i++) {
+    const offset = frame * hop
+    for (let i = 0; i < fftSize; i++) {
       input[i] = (samples[offset + i] || 0) * win[i]
     }
     fft.realTransform(spectrum, input)
@@ -130,10 +133,10 @@ const computeSpectrogram = (samples, sampleRate) => {
     }
     frames[frame] = mags
   }
-  return { frames, binCount, sampleRate }
+  return { frames, binCount, fftSize, sampleRate }
 }
 
-const renderToCanvas = (canvas, frames, binCount, sampleRate) => {
+const renderToCanvas = (canvas, { frames, binCount, fftSize, sampleRate }) => {
   if (!canvas || frames.length === 0) return
 
   const lut = getSpectrogramLut(props.theme)
@@ -150,13 +153,12 @@ const renderToCanvas = (canvas, frames, binCount, sampleRate) => {
   const imgData = ctx.createImageData(pxWidth, pxHeight)
   const data = imgData.data
 
-  const effectiveSampleRate = sampleRate > 0 ? sampleRate : 44100
-  const maxHz = Math.min(props.maxHz, effectiveSampleRate / 2)
+  const range = displayedSpectrogramRange(props.minHz, props.maxHz, sampleRate)
   const rowMap = buildRowBinMap({
     rows: pxHeight,
-    minHz: Math.min(props.minHz, maxHz / 2),
-    maxHz,
-    binHz: effectiveSampleRate / FFT_SIZE,
+    minHz: range.minHz,
+    maxHz: range.maxHz,
+    binHz: sampleRate / fftSize,
     binCount,
   })
   const levelToLutOffset = buildLevelToLutOffset({
@@ -196,6 +198,11 @@ const renderToCanvas = (canvas, frames, binCount, sampleRate) => {
 
 let activeRequestKey = null
 
+const drawLoadedSpectrogram = spectrogram => {
+  renderToCanvas(canvasEl.value, spectrogram)
+  emit('sample-rate', spectrogram.sampleRate)
+}
+
 const refresh = async () => {
   errorMessage.value = null
 
@@ -212,7 +219,7 @@ const refresh = async () => {
 
   const cached = cache.get(key)
   if (cached) {
-    renderToCanvas(canvasEl.value, cached.frames, cached.binCount, cached.sampleRate)
+    drawLoadedSpectrogram(cached)
     return
   }
 
@@ -226,11 +233,12 @@ const refresh = async () => {
     if (activeRequestKey !== key) return
 
     const samples = response.samples
-    if (!samples || samples.length < FFT_SIZE) {
+    const sampleRate = response.sampleRate > 0 ? response.sampleRate : 44100
+    if (!samples || samples.length < spectrogramFftSize(sampleRate)) {
       errorMessage.value = 'Audio slice too short'
       return
     }
-    const result = computeSpectrogram(samples, response.sampleRate)
+    const result = computeSpectrogram(samples, sampleRate)
 
     if (cache.size >= CACHE_MAX) {
       cache.delete(cache.keys().next().value)
@@ -238,7 +246,7 @@ const refresh = async () => {
     cache.set(key, result)
 
     if (activeRequestKey !== key) return
-    renderToCanvas(canvasEl.value, result.frames, result.binCount, result.sampleRate)
+    drawLoadedSpectrogram(result)
   } catch (err) {
     if (activeRequestKey === key) {
       errorMessage.value = typeof err === 'string' ? err : err?.message || 'Failed to load audio'
@@ -269,7 +277,7 @@ watch(
   () => [props.theme, props.minHz, props.maxHz, props.midpointDb],
   () => {
     const cached = cacheKey.value ? cache.get(cacheKey.value) : null
-    if (cached) renderToCanvas(canvasEl.value, cached.frames, cached.binCount, cached.sampleRate)
+    if (cached) renderToCanvas(canvasEl.value, cached)
   }
 )
 
@@ -279,7 +287,7 @@ onMounted(() => {
   if (canvasEl.value && typeof ResizeObserver !== 'undefined') {
     resizeObserver = new ResizeObserver(() => {
       const cached = cacheKey.value ? cache.get(cacheKey.value) : null
-      if (cached) renderToCanvas(canvasEl.value, cached.frames, cached.binCount, cached.sampleRate)
+      if (cached) renderToCanvas(canvasEl.value, cached)
     })
     resizeObserver.observe(canvasEl.value)
   }
