@@ -45,7 +45,7 @@ jobs:
             gir1.2-javascriptcoregtk-4.1=2.44.0-2 \
             gir1.2-webkit2-4.1=2.44.0-2
       - name: install frontend dependencies
-        run: npm install # change this to npm or pnpm depending on which one you use
+        run: npm ci # Install dependencies with the exact versions in package-lock.json (as opposed to npm i, which silently modifies versions).
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

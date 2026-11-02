@@ -11,8 +11,11 @@
       </div>
       <div class="text-[0.7rem] text-neutral-500 dark:text-neutral-500 flex gap-3">
         <span>{{ successCount }} FOUND</span>
-        <span>{{ failureCount }} NOT FOUND</span>
+        <span>{{ failureCount }} FAILED</span>
         <span>{{ totalCount }} TOTAL</span>
+      </div>
+      <div v-if="cooldownRemaining > 0" class="text-[0.7rem] text-amber-700 dark:text-amber-400">
+        LRCLIB rate limit — resuming in {{ cooldownRemaining }}s
       </div>
     </div>
 
@@ -59,6 +62,7 @@ const {
   failureCount,
   totalCount,
   downloadedCount,
+  cooldownRemaining,
   startOver,
   stopDownloading,
   log,
