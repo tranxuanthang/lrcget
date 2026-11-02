@@ -1,3 +1,13 @@
+// The FFT window scales with the sample rate (to the nearest power of two) so every file
+// gets roughly the bin width (~43 Hz) and window length (~23 ms) that 1024 samples give at
+// 44.1 kHz. A fixed window would blur onsets in low-rate files and smear the lowest
+// octaves into one or two bins in high-rate ones.
+export const spectrogramFftSize = sampleRate => {
+  const scaled = (1024 * sampleRate) / 44100
+  if (!Number.isFinite(scaled) || scaled <= 0) return 1024
+  return Math.min(8192, Math.max(256, 2 ** Math.round(Math.log2(scaled))))
+}
+
 // FFT bins are evenly spaced in Hz but the panel's rows are evenly spaced in log Hz,
 // so near the top one row covers many bins and near the bottom one bin covers
 // several rows. Rows spanning at least a full bin show the loudest bin they cover,

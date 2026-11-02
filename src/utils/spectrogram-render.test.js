@@ -5,7 +5,35 @@ import {
   findPeakDb,
   sampleColumn,
   shapeLevel,
+  spectrogramFftSize,
 } from './spectrogram-render.js'
+
+describe('spectrogramFftSize', () => {
+  it('scales the window with the sample rate to the nearest power of two', () => {
+    expect(spectrogramFftSize(44100)).toBe(1024)
+    expect(spectrogramFftSize(48000)).toBe(1024)
+    expect(spectrogramFftSize(22050)).toBe(512)
+    expect(spectrogramFftSize(16000)).toBe(512)
+    expect(spectrogramFftSize(96000)).toBe(2048)
+    expect(spectrogramFftSize(192000)).toBe(4096)
+  })
+
+  it('keeps the bin width close to 43 Hz for common sample rates', () => {
+    for (const sampleRate of [22050, 44100, 48000, 88200, 96000, 176400, 192000]) {
+      const binHz = sampleRate / spectrogramFftSize(sampleRate)
+      expect(binHz).toBeGreaterThan(40)
+      expect(binHz).toBeLessThan(50)
+    }
+  })
+
+  it('stays within bounds and falls back to 1024 for unusable sample rates', () => {
+    expect(spectrogramFftSize(1000)).toBe(256)
+    expect(spectrogramFftSize(10_000_000)).toBe(8192)
+    for (const value of [0, -44100, NaN, undefined]) {
+      expect(spectrogramFftSize(value)).toBe(1024)
+    }
+  })
+})
 
 const BIN_HZ = 44100 / 1024
 const BIN_COUNT = 512
