@@ -111,7 +111,7 @@ trait ServiceAccess {
 
 **Migration v19:** Added `spectrogram_theme` TEXT column to `config_data` (`NOT NULL DEFAULT 'inferno'`) for persisting the V2 editor's spectrogram color theme (`inferno` | `blue` | `green`). Unknown or legacy values are normalized back to `inferno` by the frontend theme registry rather than failing to render.
 
-**Migration v20:** Added `spectrogram_min_hz` (REAL, default `62.5`), `spectrogram_max_hz` (REAL, default `8000`) and `spectrogram_midpoint_db` (REAL, default `-35`) to `config_data` for the V2 editor's spectrogram frequency range and color-curve midpoint. The frontend snaps stored values to its octave stops and 5 dB steps.
+**Migration v20:** Added `spectrogram_min_hz` (REAL, default `62.5`), `spectrogram_max_hz` (REAL, default `8000`) and `spectrogram_midpoint_db` (REAL, default `-35`) to `config_data` for the V2 editor's spectrogram frequency range and color-curve midpoint. The frontend snaps stored values to its octave stops and 5 dB steps, and widens a stored range narrower than two octaves.
 
 **Indexes:** All `*_lower` columns + `content_hash`, `scan_status`, `modified_time+file_size` (fingerprint) + lyrics-presence indexes + LRCLIB composite index (`lrclib_instance`, `lrclib_id`)
 
