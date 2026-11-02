@@ -102,7 +102,11 @@
         :class="{ 'settings-drawer-shell-open': isSettingsOpen }"
         :inert="!isSettingsOpen"
       >
-        <SpectrogramSettingsDrawer ref="settingsDrawer" @close="closeSettings" />
+        <SpectrogramSettingsDrawer
+          ref="settingsDrawer"
+          :sample-rate="spectrogramSampleRate"
+          @close="closeSettings"
+        />
       </div>
 
       <div class="relative flex flex-col flex-1 min-h-0">
@@ -117,6 +121,7 @@
         :midpoint-db="spectrogramMidpointDb"
         class="mb-2 shrink-0"
         @seek="$emit('seek', $event)"
+        @sample-rate="spectrogramSampleRate = $event"
       />
 
       <!-- Timeline with word segments -->
@@ -325,6 +330,7 @@ const {
 
 const isSettingsOpen = ref(false)
 const settingsDrawer = ref(null)
+const spectrogramSampleRate = ref(null)
 
 const openSettings = async () => {
   if (!spectrogramVisible.value) {

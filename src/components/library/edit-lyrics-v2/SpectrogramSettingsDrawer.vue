@@ -51,14 +51,13 @@
     >
       Frequency
     </label>
-    <div class="frequency-axis col-start-2 row-start-2">
+    <div class="frequency-axis col-start-2 row-start-2" @mousedown.self="handleAxisMouseDown">
       <div class="axis-track" />
       <div class="axis-band" :style="bandStyle" />
       <span
         v-for="(hz, index) in SPECTROGRAM_AXIS_STOPS_HZ"
         :key="hz"
         class="axis-stop"
-        :class="{ 'axis-stop-marker': index === MIDPOINT_STOP_INDEX }"
         :style="{ left: stopCenter(index) }"
       >
         {{ formatSpectrogramAxisStop(hz) }}
@@ -70,10 +69,9 @@
         class="range-input frequency-input"
         tabindex="0"
         min="0"
-        :max="SPECTROGRAM_MIN_HZ_STOPS.length - 1"
+        :max="AXIS_INTERVALS"
         step="1"
         :value="minHzIndex"
-        :style="{ left: '0px', width: HANDLE_INPUT_WIDTH }"
         aria-label="Lowest frequency"
         :aria-valuetext="formatSpectrogramFrequency(spectrogramMinHz)"
         @input="handleMinHzInput"
@@ -85,19 +83,16 @@
         class="range-input frequency-input"
         tabindex="0"
         min="0"
-        :max="SPECTROGRAM_MAX_HZ_STOPS.length - 1"
+        :max="AXIS_INTERVALS"
         step="1"
         :value="maxHzIndex"
-        :style="{ left: stopOffset(MAX_HZ_FIRST_STOP_INDEX), width: HANDLE_INPUT_WIDTH }"
         aria-label="Highest frequency"
         :aria-valuetext="formatSpectrogramFrequency(spectrogramMaxHz)"
         @input="handleMaxHzInput"
         @change="saveSpectrogramFrequencyRange"
       />
     </div>
-    <span class="readout col-start-3 row-start-2 self-start">
-      {{ formatSpectrogramFrequencyRange(spectrogramMinHz, spectrogramMaxHz) }}
-    </span>
+    <span class="readout col-start-3 row-start-2 self-start">{{ frequencyReadout }}</span>
 
     <label
       for="spectrogram-settings-sensitivity"
@@ -146,16 +141,22 @@ import { globalShortcutBindings } from '@/composables/edit-lyrics-v2/shortcutReg
 import { SPECTROGRAM_THEMES } from '@/utils/spectrogram-themes.js'
 import {
   SPECTROGRAM_AXIS_STOPS_HZ,
-  SPECTROGRAM_MAX_HZ_STOPS,
   SPECTROGRAM_MIDPOINT_DEEPEST_DB,
   SPECTROGRAM_MIDPOINT_SHALLOWEST_DB,
   SPECTROGRAM_MIDPOINT_STEP_DB,
-  SPECTROGRAM_MIN_HZ_STOPS,
+  clampSpectrogramMaxStop,
+  clampSpectrogramMinStop,
+  displayedSpectrogramRange,
   formatSpectrogramAxisStop,
   formatSpectrogramFrequency,
-  formatSpectrogramFrequencyRange,
   formatSpectrogramMidpoint,
+  formatSpectrogramRangeReadout,
+  spectrogramStopIndex,
 } from '@/utils/spectrogram-settings.js'
+
+const props = defineProps({
+  sampleRate: { type: Number, default: null },
+})
 
 const emit = defineEmits(['close'])
 
@@ -174,13 +175,12 @@ const {
 
 // Native range thumbs travel from one radius in from each end of the input, so with
 // 14px thumbs stop i of the 9-stop axis is centered at 7px + i/8 of the remaining width.
-// Each handle's input spans only its own four stops, so the two never overlap.
+// Both handle inputs span the whole axis and overlap; they ignore pointer events except
+// on their thumbs, and the minimum gap keeps the two thumbs from ever stacking.
+const THUMB_PX = 14
 const AXIS_INTERVALS = SPECTROGRAM_AXIS_STOPS_HZ.length - 1
-const MIDPOINT_STOP_INDEX = SPECTROGRAM_MIN_HZ_STOPS.length
-const MAX_HZ_FIRST_STOP_INDEX = SPECTROGRAM_MIN_HZ_STOPS.length + 1
-const stopOffset = index => `calc((100% - 14px) * ${index} / ${AXIS_INTERVALS})`
-const stopCenter = index => `calc(7px + (100% - 14px) * ${index} / ${AXIS_INTERVALS})`
-const HANDLE_INPUT_WIDTH = `calc((100% - 14px) * ${SPECTROGRAM_MIN_HZ_STOPS.length - 1} / ${AXIS_INTERVALS} + 14px)`
+const stopCenter = index =>
+  `calc(${THUMB_PX / 2}px + (100% - ${THUMB_PX}px) * ${index} / ${AXIS_INTERVALS})`
 
 const drawerElement = ref(null)
 const minHzInput = ref(null)
@@ -200,28 +200,65 @@ const setSwatchElement = (themeId, element) => {
 const selectedThemeLabel = computed(
   () => SPECTROGRAM_THEMES.find(theme => theme.id === spectrogramTheme.value)?.label ?? ''
 )
-const minHzIndex = computed(() => SPECTROGRAM_MIN_HZ_STOPS.indexOf(spectrogramMinHz.value))
-const maxHzIndex = computed(() => SPECTROGRAM_MAX_HZ_STOPS.indexOf(spectrogramMaxHz.value))
-const bandStyle = computed(() => {
-  const firstStop = minHzIndex.value
-  const lastStop = MAX_HZ_FIRST_STOP_INDEX + maxHzIndex.value
-  return {
-    left: stopCenter(firstStop),
-    width: `calc((100% - 14px) * ${lastStop - firstStop} / ${AXIS_INTERVALS})`,
-  }
+const minHzIndex = computed(() => spectrogramStopIndex(spectrogramMinHz.value))
+const maxHzIndex = computed(() => spectrogramStopIndex(spectrogramMaxHz.value))
+const bandStyle = computed(() => ({
+  left: stopCenter(minHzIndex.value),
+  width: `calc((100% - ${THUMB_PX}px) * ${maxHzIndex.value - minHzIndex.value} / ${AXIS_INTERVALS})`,
+}))
+
+const frequencyReadout = computed(() => {
+  const range = { minHz: spectrogramMinHz.value, maxHz: spectrogramMaxHz.value }
+  const displayedRange = props.sampleRate
+    ? displayedSpectrogramRange(range.minHz, range.maxHz, props.sampleRate)
+    : null
+  return formatSpectrogramRangeReadout(range, displayedRange)
 })
 
-const handleMinHzInput = event =>
-  setSpectrogramFrequencyRange(
-    SPECTROGRAM_MIN_HZ_STOPS[Number(event.target.value)],
-    spectrogramMaxHz.value
-  )
+const setMinHzStop = index =>
+  setSpectrogramFrequencyRange(SPECTROGRAM_AXIS_STOPS_HZ[index], spectrogramMaxHz.value)
 
-const handleMaxHzInput = event =>
-  setSpectrogramFrequencyRange(
-    spectrogramMinHz.value,
-    SPECTROGRAM_MAX_HZ_STOPS[Number(event.target.value)]
+const setMaxHzStop = index =>
+  setSpectrogramFrequencyRange(spectrogramMinHz.value, SPECTROGRAM_AXIS_STOPS_HZ[index])
+
+// The clamped value has to be written back into the input: once the state sits at the limit,
+// Vue has nothing to re-render, and the thumb would stay inside the minimum gap. WebKit treats
+// that write as the input's new change baseline, so a drag released against the limit never
+// fires change; a clamped move is saved right away instead.
+const handleMinHzInput = event => {
+  const requestedIndex = Number(event.target.value)
+  const index = clampSpectrogramMinStop(requestedIndex, maxHzIndex.value)
+  event.target.value = String(index)
+  setMinHzStop(index)
+  if (index !== requestedIndex) saveSpectrogramFrequencyRange()
+}
+
+const handleMaxHzInput = event => {
+  const requestedIndex = Number(event.target.value)
+  const index = clampSpectrogramMaxStop(requestedIndex, minHzIndex.value)
+  event.target.value = String(index)
+  setMaxHzStop(index)
+  if (index !== requestedIndex) saveSpectrogramFrequencyRange()
+}
+
+// A primary-button press on the bare axis moves the nearer handle to the pressed stop.
+const handleAxisMouseDown = event => {
+  if (event.button !== 0) return
+  const rect = event.currentTarget.getBoundingClientRect()
+  const stopWidth = (rect.width - THUMB_PX) / AXIS_INTERVALS
+  const pressedStop = Math.max(
+    0,
+    Math.min(AXIS_INTERVALS, Math.round((event.clientX - rect.left - THUMB_PX / 2) / stopWidth))
   )
+  if (Math.abs(pressedStop - maxHzIndex.value) < Math.abs(pressedStop - minHzIndex.value)) {
+    setMaxHzStop(clampSpectrogramMaxStop(pressedStop, minHzIndex.value))
+    focusControl(maxHzInput.value)
+  } else {
+    setMinHzStop(clampSpectrogramMinStop(pressedStop, maxHzIndex.value))
+    focusControl(minHzInput.value)
+  }
+  saveSpectrogramFrequencyRange()
+}
 
 const handleSensitivityInput = event => setSpectrogramMidpointDb(-Number(event.target.value))
 
@@ -406,7 +443,7 @@ defineExpose({ focusFirstControl })
 }
 
 .frequency-axis {
-  @apply relative h-full;
+  @apply relative h-full cursor-pointer;
 }
 
 .axis-track {
@@ -424,10 +461,6 @@ defineExpose({ focusFirstControl })
   top: 1.25rem;
 }
 
-.axis-stop-marker {
-  @apply text-neutral-400 dark:text-neutral-500;
-}
-
 .range-input {
   @apply m-0 h-3.5 cursor-pointer appearance-none bg-transparent;
 }
@@ -437,7 +470,15 @@ defineExpose({ focusFirstControl })
 }
 
 .frequency-input {
-  @apply absolute top-0;
+  @apply absolute left-0 top-0 w-full pointer-events-none;
+}
+
+.frequency-input::-webkit-slider-thumb {
+  pointer-events: auto;
+}
+
+.frequency-input::-moz-range-thumb {
+  pointer-events: auto;
 }
 
 .sensitivity-input {
