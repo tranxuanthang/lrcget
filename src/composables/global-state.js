@@ -8,9 +8,8 @@ import {
   DEFAULT_SPECTROGRAM_MAX_HZ,
   DEFAULT_SPECTROGRAM_MIDPOINT_DB,
   DEFAULT_SPECTROGRAM_MIN_HZ,
-  normalizeSpectrogramMaxHz,
+  normalizeSpectrogramFrequencyRange,
   normalizeSpectrogramMidpointDb,
-  normalizeSpectrogramMinHz,
 } from '@/utils/spectrogram-settings.js'
 
 const isHotkeyState = ref(true)
@@ -89,8 +88,7 @@ export function useGlobalState() {
   }
 
   const loadSpectrogramDisplay = ({ minHz, maxHz, midpointDb }) => {
-    spectrogramMinHzState.value = normalizeSpectrogramMinHz(minHz)
-    spectrogramMaxHzState.value = normalizeSpectrogramMaxHz(maxHz)
+    setSpectrogramFrequencyRange(minHz, maxHz)
     spectrogramMidpointDbState.value = normalizeSpectrogramMidpointDb(midpointDb)
     lastSavedSpectrogramMinHz = requestedSpectrogramMinHz = spectrogramMinHzState.value
     lastSavedSpectrogramMaxHz = requestedSpectrogramMaxHz = spectrogramMaxHzState.value
@@ -99,8 +97,9 @@ export function useGlobalState() {
   }
 
   const setSpectrogramFrequencyRange = (minHz, maxHz) => {
-    spectrogramMinHzState.value = normalizeSpectrogramMinHz(minHz)
-    spectrogramMaxHzState.value = normalizeSpectrogramMaxHz(maxHz)
+    const range = normalizeSpectrogramFrequencyRange(minHz, maxHz)
+    spectrogramMinHzState.value = range.minHz
+    spectrogramMaxHzState.value = range.maxHz
   }
 
   const saveSpectrogramFrequencyRange = async () => {

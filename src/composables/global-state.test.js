@@ -32,6 +32,21 @@ describe('spectrogram display settings', () => {
     expect(state.spectrogramMidpointDb.value).toBe(-40)
   })
 
+  it('lets the bottom use stops above 1 kHz and repairs ranges closer than two octaves', async () => {
+    const state = await freshGlobalState()
+    state.loadSpectrogramDisplay({ minHz: 2000, maxHz: 8000, midpointDb: -35 })
+    expect(state.spectrogramMinHz.value).toBe(2000)
+    expect(state.spectrogramMaxHz.value).toBe(8000)
+
+    state.loadSpectrogramDisplay({ minHz: 4000, maxHz: 4000, midpointDb: -35 })
+    expect(state.spectrogramMinHz.value).toBe(4000)
+    expect(state.spectrogramMaxHz.value).toBe(16000)
+
+    state.setSpectrogramFrequencyRange(500, 1000)
+    expect(state.spectrogramMinHz.value).toBe(500)
+    expect(state.spectrogramMaxHz.value).toBe(2000)
+  })
+
   it('applies changes immediately and persists them only when saved', async () => {
     const state = await freshGlobalState()
     state.loadSpectrogramDisplay({ minHz: 62.5, maxHz: 8000, midpointDb: -35 })
