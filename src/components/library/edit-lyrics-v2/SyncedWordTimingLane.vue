@@ -55,41 +55,19 @@
               <EyeOff v-else class="w-3.5 h-3.5" />
             </button>
 
-            <VDropdown theme="lrcget-dropdown" placement="bottom-end">
-              <button
-                type="button"
-                class="button button-normal h-6 w-5 rounded-r-full rounded-l-none flex items-center justify-center"
-                title="Spectrogram color theme"
-                aria-label="Spectrogram color theme"
-                aria-haspopup="menu"
-              >
-                <ChevronDown class="w-3 h-3" />
-              </button>
-
-              <template #popper>
-                <div class="theme-menu" role="menu" aria-label="Spectrogram color theme">
-                  <button
-                    v-for="theme in SPECTROGRAM_THEMES"
-                    :key="theme.id"
-                    v-close-popper
-                    type="button"
-                    role="menuitemradio"
-                    :aria-checked="isSpectrogramThemeSelected(theme.id)"
-                    :aria-label="theme.label"
-                    :title="theme.label"
-                    class="theme-option"
-                    :class="{ 'theme-option-selected': isSpectrogramThemeSelected(theme.id) }"
-                    @click="handleSelectSpectrogramTheme(theme.id)"
-                  >
-                    <span
-                      class="h-4 w-4 shrink-0 rounded-full ring-1 ring-black/10 dark:ring-white/15"
-                      :style="{ backgroundColor: theme.swatchColor }"
-                      aria-hidden="true"
-                    />
-                  </button>
-                </div>
-              </template>
-            </VDropdown>
+            <button
+              type="button"
+              class="button button-normal h-6 w-5 rounded-r-full rounded-l-none flex items-center justify-center"
+              :class="{ 'settings-toggle-open': isSettingsOpen }"
+              title="Spectrogram settings"
+              aria-label="Spectrogram settings"
+              :aria-controls="hasSpectrogramSlot ? 'spectrogram-settings-drawer' : undefined"
+              :aria-expanded="isSettingsOpen"
+              @click="toggleSettings"
+              @keydown="handleSettingsToggleKeydown"
+            >
+              <Tune class="w-3.5 h-3.5" />
+            </button>
           </div>
           <button
             class="button button-normal text-xs px-2 py-1 rounded flex items-center gap-1"
@@ -118,6 +96,15 @@
         </div>
       </div>
 
+      <div
+        v-if="hasSpectrogramSlot"
+        class="settings-drawer-shell"
+        :class="{ 'settings-drawer-shell-open': isSettingsOpen }"
+        :inert="!isSettingsOpen"
+      >
+        <SpectrogramSettingsDrawer ref="settingsDrawer" @close="closeSettings" />
+      </div>
+
       <div class="relative flex flex-col flex-1 min-h-0">
       <SpectrogramPanel
         v-if="filePath && spectrogramVisible"
@@ -125,6 +112,9 @@
         :start-ms="laneStartMs"
         :end-ms="laneEndMs"
         :theme="spectrogramTheme"
+        :min-hz="spectrogramMinHz"
+        :max-hz="spectrogramMaxHz"
+        :midpoint-db="spectrogramMidpointDb"
         class="mb-2 shrink-0"
         @seek="$emit('seek', $event)"
       />
@@ -265,11 +255,12 @@ import Play from '~icons/mdi/play'
 import Close from '~icons/mdi/close'
 import Waveform from '~icons/mdi/waveform'
 import EyeOff from '~icons/mdi/eye-off'
-import ChevronDown from '~icons/mdi/chevron-down'
+import Tune from '~icons/mdi/tune-variant'
 import ChevronLeft from '~icons/mdi/chevron-left'
 import ChevronRight from '~icons/mdi/chevron-right'
 import { useGlobalState } from '@/composables/global-state.js'
 import SpectrogramPanel from '@/components/library/edit-lyrics-v2/SpectrogramPanel.vue'
+import SpectrogramSettingsDrawer from '@/components/library/edit-lyrics-v2/SpectrogramSettingsDrawer.vue'
 import SyncedWordTimingSegment from '@/components/library/edit-lyrics-v2/SyncedWordTimingSegment.vue'
 import { useEditLyricsV2WordBoundaryDrag } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordBoundaryDrag.js'
 import { useEditLyricsV2LineEndDrag } from '@/composables/edit-lyrics-v2/useEditLyricsV2LineEndDrag.js'
@@ -281,7 +272,6 @@ import {
   withShortcutTitle,
 } from '@/composables/edit-lyrics-v2/shortcutRegistry.js'
 import { formatTimestampMs } from '@/utils/lyricsfile.js'
-import { SPECTROGRAM_THEMES } from '@/utils/spectrogram-themes.js'
 import { ensureLineWords, distributeWordTimings, hasValidWords } from '@/utils/word-tokenizer.js'
 
 const props = defineProps({
@@ -320,6 +310,7 @@ const emit = defineEmits([
   'rewind-line',
   'forward-end',
   'set-line-end',
+  'focus-editor',
 ])
 
 const {
@@ -327,14 +318,36 @@ const {
   toggleSpectrogramVisible,
   showSpectrogram,
   spectrogramTheme,
-  selectSpectrogramTheme,
+  spectrogramMinHz,
+  spectrogramMaxHz,
+  spectrogramMidpointDb,
 } = useGlobalState()
 
-const isSpectrogramThemeSelected = themeId => spectrogramTheme.value === themeId
+const isSettingsOpen = ref(false)
+const settingsDrawer = ref(null)
 
-const handleSelectSpectrogramTheme = async themeId => {
-  await selectSpectrogramTheme(themeId)
-  await showSpectrogram()
+const openSettings = async () => {
+  if (!spectrogramVisible.value) {
+    await showSpectrogram()
+    if (!spectrogramVisible.value) return
+  }
+  isSettingsOpen.value = true
+  // The drawer stays mounted but inert while collapsed; wait for inert to clear.
+  await nextTick()
+  settingsDrawer.value?.focusFirstControl()
+}
+
+const closeSettings = () => {
+  isSettingsOpen.value = false
+  emit('focus-editor')
+}
+
+const toggleSettings = () => (isSettingsOpen.value ? closeSettings() : openSettings())
+
+// The synced-editor hotkeys treat Space/Enter on any button as "sync line" and cancel
+// the press, so keep those keys from reaching them and let the button activate.
+const handleSettingsToggleKeydown = event => {
+  if (event.key === 'Enter' || event.key === ' ') event.stopPropagation()
 }
 
 const timelineElement = ref(null)
@@ -377,10 +390,16 @@ const hasSpectrogramSlot = computed(
   () => !!props.filePath && isWordSyncAvailable.value && spectrogramVisible.value
 )
 
-// Three-way lane height so collapsing the spectrogram doesn't squash the
-// word-timing timeline: tall with spectrogram, mid-tall in word-sync without
-// spectrogram (preserves timeline size), compact otherwise.
+watch(hasSpectrogramSlot, hasSlot => {
+  if (!hasSlot) isSettingsOpen.value = false
+})
+
+// Lane height so collapsing the spectrogram doesn't squash the word-timing timeline:
+// tallest with the settings drawer open (its 7.5rem shell grows in step with the lane),
+// tall with spectrogram, mid-tall in word-sync without spectrogram (preserves timeline
+// size), compact otherwise.
 const laneHeightClass = computed(() => {
+  if (hasSpectrogramSlot.value && isSettingsOpen.value) return 'h-[20.5rem]'
   if (hasSpectrogramSlot.value) return 'h-[13rem]'
   if (isWordSyncAvailable.value) return 'h-[7rem]'
   return 'h-[5rem]'
@@ -908,19 +927,37 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
-.theme-menu {
-  @apply w-11 p-1;
-}
-
-.theme-option {
-  @apply flex h-8 w-full items-center justify-center rounded hover:bg-neutral-100 dark:hover:bg-neutral-700;
-}
-
-.theme-option-selected {
+.settings-toggle-open {
   @apply bg-hoa-100/60 hover:bg-hoa-100 dark:bg-hoa-1100/15 dark:hover:bg-hoa-1100/25;
 }
 
-.theme-option:focus-visible {
-  @apply outline-none ring-2 ring-inset ring-hoa-1100;
+/* Animates with the lane root's height (same duration and ease-out curve) and is driven
+   by the same flag, so both transitions start in the same frame and the spectrogram and
+   timeline below keep their size while the drawer opens or closes. Visibility backs up
+   `inert` on older WebKit: it hides the collapsed controls once the collapse finishes. */
+.settings-drawer-shell {
+  flex-shrink: 0;
+  height: 0;
+  margin-bottom: 0;
+  opacity: 0;
+  overflow: hidden;
+  visibility: hidden;
+  transition:
+    height 200ms cubic-bezier(0, 0, 0.2, 1),
+    margin-bottom 200ms cubic-bezier(0, 0, 0.2, 1),
+    opacity 200ms cubic-bezier(0, 0, 0.2, 1),
+    visibility 0s linear 200ms;
+}
+
+.settings-drawer-shell-open {
+  height: 7rem;
+  margin-bottom: 0.5rem;
+  opacity: 1;
+  visibility: visible;
+  transition:
+    height 200ms cubic-bezier(0, 0, 0.2, 1),
+    margin-bottom 200ms cubic-bezier(0, 0, 0.2, 1),
+    opacity 200ms cubic-bezier(0, 0, 0.2, 1),
+    visibility 0s;
 }
 </style>

@@ -17,6 +17,7 @@
       @forward-end="handleForwardEnd"
       @set-line-end="handleSetLineEnd"
       @seek="$emit('seek', $event)"
+      @focus-editor="focusLinesList"
     />
 
     <div
@@ -248,6 +249,8 @@ const nextLineStartMs = index => {
 const hoveredLineIndex = ref(null)
 const linesListElement = ref(null)
 const modelValue = toRef(props, 'modelValue')
+
+const focusLinesList = () => linesListElement.value?.focus({ preventScroll: true })
 
 // Multi-selection drag state
 const isDragging = ref(false)
