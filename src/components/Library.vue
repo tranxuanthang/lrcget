@@ -204,6 +204,11 @@ const setupScanListeners = async () => {
   // Listen for scan completion
   unlistenScanComplete = await listen('scan-complete', event => {
     scanResult.value = event.payload
+    if (event.payload.skipped > 0) {
+      toast.warning(
+        `${event.payload.skipped} audio file(s) were skipped. Files need title, album and artist tags to appear in the library.`
+      )
+    }
     isScanning.value = false
     isLoading.value = false
     emit('scanComplete')

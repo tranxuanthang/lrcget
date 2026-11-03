@@ -24,6 +24,8 @@ pub struct ScanResult {
     pub moved: usize,
     /// Number of unchanged files
     pub unchanged: usize,
+    /// Number of files left out of the library because they could not be read
+    pub skipped: usize,
     /// Whether this was the first successful scan
     pub is_initial_scan: bool,
     /// Duration of scan in milliseconds

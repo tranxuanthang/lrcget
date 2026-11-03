@@ -110,7 +110,7 @@ trait ServiceAccess {
 
 ### File Scanning (`scanner/`)
 
-**ScanResult:** `{ total_files, added, modified, deleted, moved, unchanged, is_initial_scan, duration_ms }`
+**ScanResult:** `{ total_files, added, modified, deleted, moved, unchanged, skipped, is_initial_scan, duration_ms }`
 
 **ScanProgress:** `{ phase: "discovering"|"updating", progress: f64, files_processed, files_total, message }`
 
@@ -375,7 +375,7 @@ Search across all three entity types uses SQLite FTS5 (via `tracks_fts`, `albums
 | Event | Payload | Purpose |
 |-------|---------|---------|
 | `scan-progress` | `{ phase, progress, filesProcessed, filesTotal, message }` | Real-time scan updates |
-| `scan-complete` | `{ totalFiles, added, modified, deleted, moved, unchanged, isInitialScan, durationMs }` | Scan finished |
+| `scan-complete` | `{ totalFiles, added, modified, deleted, moved, unchanged, skipped, isInitialScan, durationMs }` | Scan finished |
 | `player-state` | Player status | Playback updates (40ms loop) |
 | `reload-track-id` | track_id | Request refresh |
 | `publish-lyrics-progress` | Status | Publishing updates |
