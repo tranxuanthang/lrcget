@@ -63,72 +63,66 @@
         </div>
 
         <div v-else class="flex flex-col h-full gap-2 overflow-auto">
-          <div v-if="normalizedSearchResult.length" class="flex flex-col gap-1 overflow-auto">
+          <div v-if="results.length" class="flex flex-col gap-1 overflow-auto">
             <div
-              v-for="result in normalizedSearchResult"
-              :key="result.item.id"
+              v-for="result in results"
+              :key="result.id"
               class="rounded bg-white dark:bg-neutral-900 hover:bg-neutral-50 dark:hover:bg-neutral-800 border border-neutral-200 dark:border-neutral-800 hover:border-neutral-300 dark:hover:border-neutral-700 transition px-2 py-1 flex gap-2"
             >
               <div class="h-full overflow-hidden grow">
                 <div class="font-bold flex gap-1">
                   <span class="mr-1 text-sm text-neutral-800 dark:text-neutral-200">{{
-                    result.item.name
+                    result.trackName
                   }}</span>
-                  <template v-if="showLineCount === true">
-                    <span
-                      v-if="result.lyrics.syncedLyrics"
-                      class="text-neutral-800 dark:text-neutral-300 font-bold text-[0.65rem] bg-neutral-200 dark:bg-neutral-700 rounded px-1 py-0.5"
-                      >{{ countLines(result.lyrics.syncedLyrics) }} Lines</span
-                    >
-                    <span
-                      v-else-if="result.lyrics.plainLyrics"
-                      class="text-neutral-800 dark:text-neutral-300 font-bold text-[0.65rem] bg-neutral-200 dark:bg-neutral-700 rounded px-1 py-0.5"
-                      >{{ countLines(result.lyrics.plainLyrics) }} Lines</span
-                    >
-                  </template>
                   <span
-                    v-if="result.lyrics.syncedLyrics"
+                    v-if="result.hasWordSync"
+                    class="text-indigo-950 font-bold text-[0.65rem] px-1 py-0.5 rounded bg-gradient-to-r from-amber-300 via-pink-400 to-violet-400 ring-1 ring-inset ring-white/40"
+                    title="Word-synced lyrics"
+                    >Word Synced</span
+                  >
+                  <span
+                    v-else-if="result.hasSyncedLyrics"
                     class="text-white font-bold text-[0.65rem] bg-hoa-1100 rounded px-1 py-0.5"
                     >Synced</span
                   >
                   <span
-                    v-else-if="result.lyrics.plainLyrics"
+                    v-else-if="result.hasPlainLyrics"
                     class="text-neutral-800 dark:text-neutral-300 font-bold text-[0.65rem] bg-neutral-200 dark:bg-neutral-700 rounded px-1 py-0.5"
                     >Plain</span
                   >
                   <span
-                    v-else-if="result.lyrics.instrumental"
+                    v-else-if="result.instrumental"
                     class="text-neutral-900 dark:text-neutral-200 font-bold text-[0.65rem] bg-neutral-300 dark:bg-neutral-600 rounded px-1 py-0.5"
                     >Instrumental</span
                   >
-                  <span
-                    v-if="
-                      Math.round(result.item.duration) - Math.round(searchingTrack.duration) > 2
-                    "
-                    class="text-neutral-500 dark:text-neutral-400 text-[0.75rem]"
-                  >
-                    +{{
-                      humanDuration(
-                        Math.abs(result.item.duration - Math.round(searchingTrack.duration))
-                      )
-                    }}
-                  </span>
-                  <span
-                    v-else-if="
-                      Math.round(result.item.duration) - Math.round(searchingTrack.duration) < -2
-                    "
-                    class="text-neutral-500 dark:text-neutral-400 text-[0.75rem]"
-                  >
-                    -{{
-                      humanDuration(
-                        Math.abs(result.item.duration - Math.round(searchingTrack.duration))
-                      )
-                    }}
-                  </span>
+                  <template v-if="result.duration != null">
+                    <span
+                      v-if="Math.round(result.duration) - Math.round(searchingTrack.duration) > 2"
+                      class="text-neutral-500 dark:text-neutral-400 text-[0.75rem]"
+                    >
+                      +{{
+                        humanDuration(
+                          Math.abs(result.duration - Math.round(searchingTrack.duration))
+                        )
+                      }}
+                    </span>
+                    <span
+                      v-else-if="
+                        Math.round(result.duration) - Math.round(searchingTrack.duration) < -2
+                      "
+                      class="text-neutral-500 dark:text-neutral-400 text-[0.75rem]"
+                    >
+                      -{{
+                        humanDuration(
+                          Math.abs(result.duration - Math.round(searchingTrack.duration))
+                        )
+                      }}
+                    </span>
+                  </template>
                 </div>
                 <div class="text-sm text-neutral-900 dark:text-neutral-400 truncate">
-                  <span>{{ result.item.albumName }}</span> |
-                  <span>{{ result.item.artistName }}</span>
+                  <span>{{ result.albumName }}</span> |
+                  <span>{{ result.artistName }}</span>
                 </div>
               </div>
 
@@ -136,11 +130,18 @@
                 <button
                   class="button-tiny"
                   title="Preview this lyrics"
-                  @click="preview(result.item)"
+                  :disabled="openingLyricsId !== null"
+                  @click="preview(result)"
                 >
-                  <Eye />
+                  <Loading v-if="openingLyricsId === result.id" class="animate-spin" />
+                  <Eye v-else />
                 </button>
-                <button class="button-tiny" title="Apply this lyrics" @click="apply(result.item)">
+                <button
+                  class="button-tiny"
+                  title="Apply this lyrics"
+                  :disabled="openingLyricsId !== null"
+                  @click="apply(result)"
+                >
                   <ContentSave />
                 </button>
               </div>
@@ -165,22 +166,23 @@ import ContentSave from '~icons/mdi/content-save'
 import { useToast } from 'vue-toastification'
 import Preview from './search-lyrics/Preview.vue'
 import { useModal } from 'vue-final-modal'
-import { countLines } from '@/utils/count-lines.js'
-import { normalizeLrclibLyrics } from '@/utils/lyricsfile.js'
 
 const toast = useToast()
 const props = defineProps(['searchingTrack'])
 const emit = defineEmits(['close'])
 
 const loading = ref(true)
-const searchResult = ref(null)
+const searchResult = ref([])
 const previewingLyrics = ref(null)
 const previewingTrack = ref(null)
+const openingLyricsId = ref(null)
+const lyricsCache = new Map()
 
 const title = ref('')
 const albumName = ref('')
 const artistName = ref('')
-const showLineCount = ref(true)
+
+const results = computed(() => (Array.isArray(searchResult.value) ? searchResult.value : []))
 
 const { open: openPreviewModal, close: closePreviewModal } = useModal({
   component: Preview,
@@ -197,23 +199,13 @@ const { open: openPreviewModal, close: closePreviewModal } = useModal({
   },
 })
 
-const normalizedSearchResult = computed(() => {
-  if (!Array.isArray(searchResult.value)) {
-    return []
-  }
-
-  return searchResult.value.map(item => ({
-    item,
-    lyrics: normalizeLrclibLyrics(item),
-  }))
-})
-
 const humanDuration = seconds => {
   return new Date(seconds * 1000).toISOString().slice(14, 19)
 }
 
 const doSearchLyrics = async () => {
   loading.value = true
+  lyricsCache.clear()
   try {
     searchResult.value = await invoke('search_lyrics', {
       title: title.value,
@@ -229,19 +221,42 @@ const doSearchLyrics = async () => {
   }
 }
 
-const preview = lyricsItem => {
-  previewingTrack.value = props.searchingTrack
-  previewingLyrics.value = lyricsItem
-  openPreviewModal()
+const fetchLyrics = async id => {
+  if (lyricsCache.has(id)) {
+    return lyricsCache.get(id)
+  }
+
+  const lyrics = await invoke('retrieve_lyrics_by_id', { id })
+  lyricsCache.set(id, lyrics)
+  return lyrics
 }
 
-const apply = async lyricsItem => {
+const preview = async result => {
+  if (openingLyricsId.value !== null) {
+    return
+  }
+
+  openingLyricsId.value = result.id
   try {
-    const result = await invoke('apply_lyrics', {
+    const lyrics = await fetchLyrics(result.id)
+    previewingTrack.value = props.searchingTrack
+    previewingLyrics.value = lyrics
+    openPreviewModal()
+  } catch (error) {
+    console.error(error)
+    toast.error('An error occurred while opening the lyrics. Please try again.')
+  } finally {
+    openingLyricsId.value = null
+  }
+}
+
+const apply = async result => {
+  try {
+    const message = await invoke('apply_lyrics', {
       trackId: props.searchingTrack.id,
-      lrclibResponse: lyricsItem,
+      lrclibId: result.id,
     })
-    toast.success(result)
+    toast.success(message)
   } catch (error) {
     console.error(error)
     toast.error(error)
@@ -253,14 +268,12 @@ const initialize = async () => {
     return
   }
 
-  const config = await invoke('get_config')
-  searchResult.value = null
+  searchResult.value = []
   loading.value = true
 
   title.value = props.searchingTrack.title
   albumName.value = props.searchingTrack.album_name
   artistName.value = props.searchingTrack.artist_name
-  showLineCount.value = config.show_line_count
 }
 
 onMounted(async () => {

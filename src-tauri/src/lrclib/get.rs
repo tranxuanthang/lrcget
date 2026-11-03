@@ -23,6 +23,28 @@ pub struct RawResponse {
     duration: Option<f64>,
 }
 
+impl From<crate::lrclib::get_by_id::RawResponse> for RawResponse {
+    fn from(response: crate::lrclib::get_by_id::RawResponse) -> Self {
+        Self {
+            id: response.id,
+            track_name: response.track_name,
+            plain_lyrics: response.plain_lyrics,
+            synced_lyrics: response.synced_lyrics,
+            lyricsfile: response.lyricsfile,
+            instrumental: response.instrumental,
+            has_word_sync: response.has_word_sync,
+            lang: response.lang,
+            isrc: response.isrc,
+            spotify_id: response.spotify_id,
+            name: response.name,
+            album_name: response.album_name,
+            artist_name: response.artist_name,
+            release_date: response.release_date,
+            duration: response.duration,
+        }
+    }
+}
+
 #[derive(Serialize)]
 #[serde(tag = "type", content = "lyrics")]
 pub enum Response {

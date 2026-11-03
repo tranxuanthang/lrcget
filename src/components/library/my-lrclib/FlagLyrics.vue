@@ -1,7 +1,7 @@
 <template>
   <BaseModal
     content-class="max-w-[500px] max-h-[60vh]"
-    :title="`${props.track.name} - ${props.track.artistName}`"
+    :title="`${trackName} - ${props.track.artistName}`"
     body-class="flex flex-col h-full min-h-0"
     :click-to-close="!isFlagging"
     :esc-to-close="!isFlagging"
@@ -12,7 +12,7 @@
       <div v-if="!isFlagging">
         <div class="mb-4">
           Do you want to flag the lyrics of the song
-          <strong>{{ track.name }} - {{ track.artistName }}</strong
+          <strong>{{ trackName }} - {{ track.artistName }}</strong
           >?
         </div>
 
@@ -27,7 +27,7 @@
         />
       </div>
       <div v-else class="mb-4">
-        Flagging the lyrics of the song <strong>{{ track.name }} - {{ track.artistName }}</strong
+        Flagging the lyrics of the song <strong>{{ trackName }} - {{ track.artistName }}</strong
         >...
       </div>
 
@@ -79,7 +79,7 @@
 
 <script setup>
 import { invoke } from '@tauri-apps/api/core'
-import { ref, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import Loading from '~icons/mdi/loading'
 import { listen } from '@tauri-apps/api/event'
 import { useToast } from 'vue-toastification'
@@ -87,6 +87,8 @@ import { useToast } from 'vue-toastification'
 const toast = useToast()
 const emit = defineEmits(['close'])
 const props = defineProps(['track'])
+
+const trackName = computed(() => props.track?.trackName || props.track?.name || '')
 
 const isFlagging = ref(false)
 const isError = ref(false)

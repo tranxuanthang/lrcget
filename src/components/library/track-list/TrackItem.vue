@@ -61,6 +61,12 @@
           >Instrumental</span
         >
         <span
+          v-else-if="lyricsStatus === 'word-synced'"
+          class="text-indigo-950 font-bold text-[0.67rem] px-1 py-0.5 rounded bg-gradient-to-r from-amber-300 via-pink-400 to-violet-400 ring-1 ring-inset ring-white/40"
+          title="Word-synced lyrics"
+          >Word Synced</span
+        >
+        <span
           v-else-if="lyricsStatus === 'synced'"
           class="text-green-200 font-bold text-[0.67rem] bg-green-800 rounded px-1 py-0.5"
           >Synced</span
@@ -153,7 +159,10 @@ const lyricsStatus = computed(() => {
   }
   const parsed = parseLyricsfile(track.value.lyricsfile)
   if (parsed.syncedLines && parsed.syncedLines.length > 0) {
-    return 'synced'
+    const hasWordSync = parsed.syncedLines.some(
+      line => Array.isArray(line?.words) && line.words.length > 0
+    )
+    return hasWordSync ? 'word-synced' : 'synced'
   }
   if (parsed.plainLyrics && parsed.plainLyrics.length > 0) {
     return 'plain'

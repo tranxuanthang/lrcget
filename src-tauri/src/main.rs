@@ -839,14 +839,26 @@ fn embedding_allowed(app_handle: &AppHandle) -> bool {
 #[tauri::command]
 async fn apply_lyrics(
     track_id: i64,
-    lrclib_response: lrclib::get::RawResponse,
+    lrclib_id: i64,
     app_handle: AppHandle,
 ) -> Result<String, String> {
     let track = app_handle
         .db(|db| db::get_track_by_id(track_id, db))
         .map_err(|err| err.to_string())?;
 
-    let resolved = resolve_lrclib_lyrics_payload(lrclib_response)?;
+    let config = app_handle
+        .db(|db: &Connection| db::get_config(db))
+        .map_err(|err| err.to_string())?;
+
+    let lrclib_response = lrclib::get_by_id::request_raw(
+        lrclib_id,
+        &config.lrclib_instance,
+        RetryPolicy::Interactive,
+    )
+    .await
+    .map_err(|err| err.to_string())?;
+
+    let resolved = resolve_lrclib_lyrics_payload(lrclib_response.into())?;
 
     // Build lyricsfile content from the resolved response
     let lyricsfile_content = if let Some(ref provided) = resolved.provided_lyricsfile {
@@ -946,7 +958,7 @@ async fn search_lyrics(
     artist_name: String,
     q: String,
     app_handle: AppHandle,
-) -> Result<lrclib::search::Response, String> {
+) -> Result<Vec<lrclib::search::TrackSummary>, String> {
     let config = app_handle
         .db(|db: &Connection| db::get_config(db))
         .map_err(|err| err.to_string())?;

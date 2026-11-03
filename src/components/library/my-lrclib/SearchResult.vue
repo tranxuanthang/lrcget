@@ -28,62 +28,57 @@
 
       <div class="flex flex-col gap-2">
         <div
-          v-for="result in normalizedTracks"
-          :key="result.track.id"
+          v-for="track in tracks"
+          :key="track.id"
           class="rounded bg-white hover:bg-neutral-50 dark:bg-neutral-900 dark:hover:bg-neutral-800 transition px-2 py-1 flex gap-2 justify-between items-center"
         >
           <div class="flex flex-col gap-1">
             <div class="flex gap-2 items-center">
               <div class="text-sm font-bold text-neutral-800 dark:text-neutral-200">
-                {{ result.track.name }}
+                {{ track.trackName }}
               </div>
               <div class="text-[0.65rem] font-bold flex gap-1">
-                <span class="bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200 px-1 py-0.5 rounded">{{
-                  humanDuration(result.track.duration)
-                }}</span>
-                <template v-if="showLineCount === true">
-                  <span
-                    v-if="!!result.lyrics.syncedLyrics"
-                    class="bg-blue-800 text-blue-200 px-1 py-0.5 rounded"
-                    >{{ countLines(result.lyrics.syncedLyrics) }} Lines</span
-                  >
-                  <span
-                    v-else-if="!!result.lyrics.plainLyrics"
-                    class="bg-blue-800 text-blue-200 px-1 py-0.5 rounded"
-                    >{{ countLines(result.lyrics.plainLyrics) }} Lines</span
-                  >
-                </template>
                 <span
-                  v-if="!!result.lyrics.syncedLyrics"
+                  class="bg-neutral-100 text-neutral-800 dark:bg-neutral-800 dark:text-neutral-200 px-1 py-0.5 rounded"
+                  >{{ track.duration != null ? humanDuration(track.duration) : '--:--' }}</span
+                >
+                <span
+                  v-if="track.hasWordSync"
+                  class="text-indigo-950 px-1 py-0.5 rounded bg-gradient-to-r from-amber-300 via-pink-400 to-violet-400 ring-1 ring-inset ring-white/40"
+                  title="Word-synced lyrics"
+                  >Word Synced</span
+                >
+                <span
+                  v-else-if="track.hasSyncedLyrics"
                   class="bg-green-800 text-green-200 px-1 py-0.5 rounded"
                   >Synced</span
                 >
                 <span
-                  v-else-if="!!result.lyrics.plainLyrics"
+                  v-else-if="track.hasPlainLyrics"
                   class="bg-gray-800 text-gray-200 px-1 py-0.5 rounded"
                   >Plain</span
                 >
                 <span
-                  v-else-if="!!result.lyrics.instrumental"
+                  v-else-if="track.instrumental"
                   class="bg-gray-300 text-gray-600 dark:bg-neutral-700 dark:text-neutral-300 px-1 py-0.5 rounded"
                   >Instrumental</span
                 >
               </div>
             </div>
             <div class="text-sm text-neutral-900 dark:text-neutral-500">
-              {{ result.track.albumName }} - {{ result.track.artistName }}
+              {{ track.albumName }} - {{ track.artistName }}
             </div>
           </div>
           <div class="flex gap-1 items-center">
-            <button class="button-tiny" type="button" @click="setShowingTrack(result.track)">
+            <button class="button-tiny" type="button" @click="setShowingTrack(track)">
               <Eye />
             </button>
 
-            <button class="button-tiny" type="button" @click="setEditingTrack(result.track)">
+            <button class="button-tiny" type="button" @click="setEditingTrack(track)">
               <PlaylistEdit />
             </button>
 
-            <button class="button-tiny" type="button" @click="flagLyrics(result.track)">
+            <button class="button-tiny" type="button" @click="flagLyrics(track)">
               <Flag />
             </button>
           </div>
@@ -106,12 +101,10 @@ import Loading from '~icons/mdi/loading'
 import Eye from '~icons/mdi/eye'
 import PlaylistEdit from '~icons/mdi/playlist-edit'
 import Flag from '~icons/mdi/flag'
-import { computed, ref, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
-import { countLines } from '@/utils/count-lines.js'
 import { humanDuration } from '@/utils/human-duration.js'
 import { useToast } from 'vue-toastification'
-import { normalizeLrclibLyrics } from '@/utils/lyricsfile.js'
 import PreviewLyrics from './PreviewLyrics.vue'
 import FlagLyrics from './FlagLyrics.vue'
 import AssociateTrackModal from './AssociateTrackModal.vue'
@@ -136,14 +129,6 @@ const editingAudioSource = ref(null)
 const editingLyricsfile = ref(null)
 const editingTrackId = ref(null)
 const flagLyricsTrack = ref(null)
-const showLineCount = ref(true)
-
-const normalizedTracks = computed(() =>
-  tracks.value.map(track => ({
-    track,
-    lyrics: normalizeLrclibLyrics(track),
-  }))
-)
 
 const { open: openPreviewModal, close: closePreviewModal } = useModal({
   component: PreviewLyrics,
@@ -243,8 +228,6 @@ const { open: openConflictModal, close: closeConflictModal } = useModal({
 const conflictModalLrclibTrack = ref(null)
 
 onMounted(async () => {
-  const config = await invoke('get_config')
-  showLineCount.value = config.show_line_count
   loading.value = true
   try {
     tracks.value = await invoke('search_lyrics', {

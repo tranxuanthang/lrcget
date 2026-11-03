@@ -1,7 +1,7 @@
 <template>
   <BaseModal
     content-class="w-full h-[80vh] max-w-screen-sm"
-    :title="`${props.track.name} - ${props.track.artistName}`"
+    :title="`${props.track.trackName || props.track.name} - ${props.track.artistName}`"
     body-class="flex flex-col h-full min-h-0"
     @close="emit('close')"
   >

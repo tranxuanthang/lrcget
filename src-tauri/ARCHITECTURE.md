@@ -42,7 +42,7 @@ src-tauri/
 │   ├── utils.rs             # Text normalization
 │   └── lrclib/              # LRCLIB API client
 │       ├── client.rs        # Shared HTTP client, retry/backoff, error model, App ID headers
-│       ├── search.rs        # GET /api/search
+│       ├── search.rs        # GET /api/v2/search (v1 fallback), summary models
 │       ├── get.rs           # GET /api/get
 │       ├── get_by_id.rs     # GET /api/get/{id}
 │       ├── publish.rs       # POST /api/publish (with PoW)
@@ -255,7 +255,7 @@ pub fn format_timestamp(timestamp_ms: i64) -> String;
 
 ### LRCLIB API (`lrclib/`)
 
-**Endpoints:** search, get, get_by_id, publish, flag, request_challenge
+**Endpoints:** search (v2 with v1 fallback), get, get_by_id, publish, flag, request_challenge
 
 **Shared HTTP client (`client.rs`):**
 - A single process-wide `reqwest::Client` (10s timeout) is reused for connection pooling.
@@ -269,7 +269,9 @@ pub fn format_timestamp(timestamp_ms: i64) -> String;
 **Query hygiene:**
 - Empty optional parameters are omitted.
 - `/api/get`: always sends `track_name` and `artist_name` (validated client-side); sends `album_name` only when non-empty and `duration` only when it rounds into the documented 1–3600 range.
-- `/api/search`: when `q` is non-empty it is sent alone (it takes precedence); otherwise `track_name` is sent with non-empty `artist_name`/`album_name`. A search with no `q` and no title returns an empty result without a network request.
+- `/api/v2/search`: when `q` is non-empty it is sent alone (it takes precedence); otherwise `track_name` is sent with non-empty `artist_name`/`album_name`. A search with no `q` and no title returns an empty result without a network request.
+- The v2 endpoint returns lightweight `TrackSummary` records (metadata plus `hasWordSync`, `hasPlainLyrics`, `hasSyncedLyrics`, `hasLyricsfile`, and `instrumental` flags) without lyrics text. Lyrics for a selected result are fetched with `/api/get/{id}`.
+- Instances that predate v2 (404 or a non-JSON success body) automatically fall back to v1 `/api/search`; legacy records are mapped into the same summary shape. Rate limits, overloads, and network failures are never retried against v1. `/api/search` is not used directly by the client anymore.
 - Response models include `id`, `trackName`, and `hasWordSync`; `hasWordSync` defaults to `false` for older instances that omit it.
 
 **Error model:**
@@ -346,8 +348,8 @@ Search across all three entity types uses SQLite FTS5 (via `tracks_fts`, `albums
 |---------|---------|
 | `download_lyrics(track_id, auto_export?)` | Download from LRCLIB using the batch retry policy and save internally. Optional explicit `{ plainText, syncedLrc, embedIntoTrack }` batch snapshot enables TXT/LRC/embedded export after save; empty selections are rejected before downloading. Returns the existing string appended with ordered export outcomes/errors, or rejects with a structured `DownloadLyricsError` (`kind`, `message`, `retryAfterSecs`, `scope`) on failure so the frontend can pause the queue on rate limits. Omitted options preserve internal-only behavior. |
 | `retrieve_lyrics/by_id()` | Get raw LRCLIB response |
-| `search_lyrics()` | Search LRCLIB database |
-| `apply_lyrics()` | Save a selected LRCLIB result into database-backed lyrics storage |
+| `search_lyrics()` | Search LRCLIB using v2 summaries (v1 fallback); returns track metadata and availability flags without lyrics text |
+| `apply_lyrics(track_id, lrclib_id)` | Fetch the selected LRCLIB record by ID and save it into database-backed lyrics storage |
 | `prepare_lrclib_lyricsfile(lrclib_id)` | Get or create lyricsfile from LRCLIB. Checks local cache first, fetches from API if needed. Saves to `lyricsfiles` table with `lrclib_instance` + `lrclib_id`. Returns `lyricsfile_id` + content + `exists_in_db` flag. |
 | `refresh_lrclib_lyricsfile(lrclib_id)` | Force re-download lyrics from LRCLIB API. Updates existing record in `lyricsfiles` table. Returns refreshed `lyricsfile_id` + content. |
 | `save_lyrics(track_id?, lyricsfile_id?, plain?, synced?, lyricsfile?)` | Save lyrics edits. For library tracks: provide `track_id`. For standalone LRCLIB lyrics: provide `lyricsfile_id`. Prefers `lyricsfile` format. |
@@ -455,6 +457,12 @@ cargo test
 - No retry for 400/404, interactive 429s, or `NoRetry` write requests
 - `Accept: application/json` on requests
 - No `Lrclib-App-Id` sent to custom/self-hosted instances
+
+`lrclib::search` adds summary tests backed by its own mock server:
+
+- v2 summaries preserve `hasWordSync` and the other availability flags
+- v1 fallback when the v2 route returns 404, including legacy → summary mapping
+- Fallback is limited to unsupported-route errors (not 429/503/network)
 
 ## Notes
 

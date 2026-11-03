@@ -73,6 +73,7 @@ Module-level ref composables (singletons by design):
 - Search via `useSearchLibrary()`; shared search text across Tracks/Albums/Artists tabs
 - `MiniSearch.vue` with context-aware placeholder; filter dropdown hidden for Albums/Artists
 - All tabs use virtualized lists (`@tanstack/vue-virtual`) with IDs only
+- `TrackItem.vue` rows derive `instrumental` / `word-synced` / `synced` / `plain` from the joined `lyricsfile`; word-synced rows use the same gradient **Word Synced** badge as search results
 - Clickable album/artist names in track rows and the NowPlaying panel navigate to the respective tab and open the entity detail view (`AlbumTrackList`/`ArtistTrackList`)
 
 **Lyrics Workflows**:
@@ -80,7 +81,7 @@ Module-level ref composables (singletons by design):
 | Aspect | Details |
 |--------|---------|
 | **Display** | `LyricsViewer.vue` (synced) / `PlainLyricsViewer.vue`. Click to `seek()` |
-| **Search** | `SearchLyrics.vue` + `Preview.vue` for LRCLIB lookup; word-level highlight when available |
+| **Search** | `SearchLyrics.vue` + `Preview.vue` for LRCLIB lookup. Search results come from the lightweight v2 summaries and show availability badges (Word Synced / Synced / Plain / Instrumental); preview and apply fetch the selected record with `retrieve_lyrics_by_id` / `apply_lyrics`. Word-level highlight when the fetched lyricsfile has word timings. |
 | **Normalization** | `normalizeLrclibLyrics()` derives plain/synced/instrumental from `lyricsfile` when LRCLIB omits direct fields |
 | **Edit/Publish** | `EditLyricsV2.vue` + `useEditLyricsV2Publish.js` + `useEditLyricsV2Export.js`. For detailed editor behavior, see **Edit/Publish Details** below. |
 | **Keyboard Shortcuts** | `KeyboardShortcutsModal.vue` + shared registry in `composables/edit-lyrics-v2/shortcutRegistry.js`. See **Keyboard Shortcuts Details** below. |

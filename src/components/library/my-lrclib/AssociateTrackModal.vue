@@ -129,19 +129,23 @@ const searchQuery = ref('')
 const isLoading = ref(false)
 const isPreparingQuery = ref(true)
 
+const lrclibTrackName = computed(
+  () => props.lrclibTrack?.trackName || props.lrclibTrack?.name || ''
+)
+
 // Prefill search query with prepared title + artist
 const prepareSearchQuery = async () => {
   isPreparingQuery.value = true
   try {
     const prepared = await invoke('prepare_search_query', {
-      title: props.lrclibTrack.name,
+      title: lrclibTrackName.value,
       artist: '',
     })
     searchQuery.value = prepared
   } catch (error) {
     console.error('Error preparing search query:', error)
     // Fallback to simple concatenation
-    searchQuery.value = `${props.lrclibTrack.name}`.toLowerCase()
+    searchQuery.value = `${lrclibTrackName.value}`.toLowerCase()
   } finally {
     isPreparingQuery.value = false
   }
