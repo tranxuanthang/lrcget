@@ -1,5 +1,7 @@
-import { createApp } from 'vue'
+import { createApp, watch } from 'vue'
 import App from './App.vue'
+import { installTimedHoverHelp } from './utils/timed-hover-help.js'
+import { useGlobalState } from './composables/global-state.js'
 import Toast, { POSITION } from 'vue-toastification'
 import { createVfm } from 'vue-final-modal'
 import FloatingVue from 'floating-vue'
@@ -47,6 +49,13 @@ app.use(FloatingVue, {
 })
 app.use(vfm)
 app.mount('#app')
+
+const { showHoverHelp } = useGlobalState()
+const disposeHoverHelp = installTimedHoverHelp(document, {
+  isEnabled: () => showHoverHelp.value,
+  subscribe: listener => watch(showHoverHelp, listener),
+})
+if (import.meta.hot) import.meta.hot.dispose(disposeHoverHelp)
 
 document.addEventListener(
   'contextmenu',

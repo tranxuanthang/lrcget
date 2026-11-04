@@ -159,6 +159,7 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
         skip_tracks_with_synced_lyrics,
         skip_tracks_with_plain_lyrics,
         show_line_count,
+        show_hover_help,
         try_embed_lyrics,
         theme_mode,
         lrclib_instance,
@@ -179,6 +180,7 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
             skip_tracks_with_synced_lyrics: r.get("skip_tracks_with_synced_lyrics")?,
             skip_tracks_with_plain_lyrics: r.get("skip_tracks_with_plain_lyrics")?,
             show_line_count: r.get("show_line_count")?,
+            show_hover_help: r.get("show_hover_help")?,
             try_embed_lyrics: r.get("try_embed_lyrics")?,
             theme_mode: r.get("theme_mode")?,
             lrclib_instance: r.get("lrclib_instance")?,
@@ -219,6 +221,12 @@ pub fn set_config(
         lrclib_instance,
         volume,
     ))?;
+    Ok(())
+}
+
+// Independent preference; legacy Settings callers can omit it without resetting it.
+pub fn set_hover_help_enabled(enabled: bool, db: &Connection) -> Result<()> {
+    db.execute("UPDATE config_data SET show_hover_help = ? WHERE 1", [enabled])?;
     Ok(())
 }
 
@@ -1937,5 +1945,62 @@ mod export_preferences_tests {
         assert!(config.export_txt && config.export_embedded);
         assert_eq!(config.lrclib_instance, "https://other.test");
         assert_eq!(config.volume, 0.6);
+    }
+}
+
+#[cfg(test)]
+mod hover_help_tests {
+    use super::*;
+
+    #[test]
+    fn upgrade_defaults_help_off_and_preserves_existing_settings() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        let migrations = Migrations::from_directory(&MIGRATIONS_DIR).unwrap();
+        migrations.to_version(&mut conn, 17).unwrap();
+        set_config(true, false, true, true, "dark", "https://example.test", 0.4, &conn).unwrap();
+        conn.execute("INSERT INTO lyricsfiles (lyricsfile) VALUES ('plain: retained')", []).unwrap();
+        migrations.to_latest(&mut conn).unwrap();
+        let config = get_config(&conn).unwrap();
+        assert!(!config.show_hover_help);
+        assert_eq!(config.theme_mode, "dark");
+        assert_eq!(config.volume, 0.4);
+        let lyrics: String = conn.query_row("SELECT lyricsfile FROM lyricsfiles LIMIT 1", [], |r| r.get(0)).unwrap();
+        assert_eq!(lyrics, "plain: retained");
+    }
+
+    #[test]
+    fn choice_survives_connection_restart_and_unrelated_settings() {
+        let file = tempfile::NamedTempFile::new().unwrap();
+        {
+            let mut conn = Connection::open(file.path()).unwrap();
+            Migrations::from_directory(&MIGRATIONS_DIR).unwrap().to_latest(&mut conn).unwrap();
+            assert!(!get_config(&conn).unwrap().show_hover_help);
+            set_hover_help_enabled(true, &conn).unwrap();
+            set_config(false, true, true, false, "light", "https://example.test", 0.3, &conn).unwrap();
+            set_export_preferences(Some(false), None, None, None, None, None, &conn).unwrap();
+            assert!(get_config(&conn).unwrap().show_hover_help);
+        }
+        let conn = Connection::open(file.path()).unwrap();
+        assert!(get_config(&conn).unwrap().show_hover_help);
+        set_hover_help_enabled(false, &conn).unwrap();
+        assert!(!get_config(&conn).unwrap().show_hover_help);
+        assert_eq!(get_config(&conn).unwrap().theme_mode, "light");
+    }
+
+    #[test]
+    fn transaction_rollback_keeps_preference_and_other_settings_together() {
+        let mut conn = Connection::open_in_memory().unwrap();
+        Migrations::from_directory(&MIGRATIONS_DIR).unwrap().to_latest(&mut conn).unwrap();
+        let before = get_config(&conn).unwrap();
+        {
+            let tx = conn.unchecked_transaction().unwrap();
+            set_config(false, true, true, false, "dark", "https://example.test", 0.2, &tx).unwrap();
+            set_hover_help_enabled(true, &tx).unwrap();
+            // Dropping an uncommitted transaction models a failed Settings save.
+        }
+        let after = get_config(&conn).unwrap();
+        assert_eq!(after.show_hover_help, before.show_hover_help);
+        assert_eq!(after.theme_mode, before.theme_mode);
+        assert_eq!(after.volume, before.volume);
     }
 }

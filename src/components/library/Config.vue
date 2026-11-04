@@ -75,6 +75,28 @@
           </div>
         </div>
 
+        <div class="flex flex-col mb-4">
+          <label
+            for="show-hover-help"
+            class="inline-flex cursor-pointer items-center gap-2 child-label"
+          >
+            <input
+              id="show-hover-help"
+              v-model="editingShowHoverHelp"
+              type="checkbox"
+              class="h-4 w-4 accent-hoa-1500"
+              aria-describedby="hover-help-instructions"
+              :disabled="isSaving"
+            />
+            Show hover help
+          </label>
+          <span
+            id="hover-help-instructions"
+            class="mt-1 text-xs text-neutral-600 dark:text-neutral-400"
+            >Off by default. F1 shows help for a hovered or focused control.</span
+          >
+        </div>
+
         <div class="flex flex-col">
           <label class="block mb-2 child-label" for="lrclib-instance">LRCLIB instance</label>
           <input
@@ -107,9 +129,7 @@
         <a href="#" class="link hidden" @click="refreshLibrary"
           >Scan for new and modified tracks...</a
         >
-        <a href="#" class="link" @click="fullScanLibrary"
-          >Reset library and perform full scan...</a
-        >
+        <a href="#" class="link" @click="fullScanLibrary">Reset library and perform full scan...</a>
         <a href="#" class="link" @click="manageDirectories"
           >Add and remove scanning directories...</a
         >
@@ -117,7 +137,19 @@
     </div>
 
     <template #footer>
-      <button class="button button-primary px-8 py-2 rounded-full" @click="save">Save</button>
+      <div class="flex flex-col items-center gap-2">
+        <p v-if="saveError" role="alert" class="text-sm text-red-700 dark:text-red-300">
+          {{ saveError }}
+        </p>
+        <button
+          class="button button-primary px-8 py-2 rounded-full disabled:opacity-50"
+          :disabled="isSaving"
+          :aria-busy="isSaving"
+          @click="save"
+        >
+          {{ isSaving ? 'Saving…' : 'Save' }}
+        </button>
+      </div>
     </template>
   </BaseModal>
 </template>
@@ -130,7 +162,7 @@ import { usePlayer } from '@/composables/player.js'
 import RadioButton from '@/components/common/RadioButton.vue'
 import CheckboxButton from '@/components/common/CheckboxButton.vue'
 
-const { setThemeMode, setLrclibInstance } = useGlobalState()
+const { setThemeMode, setLrclibInstance, setShowHoverHelp } = useGlobalState()
 const { volume } = usePlayer()
 
 const emit = defineEmits(['close', 'refreshLibrary', 'fullScanLibrary', 'manageDirectories'])
@@ -141,10 +173,16 @@ const skipTracksWithPlainLyrics = ref(false)
 const showLineCount = ref(true)
 const tryEmbedLyrics = ref(false)
 const editingThemeMode = ref('auto')
+const editingShowHoverHelp = ref(false)
 const editingLrclibInstance = ref('')
+const isSaving = ref(false)
+const saveError = ref('')
 
 const save = async () => {
-  await invoke('set_config', {
+  if (isSaving.value) return
+  isSaving.value = true
+  saveError.value = ''
+  const submitted = {
     skipTracksWithSyncedLyrics: skipTracksWithSyncedLyrics.value,
     skipTracksWithPlainLyrics: skipTracksWithPlainLyrics.value,
     showLineCount: showLineCount.value,
@@ -152,10 +190,19 @@ const save = async () => {
     themeMode: editingThemeMode.value,
     lrclibInstance: editingLrclibInstance.value,
     volume: volume.value,
-  })
-  setThemeMode(editingThemeMode.value)
-  setLrclibInstance(editingLrclibInstance.value)
-  emit('close')
+    showHoverHelp: editingShowHoverHelp.value,
+  }
+  try {
+    await invoke('set_config', submitted)
+    setShowHoverHelp(submitted.showHoverHelp)
+    setThemeMode(submitted.themeMode)
+    setLrclibInstance(submitted.lrclibInstance)
+    emit('close')
+  } catch {
+    saveError.value = 'Could not save configuration. Please try again.'
+  } finally {
+    isSaving.value = false
+  }
 }
 
 const refreshLibrary = () => {
@@ -174,6 +221,7 @@ const manageDirectories = () => {
 }
 
 const beforeOpenHandler = async () => {
+  saveError.value = ''
   const config = await invoke('get_config')
   skipTracksWithSyncedLyrics.value = config.skip_tracks_with_synced_lyrics
   skipTracksWithPlainLyrics.value = config.skip_tracks_with_plain_lyrics
@@ -190,6 +238,7 @@ const beforeOpenHandler = async () => {
 
   showLineCount.value = config.show_line_count
   tryEmbedLyrics.value = config.try_embed_lyrics
+  editingShowHoverHelp.value = config.show_hover_help === true
   editingThemeMode.value = config.theme_mode
   editingLrclibInstance.value = config.lrclib_instance
 }
