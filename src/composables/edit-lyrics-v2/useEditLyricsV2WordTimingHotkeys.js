@@ -6,6 +6,10 @@ export function useEditLyricsV2WordTimingHotkeys({
   words,
   syncSelectedBoundaryAtProgress,
   syncSelectedBoundaryAtProgressNoAdvance,
+  rewindSelectedWord,
+  forwardSelectedWord,
+  replaySelectedSeparator,
+  replayPreviousSeparator,
   selectPreviousBoundary,
   selectNextBoundary,
   resetBoundarySelection,
@@ -39,6 +43,30 @@ export function useEditLyricsV2WordTimingHotkeys({
           return
         case 'syncSelectedSeparatorAndAdvance':
           syncSelectedBoundaryAtProgress()
+          return
+        case 'rewindSelectedWord':
+          rewindSelectedWord()
+          return
+        case 'forwardSelectedWord':
+          forwardSelectedWord()
+          return
+        case 'replaySelectedSeparator':
+          replaySelectedSeparator()
+          return
+        case 'replaySeparator1Back':
+          replayPreviousSeparator(1)
+          return
+        case 'replaySeparator2Back':
+          replayPreviousSeparator(2)
+          return
+        case 'replaySeparator3Back':
+          replayPreviousSeparator(3)
+          return
+        case 'replaySeparator4Back':
+          replayPreviousSeparator(4)
+          return
+        case 'replaySeparator5Back':
+          replayPreviousSeparator(5)
           return
         case 'resetSeparatorCursor':
           resetBoundarySelection()

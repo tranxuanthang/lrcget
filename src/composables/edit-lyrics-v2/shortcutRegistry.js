@@ -359,6 +359,46 @@ export const wordTimingShortcutBindings = [
     description: 'Sync selected separator & move to next',
   }),
   createShortcutBinding({
+    id: 'rewindSelectedWord',
+    defaultKeys: ['J'],
+    description: 'Rewind word 10 ms & play',
+  }),
+  createShortcutBinding({
+    id: 'forwardSelectedWord',
+    defaultKeys: ['L'],
+    description: 'Forward word 10 ms & play',
+  }),
+  createShortcutBinding({
+    id: 'replaySelectedSeparator',
+    defaultKeys: ['I'],
+    description: 'Replay selected separator',
+  }),
+  createShortcutBinding({
+    id: 'replaySeparator1Back',
+    defaultKeys: ['1'],
+    description: 'Play 1 separator back',
+  }),
+  createShortcutBinding({
+    id: 'replaySeparator2Back',
+    defaultKeys: ['2'],
+    description: 'Play 2 separators back',
+  }),
+  createShortcutBinding({
+    id: 'replaySeparator3Back',
+    defaultKeys: ['3'],
+    description: 'Play 3 separators back',
+  }),
+  createShortcutBinding({
+    id: 'replaySeparator4Back',
+    defaultKeys: ['4'],
+    description: 'Play 4 separators back',
+  }),
+  createShortcutBinding({
+    id: 'replaySeparator5Back',
+    defaultKeys: ['5'],
+    description: 'Play 5 separators back',
+  }),
+  createShortcutBinding({
     id: 'resetSeparatorCursor',
     defaultKeys: ['X'],
     description: 'Reset separator cursor to second divider',
