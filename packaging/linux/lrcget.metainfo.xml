@@ -39,6 +39,14 @@
   <url type="bugtracker">https://github.com/tranxuanthang/lrcget/issues</url>
   <content_rating type="oars-1.1"/>
   <releases>
+    <release version="2.2.2" date="2026-11-04">
+      <description>
+        <ul>
+          <li>Switched to LRCLIB's v2 search API for faster, lighter searches, with automatic fallback to v1 for older LRCLIB instances.</li>
+          <li>Added "Word Synced" badges to lyrics search results, My LRCLIB results, and the library track list.</li>
+        </ul>
+      </description>
+    </release>
     <release version="2.2.1" date="2026-10-23">
       <description>
         <ul>
