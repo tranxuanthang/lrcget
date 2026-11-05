@@ -7,10 +7,59 @@ import {
   serializeLyricsfile,
 } from '@/utils/lyricsfile.js'
 
-const createEmptySyncedLine = () => ({
-  text: '',
-  words: [],
-})
+const createEmptySyncedLine = () => normalizeSyncedLine({})
+
+const MIN_WORD_DURATION_MS = 10
+
+// Moves word[0] with the line start; later word starts keep at least MIN_WORD_DURATION_MS apart.
+const setLineStartMs = (line, newStartMs) => {
+  if (!Array.isArray(line.words) || line.words.length === 0) {
+    return { ...line, start_ms: newStartMs }
+  }
+
+  const firstWord = line.words[0]
+  if (!Number.isFinite(firstWord?.start_ms)) {
+    return { ...line, start_ms: newStartMs }
+  }
+
+  const updatedWords = [...line.words]
+  updatedWords[0] = { ...firstWord, start_ms: newStartMs }
+
+  for (let i = 1; i < updatedWords.length; i++) {
+    const prevStart = updatedWords[i - 1].start_ms
+    const minStart = prevStart + MIN_WORD_DURATION_MS
+    const currentStart = updatedWords[i].start_ms
+    if (Number.isFinite(currentStart) && currentStart < minStart) {
+      updatedWords[i] = { ...updatedWords[i], start_ms: minStart }
+    }
+  }
+
+  return { ...line, start_ms: newStartMs, words: updatedWords }
+}
+
+// The last word's explicit end_ms follows the line end; implicit ends are derived by the lane.
+const setLineEndMs = (line, newEndMs) => {
+  if (!Array.isArray(line.words) || line.words.length === 0) {
+    return { ...line, end_ms: newEndMs }
+  }
+
+  const lastIdx = line.words.length - 1
+  const lastWord = line.words[lastIdx]
+  if (!Number.isFinite(lastWord?.end_ms)) {
+    return { ...line, end_ms: newEndMs }
+  }
+
+  const updatedWords = [...line.words]
+  updatedWords[lastIdx] = { ...lastWord, end_ms: newEndMs }
+
+  return { ...line, end_ms: newEndMs, words: updatedWords }
+}
+
+// Restores start_ms order after edits; lines without a finite start_ms keep their order at the end.
+const sortByStartMs = lines => {
+  const startOf = line => (Number.isFinite(line.start_ms) ? line.start_ms : Infinity)
+  return [...lines].sort((a, b) => startOf(a) - startOf(b))
+}
 
 export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, progress, toast }) {
   const plainLyrics = ref('')
@@ -18,12 +67,26 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
   const lyricsfileDocument = ref(null)
   const isDirty = ref(false)
   const selectedSyncedLineIndex = ref(-1)
-  const selectedSyncedLineIndices = ref([])
+  // Bulk selection is stored by line id so it survives re-sorting.
+  const selectedSyncedLineIds = ref([])
   const isSyncedLineEditing = ref(false)
   const isInstrumental = ref(false)
 
+  const selectedSyncedLineIndices = computed(() => {
+    if (selectedSyncedLineIds.value.length === 0) return []
+    const idSet = new Set(selectedSyncedLineIds.value)
+    const indices = []
+    syncedLines.value.forEach((line, idx) => {
+      if (line?.id !== undefined && idSet.has(line.id)) indices.push(idx)
+    })
+    return indices
+  })
+
+  const lineIdsAt = indices =>
+    new Set(indices.map(index => syncedLines.value[index]?.id).filter(id => id !== undefined))
+
   const clearSyncedLineSelection = () => {
-    selectedSyncedLineIndices.value = []
+    selectedSyncedLineIds.value = []
   }
 
   const ensureSelectedSyncedLine = () => {
@@ -41,10 +104,24 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
       selectedSyncedLineIndex.value = 0
     }
 
-    // Remove any out-of-bounds indices from multi-selection
-    selectedSyncedLineIndices.value = selectedSyncedLineIndices.value.filter(
-      i => i >= 0 && i < syncedLines.value.length
-    )
+    const liveIds = new Set(syncedLines.value.map(line => line?.id).filter(id => id !== undefined))
+    selectedSyncedLineIds.value = selectedSyncedLineIds.value.filter(id => liveIds.has(id))
+  }
+
+  // An edit can move a line past its neighbors, so re-sort and re-find the selected line by id.
+  const applyLineMutation = buildNextLines => {
+    const sourceLines = syncedLines.value
+    const selectedLineId = sourceLines[selectedSyncedLineIndex.value]?.id ?? null
+
+    const nextLines = buildNextLines(sourceLines)
+    const sortedLines = sortByStartMs(nextLines)
+
+    syncedLines.value = sortedLines
+    if (selectedLineId !== null) {
+      const newIdx = sortedLines.findIndex(line => line.id === selectedLineId)
+      if (newIdx >= 0) selectedSyncedLineIndex.value = newIdx
+    }
+    isDirty.value = true
   }
 
   const selectSyncedLine = lineIndex => {
@@ -67,7 +144,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     for (let i = min; i <= max; i++) {
       indices.push(i)
     }
-    selectedSyncedLineIndices.value = indices
+    selectedSyncedLineIds.value = [...lineIdsAt(indices)]
     selectedSyncedLineIndex.value = min
   }
 
@@ -75,15 +152,19 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
       return
     }
-    const current = new Set(selectedSyncedLineIndices.value)
-    if (current.has(lineIndex)) {
-      current.delete(lineIndex)
+    const id = syncedLines.value[lineIndex]?.id
+    if (id === undefined) return
+
+    const current = new Set(selectedSyncedLineIds.value)
+    if (current.has(id)) {
+      current.delete(id)
     } else {
-      current.add(lineIndex)
+      current.add(id)
     }
-    selectedSyncedLineIndices.value = Array.from(current).sort((a, b) => a - b)
-    if (selectedSyncedLineIndices.value.length > 0) {
-      selectedSyncedLineIndex.value = selectedSyncedLineIndices.value[0]
+    selectedSyncedLineIds.value = Array.from(current)
+    if (selectedSyncedLineIds.value.length > 0) {
+      const indices = selectedSyncedLineIndices.value
+      if (indices.length > 0) selectedSyncedLineIndex.value = indices[0]
     }
   }
 
@@ -120,7 +201,8 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
   }
 
   const updateSyncedLines = lines => {
-    syncedLines.value = lines
+    // Normalize so bare lines from LRC paste/import paths pick up stable ids.
+    syncedLines.value = lines.map(line => normalizeSyncedLine(line))
     isDirty.value = true
     ensureSelectedSyncedLine()
   }
@@ -130,13 +212,30 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
       return
     }
 
-    const nextLines = [...syncedLines.value]
-    nextLines.splice(lineIndex, 0, createEmptySyncedLine())
+    // Span the gap between the neighbors so the new line is pre-timed and sorts into place.
+    const newLine = createEmptySyncedLine()
+    const prevLine = lineIndex > 0 ? syncedLines.value[lineIndex - 1] : null
+    const nextLine = lineIndex < syncedLines.value.length ? syncedLines.value[lineIndex] : null
 
-    syncedLines.value = nextLines
-    selectedSyncedLineIndex.value = lineIndex
+    if (prevLine && Number.isFinite(prevLine.end_ms)) {
+      newLine.start_ms = prevLine.end_ms
+    }
+    if (nextLine && Number.isFinite(nextLine.start_ms)) {
+      newLine.end_ms = nextLine.start_ms
+    }
+
+    applyLineMutation(lines => [...lines.slice(0, lineIndex), newLine, ...lines.slice(lineIndex)])
+    selectedSyncedLineIndex.value = syncedLines.value.findIndex(line => line.id === newLine.id)
     clearSyncedLineSelection()
-    isDirty.value = true
+  }
+
+  const syncEndToNextLineStart = lineIndex => {
+    const nextLine = syncedLines.value[lineIndex + 1]
+    if (!nextLine || !Number.isFinite(nextLine.start_ms)) {
+      return
+    }
+
+    withUpdatedLine(lineIndex, line => setLineEndMs(line, nextLine.start_ms))
   }
 
   const deleteSyncedLine = lineIndex => {
@@ -160,9 +259,10 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     if (!Array.isArray(indices) || indices.length === 0) {
       return
     }
-    const indexSet = new Set(indices)
-    const nextLines = syncedLines.value.filter((_, index) => !indexSet.has(index))
-    syncedLines.value = nextLines
+    const idsToDelete = lineIdsAt(indices)
+    if (idsToDelete.size === 0) return
+
+    syncedLines.value = syncedLines.value.filter(line => !idsToDelete.has(line.id))
     isDirty.value = true
     clearSyncedLineSelection()
 
@@ -180,18 +280,18 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     if (!Array.isArray(indices) || indices.length === 0) {
       return
     }
-    const indexSet = new Set(indices)
-    const nextLines = syncedLines.value.map((line, index) => {
-      if (!indexSet.has(index)) {
-        return line
-      }
-      const currentStartMs = line?.start_ms
-      const baseStartMs = Number.isFinite(currentStartMs) ? currentStartMs : 0
-      const newStartMs = Math.max(0, Math.round(baseStartMs + offsetMs))
-      return { ...line, start_ms: newStartMs }
-    })
-    syncedLines.value = nextLines
-    isDirty.value = true
+    const idsToShift = lineIdsAt(indices)
+    if (idsToShift.size === 0) return
+
+    applyLineMutation(lines =>
+      lines.map(line => {
+        if (!idsToShift.has(line.id)) return line
+        const currentStartMs = line?.start_ms
+        const baseStartMs = Number.isFinite(currentStartMs) ? currentStartMs : 0
+        const newStartMs = Math.max(0, Math.round(baseStartMs + offsetMs))
+        return setLineStartMs(line, newStartMs)
+      })
+    )
   }
 
   const bulkRewindLines = indices => {
@@ -217,16 +317,9 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
       return
     }
 
-    const nextLines = syncedLines.value.map((line, index) => {
-      if (index !== lineIndex) {
-        return line
-      }
-
-      return updater(line)
-    })
-
-    syncedLines.value = nextLines
-    isDirty.value = true
+    applyLineMutation(lines =>
+      lines.map((line, index) => (index === lineIndex ? updater(line) : line))
+    )
   }
 
   const eraseWordTimings = lineIndex => {
@@ -236,49 +329,25 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     }))
   }
 
-  const shiftWordBoundariesByOffset = (words, offsetMs) => {
-    if (!Array.isArray(words) || words.length === 0 || !Number.isFinite(offsetMs) || offsetMs === 0) {
-      return words
-    }
-
-    return words.map(word => ({
-      ...word,
-      start_ms: Math.max(0, Math.round((word?.start_ms ?? 0) + offsetMs)),
-    }))
-  }
-
   const syncLineToCurrentProgress = lineIndex => {
     if (!Number.isInteger(lineIndex) || lineIndex < 0 || lineIndex >= syncedLines.value.length) {
       return
     }
 
-    const currentLine = syncedLines.value[lineIndex]
-    const previousStartMs = Number.isFinite(currentLine?.start_ms) ? currentLine.start_ms : null
     const newStartMs = Math.max(0, Math.round(progress.value * 1000))
-    const lineStartOffsetMs = previousStartMs == null ? 0 : newStartMs - previousStartMs
 
     // Update the current line's start_ms and optionally set previous line's end_ms
     const prevLineIndex = lineIndex - 1
     const shouldSetPrevEndMs =
       prevLineIndex >= 0 && !Number.isFinite(syncedLines.value[prevLineIndex]?.end_ms)
 
-    syncedLines.value = syncedLines.value.map((line, index) => {
-      if (index === lineIndex) {
-        return {
-          ...line,
-          start_ms: newStartMs,
-          words: shiftWordBoundariesByOffset(line.words, lineStartOffsetMs),
-        }
-      }
-      if (index === prevLineIndex && shouldSetPrevEndMs) {
-        return {
-          ...line,
-          end_ms: newStartMs,
-        }
-      }
-      return line
-    })
-    isDirty.value = true
+    applyLineMutation(lines =>
+      lines.map((line, index) => {
+        if (index === lineIndex) return setLineStartMs(line, newStartMs)
+        if (index === prevLineIndex && shouldSetPrevEndMs) return { ...line, end_ms: newStartMs }
+        return line
+      })
+    )
   }
 
   const shiftLineTimestampBy = (lineIndex, offsetMs) => {
@@ -290,9 +359,18 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     const baseStartMs = Number.isFinite(currentStartMs) ? currentStartMs : 0
     const newStartMs = Math.max(0, Math.round(baseStartMs + offsetMs))
 
+    withUpdatedLine(lineIndex, line => setLineStartMs(line, newStartMs))
+  }
+
+  const updateLineWords = ({ lineIndex, words, lineStartMs }) => {
+    const nextLineStartMs = Number.isFinite(lineStartMs)
+      ? Math.max(0, Math.round(lineStartMs))
+      : null
+
     withUpdatedLine(lineIndex, line => ({
       ...line,
-      start_ms: newStartMs,
+      ...(nextLineStartMs === null ? {} : { start_ms: nextLineStartMs }),
+      words,
     }))
   }
 
@@ -311,10 +389,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
 
     const newEndMs = Math.max(0, Math.round(progress.value * 1000))
 
-    withUpdatedLine(lineIndex, line => ({
-      ...line,
-      end_ms: newEndMs,
-    }))
+    withUpdatedLine(lineIndex, line => setLineEndMs(line, newEndMs))
   }
 
   const shiftEndTimestampBy = (lineIndex, offsetMs) => {
@@ -326,10 +401,7 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     const baseEndMs = Number.isFinite(currentEndMs) ? currentEndMs : 0
     const newEndMs = Math.max(0, Math.round(baseEndMs + offsetMs))
 
-    withUpdatedLine(lineIndex, line => ({
-      ...line,
-      end_ms: newEndMs,
-    }))
+    withUpdatedLine(lineIndex, line => setLineEndMs(line, newEndMs))
   }
 
   const rewindEndBy100 = lineIndex => {
@@ -338,6 +410,17 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
 
   const forwardEndBy100 = lineIndex => {
     shiftEndTimestampBy(lineIndex, 100)
+  }
+
+  // Set a line end to an explicit value (used for word-lane right-edge trim drag).
+  const setLineEndMsTo = (lineIndex, endMs) => {
+    if (!Number.isFinite(endMs)) {
+      return
+    }
+
+    const newEndMs = Math.max(0, Math.round(endMs))
+
+    withUpdatedLine(lineIndex, line => setLineEndMs(line, newEndMs))
   }
 
   const updateLineText = (lineIndex, newText) => {
@@ -397,9 +480,13 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
       }
 
       const parsed = parseLyricsfile(serializedContent)
+      // Carry over line ids by position so v-for keys and the bulk selection survive the save.
+      const previousLines = syncedLines.value
       // Preserve independent synced lines structure after save
       // Don't re-sync to plain lyrics to maintain separate structures
-      syncedLines.value = parsed.syncedLines.map(line => normalizeSyncedLine(line))
+      syncedLines.value = parsed.syncedLines.map((line, i) =>
+        normalizeSyncedLine({ ...line, id: previousLines[i]?.id })
+      )
       lyricsfileDocument.value = parsed.document
       isDirty.value = false
       return true
@@ -491,9 +578,12 @@ export function useEditLyricsV2Document({ audioSource, lyricsfile, trackId, prog
     syncEndToCurrentProgress,
     rewindEndBy100,
     forwardEndBy100,
+    setLineEndMsTo,
+    syncEndToNextLineStart,
     saveLyrics,
     ensureSelectedSyncedLine,
     updateLineText,
+    updateLineWords,
     eraseWordTimings,
     setInstrumental,
   }

@@ -33,7 +33,7 @@ export function useEditLyricsV2Playback({
       resume()
     }
 
-    seek(seekTo)
+    await seek(seekTo)
   }
 
   const playLine = async lineIndex => {
@@ -47,7 +47,7 @@ export function useEditLyricsV2Playback({
     }
 
     if (audioSource.value) {
-      playTrack(audioSource.value)
+      return playTrack(audioSource.value)
     }
   }
 
