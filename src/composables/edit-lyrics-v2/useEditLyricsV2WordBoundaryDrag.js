@@ -10,6 +10,7 @@ export function useEditLyricsV2WordBoundaryDrag({
   timelineEndMs,
   selectedLineIndex,
   onUpdateWords,
+  onUpdateLineEnd,
   onWordTimingEdited,
 }) {
   const dragState = ref(null)
@@ -71,6 +72,12 @@ export function useEditLyricsV2WordBoundaryDrag({
     const currentWords = words.value
     const nextStartMs = currentWords[rightWordIndex + 1]?.start_ms
 
+    // Boundary words.length is the line end, which drags can only trim inward.
+    if (rightWordIndex === currentWords.length) {
+      const minStartMs = (currentWords[rightWordIndex - 1]?.start_ms ?? timelineStartMs.value) + 1
+      return { minStartMs, maxStartMs: Math.max(minStartMs, timelineEndMs.value) }
+    }
+
     if (rightWordIndex === 0) {
       const minStartMs = Number.isFinite(timelineStartMs.value) ? timelineStartMs.value : 0
       const maxStartMs = Number.isFinite(nextStartMs) ? nextStartMs - 1 : timelineEndMs.value - 1
@@ -116,6 +123,12 @@ export function useEditLyricsV2WordBoundaryDrag({
   const commitBoundary = ({ rightWordIndex, startMs, initialStartMs, shouldReplay }) => {
     if (startMs === initialStartMs) {
       return false
+    }
+
+    // Trimming the line end doesn't replay the line, matching the row's end nudges.
+    if (rightWordIndex === words.value.length) {
+      onUpdateLineEnd({ lineIndex: selectedLineIndex.value, endMs: startMs })
+      return true
     }
 
     const updatedWords = buildUpdatedWords(rightWordIndex, startMs)
@@ -238,7 +251,7 @@ export function useEditLyricsV2WordBoundaryDrag({
     event.preventDefault()
     event.stopPropagation()
 
-    if (!isWordSyncAvailable.value || rightWordIndex < 0 || rightWordIndex >= words.value.length) {
+    if (!isWordSyncAvailable.value || rightWordIndex < 0 || rightWordIndex > words.value.length) {
       return
     }
 
@@ -247,7 +260,10 @@ export function useEditLyricsV2WordBoundaryDrag({
       x: event.clientX,
       y: event.clientY,
       rightWordIndex,
-      initialStartMs: words.value[rightWordIndex].start_ms,
+      initialStartMs:
+        rightWordIndex === words.value.length
+          ? timelineEndMs.value
+          : words.value[rightWordIndex].start_ms,
       clientXToTime,
     }
 
