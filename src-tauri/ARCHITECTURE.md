@@ -107,11 +107,7 @@ trait ServiceAccess {
 - `artists_fts` — indexed `artist_name` (with `artist_id` as UNINDEXED key)
 - Backfilled from existing normalized `*_lower` columns.
 
-**Migration v18:** Added `spectrogram_visible` BOOLEAN column to `config_data` (default `1`) for persisting the V2 lyrics editor's per-line spectrogram show/hide toggle across app launches.
-
-**Migration v19:** Added `spectrogram_theme` TEXT column to `config_data` (`NOT NULL DEFAULT 'inferno'`) for persisting the V2 editor's spectrogram color theme (`inferno` | `blue` | `green`). Unknown or legacy values are normalized back to `inferno` by the frontend theme registry rather than failing to render.
-
-**Migration v20:** Added `spectrogram_min_hz` (REAL, default `62.5`), `spectrogram_max_hz` (REAL, default `8000`) and `spectrogram_midpoint_db` (REAL, default `-35`) to `config_data` for the V2 editor's spectrogram frequency range and color-curve midpoint. The frontend snaps stored values to its octave stops and 5 dB steps, and widens a stored range narrower than two octaves.
+**Migration v18:** Added spectrogram display settings (visibility, theme, frequency range, midpoint) to `config_data`.
 
 **Indexes:** All `*_lower` columns + `content_hash`, `scan_status`, `modified_time+file_size` (fingerprint) + lyrics-presence indexes + LRCLIB composite index (`lrclib_instance`, `lrclib_id`)
 
@@ -370,8 +366,8 @@ Search across all three entity types uses SQLite FTS5 (via `tracks_fts`, `albums
 ### Playback & Config
 - `play_track(track_id?, file_path?, title?, album_name?, artist_name?, album_artist_name?, duration?)` - Unified playback for both library tracks (via `track_id`) and file-based tracks (via `file_path` with metadata)
 - `pause/resume_track()`, `seek_track()`, `stop_track()`, `set_volume()` (persists volume to config), `set_playback_speed()`
-- `get_audio_slice(file_path, start_ms, end_ms)` - Returns `{samples: Vec<f32>, sampleRate: u32}` (camelCase). Decodes a mono-downmixed slice.
-- `set_spectrogram_visible(visible)`, `set_spectrogram_theme(theme)`, `set_spectrogram_frequency_range(min_hz, max_hz)` (rejects non-finite, non-positive or inverted ranges), `set_spectrogram_midpoint(midpoint_db)` (rejects non-finite or non-negative values)
+- `get_audio_slice(file_path, start_ms, end_ms)` - Decodes a mono slice of the file for the editor spectrogram
+- `set_spectrogram_settings(visible?, theme?, min_hz?, max_hz?, midpoint_db?)` updates only supplied spectrogram fields in `config_data`
 - `get/set_directories()`, `get/set_config()`, `get_init()`
 - `set_export_preferences(auto_export_enabled?, export_lrc?, export_txt?, export_embedded?, skip_tracks_with_synced_lyrics?, skip_tracks_with_plain_lyrics?)` updates only supplied fields in `config_data` and returns config. Download atomically supplies its existing skip flags, toggle, and effective format selections; manual Export supplies shared formats only. Hidden/omitted fields and unrelated settings survive.
 - Volume is loaded from config on startup and auto-saved when changed via `set_volume()`
@@ -419,18 +415,7 @@ struct MatchingTrack {
 
 ## Audio Slice Decoding (`decoder.rs`)
 
-Standalone Symphonia-based decoder that extracts mono f32 samples for a `[start_ms, end_ms)` window of any audio file the codebase already supports (via Symphonia's `all` features). Used by the V2 editor spectrogram.
-
-**Process:**
-1. Open file, probe format (extension hint), get default track
-2. Seek to `start_ms` using `SeekMode::Accurate` (best-effort; some codecs may land at the nearest packet boundary)
-3. Decode packets; for each packet, downmix all channels via average to mono and convert to f32 via Symphonia's `SampleBuffer<f32>` (auto-handles source sample formats)
-4. Skip samples before `start_ms` and stop once `end_ms` is reached, using `packet.ts` to align
-5. Return `AudioSlice { samples: Vec<f32>, sample_rate: u32 }`
-
-**Errors:** `DecoderError` enum covers file open, Symphonia errors, missing-default-track, missing-sample-rate, invalid range.
-
-**Performance:** Decoding a 5-second slice typically runs in ~30-50ms. The command wraps the decode in `tokio::spawn_blocking` to keep the async executor responsive.
+Decodes a `[start_ms, end_ms)` window of any Symphonia-supported file to mono f32 samples for the V2 editor spectrogram. `get_audio_slice` runs it on `tokio::task::spawn_blocking`.
 
 ## Audio Metadata Extraction (`get_audio_metadata`)
 
