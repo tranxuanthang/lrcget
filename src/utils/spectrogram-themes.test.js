@@ -6,8 +6,6 @@ import {
   SPECTROGRAM_LUT_SIZE,
   SPECTROGRAM_THEMES,
   getSpectrogramLut,
-  getSpectrogramTheme,
-  isSpectrogramThemeId,
   normalizeSpectrogramThemeId,
 } from './spectrogram-themes.js'
 
@@ -19,7 +17,7 @@ describe('spectrogram themes', () => {
   it('exposes inferno, blue and green in picker order, defaulting to inferno', () => {
     expect(SPECTROGRAM_THEMES.map(theme => theme.id)).toEqual(['inferno', 'blue', 'green'])
     expect(DEFAULT_SPECTROGRAM_THEME_ID).toBe('inferno')
-    expect(isSpectrogramThemeId(DEFAULT_SPECTROGRAM_THEME_ID)).toBe(true)
+    expect(getSpectrogramLut(DEFAULT_SPECTROGRAM_THEME_ID)).toBe(SPECTROGRAM_THEMES[0].lut)
   })
 
   it('builds a complete lookup table for every theme through the shared builder', () => {
@@ -29,7 +27,7 @@ describe('spectrogram themes', () => {
     }
   })
 
-  it('reproduces d3 inferno byte-for-byte after unifying onto rgb() parsing', () => {
+  it('reproduces d3 inferno byte-for-byte', () => {
     const lut = getSpectrogramLut('inferno')
     for (let i = 0; i < SPECTROGRAM_LUT_SIZE; i++) {
       const expected = rgb(interpolateInferno(i / lastIndex))
@@ -59,16 +57,17 @@ describe('spectrogram themes', () => {
   })
 
   it('falls back to the default for unknown, empty or missing ids', () => {
+    const defaultLut = getSpectrogramLut(DEFAULT_SPECTROGRAM_THEME_ID)
     for (const value of ['nope', '', null, undefined, 0, {}]) {
       expect(normalizeSpectrogramThemeId(value)).toBe(DEFAULT_SPECTROGRAM_THEME_ID)
-      expect(getSpectrogramTheme(value).id).toBe(DEFAULT_SPECTROGRAM_THEME_ID)
+      expect(getSpectrogramLut(value)).toBe(defaultLut)
     }
   })
 
   it('preserves known ids', () => {
     for (const theme of SPECTROGRAM_THEMES) {
       expect(normalizeSpectrogramThemeId(theme.id)).toBe(theme.id)
-      expect(getSpectrogramTheme(theme.id)).toBe(theme)
+      expect(getSpectrogramLut(theme.id)).toBe(theme.lut)
     }
   })
 })
