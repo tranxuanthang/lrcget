@@ -413,9 +413,7 @@ const handleSegmentDoubleClick = event => {
   })
 }
 
-// Suppress click bubbling to the timeline (which would seek) whenever the
-// split preview is rendered. `hoverPreview` is non-null whenever the splitter
-// UI is visible, so this guarantees: splitter preview visible -> no seek on click.
+// Clicks while the split preview is showing shouldn't also seek the timeline.
 const handleSegmentClick = event => {
   if (hoverPreview.value) {
     event.stopPropagation()
@@ -423,8 +421,7 @@ const handleSegmentClick = event => {
 }
 
 const handleSegmentHover = event => {
-  // A boundary drag sweeps the pointer across segments, so skip the split
-  // preview while one is in flight instead of previewing splits mid-drag.
+  // A boundary drag sweeps the pointer across segments; don't preview splits mid-drag.
   if (props.dragActive) {
     hoverPreview.value = null
     return
