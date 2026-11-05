@@ -1,11 +1,10 @@
 import YAML from 'yaml'
+import _omit from 'lodash/omit'
 
 export const LYRICSFILE_VERSION = '1.0'
 export const INSTRUMENTAL_LRC = '[au: instrumental]'
 
-// Monotonic counter for in-memory line IDs. Used to give every synced line a
-// stable identity so Vue v-for keys survive reorder when a user's start_ms
-// edit moves the line past its neighbors. Stripped before YAML output.
+// In-memory line ids keep v-for keys stable across re-sorts; stripped before saving.
 let _lineIdCounter = 0
 export const nextLineId = () => ++_lineIdCounter
 
@@ -313,14 +312,7 @@ export const serializeLyricsfile = ({
     metadata.language = baseMetadata.language
   }
 
-  const persistableLines =
-    lines.length > 0
-      ? lines.map(line => {
-          const copy = { ...line }
-          delete copy.id
-          return copy
-        })
-      : null
+  const persistableLines = lines.length > 0 ? lines.map(line => _omit(line, 'id')) : null
 
   return YAML.stringify({
     version: LYRICSFILE_VERSION,
