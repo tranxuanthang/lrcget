@@ -27,10 +27,7 @@ export function useEditLyricsV2Playback({
     const baseStartMs = Number.isFinite(lineStartMs) ? lineStartMs : progress.value * 1000
     const seekTo = Math.max(0, baseStartMs + offsetMs) / 1000
 
-    // 'stopped' means the Rust player has no live sound_handle (either never
-    // loaded, or the track finished). Treat it like "not loaded" so we go
-    // through a full playTrack reload before seeking.
-    if (!isPlayingCorrectTrack() || status.value === 'stopped') {
+    if (!isPlayingCorrectTrack()) {
       await playTrack(audioSource.value)
     } else if (status.value === 'paused') {
       resume()

@@ -28,7 +28,9 @@ export function usePlayer() {
   const playTrack = track => {
     playingTrack.value = track
 
+    // Determine if this is a database track or a file-based track
     if (track.id !== undefined && track.id !== null) {
+      // Database track - use track_id
       return invoke('play_track', {
         trackId: track.id,
         filePath: null,
@@ -39,6 +41,7 @@ export function usePlayer() {
         duration: track.duration,
       })
     } else if (track.file_path) {
+      // File-based track (from file picker) - use file_path with metadata
       return invoke('play_track', {
         trackId: null,
         filePath: track.file_path,
@@ -74,9 +77,7 @@ export function usePlayer() {
       return
     }
 
-    // Rust may have cleared sound_handle on stop. Reload with FULL metadata
-    // (not bare {trackId} — drops file_path for file-based tracks) and AWAIT,
-    // or seek_track races against an un-loaded handle and silently no-ops.
+    // A stopped track has no sound loaded, so reload it with full metadata before seeking.
     if (status.value === 'stopped') {
       await playTrack(playingTrack.value)
     }
