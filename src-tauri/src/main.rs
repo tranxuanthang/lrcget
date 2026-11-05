@@ -1663,46 +1663,36 @@ fn stop_track(app_state: tauri::State<AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn set_spectrogram_visible(visible: bool, app_handle: AppHandle) -> Result<(), String> {
-    app_handle
-        .db(|db| db::set_spectrogram_visible_config(visible, db))
-        .map_err(|err| err.to_string())?;
-    Ok(())
-}
-
-#[tauri::command]
-fn set_spectrogram_theme(theme: String, app_handle: AppHandle) -> Result<(), String> {
-    app_handle
-        .db(|db| db::set_spectrogram_theme_config(&theme, db))
-        .map_err(|err| err.to_string())?;
-    Ok(())
-}
-
-#[tauri::command]
-fn set_spectrogram_frequency_range(
-    min_hz: f64,
-    max_hz: f64,
+fn set_spectrogram_settings(
+    visible: Option<bool>,
+    theme: Option<String>,
+    min_hz: Option<f64>,
+    max_hz: Option<f64>,
+    midpoint_db: Option<f64>,
     app_handle: AppHandle,
 ) -> Result<(), String> {
-    if !(min_hz.is_finite() && max_hz.is_finite() && min_hz > 0.0 && min_hz < max_hz) {
-        return Err(format!(
-            "Invalid spectrogram frequency range: {} to {} Hz",
-            min_hz, max_hz
-        ));
+    for hz in [min_hz, max_hz].into_iter().flatten() {
+        if !(hz.is_finite() && hz > 0.0) {
+            return Err(format!("Invalid spectrogram frequency: {} Hz", hz));
+        }
+    }
+    if let (Some(min_hz), Some(max_hz)) = (min_hz, max_hz) {
+        if min_hz >= max_hz {
+            return Err(format!(
+                "Invalid spectrogram frequency range: {} to {} Hz",
+                min_hz, max_hz
+            ));
+        }
+    }
+    if let Some(midpoint_db) = midpoint_db {
+        if !(midpoint_db.is_finite() && midpoint_db < 0.0) {
+            return Err(format!("Invalid spectrogram midpoint: {} dB", midpoint_db));
+        }
     }
     app_handle
-        .db(|db| db::set_spectrogram_frequency_range_config(min_hz, max_hz, db))
-        .map_err(|err| err.to_string())?;
-    Ok(())
-}
-
-#[tauri::command]
-fn set_spectrogram_midpoint(midpoint_db: f64, app_handle: AppHandle) -> Result<(), String> {
-    if !(midpoint_db.is_finite() && midpoint_db < 0.0) {
-        return Err(format!("Invalid spectrogram midpoint: {} dB", midpoint_db));
-    }
-    app_handle
-        .db(|db| db::set_spectrogram_midpoint_config(midpoint_db, db))
+        .db(|db| {
+            db::set_spectrogram_settings(visible, theme.as_deref(), min_hz, max_hz, midpoint_db, db)
+        })
         .map_err(|err| err.to_string())?;
     Ok(())
 }
@@ -1828,10 +1818,7 @@ async fn main() {
             get_audio_slice,
             set_volume,
             set_playback_speed,
-            set_spectrogram_visible,
-            set_spectrogram_theme,
-            set_spectrogram_frequency_range,
-            set_spectrogram_midpoint,
+            set_spectrogram_settings,
             open_devtools,
             drain_notifications,
             find_matching_tracks,

@@ -17,7 +17,7 @@
       id="spectrogram-settings-color-label"
       class="row-label col-start-1 row-start-1"
       :class="{ 'row-label-active': activeRow === 'color' }"
-      data-focuses-color
+      data-row="0"
     >
       Color
     </span>
@@ -33,90 +33,62 @@
         type="radio"
         name="spectrogram-color"
         class="swatch"
-        :tabindex="theme.id === spectrogramTheme ? 0 : -1"
+        :tabindex="theme.id === settings.theme ? 0 : -1"
         :value="theme.id"
-        :checked="theme.id === spectrogramTheme"
+        :checked="theme.id === settings.theme"
         :aria-label="theme.label"
         :title="theme.label"
         :style="{ backgroundColor: theme.swatchColor }"
-        @change="selectSpectrogramTheme(theme.id)"
+        @change="save({ theme: theme.id })"
       />
     </div>
     <span class="readout col-start-3 row-start-1">{{ selectedThemeLabel }}</span>
 
-    <label
-      for="spectrogram-settings-min-hz"
+    <span
+      id="spectrogram-settings-frequency-label"
       class="row-label col-start-1 row-start-2 self-start"
       :class="{ 'row-label-active': activeRow === 'frequency' }"
+      data-row="1"
     >
       Frequency
-    </label>
-    <div class="frequency-axis col-start-2 row-start-2" @mousedown.self="handleAxisMouseDown">
-      <div class="axis-track" />
-      <div class="axis-band" :style="bandStyle" />
-      <span
-        v-for="(hz, index) in SPECTROGRAM_AXIS_STOPS_HZ"
-        :key="hz"
-        class="axis-stop"
-        :style="{ left: stopCenter(index) }"
-      >
-        {{ formatSpectrogramAxisStop(hz) }}
-      </span>
-      <input
-        id="spectrogram-settings-min-hz"
-        ref="minHzInput"
-        type="range"
-        class="range-input frequency-input"
-        tabindex="0"
-        min="0"
-        :max="AXIS_INTERVALS"
-        step="1"
-        :value="minHzIndex"
-        aria-label="Lowest frequency"
-        :aria-valuetext="formatSpectrogramFrequency(spectrogramMinHz)"
-        @input="handleMinHzInput"
-        @change="saveSpectrogramFrequencyRange"
-      />
-      <input
-        ref="maxHzInput"
-        type="range"
-        class="range-input frequency-input"
-        tabindex="0"
-        min="0"
-        :max="AXIS_INTERVALS"
-        step="1"
-        :value="maxHzIndex"
-        aria-label="Highest frequency"
-        :aria-valuetext="formatSpectrogramFrequency(spectrogramMaxHz)"
-        @input="handleMaxHzInput"
-        @change="saveSpectrogramFrequencyRange"
-      />
-    </div>
+    </span>
+    <VueSlider
+      ref="frequencySlider"
+      class="slider col-start-2 row-start-2 self-start"
+      :model-value="[settings.minHz, settings.maxHz]"
+      :data="SPECTROGRAM_AXIS_STOPS_HZ"
+      :marks="axisStopMark"
+      :min-range="SPECTROGRAM_MIN_STOP_GAP"
+      v-bind="SLIDER_OPTIONS"
+      :tooltip-formatter="formatSpectrogramFrequency"
+      :dot-attrs="{ 'aria-labelledby': 'spectrogram-settings-frequency-label' }"
+      @change="handleFrequencyChange"
+    />
     <span class="readout col-start-3 row-start-2 self-start">{{ frequencyReadout }}</span>
 
-    <label
-      for="spectrogram-settings-sensitivity"
+    <span
+      id="spectrogram-settings-sensitivity-label"
       class="row-label col-start-1 row-start-3"
       :class="{ 'row-label-active': activeRow === 'sensitivity' }"
+      data-row="2"
     >
       Sensitivity
-    </label>
-    <input
-      id="spectrogram-settings-sensitivity"
-      ref="sensitivityInput"
-      type="range"
-      class="range-input sensitivity-input col-start-2 row-start-3"
-      tabindex="0"
+    </span>
+    <VueSlider
+      ref="sensitivitySlider"
+      class="slider col-start-2 row-start-3"
+      :model-value="-settings.midpointDb"
       :min="-SPECTROGRAM_MIDPOINT_SHALLOWEST_DB"
       :max="-SPECTROGRAM_MIDPOINT_DEEPEST_DB"
-      :step="SPECTROGRAM_MIDPOINT_STEP_DB"
-      :value="-spectrogramMidpointDb"
-      :aria-valuetext="formatSpectrogramMidpoint(spectrogramMidpointDb)"
-      @input="handleSensitivityInput"
-      @change="saveSpectrogramMidpointDb"
+      :interval="SPECTROGRAM_MIDPOINT_STEP_DB"
+      :process="false"
+      v-bind="SLIDER_OPTIONS"
+      :tooltip-formatter="value => formatSpectrogramMidpoint(-value)"
+      :dot-attrs="{ 'aria-labelledby': 'spectrogram-settings-sensitivity-label' }"
+      @change="handleSensitivityChange"
     />
     <span class="readout col-start-3 row-start-3">
-      {{ formatSpectrogramMidpoint(spectrogramMidpointDb) }}
+      {{ formatSpectrogramMidpoint(settings.midpointDb) }}
     </span>
 
     <button
@@ -125,7 +97,7 @@
       tabindex="0"
       class="defaults-button button button-normal col-start-4 row-start-1"
       title="Restore default spectrogram settings"
-      @click="resetSpectrogramSettings"
+      @click="reset"
     >
       <Restore class="w-3.5 h-3.5" />
       <span>Defaults</span>
@@ -135,8 +107,9 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
+import VueSlider from 'vue-3-slider-component'
 import Restore from '~icons/mdi/restore'
-import { useGlobalState } from '@/composables/global-state.js'
+import { useSpectrogramSettings } from '@/composables/spectrogram-settings.js'
 import { globalShortcutBindings } from '@/composables/edit-lyrics-v2/shortcutRegistry.js'
 import { SPECTROGRAM_THEMES } from '@/utils/spectrogram-themes.js'
 import {
@@ -144,6 +117,7 @@ import {
   SPECTROGRAM_MIDPOINT_DEEPEST_DB,
   SPECTROGRAM_MIDPOINT_SHALLOWEST_DB,
   SPECTROGRAM_MIDPOINT_STEP_DB,
+  SPECTROGRAM_MIN_STOP_GAP,
   clampSpectrogramMaxStop,
   clampSpectrogramMinStop,
   displayedSpectrogramRange,
@@ -151,6 +125,7 @@ import {
   formatSpectrogramFrequency,
   formatSpectrogramMidpoint,
   formatSpectrogramRangeReadout,
+  normalizeSpectrogramMidpointDb,
   spectrogramStopIndex,
 } from '@/utils/spectrogram-settings.js'
 
@@ -160,32 +135,17 @@ const props = defineProps({
 
 const emit = defineEmits(['close'])
 
-const {
-  spectrogramTheme,
-  selectSpectrogramTheme,
-  spectrogramMinHz,
-  spectrogramMaxHz,
-  setSpectrogramFrequencyRange,
-  saveSpectrogramFrequencyRange,
-  spectrogramMidpointDb,
-  setSpectrogramMidpointDb,
-  saveSpectrogramMidpointDb,
-  resetSpectrogramSettings,
-} = useGlobalState()
+const { settings, save, reset } = useSpectrogramSettings()
 
-// Native range thumbs travel from one radius in from each end of the input, so with
-// 14px thumbs stop i of the 9-stop axis is centered at 7px + i/8 of the remaining width.
-// Both handle inputs span the whole axis and overlap; they ignore pointer events except
-// on their thumbs, and the minimum gap keeps the two thumbs from ever stacking.
-const THUMB_PX = 14
-const AXIS_INTERVALS = SPECTROGRAM_AXIS_STOPS_HZ.length - 1
-const stopCenter = index =>
-  `calc(${THUMB_PX / 2}px + (100% - ${THUMB_PX}px) * ${index} / ${AXIS_INTERVALS})`
+// The drawer handles arrow keys itself; the sliders' own handler listens on the whole document.
+const SLIDER_OPTIONS = { contained: true, duration: 0, useKeyboard: false, tooltip: 'none' }
+const LAST_STOP_INDEX = SPECTROGRAM_AXIS_STOPS_HZ.length - 1
+
+const axisStopMark = hz => ({ label: formatSpectrogramAxisStop(hz) })
 
 const drawerElement = ref(null)
-const minHzInput = ref(null)
-const maxHzInput = ref(null)
-const sensitivityInput = ref(null)
+const frequencySlider = ref(null)
+const sensitivitySlider = ref(null)
 const defaultsButton = ref(null)
 const swatchElements = new Map()
 const keyboardActive = ref(false)
@@ -198,72 +158,31 @@ const setSwatchElement = (themeId, element) => {
 }
 
 const selectedThemeLabel = computed(
-  () => SPECTROGRAM_THEMES.find(theme => theme.id === spectrogramTheme.value)?.label ?? ''
+  () => SPECTROGRAM_THEMES.find(theme => theme.id === settings.value.theme)?.label ?? ''
 )
-const minHzIndex = computed(() => spectrogramStopIndex(spectrogramMinHz.value))
-const maxHzIndex = computed(() => spectrogramStopIndex(spectrogramMaxHz.value))
-const bandStyle = computed(() => ({
-  left: stopCenter(minHzIndex.value),
-  width: `calc((100% - ${THUMB_PX}px) * ${maxHzIndex.value - minHzIndex.value} / ${AXIS_INTERVALS})`,
-}))
 
 const frequencyReadout = computed(() => {
-  const range = { minHz: spectrogramMinHz.value, maxHz: spectrogramMaxHz.value }
+  const { minHz, maxHz } = settings.value
   const displayedRange = props.sampleRate
-    ? displayedSpectrogramRange(range.minHz, range.maxHz, props.sampleRate)
+    ? displayedSpectrogramRange(minHz, maxHz, props.sampleRate)
     : null
-  return formatSpectrogramRangeReadout(range, displayedRange)
+  return formatSpectrogramRangeReadout({ minHz, maxHz }, displayedRange)
 })
 
-const setMinHzStop = index =>
-  setSpectrogramFrequencyRange(SPECTROGRAM_AXIS_STOPS_HZ[index], spectrogramMaxHz.value)
-
-const setMaxHzStop = index =>
-  setSpectrogramFrequencyRange(spectrogramMinHz.value, SPECTROGRAM_AXIS_STOPS_HZ[index])
-
-// The clamped value has to be written back into the input: once the state sits at the limit,
-// Vue has nothing to re-render, and the thumb would stay inside the minimum gap. WebKit treats
-// that write as the input's new change baseline, so a drag released against the limit never
-// fires change; a clamped move is saved right away instead.
-const handleMinHzInput = event => {
-  const requestedIndex = Number(event.target.value)
-  const index = clampSpectrogramMinStop(requestedIndex, maxHzIndex.value)
-  event.target.value = String(index)
-  setMinHzStop(index)
-  if (index !== requestedIndex) saveSpectrogramFrequencyRange()
-}
-
-const handleMaxHzInput = event => {
-  const requestedIndex = Number(event.target.value)
-  const index = clampSpectrogramMaxStop(requestedIndex, minHzIndex.value)
-  event.target.value = String(index)
-  setMaxHzStop(index)
-  if (index !== requestedIndex) saveSpectrogramFrequencyRange()
-}
-
-// A primary-button press on the bare axis moves the nearer handle to the pressed stop.
-const handleAxisMouseDown = event => {
-  if (event.button !== 0) return
-  const rect = event.currentTarget.getBoundingClientRect()
-  const stopWidth = (rect.width - THUMB_PX) / AXIS_INTERVALS
-  const pressedStop = Math.max(
-    0,
-    Math.min(AXIS_INTERVALS, Math.round((event.clientX - rect.left - THUMB_PX / 2) / stopWidth))
-  )
-  if (Math.abs(pressedStop - maxHzIndex.value) < Math.abs(pressedStop - minHzIndex.value)) {
-    setMaxHzStop(clampSpectrogramMaxStop(pressedStop, minHzIndex.value))
-    focusControl(maxHzInput.value)
-  } else {
-    setMinHzStop(clampSpectrogramMinStop(pressedStop, maxHzIndex.value))
-    focusControl(minHzInput.value)
-  }
-  saveSpectrogramFrequencyRange()
-}
-
-const handleSensitivityInput = event => setSpectrogramMidpointDb(-Number(event.target.value))
-
-const checkedSwatch = () => swatchElements.get(spectrogramTheme.value)
+const sliderHandles = slider => [...(slider?.$el.querySelectorAll('[role="slider"]') ?? [])]
+const checkedSwatch = () => swatchElements.get(settings.value.theme)
 const isSwatch = element => [...swatchElements.values()].includes(element)
+
+// Rows in Up/Down order; Tab visits every control, ending on Defaults even though it sits top right.
+const rows = () => [
+  { name: 'color', controls: [checkedSwatch()] },
+  { name: 'frequency', controls: sliderHandles(frequencySlider.value) },
+  { name: 'sensitivity', controls: sliderHandles(sensitivitySlider.value) },
+  { name: 'defaults', controls: [defaultsButton.value] },
+]
+
+const rowIndexOf = element =>
+  isSwatch(element) ? 0 : rows().findIndex(row => row.controls.includes(element))
 
 const focusControl = element => element?.focus({ preventScroll: true })
 
@@ -271,28 +190,6 @@ const focusFirstControl = () => {
   keyboardActive.value = false
   focusControl(checkedSwatch())
 }
-
-// Tab cycles every control; Up/Down move between rows, landing on each row's default
-// control. Defaults is the last row even though it sits at the top right.
-const tabStops = () => [
-  checkedSwatch(),
-  minHzInput.value,
-  maxHzInput.value,
-  sensitivityInput.value,
-  defaultsButton.value,
-]
-
-const rows = () => [checkedSwatch(), minHzInput.value, sensitivityInput.value, defaultsButton.value]
-
-const rowIndexOf = element => {
-  if (isSwatch(element)) return 0
-  if (element === minHzInput.value || element === maxHzInput.value) return 1
-  if (element === sensitivityInput.value) return 2
-  if (element === defaultsButton.value) return 3
-  return -1
-}
-
-const ROW_NAMES = ['color', 'frequency', 'sensitivity', null]
 
 const cycleFocus = (controls, currentIndex, direction) => {
   const nextIndex =
@@ -304,20 +201,53 @@ const cycleFocus = (controls, currentIndex, direction) => {
   focusControl(controls[nextIndex])
 }
 
-const stepColor = direction => {
-  const currentIndex = SPECTROGRAM_THEMES.findIndex(theme => theme.id === spectrogramTheme.value)
-  const nextIndex = Math.max(0, Math.min(SPECTROGRAM_THEMES.length - 1, currentIndex + direction))
+const saveFrequencyStops = (minIndex, maxIndex) =>
+  save({ minHz: SPECTROGRAM_AXIS_STOPS_HZ[minIndex], maxHz: SPECTROGRAM_AXIS_STOPS_HZ[maxIndex] })
+
+// Like a slider drag, the moved handle pushes the other one to keep the minimum gap.
+const stepFrequency = (handleIndex, step) => {
+  const minIndex = spectrogramStopIndex(settings.value.minHz)
+  const maxIndex = spectrogramStopIndex(settings.value.maxHz)
+  if (handleIndex === 0) {
+    const nextMin = clampSpectrogramMinStop(minIndex + step, LAST_STOP_INDEX)
+    saveFrequencyStops(nextMin, clampSpectrogramMaxStop(maxIndex, nextMin))
+  } else {
+    const nextMax = clampSpectrogramMaxStop(maxIndex + step, 0)
+    saveFrequencyStops(clampSpectrogramMinStop(minIndex, nextMax), nextMax)
+  }
+}
+
+const stepSensitivity = step =>
+  save({
+    midpointDb: normalizeSpectrogramMidpointDb(
+      settings.value.midpointDb - step * SPECTROGRAM_MIDPOINT_STEP_DB
+    ),
+  })
+
+const stepColor = step => {
+  const currentIndex = SPECTROGRAM_THEMES.findIndex(theme => theme.id === settings.value.theme)
+  const nextIndex = Math.max(0, Math.min(SPECTROGRAM_THEMES.length - 1, currentIndex + step))
   const nextTheme = SPECTROGRAM_THEMES[nextIndex]
-  if (nextIndex !== currentIndex) selectSpectrogramTheme(nextTheme.id)
+  if (nextIndex !== currentIndex) save({ theme: nextTheme.id })
   focusControl(swatchElements.get(nextTheme.id))
+}
+
+// Pointer changes focus the moved handle so the keyboard can take over.
+const handleFrequencyChange = ([minHz, maxHz], handleIndex) => {
+  save({ minHz, maxHz })
+  focusControl(sliderHandles(frequencySlider.value)[handleIndex])
+}
+
+const handleSensitivityChange = value => {
+  save({ midpointDb: -value })
+  focusControl(sliderHandles(sensitivitySlider.value)[0])
 }
 
 const handleKeydown = event => {
   if (globalShortcutBindings.some(binding => binding.matches(event))) return
 
-  // Editor hotkeys listen on document/window and act on non-input targets such as the
-  // Defaults button (Backspace deletes the line, Space/Enter sync it), and the editor
-  // modal's focus trap releases itself on Escape, so no key may leave the drawer.
+  // Editor hotkeys act on non-input targets and the modal's focus trap releases on Escape,
+  // so no key may leave the drawer.
   event.stopPropagation()
   keyboardActive.value = true
 
@@ -327,38 +257,48 @@ const handleKeydown = event => {
   switch (event.key) {
     case 'Tab': {
       event.preventDefault()
-      const stops = tabStops()
-      const currentIndex = isSwatch(target) ? 0 : stops.indexOf(target)
-      cycleFocus(stops, currentIndex, event.shiftKey ? -1 : 1)
+      const controls = rows().flatMap(row => row.controls)
+      const currentIndex = isSwatch(target) ? 0 : controls.indexOf(target)
+      cycleFocus(controls, currentIndex, event.shiftKey ? -1 : 1)
       return
     }
     case 'ArrowUp':
     case 'ArrowDown':
       event.preventDefault()
-      cycleFocus(rows(), rowIndexOf(target), event.key === 'ArrowDown' ? 1 : -1)
+      cycleFocus(
+        rows().map(row => row.controls[0]),
+        rowIndexOf(target),
+        event.key === 'ArrowDown' ? 1 : -1
+      )
       return
     case 'ArrowLeft':
-    case 'ArrowRight':
-      if (isSwatch(target)) {
-        event.preventDefault()
-        stepColor(event.key === 'ArrowRight' ? 1 : -1)
-      }
-      return
-    case 'Escape':
+    case 'ArrowRight': {
+      const step = event.key === 'ArrowRight' ? 1 : -1
+      const frequencyHandleIndex = sliderHandles(frequencySlider.value).indexOf(target)
+      if (isSwatch(target)) stepColor(step)
+      else if (frequencyHandleIndex >= 0) stepFrequency(frequencyHandleIndex, step)
+      else if (sliderHandles(sensitivitySlider.value).includes(target)) stepSensitivity(step)
+      else return
       event.preventDefault()
-      if (target === maxHzInput.value) focusControl(minHzInput.value)
-      else emit('close')
       return
+    }
+    case 'Escape': {
+      event.preventDefault()
+      const [bottomHandle, topHandle] = sliderHandles(frequencySlider.value)
+      if (target === topHandle) focusControl(bottomHandle)
+      else emit('close')
+    }
   }
 }
 
 const handleMouseDown = event => {
-  if (event.target.closest('[data-focuses-color]')) {
+  const rowLabel = event.target.closest('[data-row]')
+  if (rowLabel) {
     event.preventDefault()
-    focusControl(checkedSwatch())
+    focusControl(rows()[Number(rowLabel.dataset.row)].controls[0])
     return
   }
-  if (event.target.closest('input, button, label')) return
+  if (event.target.closest('input, button, [role="slider"]')) return
 
   // Clicks on empty parts of the drawer keep keyboard focus in it instead of dropping it.
   event.preventDefault()
@@ -367,25 +307,23 @@ const handleMouseDown = event => {
   }
 }
 
-// WebKit on macOS doesn't move focus to form controls on click, so focus the clicked
-// control (or a clicked label's control) to keep "click, then use the keyboard" working.
+// WebKit on macOS doesn't focus form controls on click, so focus the clicked control explicitly.
 const handleClick = event => {
-  const control = event.target.closest('input, button') ?? event.target.closest('label')?.control
+  const control = event.target.closest('input, button, [role="slider"]')
   if (control && document.activeElement !== control) focusControl(control)
 }
 
 const handleFocusIn = event => {
-  const rowIndex = rowIndexOf(event.target)
-  if (rowIndex >= 0) lastFocusedControl = event.target
-  activeRow.value = rowIndex >= 0 ? ROW_NAMES[rowIndex] : null
+  const row = rows()[rowIndexOf(event.target)]
+  if (row) lastFocusedControl = event.target
+  activeRow.value = row?.name ?? null
 }
 
 const handleFocusOut = event => {
   if (!drawerElement.value?.contains(event.relatedTarget)) activeRow.value = null
 }
 
-// Explicit because some editor controls cancel pointerdown, which can stop the browser
-// from moving focus out of the drawer on its own.
+// Some editor controls cancel pointerdown, which keeps the browser from moving focus out.
 const handleDocumentPointerDown = event => {
   const drawer = drawerElement.value
   if (!drawer || drawer.contains(event.target)) return
@@ -405,7 +343,7 @@ defineExpose({ focusFirstControl })
 
 <style scoped>
 .drawer {
-  @apply grid items-center h-[7rem] px-3 py-2 rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-900;
+  @apply grid items-center px-3 py-2 rounded border border-neutral-300 dark:border-neutral-600 bg-white dark:bg-neutral-900;
   grid-template-columns: auto 18rem auto 1fr;
   grid-template-rows: 1.5rem 2.25rem 1.25rem;
   column-gap: 1rem;
@@ -442,88 +380,36 @@ defineExpose({ focusFirstControl })
   @apply outline outline-2 outline-offset-4 outline-hoa-1100/60;
 }
 
-.frequency-axis {
-  @apply relative h-full cursor-pointer;
+.slider {
+  @apply cursor-pointer;
 }
 
-.axis-track {
-  @apply absolute inset-x-0 h-0.5 rounded-full bg-neutral-300 dark:bg-neutral-600 pointer-events-none;
-  top: 6px;
+.slider :deep(.vue-slider-rail) {
+  @apply bg-neutral-300 dark:bg-neutral-600;
 }
 
-.axis-band {
-  @apply absolute h-1 rounded-full bg-hoa-1100 pointer-events-none;
-  top: 5px;
+.slider :deep(.vue-slider-process) {
+  @apply bg-hoa-1100;
 }
 
-.axis-stop {
-  @apply absolute -translate-x-1/2 whitespace-nowrap text-[10px] leading-3 text-neutral-500 dark:text-neutral-400 pointer-events-none select-none;
-  top: 1.25rem;
+.slider :deep(.vue-slider-mark-step) {
+  @apply hidden;
 }
 
-.range-input {
-  @apply m-0 h-3.5 cursor-pointer appearance-none bg-transparent;
+.slider :deep(.vue-slider-mark-label) {
+  @apply mt-2 text-[10px] leading-3 text-neutral-500 dark:text-neutral-400 select-none;
 }
 
-.range-input:focus {
+.slider :deep(.vue-slider-dot) {
   outline: none;
 }
 
-.frequency-input {
-  @apply absolute left-0 top-0 w-full pointer-events-none;
+.slider :deep(.vue-slider-dot-handle) {
+  @apply border-2 border-solid border-hoa-1100 bg-white shadow;
 }
 
-.frequency-input::-webkit-slider-thumb {
-  pointer-events: auto;
-}
-
-.frequency-input::-moz-range-thumb {
-  pointer-events: auto;
-}
-
-.sensitivity-input {
-  @apply w-full;
-}
-
-.range-input::-webkit-slider-runnable-track {
-  height: 14px;
-  background: transparent;
-}
-
-.sensitivity-input::-webkit-slider-runnable-track {
-  @apply h-1 rounded-full bg-neutral-300 dark:bg-neutral-600;
-}
-
-.range-input::-moz-range-track {
-  height: 14px;
-  background: transparent;
-}
-
-.sensitivity-input::-moz-range-track {
-  @apply h-1 rounded-full bg-neutral-300 dark:bg-neutral-600;
-}
-
-.range-input::-webkit-slider-thumb {
-  @apply h-3.5 w-3.5 appearance-none rounded-full border-2 border-solid border-hoa-1100 bg-white shadow;
-  box-sizing: border-box;
-}
-
-.sensitivity-input::-webkit-slider-thumb {
-  margin-top: -5px;
-}
-
-.range-input::-moz-range-thumb {
-  @apply h-3.5 w-3.5 rounded-full border-2 border-solid border-hoa-1100 bg-white shadow;
-  box-sizing: border-box;
-}
-
-.range-input:focus-visible::-webkit-slider-thumb,
-.drawer[data-keyboard-active] .range-input:focus::-webkit-slider-thumb {
-  box-shadow: 0 0 0 3px theme('colors.hoa.1100 / 45%');
-}
-
-.range-input:focus-visible::-moz-range-thumb,
-.drawer[data-keyboard-active] .range-input:focus::-moz-range-thumb {
+.slider :deep(.vue-slider-dot:focus-visible .vue-slider-dot-handle),
+.drawer[data-keyboard-active] .slider :deep(.vue-slider-dot:focus .vue-slider-dot-handle) {
   box-shadow: 0 0 0 3px theme('colors.hoa.1100 / 45%');
 }
 

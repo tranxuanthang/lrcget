@@ -42,18 +42,13 @@ import { useGlobalState } from './composables/global-state'
 import { useDownloader } from '@/composables/downloader.js'
 import { useExporter } from '@/composables/export.js'
 import { usePlayer } from '@/composables/player.js'
+import { useSpectrogramSettings } from '@/composables/spectrogram-settings.js'
 import { useToast } from 'vue-toastification'
 
 const appWindow = getCurrentWebviewWindow()
 const toast = useToast()
-const {
-  themeMode,
-  setThemeMode,
-  setLrclibInstance,
-  setSpectrogramVisible,
-  setSpectrogramTheme,
-  loadSpectrogramDisplay,
-} = useGlobalState()
+const { themeMode, setThemeMode, setLrclibInstance } = useGlobalState()
+const { load: loadSpectrogramSettings } = useSpectrogramSettings()
 const { downloadNext } = useDownloader()
 const { exportNext } = useExporter()
 const { setVolume } = usePlayer()
@@ -104,13 +99,7 @@ const loadGlobalState = async () => {
   const config = await invoke('get_config')
   setThemeMode(config.theme_mode)
   setLrclibInstance(config.lrclib_instance)
-  setSpectrogramVisible(config.spectrogram_visible ?? true)
-  setSpectrogramTheme(config.spectrogram_theme)
-  loadSpectrogramDisplay({
-    minHz: config.spectrogram_min_hz,
-    maxHz: config.spectrogram_max_hz,
-    midpointDb: config.spectrogram_midpoint_db,
-  })
+  loadSpectrogramSettings(config)
   // Set initial volume from config (default to 1.0 if not set)
   const volume = config.volume !== undefined ? config.volume : 1.0
   setVolume(volume)

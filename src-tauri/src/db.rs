@@ -279,32 +279,24 @@ pub fn set_volume_config(volume: f64, db: &Connection) -> Result<()> {
     Ok(())
 }
 
-pub fn set_spectrogram_visible_config(visible: bool, db: &Connection) -> Result<()> {
-    let mut statement = db.prepare("UPDATE config_data SET spectrogram_visible = ? WHERE 1")?;
-    statement.execute([visible])?;
-    Ok(())
-}
-
-pub fn set_spectrogram_theme_config(theme: &str, db: &Connection) -> Result<()> {
-    let mut statement = db.prepare("UPDATE config_data SET spectrogram_theme = ? WHERE 1")?;
-    statement.execute([theme])?;
-    Ok(())
-}
-
-pub fn set_spectrogram_frequency_range_config(
-    min_hz: f64,
-    max_hz: f64,
+pub fn set_spectrogram_settings(
+    visible: Option<bool>,
+    theme: Option<&str>,
+    min_hz: Option<f64>,
+    max_hz: Option<f64>,
+    midpoint_db: Option<f64>,
     db: &Connection,
 ) -> Result<()> {
-    let mut statement = db
-        .prepare("UPDATE config_data SET spectrogram_min_hz = ?, spectrogram_max_hz = ? WHERE 1")?;
-    statement.execute((min_hz, max_hz))?;
-    Ok(())
-}
-
-pub fn set_spectrogram_midpoint_config(midpoint_db: f64, db: &Connection) -> Result<()> {
-    let mut statement = db.prepare("UPDATE config_data SET spectrogram_midpoint_db = ? WHERE 1")?;
-    statement.execute([midpoint_db])?;
+    db.execute(
+        "UPDATE config_data SET
+            spectrogram_visible = COALESCE(?1, spectrogram_visible),
+            spectrogram_theme = COALESCE(?2, spectrogram_theme),
+            spectrogram_min_hz = COALESCE(?3, spectrogram_min_hz),
+            spectrogram_max_hz = COALESCE(?4, spectrogram_max_hz),
+            spectrogram_midpoint_db = COALESCE(?5, spectrogram_midpoint_db)
+        WHERE 1",
+        (visible, theme, min_hz, max_hz, midpoint_db),
+    )?;
     Ok(())
 }
 
