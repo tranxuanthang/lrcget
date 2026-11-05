@@ -202,20 +202,16 @@ const emit = defineEmits([
   'seek',
 ])
 
-// Effective end of a line for overlap detection: prefer the line's own end_ms,
-// otherwise fall back to the next line's start_ms. Returns null if neither
-// is available — such a line can't overlap-detect cleanly so it's skipped.
-const getLineEffectiveEndMs = (line, index) => {
-  if (Number.isFinite(line?.end_ms)) return line.end_ms
-  const nextLine = props.modelValue[index + 1]
-  if (nextLine && Number.isFinite(nextLine.start_ms)) return nextLine.start_ms
-  return null
+const nextLineStartMs = index => {
+  const next = props.modelValue[index + 1]
+  return next && Number.isFinite(next.start_ms) ? next.start_ms : null
 }
 
-// Indexes of every line that's part of an overlapping pair anywhere in the
-// song. Relies on the invariant that lines are sorted by start_ms. 
-// For each new line, if the maximum effective end seen so far reaches past 
-// this line's start, both participate in an overlap. 
+// Overlap detection uses a line's own end_ms, else the next line's start.
+const getLineEffectiveEndMs = (line, index) =>
+  Number.isFinite(line?.end_ms) ? line.end_ms : nextLineStartMs(index)
+
+// Single sweep over lines sorted by start_ms; flags both lines of each overlapping pair.
 const overlappingLineIndexes = computed(() => {
   const overlaps = new Set()
   const lines = props.modelValue
@@ -240,11 +236,6 @@ const overlappingLineIndexes = computed(() => {
 
   return overlaps
 })
-
-const nextLineStartMs = index => {
-  const next = props.modelValue[index + 1]
-  return next && Number.isFinite(next.start_ms) ? next.start_ms : null
-}
 
 const hoveredLineIndex = ref(null)
 const linesListElement = ref(null)
@@ -403,8 +394,7 @@ const rowClass = index => {
     return 'bg-neutral-50 dark:bg-neutral-800/50'
   }
 
-  // Dim warning color for every line that's part of an overlapping pair, so
-  // overlap clusters in the song are visible at a glance.
+  // Amber tint marks every line in an overlapping pair so overlap clusters stand out.
   if (overlappingLineIndexes.value.has(index)) {
     return 'bg-amber-50 dark:bg-amber-900/20'
   }
@@ -425,13 +415,13 @@ const isLineControlsVisible = index =>
 
 const getEndTimestampDiffDirection = index => {
   const lineEndMs = props.modelValue[index]?.end_ms
-  const nextLineStartMs = props.modelValue[index + 1]?.start_ms
+  const nextStartMs = nextLineStartMs(index)
 
-  if (!Number.isFinite(lineEndMs) || !Number.isFinite(nextLineStartMs) || lineEndMs === nextLineStartMs) {
+  if (!Number.isFinite(lineEndMs) || !Number.isFinite(nextStartMs) || lineEndMs === nextStartMs) {
     return null
   }
 
-  return lineEndMs < nextLineStartMs ? 'before' : 'after'
+  return lineEndMs < nextStartMs ? 'before' : 'after'
 }
 
 const emitLineAction = (eventName, index, selectBefore = true) => {
@@ -443,9 +433,7 @@ const emitLineAction = (eventName, index, selectBefore = true) => {
 }
 
 const handlePlayLine = index => {
-  // Skip auto-select when a bulk selection is active so previewing a line
-  // doesn't collapse the user's multi-select into a single-line focus.
-  // Without bulk, the previous behavior (select-then-play) stands.
+  // Only select the line when no bulk selection is active, so previewing keeps it intact.
   emitLineAction('play-line', index, props.selectedLineIndices.length === 0)
 }
 
