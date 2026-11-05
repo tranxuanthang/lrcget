@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   buildLevelToLutOffset,
   buildRowBinMap,
+  computeSpectrogram,
   findPeakDb,
   sampleColumn,
   shapeLevel,
@@ -31,6 +32,33 @@ describe('spectrogramFftSize', () => {
     expect(spectrogramFftSize(10_000_000)).toBe(8192)
     for (const value of [0, -44100, NaN, undefined]) {
       expect(spectrogramFftSize(value)).toBe(1024)
+    }
+  })
+})
+
+describe('computeSpectrogram', () => {
+  const SAMPLE_RATE = 44100
+  const FFT_SIZE = spectrogramFftSize(SAMPLE_RATE)
+
+  it('peaks at the bin a pure sine is centered on, in every frame', () => {
+    const bin = 23
+    const hz = (bin * SAMPLE_RATE) / FFT_SIZE
+    const samples = Float32Array.from({ length: FFT_SIZE * 4 }, (_, i) =>
+      Math.sin((2 * Math.PI * hz * i) / SAMPLE_RATE)
+    )
+    const { frames } = computeSpectrogram(samples, SAMPLE_RATE)
+    expect(frames.length).toBeGreaterThan(1)
+    for (const frame of frames) {
+      expect(frame.indexOf(Math.max(...frame))).toBe(bin)
+    }
+  })
+
+  it('keeps silence at the -180 dB floor in every bin of every frame', () => {
+    const { frames, binCount } = computeSpectrogram(new Float32Array(FFT_SIZE * 4), SAMPLE_RATE)
+    const floor = new Float32Array(binCount).fill(-180)
+    expect(frames.length).toBeGreaterThan(1)
+    for (const frame of frames) {
+      expect(frame).toEqual(floor)
     }
   })
 })

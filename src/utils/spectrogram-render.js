@@ -1,18 +1,53 @@
-// The FFT window scales with the sample rate (to the nearest power of two) so every file
-// gets roughly the bin width (~43 Hz) and window length (~23 ms) that 1024 samples give at
-// 44.1 kHz. A fixed window would blur onsets in low-rate files and smear the lowest
-// octaves into one or two bins in high-rate ones.
+import FFT from 'fft.js'
+
+const HOPS_PER_WINDOW = 8
+
+// Keeps the bin width and window length of a 1024-point FFT at 44.1 kHz for any sample rate.
 export const spectrogramFftSize = sampleRate => {
   const scaled = (1024 * sampleRate) / 44100
   if (!Number.isFinite(scaled) || scaled <= 0) return 1024
   return Math.min(8192, Math.max(256, 2 ** Math.round(Math.log2(scaled))))
 }
 
-// FFT bins are evenly spaced in Hz but the panel's rows are evenly spaced in log Hz,
-// so near the top one row covers many bins and near the bottom one bin covers
-// several rows. Rows spanning at least a full bin show the loudest bin they cover,
-// so narrow peaks can't fall between rows; narrower rows interpolate between the
-// two bins around their center frequency instead of repeating one bin as a block.
+// Short-time FFT (Hann window, hop of 1/8 window) as dB magnitudes per frame.
+export const computeSpectrogram = (samples, sampleRate) => {
+  const fftSize = spectrogramFftSize(sampleRate)
+  const hop = fftSize / HOPS_PER_WINDOW
+  const win = new Float32Array(fftSize)
+  for (let i = 0; i < fftSize; i++) {
+    win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (fftSize - 1))
+  }
+
+  const totalFrames = Math.max(1, Math.floor((samples.length - fftSize) / hop) + 1)
+  const binCount = fftSize / 2
+
+  // realTransform() fills only the non-redundant bins 0..binCount-1, as interleaved [re, im].
+  const fft = new FFT(fftSize)
+  const input = new Float32Array(fftSize)
+  const spectrum = fft.createComplexArray()
+
+  const frames = new Array(totalFrames)
+
+  for (let frame = 0; frame < totalFrames; frame++) {
+    const offset = frame * hop
+    for (let i = 0; i < fftSize; i++) {
+      input[i] = (samples[offset + i] || 0) * win[i]
+    }
+    fft.realTransform(spectrum, input)
+    const mags = new Float32Array(binCount)
+    for (let b = 0; b < binCount; b++) {
+      const re = spectrum[2 * b]
+      const im = spectrum[2 * b + 1]
+      const mag = Math.sqrt(re * re + im * im)
+      mags[b] = mag > 1e-9 ? 20 * Math.log10(mag) : -180
+    }
+    frames[frame] = mags
+  }
+  return { frames, binCount, fftSize, sampleRate }
+}
+
+// Maps log-spaced rows onto FFT bins: rows spanning at least a bin take their loudest bin so no
+// peak falls between rows, and narrower rows interpolate between the two bins around them.
 export const buildRowBinMap = ({ rows, minHz, maxHz, binHz, binCount }) => {
   const logMinHz = Math.log(minHz)
   const logSpan = Math.log(maxHz) - logMinHz
@@ -74,18 +109,14 @@ export const sampleColumn = (frame, rowMap, out) => {
   return out
 }
 
-// Remaps a level between the floor (0) and the peak (1) so the middle of the color
-// ramp lands `midpointDb` below the peak. Schlick's bias curve keeps both ends
-// fixed and has finite slope at each, so moving the midpoint never clips colors;
-// a midpoint halfway down the dynamic range leaves levels unchanged.
+// Schlick's bias curve keeps 0 and 1 fixed and puts the middle color `midpointDb` below the peak.
 export const shapeLevel = (level, midpointDb, dynamicRangeDb) => {
   const midpointLevel = 1 + midpointDb / dynamicRangeDb
   const bias = (2 * midpointLevel - 1) / (1 - midpointLevel)
   return level / (bias * (1 - level) + 1)
 }
 
-// Precomputes the color lookup table offset (index * 3) for each quantized level,
-// keeping the per-pixel cost of the curve to one array read.
+// Precomputes each quantized level's LUT offset so the curve costs one array read per pixel.
 export const buildLevelToLutOffset = ({ midpointDb, dynamicRangeDb, lutSize, resolution }) => {
   const offsets = new Uint16Array(resolution)
   for (let i = 0; i < resolution; i++) {
