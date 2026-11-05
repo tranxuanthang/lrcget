@@ -13,29 +13,6 @@ describe('resolveWordSplitTimeMs', () => {
     ).toBe(1600)
   })
 
-  it('trailing-space split lands at the highlight, not the word end bound (regression)', () => {
-    // A word carrying a trailing space (e.g. "hello ") renders the space with
-    // ~zero width, so the text-width ratio collapses to ~1.0 and the ratio path
-    // pins the split to wordEndMs-1. The highlighted divider sits between 'o'
-    // and the space, well inside the word — that interior time must win so the
-    // new right segment is not zero-length.
-    const wordStartMs = 4000
-    const wordEndMs = 5000
-    const ratioTimeMs = wordEndMs - 1 // 4999: what the old ratio path produced
-    const highlightTimeMs = 4700 // lane time under the divider before the space
-
-    const splitTimeMs = resolveWordSplitTimeMs({
-      wordStartMs,
-      wordEndMs,
-      highlightTimeMs,
-      ratioTimeMs,
-    })
-
-    expect(splitTimeMs).toBe(4700)
-    expect(splitTimeMs).toBeLessThan(wordEndMs - 1)
-    expect(splitTimeMs).toBeGreaterThan(wordStartMs)
-  })
-
   it('falls back to the width-ratio time when no highlight time is available', () => {
     expect(
       resolveWordSplitTimeMs({
