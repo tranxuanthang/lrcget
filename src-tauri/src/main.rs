@@ -1361,29 +1361,17 @@ async fn flag_lyrics(
     Err("Flagging failed after multiple attempts".to_owned())
 }
 
-#[derive(Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AudioSliceResponse {
-    samples: Vec<f32>,
-    sample_rate: u32,
-}
-
 #[tauri::command]
 async fn get_audio_slice(
     file_path: String,
     start_ms: i64,
     end_ms: i64,
-) -> Result<AudioSliceResponse, String> {
+) -> Result<decoder::AudioSlice, String> {
     let path = std::path::PathBuf::from(file_path);
-    let slice = tokio::task::spawn_blocking(move || decoder::decode_slice(&path, start_ms, end_ms))
+    tokio::task::spawn_blocking(move || decoder::decode_slice(&path, start_ms, end_ms))
         .await
         .map_err(|e| format!("Audio slice decode task failed: {}", e))?
-        .map_err(|e| e.to_string())?;
-
-    Ok(AudioSliceResponse {
-        samples: slice.samples,
-        sample_rate: slice.sample_rate,
-    })
+        .map_err(|e| e.to_string())
 }
 
 #[tauri::command]

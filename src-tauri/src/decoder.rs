@@ -1,6 +1,7 @@
+use serde::Serialize;
 use std::fs::File;
 use std::path::Path;
-use symphonia::core::audio::{SampleBuffer, SignalSpec};
+use symphonia::core::audio::SampleBuffer;
 use symphonia::core::codecs::DecoderOptions;
 use symphonia::core::errors::Error as SymphoniaError;
 use symphonia::core::formats::{FormatOptions, SeekMode, SeekTo};
@@ -28,14 +29,14 @@ pub enum DecoderError {
     InvalidRange { start_ms: i64, end_ms: i64 },
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct AudioSlice {
     pub samples: Vec<f32>,
     pub sample_rate: u32,
 }
 
-/// Decode the audio file at `path` between `[start_ms, end_ms)` and return
-/// mono f32 samples normalized to roughly [-1.0, 1.0]. Multi-channel sources
-/// are downmixed by averaging.
+/// Decodes `[start_ms, end_ms)` of the file at `path` to mono f32 samples, averaging channels.
 pub fn decode_slice(path: &Path, start_ms: i64, end_ms: i64) -> Result<AudioSlice, DecoderError> {
     if end_ms <= start_ms || start_ms < 0 {
         return Err(DecoderError::InvalidRange { start_ms, end_ms });
@@ -57,31 +58,39 @@ pub fn decode_slice(path: &Path, start_ms: i64, end_ms: i64) -> Result<AudioSlic
     )?;
     let mut format = probed.format;
 
-    let track = format
-        .default_track()
-        .ok_or(DecoderError::NoDefaultTrack)?;
+    let track = format.default_track().ok_or(DecoderError::NoDefaultTrack)?;
     let track_id = track.id;
 
     let params = &track.codec_params;
     let sample_rate = params.sample_rate.ok_or(DecoderError::MissingSampleRate)?;
-    let n_channels = params.channels.map(|c| c.count()).unwrap_or(1).max(1);
+    let time_base = params.time_base;
 
     let mut decoder = symphonia::default::get_codecs().make(params, &DecoderOptions::default())?;
 
-    let start_seconds = start_ms as f64 / 1000.0;
-    let _ = format.seek(
+    let seeked = format.seek(
         SeekMode::Accurate,
         SeekTo::Time {
-            time: Time::from(start_seconds),
+            time: Time::from(start_ms as f64 / 1000.0),
             track_id: Some(track_id),
         },
     )?;
 
-    let start_sample_pos = (start_seconds * sample_rate as f64).round() as u64;
-    let end_sample_pos = ((end_ms as f64 / 1000.0) * sample_rate as f64).round() as u64;
-    let target_samples = end_sample_pos.saturating_sub(start_sample_pos) as usize;
+    // Track timestamps count time-base ticks, or frames when the track has no time base.
+    let ts_to_frame = |ts: u64| match time_base {
+        Some(tb) => {
+            let scaled = u128::from(ts) * u128::from(tb.numer) * u128::from(sample_rate);
+            (scaled / u128::from(tb.denom)) as u64
+        }
+        None => ts,
+    };
 
-    let mut samples: Vec<f32> = Vec::with_capacity(target_samples);
+    let start_frame = ts_to_frame(seeked.required_ts);
+    let frame_count =
+        ((end_ms - start_ms) as f64 * f64::from(sample_rate) / 1000.0).round() as usize;
+    let end_frame = start_frame + frame_count as u64;
+
+    let mut samples: Vec<f32> = Vec::with_capacity(frame_count);
+    let mut sample_buf: Option<SampleBuffer<f32>> = None;
 
     loop {
         let packet = match format.next_packet() {
@@ -102,44 +111,43 @@ pub fn decode_slice(path: &Path, start_ms: i64, end_ms: i64) -> Result<AudioSlic
             Err(e) => return Err(DecoderError::Symphonia(e)),
         };
 
-        let spec: SignalSpec = *decoded.spec();
         let frames = decoded.frames();
         if frames == 0 {
             continue;
         }
 
-        let packet_start = packet.ts;
+        let packet_start = ts_to_frame(packet.ts());
         let packet_end = packet_start + frames as u64;
 
-        if packet_end <= start_sample_pos {
+        if packet_end <= start_frame {
             continue;
         }
-        if packet_start >= end_sample_pos {
+        if packet_start >= end_frame {
             break;
         }
 
-        let skip_frames = if packet_start < start_sample_pos {
-            (start_sample_pos - packet_start) as usize
-        } else {
-            0
-        };
-
+        let skip_frames = start_frame.saturating_sub(packet_start) as usize;
         let usable_frames_after_skip = frames.saturating_sub(skip_frames);
-        let remaining_needed = target_samples.saturating_sub(samples.len());
+        let remaining_needed = frame_count.saturating_sub(samples.len());
         let frames_to_take = usable_frames_after_skip.min(remaining_needed);
 
         if frames_to_take == 0 {
-            if samples.len() >= target_samples {
+            if samples.len() >= frame_count {
                 break;
             }
             continue;
         }
 
-        let mut sample_buf = SampleBuffer::<f32>::new(frames as u64, spec);
-        sample_buf.copy_interleaved_ref(decoded);
-        let interleaved = sample_buf.samples();
+        let spec = *decoded.spec();
+        let channels = spec.channels.count();
+        // SampleBuffer capacity counts samples; the decoded buffer's capacity counts frames.
+        let buf = match &mut sample_buf {
+            Some(buf) if buf.capacity() >= frames * channels => buf,
+            _ => sample_buf.insert(SampleBuffer::new(decoded.capacity() as u64, spec)),
+        };
+        buf.copy_interleaved_ref(decoded);
+        let interleaved = buf.samples();
 
-        let channels = n_channels;
         let inv_channels = 1.0_f32 / channels as f32;
         for frame_idx in skip_frames..(skip_frames + frames_to_take) {
             let base = frame_idx * channels;
@@ -150,7 +158,7 @@ pub fn decode_slice(path: &Path, start_ms: i64, end_ms: i64) -> Result<AudioSlic
             samples.push(sum * inv_channels);
         }
 
-        if samples.len() >= target_samples {
+        if samples.len() >= frame_count {
             break;
         }
     }
