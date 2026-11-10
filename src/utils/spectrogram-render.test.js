@@ -10,7 +10,7 @@ import {
 } from './spectrogram-render.js'
 
 describe('spectrogramFftSize', () => {
-  it('scales the window with the sample rate to the nearest power of two', () => {
+  it('scales the FFT size with the sample rate to the nearest power of two', () => {
     expect(spectrogramFftSize(44100)).toBe(1024)
     expect(spectrogramFftSize(48000)).toBe(1024)
     expect(spectrogramFftSize(22050)).toBe(512)

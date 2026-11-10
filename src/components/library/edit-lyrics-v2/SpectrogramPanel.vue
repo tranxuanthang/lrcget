@@ -63,7 +63,7 @@ const isValidRange = computed(
     props.endMs - props.startMs < 5 * 60 * 1000
 )
 
-// Least-recently-used FFT results per line window, so revisiting a line skips decoding.
+// Least-recently-used FFT results per audio slice, so revisiting a line skips decoding.
 const cache = new Map()
 const CACHE_MAX = 50
 

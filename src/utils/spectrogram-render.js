@@ -1,18 +1,23 @@
+// Spectrogram: time runs left to right, frequency bottom to top (log scale), color is loudness.
+// computeSpectrogram gives each short, overlapping frame of samples a dB level per frequency bin,
+// an equal-width band up to half the sample rate; the panel maps rows to bins and colors levels.
 import FFT from 'fft.js'
+import _max from 'lodash/max'
 
-const HOPS_PER_WINDOW = 8
+const HOPS_PER_FRAME = 8
 
-// Keeps the bin width and window length of a 1024-point FFT at 44.1 kHz for any sample rate.
+// Keeps the bin width and frame length of a 1024-point FFT at 44.1 kHz for any sample rate.
 export const spectrogramFftSize = sampleRate => {
   const scaled = (1024 * sampleRate) / 44100
   if (!Number.isFinite(scaled) || scaled <= 0) return 1024
   return Math.min(8192, Math.max(256, 2 ** Math.round(Math.log2(scaled))))
 }
 
-// Short-time FFT (Hann window, hop of 1/8 window) as dB magnitudes per frame.
+// Short-time FFT: Hann-tapers each frame, FFTs it and converts every bin's magnitude to dB.
 export const computeSpectrogram = (samples, sampleRate) => {
   const fftSize = spectrogramFftSize(sampleRate)
-  const hop = fftSize / HOPS_PER_WINDOW
+  const hop = fftSize / HOPS_PER_FRAME
+  // Hann window: fades each frame in and out so its hard edges don't smear tones into other bins.
   const win = new Float32Array(fftSize)
   for (let i = 0; i < fftSize; i++) {
     win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / (fftSize - 1))
@@ -21,7 +26,6 @@ export const computeSpectrogram = (samples, sampleRate) => {
   const totalFrames = Math.max(1, Math.floor((samples.length - fftSize) / hop) + 1)
   const binCount = fftSize / 2
 
-  // realTransform() fills only the non-redundant bins 0..binCount-1, as interleaved [re, im].
   const fft = new FFT(fftSize)
   const input = new Float32Array(fftSize)
   const spectrum = fft.createComplexArray()
@@ -87,7 +91,7 @@ export const buildRowBinMap = ({ rows, minHz, maxHz, binHz, binCount }) => {
   }
 }
 
-// Fills `out` (one value per row, top row first) with the dB level each row shows.
+// Writes one frame's dB level for each row (top row first) into `out`, a buffer reused per column.
 export const sampleColumn = (frame, rowMap, out) => {
   const { rows, firstBin, lastBin, weight } = rowMap
 
@@ -109,14 +113,16 @@ export const sampleColumn = (frame, rowMap, out) => {
   return out
 }
 
-// Schlick's bias curve keeps 0 and 1 fixed and puts the middle color `midpointDb` below the peak.
+// Bends a 0-1 level (floor to peak) so the middle color sits `midpointDb` below the peak;
+// using Schlick's bias keeps a finite slope at both ends, so faint levels aren't crushed.
 export const shapeLevel = (level, midpointDb, dynamicRangeDb) => {
   const midpointLevel = 1 + midpointDb / dynamicRangeDb
   const bias = (2 * midpointLevel - 1) / (1 - midpointLevel)
   return level / (bias * (1 - level) + 1)
 }
 
-// Precomputes each quantized level's LUT offset so the curve costs one array read per pixel.
+// LUT offsets index the theme's flat RGB lookup table (color * 3); precomputing one per quantized
+// level, with the curve applied, makes picking a pixel's color a single array read.
 export const buildLevelToLutOffset = ({ midpointDb, dynamicRangeDb, lutSize, resolution }) => {
   const offsets = new Uint16Array(resolution)
   for (let i = 0; i < resolution; i++) {
@@ -126,12 +132,5 @@ export const buildLevelToLutOffset = ({ midpointDb, dynamicRangeDb, lutSize, res
   return offsets
 }
 
-export const findPeakDb = (frames, lowestBin, highestBin) => {
-  let peakDb = -Infinity
-  for (const frame of frames) {
-    for (let bin = lowestBin; bin <= highestBin; bin++) {
-      if (frame[bin] > peakDb) peakDb = frame[bin]
-    }
-  }
-  return peakDb
-}
+export const findPeakDb = (frames, lowestBin, highestBin) =>
+  _max(frames.map(frame => _max(frame.subarray(lowestBin, highestBin + 1))))
