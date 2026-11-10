@@ -10,6 +10,7 @@ export function useEditLyricsV2WordBoundaryDrag({
   timelineEndMs,
   selectedLineIndex,
   onUpdateWords,
+  onUpdateLineEnd,
   onWordTimingEdited,
 }) {
   const dragState = ref(null)
@@ -47,20 +48,35 @@ export function useEditLyricsV2WordBoundaryDrag({
 
   const buildUpdatedWords = (rightWordIndex, startMs) => {
     return words.value.map((word, index) => {
-      if (index !== rightWordIndex) {
-        return word
+      if (index === rightWordIndex) {
+        return {
+          ...word,
+          start_ms: startMs,
+        }
       }
 
-      return {
-        ...word,
-        start_ms: startMs,
+      // Chain rule: boundary shared with previous word. Current word's own
+      // end_ms is intentionally not updated; overshoot surfaces a warning.
+      if (index === rightWordIndex - 1) {
+        return {
+          ...word,
+          end_ms: startMs,
+        }
       }
+
+      return word
     })
   }
 
   const getBoundaryConstraint = rightWordIndex => {
     const currentWords = words.value
     const nextStartMs = currentWords[rightWordIndex + 1]?.start_ms
+
+    // Boundary words.length is the line end, which drags can only trim inward.
+    if (rightWordIndex === currentWords.length) {
+      const minStartMs = (currentWords[rightWordIndex - 1]?.start_ms ?? timelineStartMs.value) + 1
+      return { minStartMs, maxStartMs: Math.max(minStartMs, timelineEndMs.value) }
+    }
 
     if (rightWordIndex === 0) {
       const minStartMs = Number.isFinite(timelineStartMs.value) ? timelineStartMs.value : 0
@@ -107,6 +123,12 @@ export function useEditLyricsV2WordBoundaryDrag({
   const commitBoundary = ({ rightWordIndex, startMs, initialStartMs, shouldReplay }) => {
     if (startMs === initialStartMs) {
       return false
+    }
+
+    // Trimming the line end doesn't replay the line, matching the row's end nudges.
+    if (rightWordIndex === words.value.length) {
+      onUpdateLineEnd({ lineIndex: selectedLineIndex.value, endMs: startMs })
+      return true
     }
 
     const updatedWords = buildUpdatedWords(rightWordIndex, startMs)
@@ -229,7 +251,7 @@ export function useEditLyricsV2WordBoundaryDrag({
     event.preventDefault()
     event.stopPropagation()
 
-    if (!isWordSyncAvailable.value || rightWordIndex < 0 || rightWordIndex >= words.value.length) {
+    if (!isWordSyncAvailable.value || rightWordIndex < 0 || rightWordIndex > words.value.length) {
       return
     }
 
@@ -238,7 +260,10 @@ export function useEditLyricsV2WordBoundaryDrag({
       x: event.clientX,
       y: event.clientY,
       rightWordIndex,
-      initialStartMs: words.value[rightWordIndex].start_ms,
+      initialStartMs:
+        rightWordIndex === words.value.length
+          ? timelineEndMs.value
+          : words.value[rightWordIndex].start_ms,
       clientXToTime,
     }
 
@@ -342,10 +367,17 @@ export function useEditLyricsV2WordBoundaryDrag({
     const hasChanges = nextStartValues.some((startMs, index) => startMs !== currentWords[index].start_ms)
 
     if (hasChanges) {
-      const updatedWords = currentWords.map((word, index) => ({
-        ...word,
-        start_ms: nextStartValues[index],
-      }))
+      const updatedWords = currentWords.map((word, index) => {
+        const updated = { ...word, start_ms: nextStartValues[index] }
+        const nextIndex = index + 1
+        if (
+          nextIndex < boundaryCount &&
+          nextStartValues[nextIndex] !== currentWords[nextIndex].start_ms
+        ) {
+          updated.end_ms = nextStartValues[nextIndex]
+        }
+        return updated
+      })
 
       onUpdateWords({
         lineIndex: selectedLineIndex.value,

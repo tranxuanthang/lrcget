@@ -93,4 +93,9 @@ pub struct PersistentConfig {
     pub theme_mode: String,
     pub lrclib_instance: String,
     pub volume: f64,
+    pub spectrogram_visible: bool,
+    pub spectrogram_theme: String,
+    pub spectrogram_min_hz: f64,
+    pub spectrogram_max_hz: f64,
+    pub spectrogram_midpoint_db: f64,
 }

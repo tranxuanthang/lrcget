@@ -41,6 +41,7 @@ Module-level ref composables (singletons by design):
 | Composable           | Purpose                                                                                                                                                                         |
 | -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `useGlobalState()`   | `isHotkey`, `themeMode`, `lrclibInstance`                                                                                                                                       |
+| `useSpectrogramSettings()` | Editor spectrogram visibility, theme, frequency range and midpoint, loaded from `get_config`. Unlike `useExportPreferences()`, `save()` applies changes before `set_spectrogram_settings` confirms, so sliders preview live |
 | `usePlayer()`        | `playingTrack`, `status`, `duration`, `progress`, `volume`. Supports both library tracks (with `id`) and file-based tracks (with `file_path`). Listens to `player-state` events |
 | `useDownloader()`    | Download queue, progress, 500 ms + jitter request spacing, and LRCLIB cooldown pause. Loop started by App.vue at boot                                                             |
 | `useExporter()`      | Mass export queue, progress; each queued track retains submitted formats. Used by ExportViewer modal                                                                                                                         |
@@ -124,9 +125,16 @@ Shared fields are `export_txt`, `export_lrc`, and `export_embedded`. `auto_expor
 - Word timing: multi-separator selection (Ctrl/Cmd+click + Shift+click), merge separators (`Delete`/`Backspace`), hover split preview snapped to grapheme boundaries, double-click split at cursor, and `Z` syncs selected separator then advances (last-word sync advances to next line)
 - Narrow segment hint: when a segment is too narrow to show text, a visible hint is rendered beneath it with the next word text
 - Boundary sync: can cascade adjacent boundaries so sync is not blocked by intervening separators, while staying within line bounds
+- Word boundaries: moving a word's start also sets the previous word's `end_ms`; segments whose start passes their end show a warning
 - Reset behavior: clears persisted word timings and reloads default (non-persisted) segmentation
-- Line-start sync behavior: syncing line start shifts existing word boundaries by the same offset
+- Line start/end edits: the first word's start and the last word's explicit `end_ms` move with the line; later word starts cascade forward to keep a minimum gap
+- Lane edge arrows: a click nudges the line start/end outward, a drag trims it inward
 - Selection behavior: selecting a synced line starts at the second boundary by default
+- Synced line operations: rows have a `sync-end-to-next` button, inserted lines are pre-timed from their neighbors, and overlapping lines are tinted
+- Line identity: synced lines carry an in-memory `id` (stripped on save) used for v-for keys and selection, so edits can re-sort lines by `start_ms`
+- Spectrogram: `SpectrogramPanel.vue` renders the selected line's audio (`get_audio_slice`) on a log-frequency axis above the timeline; the FFT and row mapping live in `utils/spectrogram-render.js`, colors in `utils/spectrogram-themes.js`
+- Spectrogram settings: the lane header toggles the spectrogram and opens `SpectrogramSettingsDrawer.vue` (theme, frequency range, sensitivity). The drawer handles its own keys and stops them from propagating, since editor hotkeys act on non-input targets
+- Click-to-seek: clicking the spectrogram or the timeline seeks to that position
 
 ### Keyboard Shortcuts Details
 

@@ -1,7 +1,10 @@
 <template>
   <div
-    class="relative z-20 flex flex-col px-2 py-2 rounded-lg overflow-visible h-[5rem] transition-[min-height] duration-200 ease-out"
-    :class="hasSelectedLine ? 'bg-neutral-100 dark:bg-neutral-800' : 'bg-white dark:bg-neutral-950'"
+    class="relative z-20 flex flex-col px-2 py-2 rounded-lg overflow-visible transition-[height] duration-200 ease-out"
+    :class="[
+      hasSelectedLine ? 'bg-neutral-100 dark:bg-neutral-800' : 'bg-white dark:bg-neutral-950',
+      laneHeightClass,
+    ]"
   >
     <!-- Empty state - no line selected -->
     <div v-if="!hasSelectedLine" class="flex items-center justify-center h-full">
@@ -42,6 +45,30 @@
         </div>
 
         <div class="flex items-center gap-2">
+          <div v-if="filePath" class="flex items-center">
+            <button
+              class="button button-normal h-6 w-6 rounded-l-full rounded-r-none border-r border-neutral-300 dark:border-neutral-700 flex items-center justify-center"
+              :title="spectrogramSettings.visible ? 'Hide spectrogram' : 'Show spectrogram'"
+              @click="saveSpectrogramSettings({ visible: !spectrogramSettings.visible })"
+            >
+              <Waveform v-if="spectrogramSettings.visible" class="w-3.5 h-3.5" />
+              <EyeOff v-else class="w-3.5 h-3.5" />
+            </button>
+
+            <button
+              type="button"
+              class="button button-normal h-6 w-5 rounded-r-full rounded-l-none flex items-center justify-center"
+              :class="{ 'settings-toggle-open': isSettingsOpen }"
+              title="Spectrogram settings"
+              aria-label="Spectrogram settings"
+              :aria-controls="hasSpectrogramSlot ? 'spectrogram-settings-drawer' : undefined"
+              :aria-expanded="isSettingsOpen"
+              @click="toggleSettings"
+              @keydown="handleSettingsToggleKeydown"
+            >
+              <Tune class="w-3.5 h-3.5" />
+            </button>
+          </div>
           <button
             class="button button-normal text-xs px-2 py-1 rounded flex items-center gap-1"
             :title="playLineTitle"
@@ -69,15 +96,41 @@
         </div>
       </div>
 
-      <!-- Timeline with word segments -->
       <div
-        ref="timelineElement"
-        class="relative flex-1 bg-white dark:bg-neutral-900 rounded border border-neutral-300 dark:border-neutral-600 transition-opacity duration-200"
-        :class="{ 'opacity-50': !hasActualWords }"
-        @click="handleTimelineClick"
+        v-if="hasSpectrogramSlot"
+        class="settings-drawer-shell"
+        :class="{ 'settings-drawer-shell-open': isSettingsOpen }"
+        :inert="!isSettingsOpen"
       >
-        <!-- Timeline grid lines (every 500ms) -->
-        <!-- <div class="absolute inset-0 pointer-events-none">
+        <SpectrogramSettingsDrawer
+          ref="settingsDrawer"
+          class="settings-drawer"
+          :sample-rate="spectrogramSampleRate"
+          @close="closeSettings"
+        />
+      </div>
+
+      <div class="relative flex flex-col flex-1 min-h-0">
+        <SpectrogramPanel
+          v-if="filePath && spectrogramSettings.visible"
+          :file-path="filePath"
+          :start-ms="laneStartMs"
+          :end-ms="laneEndMs"
+          class="mb-2 shrink-0"
+          @click="seekToClientX"
+          @sample-rate="spectrogramSampleRate = $event"
+        />
+
+        <!-- Timeline with word segments -->
+        <div
+          ref="timelineElement"
+          class="relative flex-1 bg-white dark:bg-neutral-900 rounded border border-neutral-300 dark:border-neutral-600 transition-opacity duration-200 cursor-pointer"
+          :class="{ 'opacity-50': !hasActualWords }"
+          @pointerdown="handleTimelinePointerDown"
+          @click="handleTimelineClick"
+        >
+          <!-- Timeline grid lines (every 500ms) -->
+          <!-- <div class="absolute inset-0 pointer-events-none">
           <template v-for="n in gridLinesCount" :key="n">
             <div
               class="absolute top-0 bottom-0 w-px bg-neutral-200 dark:bg-hoa-1100 opacity-50"
@@ -86,60 +139,82 @@
           </template>
         </div> -->
 
-        <!-- Word segments -->
-        <SyncedWordTimingSegment
-          v-for="(word, index) in displayedWords"
-          :key="index"
-          :word="word"
-          :word-index="index"
-          :next-word-text="displayedWords[index]?.text || ''"
-          :next-word-start-ms="displayedWords[index]?.start_ms ?? null"
-          :next-word-end-ms="
-            index + 1 < displayedWords.length ? getWordEndMs(index + 1) : null
-          "
-          :start-ms="word.start_ms"
-          :end-ms="getWordEndMs(index)"
-          :line-start-ms="laneStartMs"
-          :line-end-ms="laneEndMs"
-          :timeline-width="timelineWidth"
-          :progress-ms="progressMs"
-          :selected-boundary-index="selectedBoundaryIndex"
-          :selected-boundary-indices="selectedBoundaryIndices"
-          @split-at="handleSegmentSplitAt"
-        />
-
-        <button
-          v-for="index in boundaryIndexes"
-          :key="`boundary-${index}`"
-          type="button"
-          class="group absolute top-0 bottom-0 z-30 -ml-2 w-4 cursor-ew-resize bg-transparent"
-          :style="{ left: `${timeToPercent(displayedWords[index].start_ms)}%` }"
-          :title="`Adjust start of ${displayedWords[index].text}`"
-          @pointerdown="handleBoundaryPointerDown(index, $event)"
-          @click="selectBoundary(index, $event)"
-        >
-          <span
-            class="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2 transition-all duration-150 ease-linear bg-neutral-300/70 dark:bg-hoa-1000/70 group-hover:bg-neutral-600 dark:group-hover:bg-neutral-300 group-hover:w-[3px] group-hover:ring-1 group-hover:ring-neutral-500/25"
-            :class="getBoundaryLineClass(index)"
+          <!-- Word segments -->
+          <SyncedWordTimingSegment
+            v-for="(word, index) in displayedWords"
+            :key="index"
+            :word="word"
+            :word-index="index"
+            :next-word-text="displayedWords[index]?.text || ''"
+            :next-word-start-ms="displayedWords[index]?.start_ms ?? null"
+            :next-word-end-ms="index + 1 < displayedWords.length ? getWordEndMs(index + 1) : null"
+            :start-ms="word.start_ms"
+            :end-ms="getWordEndMs(index)"
+            :line-start-ms="laneStartMs"
+            :line-end-ms="laneEndMs"
+            :timeline-width="timelineWidth"
+            :progress-ms="progressMs"
+            :selected-boundary-index="selectedBoundaryIndex"
+            :selected-boundary-indices="selectedBoundaryIndices"
+            :drag-active="!!dragState"
+            @split-at="handleSegmentSplitAt"
           />
-        </button>
 
-        <div
-          v-if="dragState"
-          class="absolute inset-y-0 z-20 pointer-events-none"
-          :style="{ left: `${timeToPercent(dragState.currentStartMs)}%` }"
-        >
-          <div
-            class="absolute top-0 bottom-0 w-[3px] -translate-x-1/2 bg-neutral-600 dark:bg-neutral-300 ring-1 ring-neutral-500/25"
-          />
-          <div
-            class="absolute top-[-0.375rem] left-0 -translate-x-1/2 -translate-y-full px-[0.4rem] py-0.5 rounded-full text-xs leading-4 whitespace-nowrap text-neutral-800 bg-neutral-200 dark:text-white dark:bg-hoa-1100"
+          <button
+            v-for="index in interiorBoundaryIndexes"
+            :key="`boundary-${index}`"
+            type="button"
+            class="group absolute top-0 bottom-0 z-30 -ml-2 w-4 cursor-ew-resize bg-transparent"
+            :style="{ left: `${timeToPercent(displayedWords[index].start_ms)}%` }"
+            :title="`Adjust start of ${displayedWords[index].text}`"
+            @pointerdown="handleBoundaryPointerDown(index, $event)"
+            @click.stop="selectBoundary(index, $event)"
           >
-            {{ formatTimestampMs(dragState.currentStartMs) }}
+            <span
+              class="absolute left-1/2 top-0 bottom-0 w-0.5 -translate-x-1/2 transition-all duration-150 ease-linear bg-neutral-300/70 dark:bg-hoa-1000/70 group-hover:bg-neutral-600 dark:group-hover:bg-neutral-300 group-hover:w-[3px] group-hover:ring-1 group-hover:ring-neutral-500/25"
+              :class="getBoundaryLineClass(index)"
+            />
+          </button>
+
+          <div
+            v-if="dragState"
+            class="absolute inset-y-0 z-20 pointer-events-none"
+            :style="{ left: `${timeToPercent(dragState.currentStartMs)}%` }"
+          >
+            <div
+              class="absolute top-0 bottom-0 w-[3px] -translate-x-1/2 bg-neutral-600 dark:bg-neutral-300 ring-1 ring-neutral-500/25"
+            />
+            <div
+              class="absolute top-[-0.375rem] left-0 -translate-x-1/2 -translate-y-full px-[0.4rem] py-0.5 rounded-full text-xs leading-4 whitespace-nowrap text-neutral-800 bg-neutral-200 dark:text-white dark:bg-hoa-1100"
+            >
+              {{ formatTimestampMs(dragState.currentStartMs) }}
+            </div>
           </div>
+
+          <button
+            v-if="displayedWords.length > 0"
+            type="button"
+            class="button button-primary absolute left-0 top-0 bottom-0 z-40 w-3.5 p-0 rounded-l cursor-ew-resize"
+            title="Nudge line start earlier (drag to trim)"
+            @pointerdown="handleBoundaryPointerDown(0, $event)"
+            @click.stop="handleEdgeClick('rewind-line')"
+          >
+            <ChevronLeft class="w-3 h-3" />
+          </button>
+
+          <button
+            v-if="displayedWords.length > 0"
+            type="button"
+            class="button button-primary absolute right-0 top-0 bottom-0 z-40 w-3.5 p-0 rounded-r cursor-ew-resize"
+            title="Nudge line end later (drag to trim)"
+            @pointerdown="handleBoundaryPointerDown(displayedWords.length, $event)"
+            @click.stop="handleEdgeClick('forward-end')"
+          >
+            <ChevronRight class="w-3 h-3" />
+          </button>
         </div>
 
-        <!-- Current playhead indicator -->
+        <!-- Current playhead indicator, spanning the spectrogram and timeline -->
         <div
           v-if="progressMs >= lineStartMs && progressMs <= laneEndMs"
           class="absolute -top-1 bottom-0 w-px bg-neutral-400 dark:bg-neutral-400 z-20 pointer-events-none"
@@ -160,9 +235,18 @@ import { invoke } from '@tauri-apps/api/core'
 import Equal from '~icons/mdi/equal'
 import Play from '~icons/mdi/play'
 import Close from '~icons/mdi/close'
+import Waveform from '~icons/mdi/waveform'
+import EyeOff from '~icons/mdi/eye-off'
+import Tune from '~icons/mdi/tune-variant'
+import ChevronLeft from '~icons/mdi/chevron-left'
+import ChevronRight from '~icons/mdi/chevron-right'
+import { useSpectrogramSettings } from '@/composables/spectrogram-settings.js'
+import SpectrogramPanel from '@/components/library/edit-lyrics-v2/SpectrogramPanel.vue'
+import SpectrogramSettingsDrawer from '@/components/library/edit-lyrics-v2/SpectrogramSettingsDrawer.vue'
 import SyncedWordTimingSegment from '@/components/library/edit-lyrics-v2/SyncedWordTimingSegment.vue'
 import { useEditLyricsV2WordBoundaryDrag } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordBoundaryDrag.js'
 import { useEditLyricsV2WordTimingHotkeys } from '@/composables/edit-lyrics-v2/useEditLyricsV2WordTimingHotkeys.js'
+import { resolveWordSplitTimeMs } from '@/utils/word-split.js'
 import {
   syncedEditorShortcutBindings,
   wordTimingShortcutBindings,
@@ -192,9 +276,49 @@ const props = defineProps({
     type: Number,
     default: -1,
   },
+  filePath: {
+    type: String,
+    default: null,
+  },
 })
 
-const emit = defineEmits(['update:words', 'word-timing-edited', 'play-line', 'select-next-line'])
+const emit = defineEmits([
+  'update:words',
+  'word-timing-edited',
+  'play-line',
+  'select-next-line',
+  'seek',
+  'rewind-line',
+  'forward-end',
+  'set-line-end',
+  'focus-editor',
+])
+
+const { settings: spectrogramSettings, save: saveSpectrogramSettings } = useSpectrogramSettings()
+
+const isSettingsOpen = ref(false)
+const settingsDrawer = ref(null)
+const spectrogramSampleRate = ref(null)
+
+const openSettings = async () => {
+  if (!spectrogramSettings.value.visible) void saveSpectrogramSettings({ visible: true })
+  isSettingsOpen.value = true
+  // The drawer stays mounted but inert while collapsed; wait for inert to clear.
+  await nextTick()
+  settingsDrawer.value?.focusFirstControl()
+}
+
+const closeSettings = () => {
+  isSettingsOpen.value = false
+  emit('focus-editor')
+}
+
+const toggleSettings = () => (isSettingsOpen.value ? closeSettings() : openSettings())
+
+// Synced hotkeys treat Space/Enter on any button as "sync line", so keep them from this one.
+const handleSettingsToggleKeydown = event => {
+  if (event.key === 'Enter' || event.key === ' ') event.stopPropagation()
+}
 
 const timelineElement = ref(null)
 const timelineWidth = ref(0)
@@ -230,6 +354,22 @@ const hasLineEndTime = computed(() => {
 
 const isWordSyncAvailable = computed(() => {
   return hasLineContent.value && hasLineStartTime.value && hasLineEndTime.value
+})
+
+const hasSpectrogramSlot = computed(
+  () => !!props.filePath && isWordSyncAvailable.value && spectrogramSettings.value.visible
+)
+
+watch(hasSpectrogramSlot, hasSlot => {
+  if (!hasSlot) isSettingsOpen.value = false
+})
+
+// Fixed heights keep the timeline's size; an open drawer adds its 7rem shell and margin.
+const laneHeightClass = computed(() => {
+  if (hasSpectrogramSlot.value && isSettingsOpen.value) return 'h-[20.5rem]'
+  if (hasSpectrogramSlot.value) return 'h-[13rem]'
+  if (isWordSyncAvailable.value) return 'h-[7rem]'
+  return 'h-[5rem]'
 })
 
 // Check if the line has actual saved words (not auto-generated)
@@ -299,6 +439,7 @@ const {
   boundaryIndexes,
   selectedBoundaryIndex,
   selectedBoundaryIndices,
+  isDraggingBoundary,
   startBoundaryDrag,
   selectBoundary,
   isBoundarySelected,
@@ -316,8 +457,11 @@ const {
   timelineEndMs: laneEndMs,
   selectedLineIndex: computed(() => props.selectedLineIndex),
   onUpdateWords: payload => emit('update:words', payload),
+  onUpdateLineEnd: payload => emit('set-line-end', payload),
   onWordTimingEdited: payload => emit('word-timing-edited', payload),
 })
+
+const interiorBoundaryIndexes = computed(() => boundaryIndexes.value.filter(index => index > 0))
 
 const playheadPercent = computed(() => {
   if (!isWordSyncAvailable.value) return 0
@@ -367,16 +511,36 @@ const clientXToTime = clientX => {
 
 const getWordEndMs = index => {
   if (index >= displayedWords.value.length - 1) {
-    return laneEndMs.value
+    // While the line end is dragged, the last word follows the preview.
+    return dragState.value?.rightWordIndex === displayedWords.value.length
+      ? dragState.value.currentStartMs
+      : laneEndMs.value
   }
 
   const nextWordStart = displayedWords.value[index + 1]?.start_ms
   return Number.isFinite(nextWordStart) ? nextWordStart : laneEndMs.value
 }
 
+// Only presses that start on the timeline seek: a drag's commit clears drag state before its click.
+const isTimelineClickArmed = ref(false)
+
+const handleTimelinePointerDown = () => {
+  isTimelineClickArmed.value = true
+}
+
 const handleBoundaryPointerDown = (rightWordIndex, event) => {
+  isTimelineClickArmed.value = false
   startBoundaryDrag(rightWordIndex, event, clientXToTime)
 }
+
+const handleEdgeClick = eventName => {
+  if (isDraggingBoundary.value || !isWordSyncAvailable.value) {
+    return
+  }
+  emit(eventName, props.selectedLineIndex)
+}
+
+const seekToClientX = event => emit('seek', clientXToTime(event.clientX) / 1000)
 
 const getBoundaryLineClass = index => {
   const isActive =
@@ -444,7 +608,7 @@ const handleDeleteSelectedBoundaries = () => {
   deleteSelectedBoundaries()
 }
 
-const handleSegmentSplitAt = ({ wordIndex, splitIndex, splitRatio }) => {
+const handleSegmentSplitAt = ({ wordIndex, splitIndex, splitRatio, splitClientX }) => {
   if (!isWordSyncAvailable.value) {
     return
   }
@@ -472,10 +636,15 @@ const handleSegmentSplitAt = ({ wordIndex, splitIndex, splitRatio }) => {
   const normalizedSplitRatio = Number.isFinite(splitRatio)
     ? Math.max(0, Math.min(1, splitRatio))
     : normalizedSplitIndex / graphemes.length
-  const splitTimeMs = Math.max(
-    wordStartMs + 1,
-    Math.min(wordEndMs - 1, Math.round(wordStartMs + (wordEndMs - wordStartMs) * normalizedSplitRatio))
-  )
+  // Split under the highlighted divider; zero-width trailing spaces skew the width ratio.
+  const ratioTimeMs = Math.round(wordStartMs + (wordEndMs - wordStartMs) * normalizedSplitRatio)
+  const highlightTimeMs = Number.isFinite(splitClientX) ? clientXToTime(splitClientX) : null
+  const splitTimeMs = resolveWordSplitTimeMs({
+    wordStartMs,
+    wordEndMs,
+    highlightTimeMs,
+    ratioTimeMs,
+  })
 
   const updatedWords = [
     ...displayedWords.value.slice(0, wordIndex),
@@ -549,17 +718,20 @@ const { bindWordTimingHotkeys, unbindWordTimingHotkeys } = useEditLyricsV2WordTi
   deleteSelectedBoundaries: () => handleDeleteSelectedBoundaries(),
 })
 
+// Also watch the line's timestamps so the lane window follows edits and re-sorts.
 watch(
-  () => props.selectedLineIndex,
-  (newIndex, oldIndex) => {
+  [
+    () => props.selectedLineIndex,
+    () => props.selectedLine?.start_ms,
+    () => props.selectedLine?.end_ms,
+  ],
+  ([newIndex], [oldIndex] = []) => {
     cancelBoundaryInteraction()
     // Only reset boundary index when actually changing to a different line
     if (newIndex !== oldIndex) {
       resetBoundarySelection()
-      syncLaneWindowToSelection()
-    } else if (!props.hasSelectedLine) {
-      syncLaneWindowToSelection()
     }
+    syncLaneWindowToSelection()
 
     segmentedTokenTexts.value = null
     void loadDefaultSegmentation()
@@ -590,6 +762,9 @@ const handleResetWords = async () => {
 
 const handleTimelineClick = event => {
   event.stopPropagation()
+  if (!isTimelineClickArmed.value) return
+  isTimelineClickArmed.value = false
+  seekToClientX(event)
 }
 
 watch(
@@ -672,3 +847,23 @@ onUnmounted(() => {
   unbindWordTimingHotkeys()
 })
 </script>
+
+<style scoped>
+.settings-toggle-open {
+  @apply bg-hoa-100/60 hover:bg-hoa-100 dark:bg-hoa-1100/15 dark:hover:bg-hoa-1100/25;
+}
+
+/* Animates with the lane's height; `invisible` backs up `inert` on older WebKit. */
+.settings-drawer-shell {
+  @apply invisible h-0 shrink-0 overflow-hidden opacity-0 transition-[height,margin-bottom,opacity,visibility] duration-200 ease-out;
+}
+
+.settings-drawer-shell-open {
+  @apply visible mb-2 opacity-100;
+}
+
+.settings-drawer-shell-open,
+.settings-drawer {
+  @apply h-[7rem];
+}
+</style>

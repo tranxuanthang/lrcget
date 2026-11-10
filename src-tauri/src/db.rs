@@ -163,6 +163,11 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
         theme_mode,
         lrclib_instance,
         volume,
+        spectrogram_visible,
+        spectrogram_theme,
+        spectrogram_min_hz,
+        spectrogram_max_hz,
+        spectrogram_midpoint_db,
         auto_export_enabled,
         export_lrc,
         export_txt,
@@ -183,6 +188,11 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
             theme_mode: r.get("theme_mode")?,
             lrclib_instance: r.get("lrclib_instance")?,
             volume: r.get("volume")?,
+            spectrogram_visible: r.get("spectrogram_visible")?,
+            spectrogram_theme: r.get("spectrogram_theme")?,
+            spectrogram_min_hz: r.get("spectrogram_min_hz")?,
+            spectrogram_max_hz: r.get("spectrogram_max_hz")?,
+            spectrogram_midpoint_db: r.get("spectrogram_midpoint_db")?,
         })
     })?;
     Ok(row)
@@ -266,6 +276,27 @@ pub fn set_export_preferences(
 pub fn set_volume_config(volume: f64, db: &Connection) -> Result<()> {
     let mut statement = db.prepare("UPDATE config_data SET volume = ? WHERE 1")?;
     statement.execute([volume])?;
+    Ok(())
+}
+
+pub fn set_spectrogram_settings(
+    visible: Option<bool>,
+    theme: Option<&str>,
+    min_hz: Option<f64>,
+    max_hz: Option<f64>,
+    midpoint_db: Option<f64>,
+    db: &Connection,
+) -> Result<()> {
+    db.execute(
+        "UPDATE config_data SET
+            spectrogram_visible = COALESCE(?1, spectrogram_visible),
+            spectrogram_theme = COALESCE(?2, spectrogram_theme),
+            spectrogram_min_hz = COALESCE(?3, spectrogram_min_hz),
+            spectrogram_max_hz = COALESCE(?4, spectrogram_max_hz),
+            spectrogram_midpoint_db = COALESCE(?5, spectrogram_midpoint_db)
+        WHERE 1",
+        (visible, theme, min_hz, max_hz, midpoint_db),
+    )?;
     Ok(())
 }
 

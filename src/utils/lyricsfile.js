@@ -1,7 +1,12 @@
 import YAML from 'yaml'
+import _omit from 'lodash/omit'
 
 export const LYRICSFILE_VERSION = '1.0'
 export const INSTRUMENTAL_LRC = '[au: instrumental]'
+
+// In-memory line ids keep v-for keys stable across re-sorts; stripped before saving.
+let _lineIdCounter = 0
+export const nextLineId = () => ++_lineIdCounter
 
 const emptyParsedLyricsfile = () => ({
   plainLyrics: '',
@@ -102,6 +107,7 @@ export const normalizeSyncedLine = (line, fallbackText = '') => {
   const text = typeof line?.text === 'string' ? line.text : textFromWords || fallbackText
 
   const normalizedLine = {
+    id: Number.isFinite(line?.id) ? line.id : nextLineId(),
     text,
     words,
   }
@@ -306,10 +312,12 @@ export const serializeLyricsfile = ({
     metadata.language = baseMetadata.language
   }
 
+  const persistableLines = lines.length > 0 ? lines.map(line => _omit(line, 'id')) : null
+
   return YAML.stringify({
     version: LYRICSFILE_VERSION,
     metadata,
-    lines: lines.length > 0 ? lines : null,
+    lines: persistableLines,
     plain,
   })
 }

@@ -27,6 +27,7 @@ src-tauri/
 │   ├── state.rs             # AppState, ServiceAccess trait
 │   ├── db.rs                # SQLite operations, migrations
 │   ├── library.rs           # High-level library API
+│   ├── decoder.rs           # Symphonia-based audio slice decoder (mono f32)
 │   ├── scanner/             # Incremental file scanning (NEW)
 │   │   ├── scan.rs          # Single-pass streaming scanner
 │   │   ├── hasher.rs        # xxhash3 content hashing
@@ -105,6 +106,8 @@ trait ServiceAccess {
 - `albums_fts` — indexed `album_name`, `album_artist_name` (with `album_id` as UNINDEXED key)
 - `artists_fts` — indexed `artist_name` (with `artist_id` as UNINDEXED key)
 - Backfilled from existing normalized `*_lower` columns.
+
+**Migration v18:** Added spectrogram display settings (visibility, theme, frequency range, midpoint) to `config_data`.
 
 **Indexes:** All `*_lower` columns + `content_hash`, `scan_status`, `modified_time+file_size` (fingerprint) + lyrics-presence indexes + LRCLIB composite index (`lrclib_instance`, `lrclib_id`)
 
@@ -365,6 +368,8 @@ Search across all three entity types uses SQLite FTS5 (via `tracks_fts`, `albums
 ### Playback & Config
 - `play_track(track_id?, file_path?, title?, album_name?, artist_name?, album_artist_name?, duration?)` - Unified playback for both library tracks (via `track_id`) and file-based tracks (via `file_path` with metadata)
 - `pause/resume_track()`, `seek_track()`, `stop_track()`, `set_volume()` (persists volume to config), `set_playback_speed()`
+- `get_audio_slice(file_path, start_ms, end_ms)` - Decodes a mono slice of the file for the editor spectrogram
+- `set_spectrogram_settings(visible?, theme?, min_hz?, max_hz?, midpoint_db?)` updates only supplied spectrogram fields in `config_data`
 - `get/set_directories()`, `get/set_config()`, `get_init()`
 - `set_export_preferences(auto_export_enabled?, export_lrc?, export_txt?, export_embedded?, skip_tracks_with_synced_lyrics?, skip_tracks_with_plain_lyrics?)` updates only supplied fields in `config_data` and returns config. Download atomically supplies its existing skip flags, toggle, and effective format selections; manual Export supplies shared formats only. Hidden/omitted fields and unrelated settings survive.
 - Volume is loaded from config on startup and auto-saved when changed via `set_volume()`
@@ -409,6 +414,10 @@ struct MatchingTrack {
 **DB Function:** `db::find_tracks_by_metadata()` searches using normalized `*_lower` columns for case-insensitive matching.
 
 **Note:** The frontend currently uses a simpler approach with `get_tracks` + client-side filtering in `AssociateTrackModal.vue`.
+
+## Audio Slice Decoding (`decoder.rs`)
+
+Decodes a `[start_ms, end_ms)` window of any Symphonia-supported file to mono f32 samples for the V2 editor spectrogram. `get_audio_slice` runs it on `tokio::task::spawn_blocking`.
 
 ## Audio Metadata Extraction (`get_audio_metadata`)
 

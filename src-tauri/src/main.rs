@@ -4,6 +4,7 @@
 )]
 
 pub mod db;
+pub mod decoder;
 pub mod export;
 pub mod library;
 pub mod lrclib;
@@ -1373,6 +1374,19 @@ async fn flag_lyrics(
 }
 
 #[tauri::command]
+async fn get_audio_slice(
+    file_path: String,
+    start_ms: i64,
+    end_ms: i64,
+) -> Result<decoder::AudioSlice, String> {
+    let path = std::path::PathBuf::from(file_path);
+    tokio::task::spawn_blocking(move || decoder::decode_slice(&path, start_ms, end_ms))
+        .await
+        .map_err(|e| format!("Audio slice decode task failed: {}", e))?
+        .map_err(|e| e.to_string())
+}
+
+#[tauri::command]
 async fn play_track(
     track_id: Option<i64>,
     file_path: Option<String>,
@@ -1661,6 +1675,41 @@ fn stop_track(app_state: tauri::State<AppState>) -> Result<(), String> {
 }
 
 #[tauri::command]
+fn set_spectrogram_settings(
+    visible: Option<bool>,
+    theme: Option<String>,
+    min_hz: Option<f64>,
+    max_hz: Option<f64>,
+    midpoint_db: Option<f64>,
+    app_handle: AppHandle,
+) -> Result<(), String> {
+    for hz in [min_hz, max_hz].into_iter().flatten() {
+        if !(hz.is_finite() && hz > 0.0) {
+            return Err(format!("Invalid spectrogram frequency: {} Hz", hz));
+        }
+    }
+    if let (Some(min_hz), Some(max_hz)) = (min_hz, max_hz) {
+        if min_hz >= max_hz {
+            return Err(format!(
+                "Invalid spectrogram frequency range: {} to {} Hz",
+                min_hz, max_hz
+            ));
+        }
+    }
+    if let Some(midpoint_db) = midpoint_db {
+        if !(midpoint_db.is_finite() && midpoint_db < 0.0) {
+            return Err(format!("Invalid spectrogram midpoint: {} dB", midpoint_db));
+        }
+    }
+    app_handle
+        .db(|db| {
+            db::set_spectrogram_settings(visible, theme.as_deref(), min_hz, max_hz, midpoint_db, db)
+        })
+        .map_err(|err| err.to_string())?;
+    Ok(())
+}
+
+#[tauri::command]
 fn set_volume(
     volume: f64,
     app_state: tauri::State<AppState>,
@@ -1778,8 +1827,10 @@ async fn main() {
             resume_track,
             seek_track,
             stop_track,
+            get_audio_slice,
             set_volume,
             set_playback_speed,
+            set_spectrogram_settings,
             open_devtools,
             drain_notifications,
             find_matching_tracks,
