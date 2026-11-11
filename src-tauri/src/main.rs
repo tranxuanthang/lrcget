@@ -5,6 +5,7 @@
 
 pub mod db;
 pub mod export;
+pub mod file_manager;
 pub mod library;
 pub mod lrclib;
 pub mod lyricsfile;
@@ -500,6 +501,29 @@ async fn get_track(
     let track = library::get_track(track_id, conn).map_err(|err| err.to_string())?;
 
     Ok(track)
+}
+
+#[tauri::command]
+async fn reveal_track_in_file_manager(
+    track_id: i64,
+    app_state: State<'_, AppState>,
+) -> Result<(), String> {
+    let file_path = {
+        let conn_guard = app_state.db.lock().unwrap();
+        let conn = conn_guard.as_ref().unwrap();
+        library::get_track(track_id, conn)
+            .map_err(|err| err.to_string())?
+            .file_path
+    };
+
+    let path = std::path::PathBuf::from(file_path);
+    if !path.exists() {
+        return Err(format!("File not found: {}", path.display()));
+    }
+
+    tokio::task::spawn_blocking(move || file_manager::reveal_in_file_manager(&path))
+        .await
+        .map_err(|err| err.to_string())?
 }
 
 #[tauri::command]
@@ -1752,6 +1776,7 @@ async fn main() {
             get_tracks,
             get_track_ids,
             get_track,
+            reveal_track_in_file_manager,
             get_albums,
             get_album_ids,
             get_album,
