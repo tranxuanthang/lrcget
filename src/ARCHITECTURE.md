@@ -74,6 +74,7 @@ Module-level ref composables (singletons by design):
 - `MiniSearch.vue` with context-aware placeholder; filter dropdown hidden for Albums/Artists
 - All tabs use virtualized lists (`@tanstack/vue-virtual`) with IDs only
 - `TrackItem.vue` rows derive `instrumental` / `word-synced` / `synced` / `plain` from the joined `lyricsfile`; word-synced rows use the same gradient **Word Synced** badge as search results
+- Right-clicking a `TrackItem.vue` row opens a small teleported context menu with **Show in file manager**, which invokes `reveal_track_in_file_manager` (errors surface as a toast). The menu closes on outside click, Escape, scroll, resize, or window blur
 - Clickable album/artist names in track rows and the NowPlaying panel navigate to the respective tab and open the entity detail view (`AlbumTrackList`/`ArtistTrackList`)
 
 **Lyrics Workflows**:
