@@ -58,6 +58,7 @@ pub fn scan_library(
     let mut added = 0;
     let mut moved = 0;
     let mut unchanged = 0;
+    let mut skipped = 0;
     let mut batch = Vec::with_capacity(BATCH_SIZE);
 
     // Phase 2: Stream through files with globwalk - discover AND process in single pass
@@ -78,6 +79,7 @@ pub fn scan_library(
                         added += batch_result.added;
                         moved += batch_result.moved;
                         unchanged += batch_result.unchanged;
+                        skipped += batch_result.skipped;
                         processed_files += batch.len();
 
                         // Emit progress after processing each batch
@@ -99,6 +101,7 @@ pub fn scan_library(
         added += batch_result.added;
         moved += batch_result.moved;
         unchanged += batch_result.unchanged;
+        skipped += batch_result.skipped;
         processed_files += batch.len();
 
         // Emit final progress
@@ -123,6 +126,7 @@ pub fn scan_library(
         deleted,
         moved,
         unchanged,
+        skipped,
         is_initial_scan,
         duration_ms,
     })
@@ -133,6 +137,7 @@ struct BatchResult {
     added: usize,
     moved: usize,
     unchanged: usize,
+    skipped: usize,
 }
 
 fn process_batch(
@@ -149,6 +154,7 @@ fn process_batch(
             Ok(m) => m,
             Err(e) => {
                 eprintln!("Error getting metadata for {:?}: {}", path, e);
+                result.skipped += 1;
                 continue;
             }
         };
@@ -168,6 +174,7 @@ fn process_batch(
                     Ok(h) => h,
                     Err(e) => {
                         eprintln!("Error hashing {:?}: {}", path, e);
+                        result.skipped += 1;
                         continue;
                     }
                 };
@@ -196,7 +203,8 @@ fn process_batch(
                         match insert_new_track(path, file_size, modified_time, &hash, &tx) {
                             Ok(_) => result.added += 1,
                             Err(e) => {
-                                eprintln!("Error inserting track {:?}: {}", path, e)
+                                eprintln!("Error inserting track {:?}: {}", path, e);
+                                result.skipped += 1;
                             }
                         }
                     }
@@ -222,13 +230,15 @@ fn process_batch(
                             Ok(h) => h,
                             Err(e) => {
                                 eprintln!("Error hashing {:?}: {}", path, e);
+                                result.skipped += 1;
                                 continue;
                             }
                         };
                         match insert_new_track(path, file_size, modified_time, &hash, &tx) {
                             Ok(_) => result.added += 1,
                             Err(e) => {
-                                eprintln!("Error inserting track {:?}: {}", path, e)
+                                eprintln!("Error inserting track {:?}: {}", path, e);
+                                result.skipped += 1;
                             }
                         }
                     }
@@ -324,4 +334,45 @@ fn insert_new_track(
     }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    // A valid WAV file with no tags: 44-byte header, no samples
+    fn untagged_wav() -> Vec<u8> {
+        let mut wav = Vec::new();
+        wav.extend_from_slice(b"RIFF");
+        wav.extend_from_slice(&36u32.to_le_bytes());
+        wav.extend_from_slice(b"WAVEfmt ");
+        wav.extend_from_slice(&16u32.to_le_bytes());
+        wav.extend_from_slice(&1u16.to_le_bytes());
+        wav.extend_from_slice(&1u16.to_le_bytes());
+        wav.extend_from_slice(&44100u32.to_le_bytes());
+        wav.extend_from_slice(&88200u32.to_le_bytes());
+        wav.extend_from_slice(&2u16.to_le_bytes());
+        wav.extend_from_slice(&16u16.to_le_bytes());
+        wav.extend_from_slice(b"data");
+        wav.extend_from_slice(&0u32.to_le_bytes());
+        wav
+    }
+
+    #[test]
+    fn files_that_cannot_be_added_are_counted_as_skipped() {
+        let dir = std::env::temp_dir().join(format!("lrcget-scan-test-{}", std::process::id()));
+        fs::create_dir_all(&dir).unwrap();
+        fs::write(dir.join("untagged.wav"), untagged_wav()).unwrap();
+        fs::write(dir.join("broken.mp3"), b"not audio").unwrap();
+
+        let mut conn = db::open_test_connection();
+        let directory = dir.to_string_lossy().replace('\\', "/");
+        let result = scan_library(&[directory], &mut conn, &|_| {}, DetectionMethod::Hash).unwrap();
+        fs::remove_dir_all(&dir).unwrap();
+
+        assert_eq!(result.total_files, 2);
+        assert_eq!(result.added, 0);
+        assert_eq!(result.skipped, 2);
+    }
 }

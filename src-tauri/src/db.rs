@@ -1789,6 +1789,16 @@ pub fn find_tracks_by_metadata(
 }
 
 #[cfg(test)]
+pub(crate) fn open_test_connection() -> Connection {
+    let mut conn = Connection::open_in_memory().unwrap();
+    Migrations::from_directory(&MIGRATIONS_DIR)
+        .unwrap()
+        .to_latest(&mut conn)
+        .unwrap();
+    conn
+}
+
+#[cfg(test)]
 mod export_preferences_tests {
     use super::*;
 
