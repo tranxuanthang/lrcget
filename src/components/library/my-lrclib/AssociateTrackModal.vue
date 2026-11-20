@@ -214,7 +214,7 @@ const selectAudioFile = async () => {
     }
   } catch (error) {
     console.error('Error selecting file:', error)
-    toast.error('Failed to read audio file')
+    toast.error(`Failed to read audio file: ${error}`)
   } finally {
     isSelectingFile.value = false
   }
