@@ -5,6 +5,7 @@
       'border-neutral-100 bg-neutral-50 dark:border-neutral-700 dark:bg-neutral-900': isPlaying,
       'border-transparent': !isPlaying,
     }"
+    @contextmenu.prevent="openContextMenu"
   >
     <!-- Track number -->
     <div
@@ -103,6 +104,27 @@
         </button>
       </div>
     </div>
+
+    <!-- Right-click context menu -->
+    <Teleport to="body">
+      <div
+        v-if="contextMenu"
+        class="fixed z-50 py-1 rounded border border-neutral-200 bg-white shadow-lg dark:border-neutral-700 dark:bg-neutral-800"
+        :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px`, width: `${MENU_WIDTH}px` }"
+        role="menu"
+        @mousedown.stop
+        @contextmenu.stop.prevent
+      >
+        <button
+          class="flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm text-neutral-800 hover:bg-hoa-1100 hover:text-white dark:text-neutral-200 dark:hover:bg-hoa-1100"
+          role="menuitem"
+          @click="revealInFileManager"
+        >
+          <FolderOpen class="flex-none" />
+          <span>Show in file manager</span>
+        </button>
+      </div>
+    </Teleport>
   </div>
 </template>
 
@@ -112,6 +134,7 @@ import Pause from '~icons/mdi/pause'
 import TextSearch from '~icons/mdi/text-search'
 import PlaylistEdit from '~icons/mdi/playlist-edit'
 import Replay from '~icons/mdi/replay'
+import FolderOpen from '~icons/mdi/folder-open'
 import { humanDuration } from '../../../utils/human-duration.js'
 import { useSearchLyrics } from '../../../composables/search-lyrics.js'
 import { useEditLyricsV2 } from '../../../composables/edit-lyrics-v2.js'
@@ -119,6 +142,7 @@ import Equalizer from '@/components/icons/Equalizer.vue'
 import { parseLyricsfile } from '@/utils/lyricsfile.js'
 import { ref, onMounted, onUnmounted, computed, watch } from 'vue'
 import { invoke } from '@tauri-apps/api/core'
+import { useToast } from 'vue-toastification'
 import { listen } from '@tauri-apps/api/event'
 import { usePlayer } from '@/composables/player.js'
 import { useLibraryNavigation } from '@/composables/library-navigation.js'
@@ -135,6 +159,58 @@ const goToAlbum = () => {
 const goToArtist = () => {
   if (track.value?.artist_id) {
     navigateToArtist(track.value.artist_id)
+  }
+}
+
+const toast = useToast()
+
+const MENU_WIDTH = 200
+const MENU_HEIGHT = 40
+const contextMenu = ref(null)
+
+const closeContextMenu = () => {
+  contextMenu.value = null
+  window.removeEventListener('mousedown', closeContextMenu)
+  window.removeEventListener('keydown', onContextMenuKeydown)
+  window.removeEventListener('blur', closeContextMenu)
+  window.removeEventListener('resize', closeContextMenu)
+  window.removeEventListener('wheel', closeContextMenu, true)
+}
+
+const onContextMenuKeydown = event => {
+  if (event.key === 'Escape') {
+    closeContextMenu()
+  }
+}
+
+const openContextMenu = event => {
+  if (!track.value) {
+    return
+  }
+
+  // Keep the menu fully inside the window
+  contextMenu.value = {
+    x: Math.max(0, Math.min(event.clientX, window.innerWidth - MENU_WIDTH)),
+    y: Math.max(0, Math.min(event.clientY, window.innerHeight - MENU_HEIGHT)),
+  }
+  window.addEventListener('mousedown', closeContextMenu)
+  window.addEventListener('keydown', onContextMenuKeydown)
+  window.addEventListener('blur', closeContextMenu)
+  window.addEventListener('resize', closeContextMenu)
+  window.addEventListener('wheel', closeContextMenu, true)
+}
+
+const revealInFileManager = async () => {
+  const trackId = track.value?.id
+  closeContextMenu()
+  if (!trackId) {
+    return
+  }
+
+  try {
+    await invoke('reveal_track_in_file_manager', { trackId })
+  } catch (error) {
+    toast.error(error?.toString?.() || 'Failed to show the file in the file manager')
   }
 }
 
@@ -215,6 +291,7 @@ onMounted(async () => {
 })
 
 onUnmounted(() => {
+  closeContextMenu()
   if (unlisten) {
     unlisten()
   }

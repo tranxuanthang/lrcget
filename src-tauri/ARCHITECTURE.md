@@ -16,6 +16,8 @@
 
 **Key Dependencies:** `tauri`, `rusqlite`+`rusqlite_migration`, `lofty`, `kira`, `reqwest`, `rayon`, `xxhash-rust`, `regex` (for LRC parsing), `charabia` (international word segmentation), `fastrand` (retry jitter)
 
+**Reveal in File Manager Command:** `reveal_track_in_file_manager(track_id)` in `main.rs` looks up the track's `file_path`, returns an error if the file no longer exists, and calls `file_manager::reveal_in_file_manager` on a blocking thread. It uses only `std::process::Command`: `explorer.exe /select,` on Windows, `open -R` on macOS, and on Linux the FreeDesktop `org.freedesktop.FileManager1.ShowItems` D-Bus call via `dbus-send` (falling back to `xdg-open` on the parent folder).
+
 **Word Segmentation Command:** `segment_words(text)` in `main.rs` uses Charabia's segmenter (`Segment::segment_str`) and then applies language-agnostic post-processing: segments containing at least one letter/number are kept as tokens, while separator-only segments (spaces/punctuation/symbols) are merged into adjacent tokens.
 
 ## Project Structure
@@ -36,6 +38,7 @@ src-tauri/
 │   │   └── lrc.rs           # LRC lyrics parser (replaces lrc crate)
 │   ├── word_segmentation.rs # Charabia-based tokenization + separator-merging logic/tests
 │   ├── export.rs            # Manual sidecar/embed export helpers
+│   ├── file_manager.rs      # Reveal a file in Explorer/Finder/FreeDesktop file manager
 │   ├── lyricsfile.rs        # YAML lyricsfile helpers
 │   ├── player.rs            # Kira audio playback
 │   ├── persistent_entities.rs # Track/Album/Artist structs
