@@ -40,6 +40,8 @@ pub enum ExportFormat {
     Txt,
     /// Standard LRC format (.lrc)
     Lrc,
+    /// Enhanced LRC with word-level timings (.elrc)
+    Elrc,
     /// Embedded in audio file metadata
     Embedded,
 }
@@ -104,11 +106,13 @@ pub fn generate_lrc_content(parsed: &ParsedLyricsfile) -> Option<String> {
 pub fn export_track_format(
     track: &PersistentTrack,
     parsed: &ParsedLyricsfile,
+    lyricsfile: &str,
     format: ExportFormat,
 ) -> Result<ExportResult, ExportError> {
     match format {
         ExportFormat::Txt => export_txt(track, parsed),
         ExportFormat::Lrc => export_lrc(track, parsed),
+        ExportFormat::Elrc => export_elrc(track, lyricsfile),
         ExportFormat::Embedded => export_embedded(track, parsed),
     }
 }
@@ -181,6 +185,38 @@ fn export_lrc(
     })
 }
 
+
+/// Export word-synchronized lyrics without modifying audio files
+/// or removing other lyric sidecars.
+fn export_elrc(
+    track: &PersistentTrack,
+    lyricsfile: &str,
+) -> Result<ExportResult, ExportError> {
+    let content = crate::lyricsfile::lyricsfile_to_elrc(lyricsfile)
+        .map_err(|err| ExportError::InvalidData(err.to_string()))?;
+
+    let Some(content) = content else {
+        return Ok(ExportResult {
+            format: ExportFormat::Elrc,
+            path: None,
+            status: ExportStatus::Skipped(
+                "no word-synced lyrics available".to_owned(),
+            ),
+        });
+    };
+
+    let path = build_sidecar_path(&track.file_path, "elrc")?;
+
+    write(&path, content)
+        .map_err(|err| ExportError::WriteError(err.to_string()))?;
+
+    Ok(ExportResult {
+        format: ExportFormat::Elrc,
+        path: Some(path),
+        status: ExportStatus::Success,
+    })
+}
+
 /// Export lyrics by embedding into audio file metadata
 fn export_embedded(
     track: &PersistentTrack,
@@ -215,15 +251,17 @@ fn export_embedded(
 pub fn export_track(
     track: &PersistentTrack,
     parsed: &ParsedLyricsfile,
+    lyricsfile: &str,
     formats: &[ExportFormat],
 ) -> Vec<ExportResult> {
-    export_track_with_embed_gate(track, parsed, formats, || true)
+    export_track_with_embed_gate(track, parsed, lyricsfile, formats, || true)
 }
 
 /// Consult the current experimental setting at each embedded operation, not at batch creation.
 pub fn export_track_with_embed_gate(
     track: &PersistentTrack,
     parsed: &ParsedLyricsfile,
+    lyricsfile: &str,
     formats: &[ExportFormat],
     mut embed_allowed: impl FnMut() -> bool,
 ) -> Vec<ExportResult> {
@@ -240,7 +278,7 @@ pub fn export_track_with_embed_gate(
             });
             continue;
         }
-        match export_track_format(track, parsed, *format) {
+        match export_track_format(track, parsed, lyricsfile, *format) {
             Ok(result) => results.push(result),
             Err(e) => results.push(ExportResult {
                 format: *format,

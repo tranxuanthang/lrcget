@@ -123,6 +123,7 @@ struct FlagLyricsProgress {
 enum ExportLyricsFormat {
     Txt,
     Lrc,
+    Elrc,
     Embedded,
 }
 
@@ -191,6 +192,7 @@ impl From<ExportLyricsFormat> for export::ExportFormat {
         match value {
             ExportLyricsFormat::Txt => export::ExportFormat::Txt,
             ExportLyricsFormat::Lrc => export::ExportFormat::Lrc,
+            ExportLyricsFormat::Elrc => export::ExportFormat::Elrc,
             ExportLyricsFormat::Embedded => export::ExportFormat::Embedded,
         }
     }
@@ -836,10 +838,11 @@ fn download_export_message(
         Err(err) => return format!("{message}; export failed: {err}"),
     };
     let mut message = message.to_owned();
-    for result in export::export_track_with_embed_gate(track, &parsed, formats, embed_allowed) {
+    for result in export::export_track_with_embed_gate(track, &parsed, content, formats, embed_allowed) {
         let format = match result.format {
             export::ExportFormat::Txt => "TXT",
             export::ExportFormat::Lrc => "LRC",
+            export::ExportFormat::Elrc => "ELRC",
             export::ExportFormat::Embedded => "Embedded",
         };
         let outcome = match result.status {
@@ -1495,7 +1498,7 @@ async fn export_lyrics(
         lyricsfile::parse_lyricsfile(&lyricsfile_content).map_err(|err| err.to_string())?;
     let export_formats = formats.into_iter().map(Into::into).collect::<Vec<_>>();
 
-    Ok(export::export_track_with_embed_gate(&track, &parsed, &export_formats, || {
+    Ok(export::export_track_with_embed_gate(&track, &parsed, &lyricsfile_content, &export_formats, || {
         embedding_allowed(&app_handle)
     }))
 }
@@ -1558,11 +1561,12 @@ async fn export_track_lyrics(
         });
     }
 
-    let parsed = lyricsfile::parse_lyricsfile(&lyricsfile_content.unwrap())
+    let lyricsfile_content = lyricsfile_content.unwrap();
+    let parsed = lyricsfile::parse_lyricsfile(&lyricsfile_content)
         .map_err(|err| err.to_string())?;
     let export_formats = formats.into_iter().map(Into::into).collect::<Vec<_>>();
 
-    let results = export::export_track_with_embed_gate(&track, &parsed, &export_formats, || {
+    let results = export::export_track_with_embed_gate(&track, &parsed, &lyricsfile_content, &export_formats, || {
         embedding_allowed(&app_handle)
     });
 
@@ -1908,12 +1912,12 @@ mod auto_export_tests {
             std::fs::write(&path, bytes).unwrap();
             let track = test_track(&path);
             // A disabled gate never reaches the writer, even for a valid audio file.
-            let result = export::export_track_with_embed_gate(&track, &parsed, &[Embedded], || false);
+            let result = export::export_track_with_embed_gate(&track, &parsed, &content, &[Embedded], || false);
             assert!(
                 matches!(&result[0].status, ExportStatus::Skipped(reason) if reason.contains("disabled"))
             );
             assert_eq!(std::fs::read(&path).unwrap(), bytes);
-            let result = export::export_track(&track, &parsed, &[Embedded]);
+            let result = export::export_track(&track, &parsed, &content, &[Embedded]);
             assert!(
                 matches!(result[0].status, ExportStatus::Success),
                 "{result:?}"
@@ -1928,7 +1932,7 @@ mod auto_export_tests {
         let bytes = b"unsupported audio must not be touched";
         std::fs::write(&path, bytes).unwrap();
         let track = test_track(&path);
-        let result = export::export_track(&track, &parsed, &[Embedded]);
+        let result = export::export_track(&track, &parsed, &content, &[Embedded]);
         assert!(
             matches!(&result[0].status, ExportStatus::Skipped(reason) if reason.contains("unsupported"))
         );
@@ -1947,7 +1951,7 @@ mod auto_export_tests {
         let track = test_track(&directory.join("song.MP3"));
         let mut enabled = true;
         let result =
-            export::export_track_with_embed_gate(&track, &parsed, &[Embedded, Embedded], || {
+            export::export_track_with_embed_gate(&track, &parsed, &content, &[Embedded, Embedded], || {
                 let current = enabled;
                 enabled = false;
                 current
@@ -1964,6 +1968,126 @@ mod auto_export_tests {
         );
         assert!(result.starts_with("Plain lyrics downloaded; Embedded export skipped: experimental"));
         assert_eq!(std::fs::read(&track.file_path).unwrap(), before);
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+
+    #[test]
+    fn elrc_export_preserves_audio_and_other_sidecars() {
+        use export::{ExportFormat::Elrc, ExportStatus};
+
+        let directory = std::env::temp_dir().join(
+            format!("lrcget-elrc-{}", std::process::id())
+        );
+        std::fs::create_dir_all(&directory).unwrap();
+
+        let audio_path = directory.join("song.flac");
+        let lrc_path = directory.join("song.lrc");
+        let txt_path = directory.join("song.txt");
+        let elrc_path = directory.join("song.elrc");
+
+        std::fs::write(&audio_path, b"unchanged audio").unwrap();
+        std::fs::write(&lrc_path, "existing LRC").unwrap();
+        std::fs::write(&txt_path, "existing TXT").unwrap();
+
+        let track = test_track(&audio_path);
+
+        let content = r#"
+metadata:
+  instrumental: false
+lines:
+  - text: Hello world
+    start_ms: 1000
+    words:
+      - text: "Hello "
+        start_ms: 1000
+        end_ms: 1500
+      - text: world
+        start_ms: 1500
+        end_ms: 2000
+"#;
+
+        let parsed = lyricsfile::parse_lyricsfile(content).unwrap();
+
+        let result = export::export_track(
+            &track, &parsed, content, &[Elrc]
+        );
+
+        assert!(matches!(
+            result[0].status,
+            ExportStatus::Success
+        ));
+
+        assert_eq!(
+            result[0].path.as_ref(),
+            Some(&elrc_path)
+        );
+
+        assert_eq!(
+            std::fs::read_to_string(&elrc_path).unwrap(),
+            "[00:01.000]<00:01.000>Hello <00:01.500>world<00:02.000>\n"
+        );
+
+        assert_eq!(
+            std::fs::read(&audio_path).unwrap(),
+            b"unchanged audio"
+        );
+
+        assert_eq!(
+            std::fs::read_to_string(&lrc_path).unwrap(),
+            "existing LRC"
+        );
+
+        assert_eq!(
+            std::fs::read_to_string(&txt_path).unwrap(),
+            "existing TXT"
+        );
+
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn elrc_export_skips_line_only_without_overwriting() {
+        use export::{ExportFormat::Elrc, ExportStatus};
+
+        let directory = std::env::temp_dir().join(
+            format!("lrcget-elrc-skip-{}", std::process::id())
+        );
+        std::fs::create_dir_all(&directory).unwrap();
+
+        let audio_path = directory.join("song.flac");
+        let elrc_path = directory.join("song.elrc");
+
+        std::fs::write(&elrc_path, "existing enhanced lyrics").unwrap();
+
+        let track = test_track(&audio_path);
+
+        let content = r#"
+metadata:
+  instrumental: false
+lines:
+  - text: Line synchronization only
+    start_ms: 1000
+"#;
+
+        let parsed = lyricsfile::parse_lyricsfile(content).unwrap();
+
+        let result = export::export_track(
+            &track, &parsed, content, &[Elrc]
+        );
+
+        assert!(matches!(
+            result[0].status,
+            ExportStatus::Skipped(_)
+        ));
+
+        assert!(result[0].path.is_none());
+
+        assert_eq!(
+            std::fs::read_to_string(&elrc_path).unwrap(),
+            "existing enhanced lyrics"
+        );
+
         std::fs::remove_dir_all(directory).unwrap();
     }
 
