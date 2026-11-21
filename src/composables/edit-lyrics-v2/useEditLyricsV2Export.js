@@ -4,7 +4,7 @@ import { ref } from 'vue'
 export function useEditLyricsV2Export({ audioSource, saveLyrics, serializedLyricsfile, toast }) {
   const isExporting = ref(false)
 
-  const exportLyrics = async ({ plainText, syncedLrc, embedIntoTrack }) => {
+  const exportLyrics = async ({ plainText, syncedLrc, wordSyncedElrc, embedIntoTrack }) => {
     const formats = []
 
     if (plainText) {
@@ -13,6 +13,10 @@ export function useEditLyricsV2Export({ audioSource, saveLyrics, serializedLyric
 
     if (syncedLrc) {
       formats.push('lrc')
+    }
+
+    if (wordSyncedElrc) {
+      formats.push('elrc')
     }
 
     if (embedIntoTrack) {

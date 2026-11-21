@@ -166,7 +166,8 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
         auto_export_enabled,
         export_lrc,
         export_txt,
-        export_embedded
+        export_embedded,
+        export_elrc
       FROM config_data
       LIMIT 1
     "})?;
@@ -174,6 +175,7 @@ pub fn get_config(db: &Connection) -> Result<PersistentConfig> {
         Ok(PersistentConfig {
             auto_export_enabled: r.get("auto_export_enabled")?,
             export_lrc: r.get("export_lrc")?,
+            export_elrc: r.get("export_elrc")?,
             export_txt: r.get("export_txt")?,
             export_embedded: r.get("export_embedded")?,
             skip_tracks_with_synced_lyrics: r.get("skip_tracks_with_synced_lyrics")?,
@@ -230,13 +232,16 @@ pub fn set_export_preferences(
     export_embedded: Option<bool>,
     skip_tracks_with_synced_lyrics: Option<bool>,
     skip_tracks_with_plain_lyrics: Option<bool>,
+    export_elrc: Option<bool>,
     db: &Connection,
 ) -> Result<()> {
     let config = get_config(db)?;
     // A disabled experimental option cannot overwrite its remembered selection.
     let export_embedded = export_embedded.filter(|_| config.try_embed_lyrics);
     let has_sidecar =
-        export_lrc.unwrap_or(config.export_lrc) || export_txt.unwrap_or(config.export_txt);
+        export_lrc.unwrap_or(config.export_lrc)
+        || export_txt.unwrap_or(config.export_txt)
+        || export_elrc.unwrap_or(config.export_elrc);
     if auto_export_enabled != Some(false)
         && !has_sidecar
         && !(export_embedded.unwrap_or(config.export_embedded) && config.try_embed_lyrics)
@@ -250,7 +255,8 @@ pub fn set_export_preferences(
             export_txt = COALESCE(?3, export_txt),
             export_embedded = COALESCE(?4, export_embedded),
             skip_tracks_with_synced_lyrics = COALESCE(?5, skip_tracks_with_synced_lyrics),
-            skip_tracks_with_plain_lyrics = COALESCE(?6, skip_tracks_with_plain_lyrics)",
+            skip_tracks_with_plain_lyrics = COALESCE(?6, skip_tracks_with_plain_lyrics),
+            export_elrc = COALESCE(?7, export_elrc)",
         (
             auto_export_enabled,
             export_lrc,
@@ -258,6 +264,7 @@ pub fn set_export_preferences(
             export_embedded,
             skip_tracks_with_synced_lyrics,
             skip_tracks_with_plain_lyrics,
+            export_elrc,
         ),
     )?;
     Ok(())
@@ -1792,6 +1799,87 @@ pub fn find_tracks_by_metadata(
 mod export_preferences_tests {
     use super::*;
 
+
+    #[test]
+    fn elrc_migration_preserves_existing_preferences() {
+        let mut conn = Connection::open_in_memory().unwrap();
+
+        let migrations =
+            Migrations::from_directory(&MIGRATIONS_DIR).unwrap();
+
+        migrations.to_version(&mut conn, 17).unwrap();
+
+        conn.execute(
+            "UPDATE config_data SET export_txt = TRUE",
+            [],
+        ).unwrap();
+
+        migrations.to_latest(&mut conn).unwrap();
+
+        let config = get_config(&conn).unwrap();
+
+        assert!(config.export_txt);
+        assert!(config.export_lrc);
+        assert!(!config.export_elrc);
+    }
+
+    #[test]
+    fn elrc_only_preferences_are_valid_and_persist() {
+        let mut conn = Connection::open_in_memory().unwrap();
+
+        Migrations::from_directory(&MIGRATIONS_DIR)
+            .unwrap()
+            .to_latest(&mut conn)
+            .unwrap();
+
+        set_export_preferences(
+            Some(true),
+            Some(false),
+            Some(false),
+            Some(false),
+            None,
+            None,
+            Some(true),
+            &conn,
+        ).unwrap();
+
+        let config = get_config(&conn).unwrap();
+
+        assert!(config.export_elrc);
+        assert!(config.auto_export_enabled);
+        assert!(!config.export_lrc);
+        assert!(!config.export_txt);
+
+        // Reject disabling the last enabled format.
+        assert!(set_export_preferences(
+            Some(true),
+            None,
+            None,
+            None,
+            None,
+            None,
+            Some(false),
+            &conn,
+        ).is_err());
+
+        // Turning off auto-export preserves the ELRC selection.
+        set_export_preferences(
+            Some(false),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+            &conn,
+        ).unwrap();
+
+        let config = get_config(&conn).unwrap();
+
+        assert!(config.export_elrc);
+        assert!(!config.auto_export_enabled);
+    }
+
     #[test]
     fn embed_only_preferences_require_gate_and_preserve_disabled_choice() {
         let mut conn = Connection::open_in_memory().unwrap();
@@ -1806,6 +1894,7 @@ mod export_preferences_tests {
             Some(false),
             Some(false),
             Some(true),
+            None,
             None,
             None,
             &conn,
@@ -1826,6 +1915,7 @@ mod export_preferences_tests {
                 Some(true),
                 Some(false),
                 Some(false),
+                None,
                 &conn
             )
             .is_err());
@@ -1838,11 +1928,12 @@ mod export_preferences_tests {
             Some(false),
             None,
             None,
+            None,
             &conn,
         )
         .unwrap();
         assert!(get_config(&conn).unwrap().export_embedded);
-        set_export_preferences(Some(false), None, None, Some(false), None, None, &conn).unwrap();
+        set_export_preferences(Some(false), None, None, Some(false), None, None, None, &conn).unwrap();
         assert!(get_config(&conn).unwrap().export_embedded);
     }
 
@@ -1855,13 +1946,13 @@ mod export_preferences_tests {
             .unwrap();
         set_config(true, false, true, true, "dark", "https://example.test", 0.4, &conn)
             .unwrap();
-        set_export_preferences(None, Some(true), Some(true), Some(true), None, None, &conn)
+        set_export_preferences(None, Some(true), Some(true), Some(true), None, None, None, &conn)
             .unwrap();
 
         for (skip_synced, skip_plain) in [(false, false), (true, false), (true, true)] {
             // Download off preserves formats while atomically saving the submitted filter.
             set_export_preferences(
-                Some(false), None, None, None, Some(skip_synced), Some(skip_plain), &conn,
+                Some(false), None, None, None, Some(skip_synced), Some(skip_plain), None, &conn,
             )
             .unwrap();
             let config = get_config(&conn).unwrap();
@@ -1875,7 +1966,7 @@ mod export_preferences_tests {
             assert_eq!(config.volume, 0.4);
 
             // Manual Export omits both flags and must leave the Download filter alone.
-            set_export_preferences(None, Some(true), None, None, None, None, &conn).unwrap();
+            set_export_preferences(None, Some(true), None, None, None, None, None, &conn).unwrap();
             let config = get_config(&conn).unwrap();
             assert_eq!(config.skip_tracks_with_synced_lyrics, skip_synced);
             assert_eq!(config.skip_tracks_with_plain_lyrics, skip_plain);
@@ -1915,11 +2006,11 @@ mod export_preferences_tests {
         assert_eq!(count, 1);
 
         // Manual Export shares formats but does not touch the Download toggle.
-        set_export_preferences(Some(true), None, None, None, None, None, &conn).unwrap();
-        set_export_preferences(None, Some(false), Some(true), Some(true), None, None, &conn).unwrap();
+        set_export_preferences(Some(true), None, None, None, None, None, None, &conn).unwrap();
+        set_export_preferences(None, Some(false), Some(true), Some(true), None, None, None, &conn).unwrap();
         assert!(get_config(&conn).unwrap().auto_export_enabled);
         // Turning auto-export off preserves formats, including hidden embedded selection.
-        set_export_preferences(Some(false), None, None, None, None, None, &conn).unwrap();
+        set_export_preferences(Some(false), None, None, None, None, None, None, &conn).unwrap();
         // Ordinary Settings writes leave all export preferences alone.
         set_config(
             false,

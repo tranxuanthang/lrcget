@@ -84,6 +84,15 @@
             </label>
             <label class="dropdown-item">
               <CheckboxButton
+                id="download-elrc"
+                v-model="downloadDraft.wordSyncedElrc"
+                name="download-elrc"
+              >
+                <span class="dropdown-label">Word-synced lyrics (.elrc)</span>
+              </CheckboxButton>
+            </label>
+            <label class="dropdown-item">
+              <CheckboxButton
                 id="download-embedded"
                 v-model="downloadDraft.embedIntoTrack"
                 name="download-embedded"

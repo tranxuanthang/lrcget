@@ -11,8 +11,8 @@ use lofty::id3::v2::{
 };
 use lofty::TextEncoding;
 use serde::Serialize;
-use std::fs::{remove_file, write};
-use std::io::Seek;
+use std::fs::{remove_file, write, OpenOptions};
+use std::io::{Seek, Write};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
@@ -40,6 +40,8 @@ pub enum ExportFormat {
     Txt,
     /// Standard LRC format (.lrc)
     Lrc,
+    /// Enhanced LRC with word-level timings (.elrc)
+    Elrc,
     /// Embedded in audio file metadata
     Embedded,
 }
@@ -104,11 +106,13 @@ pub fn generate_lrc_content(parsed: &ParsedLyricsfile) -> Option<String> {
 pub fn export_track_format(
     track: &PersistentTrack,
     parsed: &ParsedLyricsfile,
+    lyricsfile: &str,
     format: ExportFormat,
 ) -> Result<ExportResult, ExportError> {
     match format {
         ExportFormat::Txt => export_txt(track, parsed),
         ExportFormat::Lrc => export_lrc(track, parsed),
+        ExportFormat::Elrc => export_elrc(track, lyricsfile),
         ExportFormat::Embedded => export_embedded(track, parsed),
     }
 }
@@ -181,6 +185,112 @@ fn export_lrc(
     })
 }
 
+/// Export word-synchronized lyrics without modifying audio files
+/// or removing other lyric sidecars.
+fn export_elrc(track: &PersistentTrack, lyricsfile: &str) -> Result<ExportResult, ExportError> {
+    let content = crate::lyricsfile::lyricsfile_to_elrc(lyricsfile)
+        .map_err(|err| ExportError::InvalidData(err.to_string()))?;
+
+    let Some(content) = content else {
+        return Ok(ExportResult {
+            format: ExportFormat::Elrc,
+            path: None,
+            status: ExportStatus::Skipped("no word-synced lyrics available".to_owned()),
+        });
+    };
+
+    let path = build_sidecar_path(&track.file_path, "elrc")?;
+
+    write_elrc_atomically(&path, content.as_bytes())
+        .map_err(|err| ExportError::WriteError(err.to_string()))?;
+
+    Ok(ExportResult {
+        format: ExportFormat::Elrc,
+        path: Some(path),
+        status: ExportStatus::Success,
+    })
+}
+
+/// Stage a complete sidecar next to its destination, then replace it with a
+/// same-directory rename. A write or rename error must not truncate the old file.
+fn write_elrc_atomically(path: &Path, content: &[u8]) -> std::io::Result<()> {
+    let permissions = match std::fs::symlink_metadata(path) {
+        Ok(metadata) if metadata.is_file() => Some(metadata.permissions()),
+        Ok(_) => {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidInput,
+                "ELRC destination is not a regular file",
+            ))
+        }
+        Err(err) if err.kind() == std::io::ErrorKind::NotFound => None,
+        Err(err) => return Err(err),
+    };
+
+    for _ in 0..16 {
+        let temporary = path.with_file_name(format!(".lrcget-{:016x}.tmp", fastrand::u64(..)));
+        let mut file = match OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temporary)
+        {
+            Ok(file) => file,
+            Err(err) if err.kind() == std::io::ErrorKind::AlreadyExists => continue,
+            Err(err) => return Err(err),
+        };
+
+        let result = (|| {
+            file.write_all(content)?;
+            if let Some(permissions) = permissions.clone() {
+                file.set_permissions(permissions)?;
+            }
+            file.sync_all()?;
+            drop(file);
+            std::fs::rename(&temporary, path)
+        })();
+        if result.is_err() {
+            let _ = remove_file(&temporary);
+        }
+        return result;
+    }
+
+    Err(std::io::Error::new(
+        std::io::ErrorKind::AlreadyExists,
+        "Could not allocate an ELRC temporary file",
+    ))
+}
+
+#[cfg(test)]
+mod elrc_write_tests {
+    use super::*;
+
+    #[test]
+    fn replaces_existing_sidecar_without_leaving_temporary_files() {
+        let directory =
+            std::env::temp_dir().join(format!("lrcget-elrc-atomic-{:016x}", fastrand::u64(..)));
+        std::fs::create_dir(&directory).unwrap();
+        let target = directory.join("song.elrc");
+        write(&target, b"old lyrics").unwrap();
+        write_elrc_atomically(&target, b"new lyrics").unwrap();
+        assert_eq!(std::fs::read(&target).unwrap(), b"new lyrics");
+        assert_eq!(std::fs::read_dir(&directory).unwrap().count(), 1);
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+
+    #[test]
+    fn refuses_non_file_destination_without_removing_it() {
+        let directory =
+            std::env::temp_dir().join(format!("lrcget-elrc-invalid-{:016x}", fastrand::u64(..)));
+        std::fs::create_dir(&directory).unwrap();
+        let target = directory.join("song.elrc");
+        std::fs::create_dir(&target).unwrap();
+        write(target.join("sentinel"), b"keep").unwrap();
+        assert!(write_elrc_atomically(&target, b"new lyrics").is_err());
+        assert_eq!(std::fs::read(target.join("sentinel")).unwrap(), b"keep");
+        assert_eq!(std::fs::read_dir(&directory).unwrap().count(), 1);
+        std::fs::remove_dir_all(directory).unwrap();
+    }
+}
+
 /// Export lyrics by embedding into audio file metadata
 fn export_embedded(
     track: &PersistentTrack,
@@ -215,15 +325,17 @@ fn export_embedded(
 pub fn export_track(
     track: &PersistentTrack,
     parsed: &ParsedLyricsfile,
+    lyricsfile: &str,
     formats: &[ExportFormat],
 ) -> Vec<ExportResult> {
-    export_track_with_embed_gate(track, parsed, formats, || true)
+    export_track_with_embed_gate(track, parsed, lyricsfile, formats, || true)
 }
 
 /// Consult the current experimental setting at each embedded operation, not at batch creation.
 pub fn export_track_with_embed_gate(
     track: &PersistentTrack,
     parsed: &ParsedLyricsfile,
+    lyricsfile: &str,
     formats: &[ExportFormat],
     mut embed_allowed: impl FnMut() -> bool,
 ) -> Vec<ExportResult> {
@@ -240,7 +352,7 @@ pub fn export_track_with_embed_gate(
             });
             continue;
         }
-        match export_track_format(track, parsed, *format) {
+        match export_track_format(track, parsed, lyricsfile, *format) {
             Ok(result) => results.push(result),
             Err(e) => results.push(ExportResult {
                 format: *format,
@@ -310,8 +422,8 @@ fn embed_lyrics_flac(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) 
 /// Embed lyrics into MP3 file using ID3v2 tags
 fn embed_lyrics_mp3(track_path: &str, plain_lyrics: &str, synced_lyrics: &str) -> Result<()> {
     use lofty::file::TaggedFileExt;
-    use lofty::probe::Probe;
     use lofty::id3::v2::Id3v2Tag;
+    use lofty::probe::Probe;
 
     let file_probe = Probe::open(track_path).context("Failed to open MP3 file")?;
     let mut file = file_probe

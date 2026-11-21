@@ -62,6 +62,15 @@
                 <span class="dropdown-label">Synced lyrics (.lrc)</span>
               </CheckboxButton>
             </label>
+            <label class="dropdown-item">
+              <CheckboxButton
+                id="export-word-synced-elrc"
+                v-model="exportWordSyncedElrc"
+                name="export-word-synced-elrc"
+              >
+                <span class="dropdown-label">Word-synced lyrics (.elrc)</span>
+              </CheckboxButton>
+            </label>
 
             <label
               class="dropdown-item"
@@ -123,6 +132,7 @@ const emit = defineEmits(['save', 'save-and-publish', 'export', 'debug'])
 
 const exportPlainText = ref(false)
 const exportSyncedLrc = ref(false)
+const exportWordSyncedElrc = ref(false)
 const embedIntoTrack = ref(false)
 const tryEmbedLyrics = ref(false)
 
@@ -134,7 +144,11 @@ const refreshEmbedConfig = async () => {
 onMounted(refreshEmbedConfig)
 
 const hasSelectedExportFormat = computed(
-  () => exportPlainText.value || exportSyncedLrc.value || embedIntoTrack.value
+  () =>
+    exportPlainText.value ||
+    exportSyncedLrc.value ||
+    exportWordSyncedElrc.value ||
+    embedIntoTrack.value
 )
 
 const handleExportClick = () => {
@@ -145,6 +159,7 @@ const handleExportClick = () => {
   emit('export', {
     plainText: exportPlainText.value,
     syncedLrc: exportSyncedLrc.value,
+    wordSyncedElrc: exportWordSyncedElrc.value,
     embedIntoTrack: embedIntoTrack.value,
   })
 }

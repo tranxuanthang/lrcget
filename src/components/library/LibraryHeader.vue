@@ -166,6 +166,15 @@
                   <span class="dropdown-label">Synced lyrics (.lrc)</span>
                 </CheckboxButton>
               </label>
+              <label class="dropdown-item">
+                <CheckboxButton
+                  id="export-word-synced-elrc"
+                  v-model="exportDraft.wordSyncedElrc"
+                  name="export-word-synced-elrc"
+                >
+                  <span class="dropdown-label">Word-synced lyrics (.elrc)</span>
+                </CheckboxButton>
+              </label>
 
               <label class="dropdown-item" :class="{ 'cursor-not-allowed': !tryEmbedLyrics }">
                 <CheckboxButton
@@ -261,7 +270,12 @@ const emit = defineEmits([
 
 const { refresh: refreshPreferences, save: savePreferences } = useExportPreferences()
 const exportDropdown = ref(null)
-const exportDraft = ref({ plainText: false, syncedLrc: true, embedIntoTrack: false })
+const exportDraft = ref({
+  plainText: false,
+  syncedLrc: true,
+  wordSyncedElrc: false,
+  embedIntoTrack: false,
+})
 const tryEmbedLyrics = ref(false)
 const exportLoading = ref(false)
 const submittingExport = ref(false)
@@ -278,6 +292,7 @@ const openExportOptions = async () => {
     exportDraft.value = {
       plainText: config.export_txt,
       syncedLrc: config.export_lrc,
+      wordSyncedElrc: config.export_elrc ?? false,
       embedIntoTrack: config.export_embedded,
     }
     tryEmbedLyrics.value = config.try_embed_lyrics
@@ -295,6 +310,7 @@ const canExport = computed(
     !exportError.value &&
     (exportDraft.value.plainText ||
       exportDraft.value.syncedLrc ||
+      exportDraft.value.wordSyncedElrc ||
       (exportDraft.value.embedIntoTrack && tryEmbedLyrics.value))
 )
 
@@ -307,6 +323,7 @@ const handleExportClick = async () => {
     await savePreferences({
       exportTxt: draft.plainText,
       exportLrc: draft.syncedLrc,
+      exportElrc: draft.wordSyncedElrc,
       ...(embedEnabled ? { exportEmbedded: draft.embedIntoTrack } : {}),
     })
     exportDropdown.value?.hide()
