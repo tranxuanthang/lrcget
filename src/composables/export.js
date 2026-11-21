@@ -132,6 +132,7 @@ const addToQueue = (trackIds, formats) => {
   const snapshot = Object.freeze([
     ...(formats.plainText ? ['txt'] : []),
     ...(formats.syncedLrc ? ['lrc'] : []),
+    ...(formats.wordSyncedElrc ? ['elrc'] : []),
     ...(formats.embedIntoTrack ? ['embedded'] : []),
   ])
 

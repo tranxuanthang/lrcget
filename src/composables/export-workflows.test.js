@@ -65,6 +65,7 @@ describe('submitted export choices', () => {
       autoExportEnabled: true,
       exportTxt: false,
       exportLrc: false,
+      exportElrc: false,
       exportEmbedded: true,
       skipTracksWithSyncedLyrics: true,
       skipTracksWithPlainLyrics: false,
@@ -73,6 +74,7 @@ describe('submitted export choices', () => {
     expect(downloader.downloadQueue.value[0].autoExport).toEqual({
       plainText: false,
       syncedLrc: false,
+      wordSyncedElrc: false,
       embedIntoTrack: true,
     })
     await state.openExportOptions()
@@ -148,10 +150,16 @@ describe('submitted export choices', () => {
       if (args.trackId === 2) throw 'Not found'
       return message
     })
-    const choice = { plainText: true, syncedLrc: false, embedIntoTrack: true }
+    const choice = {
+      plainText: true,
+      syncedLrc: false,
+      wordSyncedElrc: true,
+      embedIntoTrack: true,
+    }
     downloader.addToQueue([1, 2], choice)
     choice.plainText = false
     choice.syncedLrc = true
+    choice.wordSyncedElrc = false
     choice.embedIntoTrack = false
     downloader.addToQueue([3], choice)
     downloader.addToQueue([4]) // Other download entry points do not inherit remembered formats.
@@ -161,9 +169,9 @@ describe('submitted export choices', () => {
       .filter(([name]) => name === 'download_lyrics')
       .map(([, args]) => args)
     expect(calls).toEqual([
-      { trackId: 1, autoExport: { plainText: true, syncedLrc: false, embedIntoTrack: true } },
-      { trackId: 2, autoExport: { plainText: true, syncedLrc: false, embedIntoTrack: true } },
-      { trackId: 3, autoExport: { plainText: false, syncedLrc: true, embedIntoTrack: false } },
+      { trackId: 1, autoExport: { plainText: true, syncedLrc: false, wordSyncedElrc: true, embedIntoTrack: true } },
+      { trackId: 2, autoExport: { plainText: true, syncedLrc: false, wordSyncedElrc: true, embedIntoTrack: true } },
+      { trackId: 3, autoExport: { plainText: false, syncedLrc: true, wordSyncedElrc: false, embedIntoTrack: false } },
       { trackId: 4, autoExport: null },
     ])
     expect(downloader.successCount.value).toBe(3)
@@ -179,9 +187,15 @@ describe('submitted export choices', () => {
         ? { id: args.trackId, title: 'Song', artist_name: 'Artist' }
         : { errors: 0, exported: 1, skipped: 0 }
     )
-    const choice = { plainText: true, syncedLrc: true, embedIntoTrack: true }
+    const choice = {
+      plainText: true,
+      syncedLrc: true,
+      wordSyncedElrc: true,
+      embedIntoTrack: true,
+    }
     exporter.addToQueue([1, 2], choice)
     choice.plainText = false
+    choice.wordSyncedElrc = false
     choice.embedIntoTrack = false
     exporter.addToQueue([3], choice)
     void exporter.exportNext()
@@ -189,8 +203,8 @@ describe('submitted export choices', () => {
     expect(
       invoke.mock.calls.filter(([name]) => name === 'export_track_lyrics').map(([, args]) => args)
     ).toEqual([
-      { trackId: 1, formats: ['txt', 'lrc', 'embedded'] },
-      { trackId: 2, formats: ['txt', 'lrc', 'embedded'] },
+      { trackId: 1, formats: ['txt', 'lrc', 'elrc', 'embedded'] },
+      { trackId: 2, formats: ['txt', 'lrc', 'elrc', 'embedded'] },
       { trackId: 3, formats: ['lrc'] },
     ])
   })
@@ -217,4 +231,104 @@ describe('submitted export choices', () => {
     await expect(second.save({ autoExportEnabled: true })).rejects.toBe('Database unavailable')
     expect(first.preferences.value.auto_export_enabled).toBe(false)
   })
+
+  it('accepts ELRC-only preferences in both export popups', async () => {
+    const state = await popupState()
+
+    const config = {
+      skip_tracks_with_synced_lyrics: false,
+      skip_tracks_with_plain_lyrics: false,
+      auto_export_enabled: true,
+      export_txt: false,
+      export_lrc: false,
+      export_elrc: true,
+      export_embedded: false,
+      try_embed_lyrics: false,
+    }
+
+    invoke.mockImplementation(async command =>
+      command === 'get_track_ids' ? [1] : config
+    )
+
+    await state.openDownloadOptions()
+
+    expect(state.downloadDraft.value.wordSyncedElrc).toBe(true)
+    expect(state.canDownload.value).toBe(true)
+
+    await state.downloadAllLyrics()
+
+    expect(invoke).toHaveBeenCalledWith(
+      'set_export_preferences',
+      expect.objectContaining({
+        exportElrc: true,
+        exportLrc: false,
+        exportTxt: false,
+      })
+    )
+
+    const downloader =
+      (await import('./downloader.js')).useDownloader()
+
+    expect(downloader.downloadQueue.value[0].autoExport).toEqual({
+      plainText: false,
+      syncedLrc: false,
+      wordSyncedElrc: true,
+      embedIntoTrack: false,
+    })
+
+    await state.openExportOptions()
+
+    expect(state.exportDraft.value.wordSyncedElrc).toBe(true)
+    expect(state.canExport.value).toBe(true)
+
+    state.exportDraft.value.wordSyncedElrc = false
+    expect(state.canExport.value).toBe(false)
+  })
+
+  it('exports an individual track using ELRC only', async () => {
+    const { ref } = await import('vue')
+    const { useEditLyricsV2Export } =
+      await import('./edit-lyrics-v2/useEditLyricsV2Export.js')
+
+    const toast = {
+      success: vi.fn(),
+      warning: vi.fn(),
+      error: vi.fn(),
+    }
+
+    const saveLyrics = vi.fn().mockResolvedValue(true)
+
+    invoke.mockResolvedValue([
+      {
+        format: 'elrc',
+        status: { type: 'success' },
+      },
+    ])
+
+    const { exportLyrics } = useEditLyricsV2Export({
+      audioSource: ref({ type: 'library', id: 42 }),
+      saveLyrics,
+      serializedLyricsfile: ref('test lyricsfile'),
+      toast,
+    })
+
+    const result = await exportLyrics({
+      plainText: false,
+      syncedLrc: false,
+      wordSyncedElrc: true,
+      embedIntoTrack: false,
+    })
+
+    expect(result).toBe(true)
+    expect(saveLyrics).toHaveBeenCalledOnce()
+
+    expect(invoke).toHaveBeenCalledWith('export_lyrics', {
+      trackId: 42,
+      formats: ['elrc'],
+      lyricsfile: 'test lyricsfile',
+    })
+
+    expect(toast.success).toHaveBeenCalledOnce()
+  })
+
 })
