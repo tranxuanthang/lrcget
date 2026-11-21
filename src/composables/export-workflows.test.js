@@ -156,7 +156,7 @@ describe('submitted export choices', () => {
     downloader.addToQueue([3], choice)
     downloader.addToQueue([4]) // Other download entry points do not inherit remembered formats.
     void downloader.downloadNext()
-    await vi.advanceTimersByTimeAsync(5)
+    await vi.advanceTimersByTimeAsync(3000)
     const calls = invoke.mock.calls
       .filter(([name]) => name === 'download_lyrics')
       .map(([, args]) => args)
