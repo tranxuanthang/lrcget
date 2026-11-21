@@ -84,6 +84,7 @@ pub struct PersistentArtist {
 pub struct PersistentConfig {
     pub auto_export_enabled: bool,
     pub export_lrc: bool,
+    pub export_elrc: bool,
     pub export_txt: bool,
     pub export_embedded: bool,
     pub skip_tracks_with_synced_lyrics: bool,

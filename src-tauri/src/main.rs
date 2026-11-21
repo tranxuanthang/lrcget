@@ -134,6 +134,8 @@ struct AutoExportOptions {
     plain_text: bool,
     synced_lrc: bool,
     #[serde(default)]
+    word_synced_elrc: bool,
+    #[serde(default)]
     embed_into_track: bool,
 }
 
@@ -145,6 +147,9 @@ impl AutoExportOptions {
         }
         if self.synced_lrc {
             formats.push(export::ExportFormat::Lrc);
+        }
+        if self.word_synced_elrc {
+            formats.push(export::ExportFormat::Elrc);
         }
         if self.embed_into_track {
             formats.push(export::ExportFormat::Embedded);
@@ -326,6 +331,7 @@ async fn set_config(
 async fn set_export_preferences(
     auto_export_enabled: Option<bool>,
     export_lrc: Option<bool>,
+    export_elrc: Option<bool>,
     export_txt: Option<bool>,
     export_embedded: Option<bool>,
     skip_tracks_with_synced_lyrics: Option<bool>,
@@ -341,6 +347,7 @@ async fn set_export_preferences(
         export_embedded,
         skip_tracks_with_synced_lyrics,
         skip_tracks_with_plain_lyrics,
+        export_elrc,
         conn,
     )
     .map_err(|err| err.to_string())?;
@@ -2113,12 +2120,63 @@ lines:
         }
     }
 
+
+    #[test]
+    fn auto_export_accepts_elrc_only() {
+        let options = AutoExportOptions {
+            plain_text: false,
+            synced_lrc: false,
+            word_synced_elrc: true,
+            embed_into_track: false,
+        };
+
+        assert_eq!(
+            options.formats().unwrap(),
+            vec![export::ExportFormat::Elrc]
+        );
+    }
+
+    #[test]
+    fn auto_export_preserves_format_order_with_elrc() {
+        let options = AutoExportOptions {
+            plain_text: true,
+            synced_lrc: true,
+            word_synced_elrc: true,
+            embed_into_track: true,
+        };
+
+        assert_eq!(
+            options.formats().unwrap(),
+            vec![
+                export::ExportFormat::Txt,
+                export::ExportFormat::Lrc,
+                export::ExportFormat::Elrc,
+                export::ExportFormat::Embedded,
+            ]
+        );
+    }
+
+    #[test]
+    fn existing_auto_export_payloads_remain_compatible() {
+        let options: AutoExportOptions = serde_json::from_str(
+            r#"{"plainText":false,"syncedLrc":true,"embedIntoTrack":false}"#
+        ).unwrap();
+
+        assert!(!options.word_synced_elrc);
+
+        assert_eq!(
+            options.formats().unwrap(),
+            vec![export::ExportFormat::Lrc]
+        );
+    }
+
     #[test]
     fn selection_allows_embed_only_and_preserves_order() {
         assert_eq!(
             AutoExportOptions {
                 plain_text: false,
                 synced_lrc: false,
+                word_synced_elrc: false,
                 embed_into_track: true,
             }
             .formats()
@@ -2128,6 +2186,7 @@ lines:
         assert!(AutoExportOptions {
             plain_text: false,
             synced_lrc: false,
+            word_synced_elrc: false,
             embed_into_track: false,
         }
         .formats()
@@ -2136,6 +2195,7 @@ lines:
             AutoExportOptions {
                 plain_text: true,
                 synced_lrc: true,
+                word_synced_elrc: false,
                 embed_into_track: true,
             }
             .formats()
