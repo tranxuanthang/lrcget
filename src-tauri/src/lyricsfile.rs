@@ -113,6 +113,7 @@ struct ParsedLyricsfileDocument {
 struct ParsedLyricsfileMetadata {
     #[serde(default)]
     instrumental: bool,
+    offset_ms: Option<i64>,
 }
 
 pub fn build_lyricsfile(
@@ -268,49 +269,64 @@ fn lines_to_lrc(lines: &[LyricsfileLine]) -> Option<String> {
 ///
 /// Return None for instrumental, plain-only, or line-only lyrics.
 /// Mixed word-synced and line-synced lyrics retain their original lines.
+/// Independent intermediate word ends and exact line ends are not representable.
 pub fn lyricsfile_to_elrc(lyricsfile: &str) -> Result<Option<String>> {
     let document: ParsedLyricsfileDocument = serde_yaml::from_str(lyricsfile)?;
 
-    if document.metadata.instrumental {
-        return Ok(None);
-    }
-
-    if !document
-        .lines
-        .iter()
-        .any(|line| line.words.iter().any(|word| !word.text.trim().is_empty()))
+    if document.metadata.instrumental
+        || !document
+            .lines
+            .iter()
+            .any(|line| line.words.iter().any(|word| !word.text.trim().is_empty()))
     {
         return Ok(None);
     }
 
+    // Lyricsfile 1.0 has not defined the sign or application of offset_ms.
+    anyhow::ensure!(
+        document.metadata.offset_ms.unwrap_or(0) == 0,
+        "Cannot export a nonzero Lyricsfile offset: its semantics are not defined"
+    );
+
     let mut output = String::new();
 
     for line in &document.lines {
-        anyhow::ensure!(line.start_ms >= 0, "Negative line timestamp");
-
-        output.push_str(&format_elrc_timestamp(line.start_ms, '[', ']'));
+        if let Some(end) = line.end_ms {
+            anyhow::ensure!(end >= line.start_ms, "Invalid line end timestamp");
+        }
+        output.push_str(&format_elrc_timestamp(line.start_ms, '[', ']')?);
 
         if line.words.is_empty() {
+            validate_elrc_text(&line.text)?;
             output.push_str(&line.text);
         } else {
+            let text: String = line.words.iter().map(|word| word.text.as_str()).collect();
+            anyhow::ensure!(
+                text.trim() == line.text.trim(),
+                "Word segments do not reconstruct the lyric line"
+            );
+            validate_elrc_text(&text)?;
             let mut previous_start = line.start_ms;
 
             for word in &line.words {
                 anyhow::ensure!(
+                    !word.text.trim().is_empty(),
+                    "Empty or whitespace-only word segment"
+                );
+                anyhow::ensure!(
                     word.start_ms >= previous_start,
                     "Invalid or unordered word timestamp"
                 );
-
-                output.push_str(&format_elrc_timestamp(word.start_ms, '<', '>'));
-
+                if let Some(end) = word.end_ms {
+                    anyhow::ensure!(end >= word.start_ms, "Invalid word end timestamp");
+                }
+                output.push_str(&format_elrc_timestamp(word.start_ms, '<', '>')?);
                 output.push_str(&word.text);
                 previous_start = word.start_ms;
             }
 
             if let Some(end_ms) = line.words.last().and_then(|word| word.end_ms) {
-                anyhow::ensure!(end_ms >= previous_start, "Invalid final word end timestamp");
-
-                output.push_str(&format_elrc_timestamp(end_ms, '<', '>'));
+                output.push_str(&format_elrc_timestamp(end_ms, '<', '>')?);
             }
         }
 
@@ -320,13 +336,43 @@ pub fn lyricsfile_to_elrc(lyricsfile: &str) -> Result<Option<String>> {
     Ok(normalize_non_empty(Some(output.as_str())))
 }
 
-/// Format an ELRC timestamp with millisecond precision.
-fn format_elrc_timestamp(timestamp_ms: i64, open: char, close: char) -> String {
+/// ELRC has no interoperable escape mechanism for literal timing tags or
+/// embedded line breaks. Reject these rather than producing ambiguous output.
+fn validate_elrc_text(text: &str) -> Result<()> {
+    static TIMING_TAG: std::sync::LazyLock<regex::Regex> = std::sync::LazyLock::new(|| {
+        regex::Regex::new(
+            r"(?:\[(?:[0-9]{1,2}:)?[0-9]{1,2}:[0-9]{1,2}(?:\.[0-9]{1,3})?\]|<(?:[0-9]{1,2}:)?[0-9]{1,2}:[0-9]{1,2}(?:\.[0-9]{1,3})?>)",
+        ).expect("valid ELRC timing regex")
+    });
+    anyhow::ensure!(
+        !text.contains('\n') && !text.contains('\r') && !TIMING_TAG.is_match(text),
+        "Lyric text contains a line break or literal timing tag"
+    );
+    Ok(())
+}
+
+/// Preserve millisecond precision; switch to hour-based tags when minutes
+/// exceed the two-digit range accepted by enhanced LRC parsers.
+fn format_elrc_timestamp(timestamp_ms: i64, open: char, close: char) -> Result<String> {
+    anyhow::ensure!(
+        (0..360_000_000).contains(&timestamp_ms),
+        "ELRC timestamp outside the supported range (0 to 99:59:59.999)"
+    );
     let minutes = timestamp_ms / 60_000;
     let seconds = (timestamp_ms % 60_000) / 1_000;
     let milliseconds = timestamp_ms % 1_000;
 
-    format!("{open}{minutes:02}:{seconds:02}.{milliseconds:03}{close}")
+    if minutes < 100 {
+        Ok(format!(
+            "{open}{minutes:02}:{seconds:02}.{milliseconds:03}{close}"
+        ))
+    } else {
+        let hours = minutes / 60;
+        let minutes = minutes % 60;
+        Ok(format!(
+            "{open}{hours:02}:{minutes:02}:{seconds:02}.{milliseconds:03}{close}"
+        ))
+    }
 }
 
 fn duration_to_ms(duration: f64) -> Option<i64> {
@@ -346,6 +392,102 @@ fn normalize_non_empty(value: Option<&str>) -> Option<String> {
 #[cfg(test)]
 mod elrc_tests {
     use super::*;
+
+    #[test]
+    fn supports_long_timestamps_and_rejects_out_of_range() {
+        assert_eq!(
+            format_elrc_timestamp(5_999_999, '[', ']').unwrap(),
+            "[99:59.999]"
+        );
+        assert_eq!(
+            format_elrc_timestamp(6_000_123, '<', '>').unwrap(),
+            "<01:40:00.123>"
+        );
+        assert_eq!(
+            format_elrc_timestamp(359_999_999, '[', ']').unwrap(),
+            "[99:59:59.999]"
+        );
+        assert!(format_elrc_timestamp(360_000_000, '[', ']').is_err());
+        assert!(format_elrc_timestamp(-1, '<', '>').is_err());
+    }
+
+    #[test]
+    fn rejects_undefined_nonzero_offset() {
+        let input = r#"
+metadata:
+  offset_ms: -125
+lines:
+  - text: Test
+    start_ms: 1000
+    words:
+      - text: Test
+        start_ms: 1000
+"#;
+        assert!(lyricsfile_to_elrc(input).is_err());
+        assert!(lyricsfile_to_elrc(&input.replace("-125", "0"))
+            .unwrap()
+            .is_some());
+    }
+
+    #[test]
+    fn rejects_word_text_mismatch() {
+        let input = r#"
+metadata: {}
+lines:
+  - text: Hello world
+    start_ms: 1000
+    words:
+      - text: Hello
+        start_ms: 1000
+"#;
+        assert!(lyricsfile_to_elrc(input).is_err());
+    }
+
+    #[test]
+    fn rejects_empty_word_segments_in_timed_lines() {
+        let input = r#"
+metadata: {}
+lines:
+  - text: Hello
+    start_ms: 1000
+    words:
+      - text: Hello
+        start_ms: 1000
+      - text: ""
+        start_ms: 1500
+"#;
+        assert!(lyricsfile_to_elrc(input).is_err());
+    }
+
+    #[test]
+    fn rejects_invalid_intermediate_word_end() {
+        let input = r#"
+metadata: {}
+lines:
+  - text: Hello world
+    start_ms: 1000
+    words:
+      - text: "Hello "
+        start_ms: 1000
+        end_ms: 999
+      - text: world
+        start_ms: 1500
+"#;
+        assert!(lyricsfile_to_elrc(input).is_err());
+    }
+
+    #[test]
+    fn rejects_ambiguous_text() {
+        for text in [
+            "one\ntwo",
+            "one\rtwo",
+            "literal <00:01.23>",
+            "literal [00:01.23]",
+        ] {
+            assert!(validate_elrc_text(text).is_err());
+        }
+        assert!(validate_elrc_text("Hello [chorus] <3").is_ok());
+    }
 
     #[test]
     fn preserves_word_timestamps_and_spacing() {
